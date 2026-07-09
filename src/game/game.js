@@ -14,18 +14,22 @@ import { rollChestLoot, rollItem, slotsFor } from './items.js';
 import { log, buildPartyFrames, updatePartyFrames, updateResources, showBanner, showSetup } from './ui.js';
 import { initMenus, refreshMenus } from './menus.js';
 import { initShop, showShop } from './shop.js';
+import { generateQuests } from './quests.js';
+import { initSkills, checkForChallenge, resetChallengeState, fireCampChallenge } from './skills.js';
 
 const FLOOR = 1, WALL = 2;
 const THEME_ORDER = ['ancient','verdant','frost','grim','molten'];
 const SAVE_KEY = 'dungeon-crawlers-save-v1';
 
-const HERO_SPEED = 3.1;
-const AGGRO_RANGE = 8.5;
-const HERO_ATTACK_CD = 2.2;    // slower, more deliberate exchanges
-const MONSTER_ATTACK_CD = 2.6;
-const XP_SHARE = 0.15;         // each living hero gets xp * this (deliberate but not glacial)
+const HERO_SPEED = 2.5;        // an unhurried march — floors should take a while
+const AGGRO_RANGE = 6.0;       // smaller pull radius: big rooms come in waves, not all at once
+const HERO_ATTACK_CD = 4.2;    // unhurried, readable exchanges
+const MONSTER_ATTACK_CD = 5.6; // monsters swing slower than heroes — the party wins attrition
+const XP_SHARE = 0.10;         // each living hero gets xp * this (slower, steadier progression)
 const REVEAL_RADIUS = 4.5;
-const COHESION_MAX = 4.6;      // leader waits if any ally is farther than this
+const PARTY_RADIUS = 6.5;      // heroes spread out but stay within this distance of group center
+const PROXIMITY_RADIUS = 1.0;  // waypoint considered reached when this close — MUST be smaller
+                               // than chest/shrine interaction ranges or those rooms never complete
 const COMBAT_SPEED = 0.72;     // fraction of move speed used for combat repositioning
 
 const _v = new THREE.Vector3();
@@ -49,6 +53,11 @@ class Game {
     this.gameGroup = null;
     this.saveTimer = 0;
     this.paused = false;
+    this.dbgOn = false;
+    this.dbgTimer = 0;
+    this.currentQuest = null;
+    this.currentFloorInQuest = 1;
+    this.availableQuests = [];
   }
 
   /* ============ boot / setup ============ */
@@ -57,53 +66,191 @@ class Game {
     const save = this.loadSave();
     showSetup(!!save,
       slots => {                                  // Embark with new party
-        this.heroes = slots.map(s => ({ data: makeHero(s.name, s.raceKey, s.classKey, s.baseStats, s.visual) }));
+        this.heroes = slots.map(s => ({ data: makeHero(s.name, s.raceKey, s.classKey, s.baseStats, s.visual, s.proficiencies) }));
         this.gold = 0; this.potions = { heal:2, greater:0 }; this.inventory = []; this.dungeonLevel = 1;
+        this.currentQuest = null; this.currentFloorInQuest = 1; this.availableQuests = [];
         this.beginRun();
       },
       () => {                                     // Continue saved party
         this.heroes = save.heroes.map(h => ({ data: normalizeHero(h) }));
         this.gold = save.gold; this.potions = save.potions;
         this.inventory = save.inventory || [];
-        this.dungeonLevel = save.dungeonLevel;
+        this.dungeonLevel = save.dungeonLevel || 1;
+        this.currentQuest = save.currentQuest || null;
+        this.currentFloorInQuest = save.currentFloorInQuest || 1;
+        this.availableQuests = save.availableQuests || [];
         this.beginRun();
       });
 
     document.getElementById('potheal').addEventListener('click', ()=>this.drinkPotion('heal'));
     document.getElementById('potgreater').addEventListener('click', ()=>this.drinkPotion('greater'));
+    addEventListener('keydown', e=>{
+      if(e.code==='KeyD' && !e.ctrlKey && !e.metaKey && !(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')){
+        this.dbgOn = !this.dbgOn;
+        document.getElementById('dbg').style.display = this.dbgOn ? '' : 'none';
+      }
+    });
     initMenus(this);
     initShop(this);
+    initSkills(this);
   }
 
   beginRun(){
     buildPartyFrames(this.heroes.map(h=>h.data));
     updateResources(this);
     log(`A party of ${this.heroes.length} sets out. Good luck — they won't need your help. Mostly.`, 'sys');
-    this.nextDungeon(true);
+    if (this.currentQuest) {
+      this.startQuestFloor();
+    } else {
+      this.showWorldMap();
+    }
   }
 
   nextDungeon(first=false){
+    this.startQuestFloor();
+  }
+
+  startQuestFloor(){
     this.state = 'transition';
-    const lvl = this.dungeonLevel;
-    const seed = 1 + Math.floor(Math.random()*999999);
-    const roomCount = Math.min(70, 16 + lvl*4);
-    const themeKey = THEME_ORDER[(lvl-1) % THEME_ORDER.length];
+    this.paused = false;
+
+    // Close World Map overlay if open
+    const mapOverlay = document.getElementById('worldmapscreen');
+    if (mapOverlay) mapOverlay.classList.remove('show');
+
+    // Safety fallback
+    if (!this.currentQuest) {
+      this.currentQuest = {
+        name: "The Endless Abyss",
+        theme: THEME_ORDER[(this.dungeonLevel - 1) % THEME_ORDER.length],
+        level: this.dungeonLevel,
+        floors: 99,
+        seed: 1 + Math.floor(Math.random() * 999999)
+      };
+      this.currentFloorInQuest = 1;
+    }
+
+    const q = this.currentQuest;
+    const floor = this.currentFloorInQuest;
+
+    // Scale monster levels and chest rewards to Quest Level (gradually increases as floor goes up)
+    this.dungeonLevel = q.level + Math.floor((floor - 1) / 3);
+
+    // Deterministic floor seed derived from quest seed
+    const seed = (q.seed + floor * 73) % 999999;
+    const roomCount = Math.min(55, 18 + this.dungeonLevel * 2 + Math.floor(floor * 1.2));
+    const themeKey = q.theme;
+
     for(const h of this.heroes){
       h.data.hp = Math.min(h.data.maxHp, Math.max(h.data.hp, Math.round(h.data.maxHp*0.5)));
       h.data.secondWindUsed = false;
       if(CLASSES[h.data.classKey].healer) h.data.healSlots = h.data.healSlotsMax;
-      /* a new floor is a long rest: every ability tier recharges */
       h.data.abilityUsed = { short:false, day:false };
       h.data.slots = h.data.slotsMax || 0;
     }
-    this.engine.reforge(seed, roomCount, themeKey, false);   // instant build; fog does the reveal
-    if(!first) this.saveGame();
+
+    this.engine.reforge(seed, roomCount, themeKey, false);
+    this.saveGame();
+  }
+
+  showWorldMap(){
+    this.state = 'worldmap';
+    this.paused = true;
+
+    const avgLevel = Math.round(this.heroes.reduce((sum, h) => sum + h.data.level, 0) / this.heroes.length) || 1;
+    if (!this.availableQuests || this.availableQuests.length === 0) {
+      this.availableQuests = generateQuests(avgLevel, 3);
+      this.saveGame();
+    }
+
+    const overlay = document.getElementById('worldmapscreen');
+    if (overlay) {
+      overlay.classList.add('show');
+      
+      // Clear previous sidebar selection details
+      const placeholder = document.getElementById('wm-detail-placeholder');
+      const content = document.getElementById('wm-detail-content');
+      if (placeholder) placeholder.style.display = 'flex';
+      if (content) content.style.display = 'none';
+
+      // Render pins on the map
+      const nodesContainer = document.getElementById('wm-quest-nodes');
+      if (nodesContainer) {
+        nodesContainer.innerHTML = '';
+        this.availableQuests.forEach((q, idx) => {
+          const node = document.createElement('div');
+          node.className = `quest-node theme-${q.theme}`;
+          node.style.left = `${q.mapLocation.x}%`;
+          node.style.top = `${q.mapLocation.y}%`;
+          node.innerHTML = `
+            <div class="quest-node-pulse"></div>
+            <div class="quest-node-pin"></div>
+            <div class="quest-node-label">${q.name}</div>
+          `;
+
+          node.addEventListener('click', () => {
+            nodesContainer.querySelectorAll('.quest-node').forEach(n => n.classList.remove('active'));
+            node.classList.add('active');
+            this.showQuestDetails(q);
+          });
+
+          nodesContainer.appendChild(node);
+        });
+      }
+    }
+  }
+
+  showQuestDetails(q) {
+    const placeholder = document.getElementById('wm-detail-placeholder');
+    const content = document.getElementById('wm-detail-content');
+    if (placeholder) placeholder.style.display = 'none';
+    if (content) content.style.display = 'block';
+
+    document.getElementById('wm-quest-name').textContent = q.name;
+    document.getElementById('wm-quest-desc').textContent = q.description;
+    
+    const themeLabel = document.getElementById('wm-quest-theme');
+    if (themeLabel) {
+      themeLabel.textContent = q.theme.toUpperCase();
+      themeLabel.className = `q-theme theme-${q.theme}`;
+    }
+
+    document.getElementById('wm-quest-floors').textContent = `${q.floors} Floor${q.floors > 1 ? 's' : ''}`;
+    document.getElementById('wm-quest-level').textContent = `Lv ${q.level}`;
+    document.getElementById('wm-quest-reward-gold').textContent = q.rewardGold;
+    document.getElementById('wm-quest-reward-xp').textContent = q.rewardXp;
+
+    const itemRow = document.getElementById('wm-quest-reward-item-row');
+    const itemLabel = document.getElementById('wm-quest-reward-item');
+    if (q.rewardItem) {
+      if (itemRow) itemRow.style.display = 'block';
+      if (itemLabel) {
+        itemLabel.textContent = q.rewardItem.name;
+        itemLabel.style.color = q.rewardItem.color;
+      }
+    } else {
+      if (itemRow) itemRow.style.display = 'none';
+    }
+
+    const embarkBtn = document.getElementById('wm-embark-btn');
+    if (embarkBtn) {
+      embarkBtn.onclick = () => this.embarkQuest(q);
+    }
+  }
+
+  embarkQuest(q) {
+    this.currentQuest = q;
+    this.currentFloorInQuest = 1;
+    this.availableQuests = []; // Clear so fresh ones generate next time
+    log(`⚔ Embarking on Quest: ${q.name} (${q.floors} Floor${q.floors>1?'s':''}, Difficulty Level ${q.level})`, 'sys');
+    this.startQuestFloor();
   }
 
   /* ============ dungeon load (called by engine forge) ============ */
   onDungeon(d){
     if(this.state === 'boot') return;             // backdrop forge before party exists
     this.D = d;
+    resetChallengeState();                        // fresh challenge state per dungeon
     const eng = this.engine;
 
     if(this.gameGroup){ eng.scene.remove(this.gameGroup); }
@@ -147,19 +294,33 @@ class Game {
     /* --- monsters from generator spawn data --- */
     this.monsters = [];
     const roomThemes = {};
+    const roomCount = {};
+    /* per-room population cap: the generator can dump 10+ spawns in one
+       room, which is an instant party wipe. Keep rooms to a fightable size
+       that grows slowly with depth (elite rooms get one extra). */
+    const lvl = this.dungeonLevel;
+    const baseCap = Math.min(6, 2 + Math.ceil(lvl/2));
+    /* early floors also clamp monster TIER: no tier-3 bruisers on floor 1 */
+    const tierCap = lvl<=1 ? 1 : lvl<=2 ? 2 : 3;
     for(const sp of d.spawns){
+      const rtype = rooms[sp.roomId] ? rooms[sp.roomId].type : 'combat';
+      const cap = baseCap + (rtype==='elite' ? 1 : 0);
+      roomCount[sp.roomId] = (roomCount[sp.roomId]||0) + 1;
+      if(roomCount[sp.roomId] > cap) continue;              // room is full
+      const tier = Math.min(sp.tier, rtype==='elite' ? Math.min(3, tierCap+1) : tierCap);
       if (roomThemes[sp.roomId] === undefined) {
         // Assign a theme to the room based on roomId so it is consistent
         roomThemes[sp.roomId] = MONSTER_THEMES[sp.roomId % MONSTER_THEMES.length];
       }
       const theme = roomThemes[sp.roomId];
-      const allowedNames = theme ? theme.monsters[sp.tier] : null;
-      const m = spawnMonster(sp.tier, this.dungeonLevel, Math.random, allowedNames);
+      const allowedNames = theme ? theme.monsters[tier] : null;
+      const m = spawnMonster(tier, this.dungeonLevel, Math.random, allowedNames);
       this.addMonster(m, sp.x, sp.y, sp.roomId);
     }
-    /* boss */
+    /* boss: early floors draw from the shallow end of the pool */
     const br = rooms[d.boss];
-    const bossSpec = spawnMonster('boss', this.dungeonLevel, Math.random);
+    const bossAllowed = lvl<3 ? ['Ettin'] : lvl<5 ? ['Ettin','Troll'] : null;
+    const bossSpec = spawnMonster('boss', this.dungeonLevel, Math.random, bossAllowed);
     const ba = this.roomAnchor[d.boss];
     this.addMonster(bossSpec, (ba%W)+1, Math.floor(ba/W), d.boss, true);
     this.boss = this.monsters[this.monsters.length-1];
@@ -177,14 +338,13 @@ class Game {
       h.x = this.wx(ex + (i%2===0?-0.5:0.5));
       h.z = this.wz(ey + (i<2?-0.5:0.5));
       h.ent.grp.position.set(h.x, 0, h.z);
-      h.path = null; h.pathI = 0; h.cd = Math.random();
+      h.path = null; h.pathI = 0; h.pathGoal = -1; h.targetRoom = -1; h._targetGoalCell = -1; h.stuckT = 0; h.cd = Math.random();
       h.target = null; h.repathT = 0; h.walkPhase = Math.random()*6;
       this.gameGroup.add(h.ent.grp);
       drawBar(h.ent.bar, Math.max(0,h.data.hp/h.data.maxHp));
     });
-    this.leaderTrail = [];
-    this.targetRoom = -1;
     this.userGoal = -1;
+    this.partyRoom = -1;
     this.combat = false;
     this.wipeT = 0;
     this.completeT = 0;
@@ -192,8 +352,13 @@ class Game {
     this.visitRoom(d.entrance, true);
     this.state = 'crawl';
     const themeLabel = d.params.themeKey.toUpperCase();
-    log(`— Floor ${this.dungeonLevel}: ${d.name} (${themeLabel}) —`, 'sys');
-    showBanner(d.name, `Floor ${this.dungeonLevel} · ${d.stats.rooms} rooms`);
+    if (this.currentQuest) {
+      log(`— Floor ${this.currentFloorInQuest} of ${this.currentQuest.floors} (${this.currentQuest.name}): ${d.name} (${themeLabel}) —`, 'sys');
+      showBanner(d.name, `Floor ${this.currentFloorInQuest} of ${this.currentQuest.floors} · ${d.stats.rooms} rooms`);
+    } else {
+      log(`— Floor ${this.dungeonLevel}: ${d.name} (${themeLabel}) —`, 'sys');
+      showBanner(d.name, `Floor ${this.dungeonLevel} · ${d.stats.rooms} rooms`);
+    }
     updateResources(this);
     updatePartyFrames(this.heroes.map(h=>h.data));
     refreshMenus(this);
@@ -279,7 +444,10 @@ class Game {
     if(flavor) log(flavor, r.type);
   }
 
-  /* ============ pathfinding (BFS, uniform cost) ============ */
+  /* ============ pathfinding ============ */
+  /* BFS — uniform cost, used for ALL pathfinding. Simple and reliable.
+     For entity-avoidance during exploration we rely on goal jitter +
+     the in-stepAlong slide + separation — not encoded in the path. */
   findPath(from, to){
     const { W, H, grid } = this.D;
     if(from===to || from<0 || to<0) return null;
@@ -318,7 +486,11 @@ class Game {
     return true;
   }
 
-  /* move entity along its path; returns true if moving */
+  /* move entity along its path; returns true if moving.
+     Uses a generous capture radius (0.35 tiles) so entities flow
+     through cells without needing exact center occupancy — preventing
+     pile-ups in corridors.  No entity-avoidance here; heroes spread
+     via goal jitter + independent room targeting. */
   stepAlong(e, speed, dt){
     if(!e.path || e.pathI >= e.path.length) return false;
     const { W } = this.D;
@@ -326,12 +498,24 @@ class Game {
     const tx = this.wx(c % W), tz = this.wz(Math.floor(c / W));
     const dx = tx - e.x, dz = tz - e.z;
     const dist = Math.hypot(dx, dz);
-    const step = speed * dt;
-    if(dist <= step){
+
+    /* Capture radius: once close enough to the current node, snap to
+       its center (path nodes are FLOOR cells) and advance.  The
+       generous 0.35 buffer prevents micro-jitter at cell boundaries. */
+    const CAPTURE = 0.35;
+    if(dist <= CAPTURE){
       e.x = tx; e.z = tz; e.pathI++;
+      if(e.pathI < e.path.length){
+        const nx = this.wx(e.path[e.pathI] % W);
+        const nz = this.wz(Math.floor(e.path[e.pathI] / W));
+        e.ent.grp.rotation.y = Math.atan2(nx - e.x, nz - e.z);
+      }
       return e.pathI < e.path.length;
     }
-    e.x += dx/dist*step; e.z += dz/dist*step;
+
+    const step = speed * dt;
+    e.x += dx/dist*step;
+    e.z += dz/dist*step;
     e.ent.grp.rotation.y = Math.atan2(dx, dz);
     return true;
   }
@@ -368,12 +552,6 @@ class Game {
       }
     }
 
-    /* leader breadcrumb trail for follower formation */
-    const lc = this.cellOf(leader.x, leader.z);
-    if(lc>=0 && (this.leaderTrail.length===0 || this.leaderTrail[0]!==lc)){
-      this.leaderTrail.unshift(lc);
-      if(this.leaderTrail.length>30) this.leaderTrail.pop();
-    }
 
     /* monster activation + AI */
     let anyCombat = false;
@@ -403,14 +581,24 @@ class Game {
           m.path = this.findPath(this.cellOf(m.x,m.z), this.cellOf(tgt.x,tgt.z));
           m.pathI = 0; m.repathT = 0.7;
         }
-        this.stepAlong(m, m.data.speed, dt);
-        m.walk = true;
+        const isEntangled = m.entangleUntil > this.elapsed;
+        if (!isEntangled) {
+          this.stepAlong(m, m.data.speed, dt);
+          m.walk = true;
+        } else {
+          m.walk = false;
+        }
       } else {
         m.walk = false;
         m.ent.grp.rotation.y = Math.atan2(tgt.x-m.x, tgt.z-m.z);
         if(m.cd<=0){
           m.cd = MONSTER_ATTACK_CD;
-          this.monsterAttack(m, tgt);
+          const isCharmed = m.charmedUntil > this.elapsed;
+          if (!isCharmed) {
+            this.monsterAttack(m, tgt);
+          } else {
+            log(`${m.data.name} is charmed and cannot attack!`, 'sys');
+          }
         }
       }
     }
@@ -441,16 +629,19 @@ class Game {
     }
 
     if(!this.combat){
-      this.exploreAI(alive, leader, dt);
+      this.exploreAI(alive, dt);
       /* revive downed heroes once the fighting stops */
       for(const h of this.heroes) if(h.data.hp<=0){
-        h.data.hp = Math.max(1, Math.round(h.data.maxHp*0.3));
+        h.data.hp = Math.max(1, Math.round(h.data.maxHp*0.30));
         h.ent.grp.rotation.z = 0;
         h.x = leader.x + (Math.random()-0.5); h.z = leader.z + (Math.random()-0.5);
         log(`${h.data.name} staggers back to their feet.`, 'heal');
         drawBar(h.ent.bar, h.data.hp/h.data.maxHp);
       }
       this.checkInteractables(alive);
+
+      // Skill challenge system — check for post-clear challenges
+      checkForChallenge(this);
     }
 
     /* keep bodies from stacking: soft pairwise separation, wall-aware */
@@ -462,21 +653,28 @@ class Game {
     const camAngle = Math.atan2(cx, cz);
     const cosC = Math.cos(camAngle), sinC = Math.sin(camAngle);
 
+    /* depth bias: nudge sprites toward the camera along the view axis.
+       With an orthographic camera this is invisible on screen but keeps the
+       tilted billboard from cutting into wall blocks beside/behind them. */
+    const cLen = Math.hypot(cx, this.engine.cam.position.y - 0, cz) || 1;
+    const bias = 0.55;
+    const bx = cx/cLen*bias, by = (this.engine.cam.position.y/cLen)*bias, bz = cz/cLen*bias;
+
     for(const h of this.heroes){
       const [ox,oz] = this.lungeOffset(h, dt);
       h.ent.grp.position.set(h.x+ox, 0, h.z+oz);
-      
+      h.ent.anim.mesh.position.set(bx, by, bz);
+
       if(h.data.hp<=0) {
         h.ent.anim.play('hurt');
         h.ent.anim.time = 0; // lock to first frame of hurt if dead
       } else {
-        if(h.lungeT > 0) {
-          // Play spellcast for wizards/clerics, shoot for rogues, slash/thrust for fighters
-          const c = h.data.classKey;
-          const a = (c==='wizard'||c==='cleric') ? 'spellcast' : (c==='rogue' ? 'shoot' : 'slash');
-          h.ent.anim.play(a);
-          const rdx = h.lungeDX * cosC - h.lungeDZ * sinC;
-          const rdz = h.lungeDX * sinC + h.lungeDZ * cosC;
+        if(h.atkAnimT > 0) {
+          /* attack animation runs its full course, facing the foe
+             (playAttackAnim already set the state + direction vector) */
+          h.atkAnimT -= dt;
+          const rdx = h.atkDX * cosC - h.atkDZ * sinC;
+          const rdz = h.atkDX * sinC + h.atkDZ * cosC;
           h.ent.anim.setDirection(rdx, rdz);
         } else {
           h.ent.anim.play('walk');
@@ -497,12 +695,12 @@ class Game {
       if(m.data.hp<=0) continue;
       const [ox,oz] = this.lungeOffset(m, dt);
       m.ent.grp.position.set(m.x+ox, 0, m.z+oz);
-      
+
       if(m.lungeT > 0) {
         const rdx = m.lungeDX * cosC - m.lungeDZ * sinC;
         const rdz = m.lungeDX * sinC + m.lungeDZ * cosC;
         m.ent.anim.setDirection(rdx, rdz);
-        m.ent.anim.mesh.position.y = 0;
+        m.ent.anim.mesh.position.set(bx, by, bz);
       } else {
         if (m.walk) {
           const angle = m.ent.grp.rotation.y;
@@ -510,10 +708,10 @@ class Game {
           const rdx = mdx * cosC - mdz * sinC;
           const rdz = mdx * sinC + mdz * cosC;
           m.ent.anim.setDirection(rdx, rdz);
-          m.ent.anim.mesh.position.y = Math.abs(Math.sin(elapsed * 15)) * 0.15;
+          m.ent.anim.mesh.position.set(bx, by + Math.abs(Math.sin(elapsed * 15)) * 0.15, bz);
         } else {
           m.ent.anim.time = 0;
-          m.ent.anim.mesh.position.y = 0;
+          m.ent.anim.mesh.position.set(bx, by, bz);
         }
       }
       m.ent.anim.update(dt);
@@ -532,13 +730,14 @@ class Game {
       if(this.completeT > 3.2) this.finishDungeon();
     }
 
-    /* periodic autosave + HUD */
+    /* periodic autosave + HUD + debug */
     this.saveTimer += dt;
     if(this.saveTimer > 5){
       this.saveTimer = 0;
       this.saveGame();
       updatePartyFrames(this.heroes.map(x=>x.data));
     }
+    if(this.dbgOn) this.updateDebugOverlay();
   }
 
   pickHeroTarget(h, alive){
@@ -575,6 +774,24 @@ class Game {
       h.cunningUntil = this.elapsed + 6;
       spawnSpriteEffect(this.engine.scene, 'dcss/effect/sanctuary.png', _v.set(h.x,0.5,h.z), 1.3, 0.4);
       log(`💨 ${h.data.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
+    }
+
+    // Barbarian Rage (short rest ability, activates below 80% HP)
+    if(h.data.classKey === 'barbarian' && !h.data.abilityUsed.short && h.data.hp < h.data.maxHp*0.8){
+      h.data.abilityUsed.short = true;
+      h.rageUntil = this.elapsed + 10;
+      spawnSpriteEffect(this.engine.scene, 'dcss/effect/cloud_fire_1.png', _v.set(h.x,0.5,h.z), 1.2, 0.4);
+      log(`😡 ${h.data.name} enters a Rage! (+2 melee dmg, +2 AC, +20% speed, halve incoming physical dmg)`, 'crit');
+    }
+
+    // Druid Wild Shape (short rest ability, activates below 60% HP)
+    if(h.data.classKey === 'druid' && !h.data.abilityUsed.short && h.data.hp < h.data.maxHp*0.6){
+      h.data.abilityUsed.short = true;
+      h.wildShapeUntil = this.elapsed + 8;
+      // Grant +20 temp HP
+      h.data.hp = Math.min(h.data.maxHp + 20, h.data.hp + 20);
+      spawnSpriteEffect(this.engine.scene, 'dcss/effect/cloud_grey.png', _v.set(h.x,0.5,h.z), 1.3, 0.4);
+      log(`🐺 ${h.data.name} Wild Shapes into a Bear! (+20 temp HP, claws ready for 8s)`, 'heal');
     }
 
     const inRange = dist <= atk.range && (atk.melee || this.hasLOS(h.x,h.z,foe.x,foe.z));
@@ -616,7 +833,9 @@ class Game {
       if(worst){
         h.cd = HERO_ATTACK_CD;
         h.data.healSlots--;
-        const amt = roll(1,8,mod(h.data.effStats.wis)+h.data.healBonus);
+        this.playAttackAnim(h, worst.x, worst.z);
+        const abilityKey = cls.attack.ability;
+        const amt = roll(1,8,mod(h.data.effStats[abilityKey])+h.data.healBonus);
         worst.data.hp = Math.min(worst.data.maxHp, worst.data.hp+amt);
         makeFloatText(this.engine.scene, '+'+amt, _v.set(worst.x,1.3,worst.z), '#6ae06a');
         spawnSpriteEffect(this.engine.scene, 'dcss/effect/sanctuary.png', _v, 1.5, 0.4);
@@ -631,7 +850,10 @@ class Game {
     h.cd = HERO_ATTACK_CD;
 
     /* subclass actives that consume the whole turn (day / spell-slot tiers) */
-    if(sc && this.castSubclassSpell(h, sc, foe, alive)) return;
+    if(sc && this.castSubclassSpell(h, sc, foe, alive)){
+      this.playAttackAnim(h, foe.x, foe.z);
+      return;
+    }
 
     /* subclass actives that empower THIS attack (short-rest tier) */
     const opts = {};
@@ -642,10 +864,113 @@ class Game {
       } else if(sc.active.key==='guidedStrike' && (foe.isBoss || this.monsterEliteRoom(foe))){
         h.data.abilityUsed.short = true; opts.atkBonus = 10; opts.extraDmg = roll(2,8);
         log(`⚡ ${h.data.name} calls a Guided Strike! (+10 to hit, +2d8)`, 'crit');
+      } else if(sc.active.key==='frenzy' && foe.data.hp > 0){
+        h.data.abilityUsed.short = true;
+        log(`🪓 ${h.data.name} enters Frenzy — attacking twice!`, 'crit');
+        this.heroAttackRoll(h, foe, alive, {});
+      } else if(sc.active.key==='bearTotem'){
+        h.data.abilityUsed.short = true;
+        h.bearTotemUntil = this.elapsed + 8;
+        spawnSpriteEffect(this.engine.scene, 'dcss/effect/sanctuary.png', _v.set(h.x,0.5,h.z), 1.4, 0.4);
+        log(`🐻 ${h.data.name} invokes Bear Totem! (Halves all incoming damage for 8s)`, 'heal');
+      } else if(sc.active.key==='cuttingWords' && (foe.isBoss || this.monsterEliteRoom(foe))){
+        h.data.abilityUsed.short = true;
+        foe.cuttingWordsUntil = this.elapsed + 6;
+        foe.data.ac = Math.max(10, foe.data.ac - 4);
+        log(`💬 ${h.data.name} uses Cutting Words on ${foe.data.name}! (-4 AC, slower attacks)`, 'crit');
+      } else if(sc.active.key==='combatInspiration'){
+        h.data.abilityUsed.short = true;
+        log(`🎵 ${h.data.name} plays Combat Inspiration! (All allies gain +3 to hit for 8s)`, 'heal');
+        for(const a of alive) a.inspirationUntil = this.elapsed + 8;
+      } else if(sc.active.key==='entangle'){
+        h.data.abilityUsed.short = true;
+        log(`🌿 ${h.data.name} casts Entangle!`, 'crit');
+        const cluster = this.monsters.filter(m=>m.data.hp>0 && m.active && Math.hypot(m.x-foe.x,m.z-foe.z)<2.2);
+        for(const m of cluster){
+          if(m.dead) continue;
+          m.entangleUntil = this.elapsed + 4;
+          this.damageMonster(m, roll(1,6,mod(h.data.effStats.wis)), h, false);
+          spawnSpriteEffect(this.engine.scene, 'dcss/effect/magic_bolt_1.png', new THREE.Vector3(m.x, 0.5, m.z), 1.2, 0.3);
+        }
+      } else if(sc.active.key==='wildShape'){
+        h.data.abilityUsed.short = true;
+        h.wildShapeUntil = this.elapsed + 8;
+        h.data.hp = Math.min(h.data.maxHp + 20, h.data.hp + 20);
+        log(`🐺 ${h.data.name} Wild Shapes into a Bear! (+20 temp HP, claws ready for 8s)`, 'heal');
+        spawnSpriteEffect(this.engine.scene, 'dcss/effect/cloud_grey.png', _v.set(h.x,0.5,h.z), 1.2, 0.4);
+      } else if(sc.active.key==='quiveringPalm' && (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 30)){
+        h.data.abilityUsed.short = true;
+        opts.extraDmg = roll(4,10);
+        log(`🫱 ${h.data.name} strikes with Quivering Palm! (+4d10 dmg)`, 'crit');
+      } else if(sc.active.key==='shadowStep'){
+        h.data.abilityUsed.short = true;
+        opts.atkBonus = 4;
+        opts.extraDmg = roll(2,6);
+        log(`👥 ${h.data.name} Shadow Steps behind ${foe.data.name}! (+4 to hit, +2d6)`, 'crit');
+        h.x = foe.x + (Math.random()-0.5)*0.5;
+        h.z = foe.z + (Math.random()-0.5)*0.5;
+      } else if(sc.active.key==='sacredWeapon'){
+        h.data.abilityUsed.short = true;
+        h.sacredWeaponUntil = this.elapsed + 8;
+        log(`✨ ${h.data.name} blesses their blade with Sacred Weapon! (+4 to hit, +1d8 radiant for 8s)`, 'heal');
+      } else if(sc.active.key==='vowOfEnmity' && (foe.isBoss || this.monsterEliteRoom(foe))){
+        h.data.abilityUsed.short = true;
+        h.vengeanceTarget = foe;
+        log(`🎯 ${h.data.name} swears a Vow of Vengeance! (Advantage +5 to hit against ${foe.data.name})`, 'crit');
+      } else if(sc.active.key==='colossusSlayer' && foe.data.hp < foe.data.maxHp){
+        h.data.abilityUsed.short = true;
+        opts.extraDmg = roll(1,8);
+        log(`🏹 ${h.data.name} deals Colossus Slayer damage! (+1d8)`, 'crit');
+      } else if(sc.active.key==='companionStrike'){
+        h.data.abilityUsed.short = true;
+        const compDmg = roll(1,8,3);
+        log(`🐺 ${h.data.name}'s wolf companion strikes ${foe.data.name}! (+${compDmg} dmg)`, 'crit');
+        this.damageMonster(foe, compDmg, h, false);
+      } else if(sc.active.key==='dragonBreath'){
+        h.data.abilityUsed.short = true;
+        log(`🐲 ${h.data.name} breathes fire!`, 'crit');
+        const cluster = this.monsters.filter(m=>m.data.hp>0 && m.active && Math.hypot(m.x-foe.x,m.z-foe.z)<2.2);
+        for(const m of cluster){
+          if(m.dead) continue;
+          this.damageMonster(m, roll(3,6,h.data.dmgBonus), h, false);
+          spawnSpriteEffect(this.engine.scene, 'dcss/effect/cloud_fire_2.png', new THREE.Vector3(m.x, 0.5, m.z), 1.2, 0.3);
+        }
+      } else if(sc.active.key==='wildSurge'){
+        h.data.abilityUsed.short = true;
+        const surgeHeal = roll(1,10,h.data.level);
+        log(`🔮 ${h.data.name} triggers a Wild Magic Surge! (Heals party for +${surgeHeal})`, 'heal');
+        for(const a of alive) this.healHero(a, surgeHeal);
+        updatePartyFrames(this.heroes.map(x=>x.data));
+      } else if(sc.active.key==='fiendishBlessing'){
+        h.data.abilityUsed.short = true;
+        h.data.hp = Math.min(h.data.maxHp + 10, h.data.hp + 10);
+        log(`😈 ${h.data.name} draws Fiendish Blessing! (+10 temp HP)`, 'heal');
+        spawnSpriteEffect(this.engine.scene, 'dcss/effect/cloud_grey.png', _v.set(h.x,0.5,h.z), 1.2, 0.4);
+      } else if(sc.active.key==='feyPresence'){
+        h.data.abilityUsed.short = true;
+        log(`🌸 ${h.data.name} reveals a Fey Presence! (Nearby monsters charmed for 3s)`, 'heal');
+        const cluster = this.monsters.filter(m=>m.data.hp>0 && m.active && Math.hypot(m.x-h.x,m.z-h.z)<2.5);
+        for(const m of cluster) {
+          m.charmedUntil = this.elapsed + 3;
+          spawnSpriteEffect(this.engine.scene, 'dcss/effect/sanctuary.png', new THREE.Vector3(m.x, 0.5, m.z), 1.0, 0.3);
+        }
       }
     }
 
     this.heroAttackRoll(h, foe, alive, opts);
+
+    /* Monk Flurry of Blows: spend Ki/short rest to strike twice more */
+    if (h.data.classKey === 'monk' && !h.data.abilityUsed.short && foe.data.hp > 0) {
+      h.data.abilityUsed.short = true;
+      log(`🥋 ${h.data.name} releases a Flurry of Blows! (Attacking twice more!)`, 'crit');
+      this.heroAttackRoll(h, foe, alive, {});
+      this.heroAttackRoll(h, foe, alive, {});
+    }
+
+    /* Warlock Eldritch Blast extra beam at level 5+ */
+    if (h.data.classKey === 'warlock' && h.data.level >= 5 && foe.data.hp > 0) {
+      this.heroAttackRoll(h, foe, alive, {});
+    }
 
     /* champion action surge: a second full attack on the same turn */
     if(sc && sc.active.key==='actionSurge' && !h.data.abilityUsed.short && foe.data.hp>0){
@@ -660,13 +985,47 @@ class Game {
     const cls = CLASSES[h.data.classKey];
     let d20 = die(20);
     if(d20===1 && RACES[h.data.raceKey].lucky) d20 = die(20);
-    const atkBonus = heroAttackBonus(h.data) + (opts.atkBonus||0);
+    
+    // Add Bardic Inspiration attack bonus
+    let inspirationBonus = 0;
+    if (h.inspirationUntil > this.elapsed) inspirationBonus += 3;
+    
+    // Add Paladin active attack bonuses
+    let paladinAtkBonus = 0;
+    if (h.sacredWeaponUntil > this.elapsed) paladinAtkBonus += 4;
+    if (h.vengeanceTarget === foe) paladinAtkBonus += 5;
+
+    const atkBonus = heroAttackBonus(h.data) + (opts.atkBonus||0) + inspirationBonus + paladinAtkBonus;
     const crit = !!opts.autoCrit || d20 >= h.data.critRange;
     const total = d20 + atkBonus;
     const miss = !crit && total < foe.data.ac;
     let dmg = 0, sneak = false;
     if(!miss){
-      dmg = heroDamage(h.data, crit) + (opts.extraDmg||0);
+      // Calculate base damage
+      let baseDmg = heroDamage(h.data, crit);
+      
+      // If Druid is wildshaped, their claw attack does 2d6 claws instead of baseline Produce Flame/Weapon
+      if (h.wildShapeUntil > this.elapsed) {
+        let dice = 2; if (crit) dice *= 2;
+        baseDmg = roll(dice, 6, mod(h.data.effStats.str) + h.data.dmgBonus);
+      }
+      
+      // Add Barbarian Rage bonus damage
+      if (h.rageUntil > this.elapsed) {
+        baseDmg += 2;
+      }
+      
+      // Add Paladin Sacred Weapon extra radiant damage
+      if (h.sacredWeaponUntil > this.elapsed) {
+        baseDmg += roll(1, 8);
+      }
+
+      // Add Ranger Favored Enemy damage against all monsters
+      if (h.data.classKey === 'ranger') {
+        baseDmg += 2;
+      }
+
+      dmg = baseDmg + (opts.extraDmg||0);
       /* rogue sneak attack: ally adjacent to the target */
       if(cls.sneakDice){
         const flanked = alive.some(a=>a!==h && Math.hypot(a.x-foe.x,a.z-foe.z)<1.7);
@@ -768,12 +1127,22 @@ class Game {
   }
 
   /* temporary speed boost from Cunning Action */
-  hasteMult(h){ return h.cunningUntil > this.elapsed ? 1.4 : 1; }
+  hasteMult(h){ 
+    let mult = 1;
+    if(h.cunningUntil > this.elapsed) mult *= 1.4;
+    if(h.rageUntil > this.elapsed) mult *= 1.2;
+    return mult;
+  }
   /* effective AC including temporary buffs */
-  heroAC(h){ return h.data.ac + (h.cunningUntil > this.elapsed ? 4 : 0); }
+  heroAC(h){ 
+    let ac = h.data.ac;
+    if(h.cunningUntil > this.elapsed) ac += 4;
+    if(h.rageUntil > this.elapsed) ac += 2;
+    return ac;
+  }
 
   /* 4-point wall probe used by local (non-pathfinding) movement */
-  blocked(nx, nz, r=0.35){
+  blocked(nx, nz, r=0.25){
     let c;
     if((c=this.cellOf(nx-r, nz))<0 || this.D.grid[c]===WALL) return true;
     if((c=this.cellOf(nx+r, nz))<0 || this.D.grid[c]===WALL) return true;
@@ -794,19 +1163,19 @@ class Game {
     const nz = e.z + stepZ;
     
     // Check if full move is blocked
-    if(!this.blocked(nx, nz, 0.35)){
+    if(!this.blocked(nx, nz, 0.25)){
       e.x = nx; e.z = nz;
       return step > 0.012;
     }
-    
+
     // Slide along X wall
-    if(!this.blocked(nx, e.z, 0.35)){
+    if(!this.blocked(nx, e.z, 0.25)){
       e.x = nx;
       return Math.abs(stepX) > 0.012;
     }
-    
+
     // Slide along Z wall
-    if(!this.blocked(e.x, nz, 0.35)){
+    if(!this.blocked(e.x, nz, 0.25)){
       e.z = nz;
       return Math.abs(stepZ) > 0.012;
     }
@@ -816,33 +1185,66 @@ class Game {
 
   /* soft pairwise separation so heroes and monsters never stand on the same
      spot — overlapping bodies push each other apart a little each frame,
-     which spreads melee scrums into a readable ring. Wall-aware. */
+     which spreads melee scrums into a readable ring. Wall-aware.
+     When the primary push axis is blocked for both parties, falls back
+     to a perpendicular slide so overlaps don't freeze. */
   applySeparation(alive, dt){
     const ents = [];
     for(const h of alive) ents.push({ e:h, r:0.36 });
     for(const m of this.monsters)
       if(m.data.hp>0 && m.active) ents.push({ e:m, r:0.34*(m.data.scale||1) });
-    const maxPush = 4.5*dt;                      // must outpace chase speed or bodies merge
+    const maxPush = 4.5*dt;
     for(let i=0;i<ents.length;i++) for(let j=i+1;j<ents.length;j++){
       const A = ents[i], B = ents[j];
       let dx = B.e.x-A.e.x, dz = B.e.z-A.e.z;
       let dd = Math.hypot(dx, dz);
       const min = A.r + B.r;
       if(dd >= min) continue;
-      if(dd < 1e-4){                             // exactly stacked: pick a direction
+      if(dd < 1e-4){
         const a = Math.random()*Math.PI*2;
         dx = Math.cos(a); dz = Math.sin(a); dd = 1;
       }
-      const push = Math.min((min-dd)*0.5, maxPush);
-      const px = dx/dd*push, pz = dz/dd*push;
-      if(!this.blocked(A.e.x-px, A.e.z-pz, 0.3)){ A.e.x -= px; A.e.z -= pz; }
-      if(!this.blocked(B.e.x+px, B.e.z+pz, 0.3)){ B.e.x += px; B.e.z += pz; }
+      const push = Math.min((min-dd), maxPush);   // total resolution this frame
+      /* movers get right-of-way: the idle body yields nearly all the push.
+         A mover taking a big push-back could be shoved backwards faster
+         than it walks — a stopped ally would freeze it in place forever. */
+      const am = !!(A.e.moving || A.e.walk), bm = !!(B.e.moving || B.e.walk);
+      let aS = 0.5, bS = 0.5;
+      if(am && !bm){ aS = 0.12; bS = 0.88; }
+      else if(bm && !am){ aS = 0.88; bS = 0.12; }
+      const ux = dx/dd, uz = dz/dd;
+      this.shiftEnt(A.e, -ux*push*aS, -uz*push*aS);
+      this.shiftEnt(B.e,  ux*push*bS,  uz*push*bS);
     }
+  }
+
+  /* apply a small displacement, sliding perpendicular along walls when the
+     straight push is blocked — a wall-pinned body must give way somewhere */
+  shiftEnt(e, ox, oz){
+    if(!this.blocked(e.x+ox, e.z+oz, 0.25)){ e.x += ox; e.z += oz; return true; }
+    if(!this.blocked(e.x-oz, e.z+ox, 0.25)){ e.x -= oz; e.z += ox; return true; }
+    if(!this.blocked(e.x+oz, e.z-ox, 0.25)){ e.x += oz; e.z -= ox; return true; }
+    return false;
+  }
+
+  /* play a hero's full attack animation facing the target — held for the
+     animation's real duration (lungeT alone cut it to 0.22s, and ranged
+     classes never lunged, so their attack anims never showed at all) */
+  playAttackAnim(h, tx, tz){
+    const c = h.data.classKey;
+    const spec = c==='rogue' ? ['shoot',0.9]
+               : (c==='wizard'||c==='cleric') ? ['spellcast',0.75]
+               : ['slash',0.55];
+    const dx = tx-h.x, dz = tz-h.z, dd = Math.hypot(dx,dz)||1;
+    h.atkDX = dx/dd; h.atkDZ = dz/dd;
+    h.atkAnimT = spec[1];
+    h.ent.anim.play(spec[0], true);
   }
 
   /* resolve an attack's visuals: melee lunge+slash, ranged projectile */
   strike(h, foe, dmg, crit, miss){
     const cls = CLASSES[h.data.classKey], a = cls.attack;
+    this.playAttackAnim(h, foe.x, foe.z);
     if(a.melee){
       this.triggerLunge(h, foe);
       if(miss){ this.showMiss(foe); }
@@ -951,8 +1353,18 @@ class Game {
       return;
     }
     let dice = m.data.dmg[0]; if(crit) dice*=2;
-    const dmg = roll(dice, m.data.dmg[1], m.data.dmg[2]||0);
-    log(`${m.data.name} hits ${h.data.name} for ${dmg}${crit?' (crit!)':''}`, crit?'down':'roll');
+    const rawDmg = roll(dice, m.data.dmg[1], m.data.dmg[2]||0);
+    
+    // Apply damage reductions
+    let dmg = rawDmg;
+    if (h.data.classKey === 'barbarian' && h.rageUntil > this.elapsed) {
+      dmg = Math.max(1, Math.round(dmg / 2));
+    }
+    if (h.bearTotemUntil > this.elapsed) {
+      dmg = Math.max(1, Math.round(dmg / 2));
+    }
+
+    log(`${m.data.name} hits ${h.data.name} for ${dmg}${crit?' (crit!)':''}${rawDmg !== dmg ? ' (Resisted)' : ''}`, crit?'down':'roll');
     spawnSlash(this.engine.scene, {x:h.x,z:h.z}, crit?0xff5040:0xff9a7a, 0.9);
     spawnSpriteEffect(this.engine.scene, crit ? 'dcss/effect/flame_0.png' : 'dcss/effect/blood_0.png', new THREE.Vector3(h.x, 0.5, h.z), 1.0, 0.3);
     h.data.hp -= dmg;
@@ -962,110 +1374,182 @@ class Game {
     updatePartyFrames(this.heroes.map(x=>x.data));
     if(h.data.hp<=0){
       h.data.hp = 0; h.data.downs++;
-      log(`💀 ${h.data.name} goes down!`, 'down');
+      const penalty = Math.min(50, Math.max(5, Math.round(this.gold * 0.1)));
+      this.gold = Math.max(0, this.gold - penalty);
+      log(`💀 ${h.data.name} goes down! (-${penalty}g)`, 'down');
+      updateResources(this);
     }
   }
 
   /* ============ exploration ============ */
-  exploreAI(alive, leader, dt){
-    const { W } = this.D;
-    let goalCell = -1;
+  exploreAI(alive, dt){
+    const { W, rooms } = this.D;
+    if(alive.length === 0) return;
 
-    /* a player-ordered destination takes priority over room AI */
-    if(this.userGoal>=0){
-      const gx = this.wx(this.userGoal%W), gz = this.wz(Math.floor(this.userGoal/W));
-      if(Math.hypot(leader.x-gx, leader.z-gz) < 1.1){
-        this.userGoal = -1;
-        log('The party arrives. Back to exploring.', 'sys');
-      } else goalCell = this.userGoal;
-    }
-    if(goalCell<0){
-      if(this.targetRoom<0 || this.roomDone(this.targetRoom)){
-        this.targetRoom = this.pickNextRoom(leader);
-      }
-      /* aim at the room's actual point of interest (living monster, unlooted
-         chest, unused shrine) — going only to the room CENTER left rooms
-         uncompletable and froze the party */
-      if(this.targetRoom>=0) goalCell = this.roomTargetCell(this.targetRoom, leader);
+    /* Group center */
+    let cx = 0, cz = 0;
+    for(const h of alive){ cx += h.x; cz += h.z; }
+    cx /= alive.length; cz /= alive.length;
+
+    /* ONE shared target room for the whole party — per-hero room picks had
+       pairs of heroes tugging in opposite directions at the cohesion tether,
+       and floor progress crawled to ~4 min/room. Heroes still fan out to
+       different tiles inside the shared room. */
+    if(this.partyRoom===undefined || this.partyRoom<0 || this.roomDone(this.partyRoom)){
+      this.partyRoom = this.pickRoomFrom(cx, cz);
     }
 
-    /* cohesion: the leader holds up if anyone has fallen too far behind */
-    let strayMax = 0;
-    for(const h of alive){ if(h===leader) continue;
-      strayMax = Math.max(strayMax, Math.hypot(h.x-leader.x, h.z-leader.z)); }
-    const hold = strayMax > COHESION_MAX && this.userGoal < 0;
+    for(const h of alive){
+      const distCenter = Math.hypot(h.x - cx, h.z - cz);
+      let goalCell = -1;
+      let reason = 'no goal';
 
-    if(goalCell>=0 && !hold){
-      if(!leader.path || leader.pathI>=leader.path.length || leader.pathGoal!==goalCell){
-        leader.path = this.findPath(this.cellOf(leader.x,leader.z), goalCell);
-        leader.pathI = 0; leader.pathGoal = goalCell;
-        if(!leader.path && this.userGoal>=0){
-          this.userGoal = -1;
-          log("The party can't find a way there.", 'sys');
+      /* Proximity arrival — also drop the cached room objective so the NEXT
+         point of interest in the room gets computed (monsters → chest →
+         shrine). A stale cached cell pinned the party at cleared objectives
+         while the rest of the room sat outside aggro range. */
+      if(h.pathGoal >= 0){
+        const gx = this.wx(h.pathGoal % W), gz = this.wz(Math.floor(h.pathGoal / W));
+        if(Math.hypot(h.x - gx, h.z - gz) <= PROXIMITY_RADIUS){
+          h.path = null; h.pathI = 0; h.pathGoal = -1;
+          h._targetGoalCell = -1;
         }
       }
-      leader.moving = this.stepAlong(leader, HERO_SPEED*leader.data.speedMult, dt);
-    } else leader.moving = false;
 
-    /* stuck watchdog: standing still with a live goal means something is
-       off (bad path, unreachable POI) — clear state and re-decide */
-    if(leader.moving || hold) this.stuckT = 0;
-    else if(goalCell>=0){
-      this.stuckT = (this.stuckT||0) + dt;
-      if(this.stuckT > 3){
-        this.stuckT = 0;
-        leader.path = null; leader.pathGoal = -1;
-        this.targetRoom = this.pickNextRoom(leader);
+      /* User-ordered destination */
+      if(this.userGoal >= 0){
+        const gx = this.wx(this.userGoal%W), gz = this.wz(Math.floor(this.userGoal/W));
+        if(Math.hypot(h.x-gx, h.z-gz) > 1.2){
+          goalCell = this.userGoal;
+          reason = 'userGoal';
+        }
       }
-    }
 
-    /* followers chase the leader's current position, keeping loose spacing so
-       they cluster without stacking. Hustle harder the farther behind. */
-    const goal = this.cellOf(leader.x, leader.z);
-    alive.forEach((h)=>{
-      if(h===leader) return;
-      const i = alive.indexOf(h);
-      const spacing = 1.25 + i*0.45;
-      const dLead = Math.hypot(h.x-leader.x, h.z-leader.z);
-      if(dLead < spacing){ h.moving=false; h.stuckT=0; return; }
-      h.repathT -= dt;
-      if(h.repathT<=0 || !h.path || h.pathI>=h.path.length || h.pathGoal!==goal){
-        h.path = this.findPath(this.cellOf(h.x,h.z), goal);
-        h.pathI = 0; h.repathT = 0.35; h.pathGoal = goal;
+      if(goalCell < 0){
+        /* Everyone heads for the party's shared objective — the objective IS
+           the rally point. (A hard "regroup when > PARTY_RADIUS from center"
+           gate made heroes flip between regroup and objective every frame at
+           the boundary and dither in place whenever the goal was far away.) */
+        if(h.targetRoom !== this.partyRoom){
+          h.targetRoom = this.partyRoom;
+          h._targetGoalCell = -1; /* invalidate cached goal */
+        }
+        if(h.targetRoom >= 0){
+          /* Only recompute goal cell when the target room changes —
+             jitterCell() is random, so calling it every frame gives
+             a different cell each time and breaks the path stability. */
+          if(h._targetGoalCell < 0 || h._targetRoomCached !== h.targetRoom){
+            h._targetGoalCell = this.heroTargetCell(h.targetRoom, h);
+            h._targetRoomCached = h.targetRoom;
+          }
+          goalCell = h._targetGoalCell;
+          reason = 'room ' + h.targetRoom;
+        } else if(this.dbgOn){
+          console.warn(`${h.data.name}: pickHeroRoom returned -1, all rooms done?`);
+        }
+
+        if(goalCell < 0 && distCenter > 1.5){
+          const centerCell = this.cellOf(cx, cz);
+          goalCell = this.nearFloorCell(centerCell, 3);
+          if(goalCell >= 0) reason = 'regroup';
+        }
       }
-      const catchup = 1.1 + Math.min(1.2, Math.max(0, (dLead-2.5)*0.25));
-      h.moving = this.stepAlong(h, HERO_SPEED*catchup*h.data.speedMult, dt);
-      if(!h.moving){
-        h.stuckT = (h.stuckT||0) + dt;
-        if(h.stuckT > 3.0){
-          h.stuckT = 0;
-          h.x = leader.x + (Math.random()-0.5)*0.5;
-          h.z = leader.z + (Math.random()-0.5)*0.5;
-          h.path = null;
-          log(`✨ Teleported ${h.data.name} to catch up.`, 'sys');
+
+      if(goalCell >= 0){
+        if(!h.path || h.pathI>=h.path.length || h.pathGoal !== goalCell){
+          const from = this.cellOf(h.x,h.z);
+          h.path = this.findPath(from, goalCell);
+          if(this.dbgOn) console.warn(`${h.data.name}: findPath(${from}->${goalCell}) = ${h.path ? 'path len ' + h.path.length : 'NULL'}`);
+          h.pathI = 0; h.pathGoal = goalCell;
+          if(!h.path) h.targetRoom = -1;
+        }
+
+        const wasMoving = this.stepAlong(h, HERO_SPEED*h.data.speedMult, dt);
+        if(wasMoving){
+          h.stuckT = Math.max(0, (h.stuckT||0) - dt*2);
+          h.moving = true;
+        } else {
+          h.stuckT = (h.stuckT||0) + dt;
+          if(h.stuckT > 5){
+            h.stuckT = 0; h.path = null; h.pathGoal = -1;
+            const nearest = this.nearFloorCell(this.cellOf(h.x,h.z), 5);
+            if(nearest >= 0){
+              h.x = this.wx(nearest % W); h.z = this.wz(Math.floor(nearest / W));
+              if(this.dbgOn) console.warn(`Teleported ${h.data.name} to clear ground.`);
+            }
+            h.targetRoom = -1;
+            h.moving = false;
+          } else if(h.stuckT > 2.5){
+            if(h.pathGoal >= 0){
+              h.path = this.findPath(this.cellOf(h.x,h.z), h.pathGoal);
+              h.pathI = 0;
+            }
+            h.moving = false;
+          } else if(h.stuckT > 1.0 && h.stuckT - dt <= 1.0){
+            const jc = this.jitterCell(this.cellOf(h.x,h.z), 2);
+            if(jc >= 0){
+              h.x += (this.wx(jc % W) - h.x) * 0.3;
+              h.z += (this.wz(Math.floor(jc / W)) - h.z) * 0.3;
+            }
+            h.moving = false;
+          } else {
+            h.moving = false;
+          }
         }
       } else {
-        h.stuckT = 0;
+        if(this.dbgOn) console.warn(`${h.data.name}: NO GOAL (${reason})`);
+        h.moving = false; h.stuckT = 0;
       }
-    });
+    }
+
+    /* Clear user goal once someone arrives */
+    if(this.userGoal >= 0){
+      const gx = this.wx(this.userGoal%W), gz = this.wz(Math.floor(this.userGoal/W));
+      if(alive.some(h => Math.hypot(h.x-gx, h.z-gz) < 1.1)){
+        this.userGoal = -1;
+        log('The party arrives. Back to exploring.', 'sys');
+      }
+    }
   }
 
   /* the cell the leader should actually walk to in a room: nearest living
      monster first (so fights start), then unlooted chest, unused shrine,
-     falling back to the room anchor */
-  roomTargetCell(rid, leader){
+     falling back to the room anchor.  Includes a small random jitter so
+     multiple heroes heading to the same room fan out. */
+  heroTargetCell(rid, h){
     const { W } = this.D;
     let best=-1, bd=1e9;
     for(const m of this.monsters) if(m.roomId===rid && m.data.hp>0){
-      const dd = Math.hypot(m.x-leader.x, m.z-leader.z);
+      const dd = Math.hypot(m.x-h.x, m.z-h.z);
       if(dd<bd){ bd=dd; best=this.nearFloorCell(this.cellOf(m.x, m.z), 2); }
     }
-    if(best>=0) return best;
+    if(best>=0) return this.jitterCell(best, 1);
     for(const ch of this.chests) if(ch.roomId===rid && !ch.looted)
-      return this.nearFloorCell(ch.y*W + ch.x, 2);
+      return this.jitterCell(this.nearFloorCell(ch.y*W + ch.x, 2), 1);
     for(const s of this.shrines) if(s.roomId===rid && !s.used)
-      return this.nearFloorCell(s.y*W + s.x, 2);
-    return this.roomAnchor[rid];
+      return this.jitterCell(this.nearFloorCell(s.y*W + s.x, 2), 1);
+    return this.jitterCell(this.roomAnchor[rid], 2);
+  }
+
+  /* return a random walkable floor cell within `rad` of `cell`,
+     or `cell` itself if nothing else is available — spreads heroes
+     so they don't all target the exact same tile. */
+  jitterCell(cell, rad=1){
+    if(cell < 0) return -1;
+    const { W, H, grid } = this.D;
+    if(grid[cell] !== FLOOR) return this.nearFloorCell(cell, rad);
+    const cx = cell % W, cy = Math.floor(cell / W);
+    /* Try a few random offsets */
+    for(let attempt = 0; attempt < 5; attempt++){
+      const ox = Math.round((Math.random() - 0.5) * rad * 2);
+      const oy = Math.round((Math.random() - 0.5) * rad * 2);
+      if(ox === 0 && oy === 0) continue;
+      const nx = cx + ox, ny = cy + oy;
+      if(nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const nc = ny * W + nx;
+      if(grid[nc] === FLOOR) return nc;
+    }
+    return cell; // fallback: no jitter found
   }
 
   /* snap a cell to the nearest walkable floor cell within `rad` (props like
@@ -1104,32 +1588,27 @@ class Game {
     return true;
   }
 
-  pickNextRoom(leader){
-    const { rooms, W, grid } = this.D;
-    const from = this.cellOf(leader.x, leader.z);
-    /* BFS distance field from leader */
-    const dist = new Int32Array(this.D.W*this.D.H).fill(-1);
-    const q = new Int32Array(this.D.W*this.D.H); let qh=0, qt=0;
-    if(from>=0 && grid[from]===FLOOR){ q[qt++]=from; dist[from]=0; }
-    const total = this.D.W*this.D.H;
-    while(qh<qt){
-      const c=q[qh++], x=c%W, b=dist[c]+1;
-      let n;
-      if(x>0       && grid[n=c-1]===FLOOR && dist[n]<0){ dist[n]=b; q[qt++]=n; }
-      if(x<W-1     && grid[n=c+1]===FLOOR && dist[n]<0){ dist[n]=b; q[qt++]=n; }
-      if(c>=W      && grid[n=c-W]===FLOOR && dist[n]<0){ dist[n]=b; q[qt++]=n; }
-      if(c<total-W && grid[n=c+W]===FLOOR && dist[n]<0){ dist[n]=b; q[qt++]=n; }
-    }
-    let best=-1, bd=1e9, bossOnly=true;
+  pickHeroRoom(h){ return this.pickRoomFrom(h.x, h.z); }
+
+  pickRoomFrom(x, z){
+    const { rooms, W } = this.D;
+    /* Use grid-distance from this position to room centroids.
+       Straight-line distance is sufficient for room selection —
+       the BFS in findPath handles exact routing later. */
+    const hc = this.cellOf(x, z);
+    const hx = hc % W, hz = Math.floor(hc / W);
+    let best = -1, bd = 1e9;
+    let onlyBossLeft = true;
     for(let i=0;i<rooms.length;i++){
       if(this.roomDone(i)) continue;
-      if(i!==this.D.boss) bossOnly=false;
+      if(i !== this.D.boss) { onlyBossLeft = false; break; }
     }
     for(let i=0;i<rooms.length;i++){
       if(this.roomDone(i)) continue;
-      if(i===this.D.boss && !bossOnly) continue;   // save the boss for last
-      const dd = dist[this.roomAnchor[i]];
-      if(dd>=0 && dd<bd){ bd=dd; best=i; }
+      if(i === this.D.boss && !onlyBossLeft) continue;
+      const dx = rooms[i].cx - hx, dz = rooms[i].cy - hz;
+      const dd = dx*dx + dz*dz;
+      if(dd < bd){ bd = dd; best = i; }
     }
     return best;
   }
@@ -1138,7 +1617,7 @@ class Game {
     for(const ch of this.chests){
       if(ch.looted) continue;
       const cx=this.wx(ch.x), cz=this.wz(ch.y);
-      if(alive.some(h=>Math.hypot(h.x-cx,h.z-cz)<1.5)){
+      if(alive.some(h=>Math.hypot(h.x-cx,h.z-cz)<2.2)){
         ch.looted = true;
         let g = 25*this.dungeonLevel + roll(3,20);
         /* thief's Fast Hands: bonus gold from chests */
@@ -1165,7 +1644,7 @@ class Game {
     for(const s of this.shrines){
       if(s.used) continue;
       const sx=this.wx(s.x), sz=this.wz(s.y);
-      if(alive.some(h=>Math.hypot(h.x-sx,h.z-sz)<1.6)){
+      if(alive.some(h=>Math.hypot(h.x-sx,h.z-sz)<2.2)){
         s.used = true;
         for(const h of this.heroes){
           if(h.data.hp>0) h.data.hp = h.data.maxHp;
@@ -1187,24 +1666,35 @@ class Game {
     const ea = this.roomAnchor[this.D.entrance];
     log('The party limps back to the entrance to regroup…', 'down');
     this.heroes.forEach((h,i)=>{
-      h.data.hp = Math.max(1, Math.round(h.data.maxHp*0.5));
+      h.data.hp = Math.max(1, Math.round(h.data.maxHp*0.35));
       h.x = this.wx(ea%W) + (i%2===0?-0.5:0.5);
       h.z = this.wz(Math.floor(ea/W)) + (i<2?-0.5:0.5);
-      h.path = null; h.ent.grp.rotation.z = 0;
+      h.path = null; h.pathGoal = -1; h.targetRoom = -1; h.stuckT = 0; h.ent.grp.rotation.z = 0;
       drawBar(h.ent.bar, h.data.hp/h.data.maxHp);
     });
     /* monsters lose interest */
     for(const m of this.monsters){ m.active=false; m.path=null; }
-    this.targetRoom = -1;
     this.wipeT = 0;
     updatePartyFrames(this.heroes.map(x=>x.data));
   }
 
   finishDungeon(){
     this.completeT = -1e9;
-    this.dungeonLevel++;
     this.saveGame();
-    log(`The floor is cleared. The party rests at a merchant camp before descending to floor ${this.dungeonLevel}…`, 'sys');
+    
+    if (this.currentQuest) {
+      const isFinal = this.currentFloorInQuest === this.currentQuest.floors;
+      if (isFinal) {
+        log(`The final floor is cleared! The party rests at a merchant camp before returning from quest…`, 'sys');
+        showBanner("QUEST COMPLETED!", this.currentQuest.name);
+      } else {
+        log(`Floor ${this.currentFloorInQuest} is cleared. The party rests at a merchant camp before descending…`, 'sys');
+        showBanner("FLOOR CLEARED!", `Floor ${this.currentFloorInQuest} of ${this.currentQuest.floors}`);
+      }
+    } else {
+      log(`The floor is cleared. The party rests at a merchant camp before descending to floor ${this.dungeonLevel + 1}…`, 'sys');
+    }
+    
     this.state = 'shop';
     showShop();
   }
@@ -1279,9 +1769,7 @@ class Game {
       drawBar(wrap.ent.bar, Math.max(0,hero.hp/hero.maxHp));
       if (wrap.ent.anim) {
         // Force the sprite animator to re-compose the layered textures with the new gear
-        wrap.ent.anim.loadState('walk');
-        wrap.ent.anim.loadState('slash');
-        wrap.ent.anim.loadState('hurt');
+        wrap.ent.anim.reloadAll();
       }
     }
     updatePartyFrames(this.heroes.map(x=>x.data));
@@ -1305,13 +1793,46 @@ class Game {
     return true;
   }
 
+  updateDebugOverlay(){
+    if(!this.dbgOn || !this.D) return;
+    const alive = this.heroes.filter(h=>h.data.hp>0);
+    const { W } = this.D;
+    const cL = alive[0] ? this.cellOf(alive[0].x, alive[0].z) : -1;
+    const rL = cL>=0 ? this.D.roomId[cL] : -1;
+
+    const liveMons = this.monsters.filter(m=>m.data.hp>0);
+    const unLooted = this.chests.filter(c=>!c.looted).length;
+    const unUsed = this.shrines.filter(s=>!s.used).length;
+
+    let lines = `<div>state: <b>${this.state}</b> · combat: <b class="${this.combat?'bad':'ok'}">${this.combat}</b> · floor ${this.dungeonLevel}</div>`;
+    lines += `<div>alive: ${alive.length}/${this.heroes.length} · monsters: ${liveMons.length} · chests: ${unLooted} · shrines: ${unUsed}</div>`;
+    if(this.userGoal>=0) lines += `<div><b>user goal set</b></div>`;
+
+    for(const h of this.heroes){
+      const c = this.cellOf(h.x, h.z);
+      const rid = c>=0 ? this.D.roomId[c] : -1;
+      const hpFrac = h.data.hp/h.data.maxHp;
+      const stuck = h.stuckT ? h.stuckT.toFixed(1) : '—';
+      const plen = h.path ? h.path.length - h.pathI : 0;
+      const m = h.moving ? 'moving' : 'stopped';
+      const cls = h === alive[0] ? ' <b class="ok">★LDR</b>' : '';
+      const target = h.pathGoal !== undefined ? h.pathGoal : '—';
+      lines += `<div>${h.data.name}${cls} ❤${h.data.hp} <span class="${hpFrac>0?'':'bad'}">(${Math.round(hpFrac*100)}%)</span> · `+
+        `cell ${c} r${rid} · ${m} · stuck ${stuck}s · path ${plen} · ${h.targetRoom>=0?'tr:'+h.targetRoom+' ':''}goal ${target}</div>`;
+    }
+    document.getElementById('dbg-body').innerHTML = lines;
+  }
+
   /* ============ persistence ============ */
   saveGame(){
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         heroes: this.heroes.map(h=>h.data),
         inventory: this.inventory,
-        gold: this.gold, potions: this.potions, dungeonLevel: this.dungeonLevel
+        gold: this.gold, potions: this.potions, dungeonLevel: this.dungeonLevel,
+        currentQuest: this.currentQuest,
+        currentFloorInQuest: this.currentFloorInQuest,
+        availableQuests: this.availableQuests
       }));
     } catch(e){ /* storage full/blocked — play on without saves */ }
   }
@@ -1320,6 +1841,61 @@ class Game {
       const raw = localStorage.getItem(SAVE_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch(e){ return null; }
+  }
+
+  onShopExit() {
+    if (this.currentQuest) {
+      if (this.currentFloorInQuest < this.currentQuest.floors) {
+        this.currentFloorInQuest++;
+        log(`The party descends to floor ${this.currentFloorInQuest} of ${this.currentQuest.floors} in ${this.currentQuest.name}…`, 'sys');
+        this.startQuestFloor();
+      } else {
+        this.completeQuest();
+      }
+    } else {
+      this.dungeonLevel++;
+      this.startQuestFloor();
+    }
+  }
+
+  completeQuest() {
+    const q = this.currentQuest;
+    if (!q) return;
+
+    this.completeT = -1e9; // safety guard
+
+    // Award gold
+    this.gold += q.rewardGold;
+
+    // Grant XP
+    const before = this.heroes.map(a => a.data.level);
+    this.heroes.forEach(h => {
+      if (h.data.hp > 0) grantXp(h.data, q.rewardXp, log);
+    });
+
+    log(`🏆 Quest Completed: ${q.name}!`, 'boss');
+    log(`  ↳ Earned ${q.rewardGold}g and +${q.rewardXp} XP each!`, 'treasure');
+
+    // Grant pre-rolled item reward
+    if (q.rewardItem) {
+      this.inventory.push(q.rewardItem);
+      log(`  ↳ Claimed reward item: ${q.rewardItem.name}!`, 'treasure');
+    }
+
+    if (this.heroes.some((a, i) => a.data.level > before[i])) {
+      this.announceLevelUp();
+    }
+
+    // Clear active quest state
+    this.currentQuest = null;
+    this.currentFloorInQuest = 1;
+    this.availableQuests = []; // Trigger regeneration on next map open
+
+    this.saveGame();
+    updateResources(this);
+    
+    // Return to World Map
+    this.showWorldMap();
   }
 }
 
