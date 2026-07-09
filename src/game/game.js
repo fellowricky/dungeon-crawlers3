@@ -1272,6 +1272,31 @@ class Game {
     log(`💰 Sold ${item.name} for ${item.value}g.`, 'treasure');
     updateResources(this);
   }
+  /** Sort inventory by rarity or name. */
+  sortInventory(order){
+    const RANK = { legendary:5, epic:4, rare:3, uncommon:2, common:1 };
+    if(order === 'rarity-desc'){
+      this.inventory.sort((a,b) => (RANK[b.rarity]||0) - (RANK[a.rarity]||0) || a.name.localeCompare(b.name));
+    } else if(order === 'rarity-asc'){
+      this.inventory.sort((a,b) => (RANK[a.rarity]||0) - (RANK[b.rarity]||0) || a.name.localeCompare(b.name));
+    } else if(order === 'name'){
+      this.inventory.sort((a,b) => a.name.localeCompare(b.name));
+    }
+    this.saveGame();
+  }
+  /** Sell every item of a given rarity. Returns the count sold. */
+  sellByRarity(rarity){
+    const items = this.inventory.filter(it => it.rarity === rarity);
+    if(items.length === 0) return 0;
+    let total = 0;
+    for(const it of items) total += it.value;
+    this.inventory = this.inventory.filter(it => it.rarity !== rarity);
+    this.gold += total;
+    log(`💰 Sold ${items.length} ${rarity} item(s) for ${total}g.`, 'treasure');
+    updateResources(this);
+    this.saveGame();
+    return items.length;
+  }
   afterGearChange(hero){
     if(hero===undefined) return;
     const wrap = this.heroes.find(h=>h.data===hero);

@@ -193,10 +193,32 @@ function equipHTML(){
     </div>
     ${statsPanelHTML(d)}
     <div class="cs-bag">
-      <h3>Bag <span class="bag-count">${G.inventory.length}</span></h3>
+      <h3>Bag <span class="bag-count">${G.inventory.length}</span>
+        <span class="bag-sort">
+          <button class="sort-btn" data-sort="rarity-desc" title="Sort: best rarity first">🔽</button>
+          <button class="sort-btn" data-sort="rarity-asc" title="Sort: worst rarity first">🔼</button>
+          <button class="sort-btn" data-sort="name" title="Sort: by name">🔤</button>
+        </span>
+      </h3>
       <div class="bag-grid">${bag}</div>
       ${detail}
+      ${bulkSellHTML()}
     </div>`;
+}
+
+/** Count items per rarity and render bulk-sell buttons. */
+function bulkSellHTML(){
+  const RARITY_ORDER = ['legendary','epic','rare','uncommon','common'];
+  const counts = {};
+  for(const it of G.inventory) counts[it.rarity] = (counts[it.rarity]||0) + 1;
+  const rows = RARITY_ORDER.filter(r => counts[r]).map(r => {
+    const totalVal = G.inventory.filter(it => it.rarity === r).reduce((s,it) => s + it.value, 0);
+    const c = RARITIES[r].color;
+    return `<button class="sell-rarity-btn" data-rarity="${r}" style="border-color:${c}; color:${c}">
+      Sell all ${r} (${counts[r]}) · ${totalVal}g</button>`;
+  });
+  if(!rows.length) return '';
+  return `<div class="bulk-sell"><div class="bulk-sell-title">Sell by rarity</div><div class="bulk-sell-btns">${rows.join('')}</div></div>`;
 }
 
 function wireEquip(){
@@ -215,6 +237,18 @@ function wireEquip(){
   });
   const sell = $('id-sell');
   if(sell) sell.addEventListener('click', ()=>{ G.sellItem(selItem); selItem = null; render(); });
+  /* sort buttons */
+  main.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => { G.sortInventory(btn.dataset.sort); selItem = null; render(); });
+  });
+  /* bulk sell by rarity */
+  main.querySelectorAll('.sell-rarity-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      G.sellByRarity(btn.dataset.rarity);
+      selItem = null;
+      render();
+    });
+  });
 }
 
 function skillsHTML(){
