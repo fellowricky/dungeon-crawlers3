@@ -76,7 +76,7 @@ export const RACES = {
    attack: the weapon/cantrip profile used by the auto-battler. */
 export const CLASSES = {
   fighter: {
-    label:'Fighter', color:0xd9a441, hitDie:10, armorProf:'heavy',
+    label:'Fighter', color:0xd9a441, hitDie:10, armorProf:'heavy', shieldProf:true,
     statPriority:['str','con','dex','wis','cha','int'],
     baseAC:16, acDesc:'Chain mail',
     attack:{ name:'Longsword', ability:'str', dmg:[1,8], range:1.5, melee:true },
@@ -94,7 +94,7 @@ export const CLASSES = {
     }
   },
   rogue: {
-    label:'Rogue', color:0x8f95a3, hitDie:8, armorProf:'light',
+    label:'Rogue', color:0x8f95a3, hitDie:8, armorProf:'light', shieldProf:false,
     statPriority:['dex','con','wis','int','cha','str'],
     baseAC:11, acPlusDex:true, acDesc:'Leather armor + Dex',
     attack:{ name:'Shortbow', ability:'dex', dmg:[1,6], range:7, melee:false },
@@ -112,7 +112,7 @@ export const CLASSES = {
     }
   },
   cleric: {
-    label:'Cleric', color:0x5a8fe8, hitDie:8, armorProf:'medium',
+    label:'Cleric', color:0x5a8fe8, hitDie:8, armorProf:'medium', shieldProf:true,
     statPriority:['wis','con','str','cha','dex','int'],
     baseAC:16, acDesc:'Scale mail + shield',
     attack:{ name:'Sacred Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true },
@@ -130,7 +130,7 @@ export const CLASSES = {
     }
   },
   wizard: {
-    label:'Wizard', color:0x9b6cf0, hitDie:6, armorProf:'none',
+    label:'Wizard', color:0x9b6cf0, hitDie:6, armorProf:'none', shieldProf:false,
     statPriority:['int','con','dex','wis','cha','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
     attack:{ name:'Fire Bolt', ability:'int', dmg:[1,10], range:8, melee:false, cantripScale:true },
@@ -148,7 +148,7 @@ export const CLASSES = {
     }
   },
   barbarian: {
-    label:'Barbarian', color:0xe74c3c, hitDie:12, armorProf:'medium',
+    label:'Barbarian', color:0xe74c3c, hitDie:12, armorProf:'medium', shieldProf:true,
     statPriority:['str','con','dex','wis','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Unarmored Defense',
     attack:{ name:'Greatsword', ability:'str', dmg:[2,6], range:1.6, melee:true },
@@ -165,7 +165,7 @@ export const CLASSES = {
     }
   },
   bard: {
-    label:'Bard', color:0xe8a8ff, hitDie:8, armorProf:'light',
+    label:'Bard', color:0xe8a8ff, hitDie:8, armorProf:'light', shieldProf:false,
     statPriority:['cha','dex','con','wis','str','int'],
     baseAC:11, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Rapier', ability:'cha', dmg:[1,8], range:1.5, melee:true },
@@ -183,7 +183,7 @@ export const CLASSES = {
     }
   },
   druid: {
-    label:'Druid', color:0x2ecc71, hitDie:8, armorProf:'medium',
+    label:'Druid', color:0x2ecc71, hitDie:8, armorProf:'medium', shieldProf:true,
     statPriority:['wis','con','dex','int','cha','str'],
     baseAC:12, acPlusDex:true, acDesc:'Leather Shield + Hide',
     attack:{ name:'Produce Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true },
@@ -201,7 +201,7 @@ export const CLASSES = {
     }
   },
   monk: {
-    label:'Monk', color:0x3498db, hitDie:8, armorProf:'none',
+    label:'Monk', color:0x3498db, hitDie:8, armorProf:'none', shieldProf:false,
     statPriority:['dex','wis','con','str','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Unarmored Defense',
     attack:{ name:'Unarmed Strike', ability:'dex', dmg:[1,6], range:1.4, melee:true },
@@ -218,7 +218,7 @@ export const CLASSES = {
     }
   },
   paladin: {
-    label:'Paladin', color:0xf1c40f, hitDie:10, armorProf:'heavy',
+    label:'Paladin', color:0xf1c40f, hitDie:10, armorProf:'heavy', shieldProf:true,
     statPriority:['str','cha','con','wis','dex','int'],
     baseAC:16, acDesc:'Chain mail + shield',
     attack:{ name:'Longsword', ability:'str', dmg:[1,8], range:1.5, melee:true },
@@ -235,7 +235,7 @@ export const CLASSES = {
     }
   },
   ranger: {
-    label:'Ranger', color:0x1abc9c, hitDie:10, armorProf:'medium',
+    label:'Ranger', color:0x1abc9c, hitDie:10, armorProf:'medium', shieldProf:true,
     statPriority:['dex','wis','con','str','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Longbow', ability:'dex', dmg:[1,8], range:8, melee:false },
@@ -252,7 +252,7 @@ export const CLASSES = {
     }
   },
   sorcerer: {
-    label:'Sorcerer', color:0xe67e22, hitDie:6, armorProf:'none',
+    label:'Sorcerer', color:0xe67e22, hitDie:6, armorProf:'none', shieldProf:false,
     statPriority:['cha','con','dex','int','wis','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
     attack:{ name:'Fire Bolt', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
@@ -270,7 +270,7 @@ export const CLASSES = {
     }
   },
   warlock: {
-    label:'Warlock', color:0x9b59b6, hitDie:8, armorProf:'light',
+    label:'Warlock', color:0x9b59b6, hitDie:8, armorProf:'light', shieldProf:false,
     statPriority:['cha','con','dex','wis','int','str'],
     baseAC:11, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Eldritch Blast', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
@@ -819,7 +819,11 @@ export function pendingPoints(h){
   return (h.pendingAbility||0) + (h.pendingSkill||0) + (needsSubclass(h)?1:0) + pendingChoiceCount(h);
 }
 
-/* whether a hero can equip an item given class armor proficiency */
+/* whether a hero can equip an item given class armor & shield proficiency */
 export function canEquip(h, item){
-  return PROF_RANK[item.prof||'none'] <= PROF_RANK[CLASSES[h.classKey].armorProf||'none'];
+  const cls = CLASSES[h.classKey];
+  // Shield proficiency is separate from armor proficiency per the SRD:
+  // Barbarian, Cleric, Druid, Fighter, Paladin, Ranger are proficient.
+  if (item.slot === 'shield' && !cls.shieldProf) return false;
+  return PROF_RANK[item.prof||'none'] <= PROF_RANK[cls.armorProf||'none'];
 }
