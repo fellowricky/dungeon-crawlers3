@@ -2,16 +2,22 @@ import * as THREE from 'three';
 
 const ASSETS_ROOT = './lpc/';
 const LAYER_ORDER = [
+  'shield_behind',
+  'weapon_behind',
   'body',
   'head',
   'eyes',
   'legs',
   'torso',
   'feet',
+  'shoulders',
+  'gloves',
   'ears',
   'facialHair',
   'hair',
   'helm',
+  'visor',
+  'shield',
   'weapon'
 ];
 
@@ -32,7 +38,10 @@ function loadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => { imageCache[src] = img; resolve(img); };
-    img.onerror = () => { resolve(null); }; // resolve null on missing layer
+    img.onerror = () => {
+      console.warn("Failed to load sprite sheet:", src);
+      resolve(null);
+    }; // resolve null on missing layer
     img.src = src;
   });
 }
@@ -49,27 +58,39 @@ export class HeroSprite {
     this.material = new THREE.SpriteMaterial({ transparent: true, depthTest: true, depthWrite: false });
     this.mesh = new THREE.Sprite(this.material);
     this.mesh.scale.set(1.5, 1.5, 1);
-    // 0.15 represents the vertical padding from bottom to character's feet
-    this.mesh.center.set(0.5, 0.15); 
+    // LPC frames leave only ~3% transparent padding below the feet — anchor
+    // there so feet sit ON the floor instead of sinking through it
+    this.mesh.center.set(0.5, 0.04);
     this.mesh.visible = false; // Hide until texture loads to prevent white box
-    
+
     this.state = 'walk';
     this.dir = 'down';
     this.time = 0;
     this.animating = true;
-    
+
     this.loadState('walk');
     this.loadState('slash');
     this.loadState('hurt');
+    this.loadState('shoot');
+    this.loadState('spellcast');
+  }
+
+  /* re-compose every loaded animation (called after equipment changes) */
+  reloadAll(){
+    for (const k of Object.keys(this.textures)) this.loadState(k);
   }
 
   getCacheKey(action) {
-    const w = this.equipment.weapon ? this.equipment.weapon.visualWeapon : 'none';
-    const t = this.equipment.armor ? this.equipment.armor.visualTorso : 'none';
-    const l = this.equipment.armor ? this.equipment.armor.visualLegs : 'none';
+    const w = this.equipment.weapon ? `${this.equipment.weapon.visualWeapon}|${this.equipment.weapon.visualColor||''}` : 'none';
+    const t = this.equipment.armor ? `${this.equipment.armor.visualTorso}|${this.equipment.armor.visualColor||''}|${this.equipment.armor.visualShoulders||''}` : 'none';
+    const l = this.equipment.armor ? `${this.equipment.armor.visualLegs || 'pants'}|${this.equipment.armor.visualColor||''}` : 'none';
+    const hm = this.equipment.helm ? `${this.equipment.helm.visualHelm}|${this.equipment.helm.visualColor||''}|${this.equipment.helm.visualVisor||''}` : 'none';
+    const sh = this.equipment.offhand ? `${this.equipment.offhand.visualShield}|${this.equipment.offhand.visualColor||''}` : 'none';
+    const f = this.equipment.boots ? `${this.equipment.boots.visualShoes}|${this.equipment.boots.visualColor||''}` : 'none';
+    const glv = this.equipment.gloves ? `${this.equipment.gloves.visualGloves}|${this.equipment.gloves.visualColor||''}` : 'none';
     return [
       action, this.visual.gender, this.visual.skinColor, this.visual.hair, this.visual.hairColor,
-      w, t, l
+      w, t, l, hm, sh, f, glv
     ].join('|');
   }
 
@@ -121,18 +142,36 @@ export class HeroSprite {
     const t = this.equipment.armor ? this.equipment.armor.visualTorso : null;
     const l = this.equipment.armor ? (this.equipment.armor.visualLegs || 'pants') : (this.visual.pants !== undefined ? this.visual.pants : 'pants');
     const h = this.equipment.helm ? this.equipment.helm.visualHelm : null;
+    const v = this.equipment.helm ? this.equipment.helm.visualVisor : null;
+    const sh = this.equipment.offhand ? this.equipment.offhand.visualShield : null;
+    const f = this.equipment.boots ? this.equipment.boots.visualShoes : (this.visual.shoes !== undefined ? this.visual.shoes : 'shoes/basic');
+    const shld = this.equipment.armor ? this.equipment.armor.visualShoulders : null;
+    const glv = this.equipment.gloves ? this.equipment.gloves.visualGloves : null;
     
+    let w_behind = w ? `weapon_behind/${w}` : null;
+
+    let sh_behind = null;
+    if (sh && sh.includes('crusader/fg')) {
+      sh_behind = `shield_behind/crusader/fg/${clothG}`;
+    }
+
     const paths = {
+      shield_behind: sh_behind,
+      weapon_behind: w_behind,
       body: `body/bodies/${g}`,
       head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
-      eyes: (isMonster || customHead) ? null : `eyes/human/adult`,
+      eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
       ears: (!isMonster && !customHead && this.visual.ears === 'elven') ? `head/ears/elven/adult` : null,
       legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
       torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
-      feet: (isMonster || this.visual.shoes === 'none') ? null : `feet/${l === 'armour/plate' ? 'armour/plate' : 'shoes/basic'}/${clothG === 'male' ? 'male' : 'thin'}`,
+      feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
+      shoulders: shld ? `shoulders/${shld}/${shld === 'legion' ? clothG : (clothG === 'male' ? 'male' : 'thin')}` : null,
+      gloves: glv ? `${glv}/${clothG === 'male' ? 'male' : 'thin'}` : null,
       facialHair: (isMonster || customHead || !this.visual.facialHair || this.visual.facialHair === 'none') ? null : `beards/${this.visual.facialHair}`,
       hair: (isMonster || customHead || this.visual.hair==='none') ? null : `hair/${this.visual.hair}`,
-      helm: h ? `hat/${h}${h === 'helmet/greathelm' ? '/' + clothG : ''}` : null,
+      helm: h ? (h.includes('greathelm') ? `hat/${h}/${clothG}` : `hat/${h}/adult`) : null,
+      visor: v ? `hat/visor/${v}/adult` : null,
+      shield: sh ? (sh === 'round' ? `shield/${sh}` : `shield/${sh}/${clothG}`) : null,
       weapon: w ? `weapon/${w}` : null
     };
 
@@ -147,7 +186,20 @@ export class HeroSprite {
         } else if (layer === 'eyes' && this.visual.eyeColor) {
           this.drawTintedLayer(ctx, img, this.visual.eyeColor);
         } else {
-          ctx.drawImage(img, 0, 0);
+          // If the equipment in this slot has a visual color, tint it!
+          let slotKey = layer;
+          if (layer === 'helm' || layer === 'visor') slotKey = 'helm';
+          else if (layer === 'shield' || layer === 'shield_behind') slotKey = 'offhand';
+          else if (layer === 'weapon' || layer === 'weapon_behind') slotKey = 'weapon';
+          else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders') slotKey = 'armor';
+          else if (layer === 'gloves') slotKey = 'gloves';
+
+          const it = this.equipment[slotKey];
+          if (it && it.visualColor) {
+            this.drawTintedLayer(ctx, img, it.visualColor);
+          } else {
+            ctx.drawImage(img, 0, 0);
+          }
         }
       }
     }
@@ -217,5 +269,98 @@ export class HeroSprite {
     const uOffset = currentFrame / meta.cols;
 
     tex.offset.set(uOffset, vOffset);
+  }
+}
+
+/* ================= static portrait ==================================
+   Composes a hero's front-facing (down) standing frame with their CURRENT
+   equipment onto a 2D canvas — so the character screen reflects gear the
+   player just equipped. Mirrors HeroSprite's layer/path resolution but
+   draws a single frame (walk sheet, row 2 = facing camera, frame 0). */
+function drawPortraitFrame(ctx, img, tint){
+  // walk sheet is 9×4 of 64px cells; row 2 (y=128) faces the camera
+  if(!tint){ ctx.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64); return; }
+  const tmp = document.createElement('canvas'); tmp.width = 64; tmp.height = 64;
+  const t = tmp.getContext('2d');
+  t.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
+  t.globalCompositeOperation = 'multiply';
+  t.fillStyle = tint; t.fillRect(0, 0, 64, 64);
+  t.globalCompositeOperation = 'destination-in';
+  t.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
+  ctx.drawImage(tmp, 0, 0);
+}
+
+export async function drawHeroPortrait(canvas, hero){
+  const ctx = canvas.getContext('2d');
+  const token = (canvas._portraitToken = (canvas._portraitToken || 0) + 1);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const visual = hero.visual || {};
+  const equipment = hero.equipment || {};
+  const g = visual.gender || 'male';
+  const isMonster = (g === 'skeleton' || g === 'zombie');
+  const customHead = visual.head;
+  const clothG = (g === 'muscular' || g === 'teen' || g === 'child') ? 'male' : g;
+
+  const w = equipment.weapon ? equipment.weapon.visualWeapon : null;
+  const t = equipment.armor ? equipment.armor.visualTorso : null;
+  const l = equipment.armor ? (equipment.armor.visualLegs || 'pants') : (visual.pants !== undefined ? visual.pants : 'pants');
+  const hlm = equipment.helm ? equipment.helm.visualHelm : null;
+  const v = equipment.helm ? equipment.helm.visualVisor : null;
+  const sh = equipment.offhand ? equipment.offhand.visualShield : null;
+  const f = equipment.boots ? equipment.boots.visualShoes : (visual.shoes !== undefined ? visual.shoes : 'shoes/basic');
+  const shld = equipment.armor ? equipment.armor.visualShoulders : null;
+  const glv = equipment.gloves ? equipment.gloves.visualGloves : null;
+ 
+  let w_behind = w ? `weapon_behind/${w}` : null;
+
+  let sh_behind = null;
+  if (sh && sh.includes('crusader/fg')) {
+    sh_behind = `shield_behind/crusader/fg/${clothG}`;
+  }
+
+  const paths = {
+    shield_behind: sh_behind,
+    weapon_behind: w_behind,
+    body: `body/bodies/${g}`,
+    head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
+    eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
+    ears: (!isMonster && !customHead && visual.ears === 'elven') ? `head/ears/elven/adult` : null,
+    legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
+    torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
+    feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
+    shoulders: shld ? `shoulders/${shld}/${shld === 'legion' ? clothG : (clothG === 'male' ? 'male' : 'thin')}` : null,
+    gloves: glv ? `${glv}/${clothG === 'male' ? 'male' : 'thin'}` : null,
+    facialHair: (isMonster || customHead || !visual.facialHair || visual.facialHair === 'none') ? null : `beards/${visual.facialHair}`,
+    hair: (isMonster || customHead || visual.hair === 'none') ? null : `hair/${visual.hair}`,
+    helm: hlm ? (hlm.includes('greathelm') ? `hat/${hlm}/${clothG}` : `hat/${hlm}/adult`) : null,
+    visor: v ? `hat/visor/${v}/adult` : null,
+    shield: sh ? (sh === 'round' ? `shield/${sh}` : `shield/${sh}/${clothG}`) : null,
+    weapon: w ? `weapon/${w}` : null
+  };
+
+  for(const layer of LAYER_ORDER){
+    if(!paths[layer]) continue;
+    const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/walk.png`);
+    if(canvas._portraitToken !== token) return;   // a newer draw superseded us
+    if(!img) continue;
+    if(layer === 'body' || layer === 'head' || layer === 'ears') drawPortraitFrame(ctx, img, visual.skinColor);
+    else if(layer === 'hair' || layer === 'facialHair') drawPortraitFrame(ctx, img, visual.hairColor);
+    else if(layer === 'eyes' && visual.eyeColor) drawPortraitFrame(ctx, img, visual.eyeColor);
+    else {
+      let slotKey = layer;
+      if (layer === 'helm' || layer === 'visor') slotKey = 'helm';
+      else if (layer === 'shield' || layer === 'shield_behind') slotKey = 'offhand';
+      else if (layer === 'weapon' || layer === 'weapon_behind') slotKey = 'weapon';
+      else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders') slotKey = 'armor';
+      else if (layer === 'gloves') slotKey = 'gloves';
+
+      const it = equipment[slotKey];
+      if (it && it.visualColor) {
+        drawPortraitFrame(ctx, img, it.visualColor);
+      } else {
+        drawPortraitFrame(ctx, img, null);
+      }
+    }
   }
 }
