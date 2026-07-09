@@ -228,6 +228,11 @@ function wireEquip(){
   });
   main.querySelectorAll('.bag-item').forEach(el=>{
     el.addEventListener('click', ()=>{ selItem = G.inventory[+el.dataset.i]; render(); });
+    el.addEventListener('dblclick', ()=>{
+      const it = G.inventory[+el.dataset.i];
+      const r = G.equipItem(G.heroes[selHero].data, it);
+      if(r.ok){ selItem = null; render(); }
+    });
   });
   const eq = $('id-equip');
   if(eq) eq.addEventListener('click', ()=>{
