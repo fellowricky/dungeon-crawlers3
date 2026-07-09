@@ -128,6 +128,38 @@ export const combatMethods = {
     }
   },
 
+  /* ── Combat pacing helpers ────────────────────────────────────── */
+
+  /** Seconds since the current combat encounter began. */
+  _combatSec() {
+    return this._combatEngagedAt != null ? this.elapsed - this._combatEngagedAt : 999;
+  },
+
+  /** True when combat has lasted at least minSec — prevents instant cooldown dumps. */
+  _combatStable(minSec = 2.0) {
+    return this._combatSec() >= minSec;
+  },
+
+  /**
+   * Threat assessment: is this foe worth spending limited resources on?
+   * @param {'normal'|'high'|'low'} threshold  high = boss/elite only; low = almost always
+   */
+  _worthSpending(h, foe, alive, threshold = 'normal') {
+    if (foe.isBoss) return true;
+    if (this.monsterEliteRoom(foe)) return true;
+    if (threshold === 'high') return false;
+    // Trash with decent HP — still worth a spell or two
+    if (foe.data.hp >= 12) return true;
+    // Party is struggling — use whatever we have
+    if (alive && alive.length) {
+      const partyFrac = alive.reduce((s, a) => s + a.data.hp / a.data.maxHp, 0) / alive.length;
+      if (partyFrac < 0.55) return true;
+    }
+    // Don't waste on nearly-dead trash
+    if (foe.data.hp / Math.max(foe.data.maxHp, 1) < 0.35) return false;
+    return threshold !== 'high';
+  },
+
   pickHeroTarget(h, alive) {
     let tgt = null, best = 1e9;
     for (const m of this.monsters) {
@@ -144,7 +176,11 @@ export const combatMethods = {
     const dist = Math.hypot(foe.x - h.x, foe.z - h.z);
     h.cd -= dt;
 
-    this.runCombatReflexes(h, alive);
+    // Track combat engagement for pacing / staggering
+    if (!this._combatEngagedAt) this._combatEngagedAt = this.elapsed;
+    h._abilityUsedThisCycle = false;
+
+    this.runCombatReflexes(h, alive, foe);
 
     const inRange = dist <= atk.range && (atk.melee || this.hasLOS(h.x, h.z, foe.x, foe.z));
     if (!inRange) {
@@ -262,29 +298,32 @@ export const combatMethods = {
       this.heroAttackRoll(h, foe, alive, {});
     }
 
-    /* Action Surge (class feature or Champion subclass) */
+    /* Action Surge (class feature or Champion subclass) — only when it matters */
+    const surgeWorthy = foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.30 || foe.isBoss || this.monsterEliteRoom(foe);
     const canSurge = (hasFeature(h.data, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge'))
-      && !h.data.abilityUsed.short && foe.data.hp > 0;
+      && !h.data.abilityUsed.short && foe.data.hp > 0 && surgeWorthy && !h._abilityUsedThisCycle;
     if (canSurge) {
-      h.data.abilityUsed.short = true;
+      h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
       this.playAbilityFx(h, 'actionSurge', { at: h });
       log(`⚔ ${h.data.name} surges with action — attacking again!`, 'crit');
       this.heroAttackRoll(h, foe, alive, {});
       this.refreshAbilityHud();
     }
 
-    /* Flurry of Blows */
-    if (hasFeature(h.data, 'flurryOfBlows') && !h.data.abilityUsed.short && foe.data.hp > 0 && h.data.hp < h.data.maxHp * 0.7) {
-      h.data.abilityUsed.short = true;
+    /* Flurry of Blows — only when foe is worth the effort */
+    else if (hasFeature(h.data, 'flurryOfBlows') && !h.data.abilityUsed.short && foe.data.hp > 0
+        && h.data.hp < h.data.maxHp * 0.7 && surgeWorthy && !h._abilityUsedThisCycle) {
+      h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
       this.playAbilityFx(h, 'flurry', { at: foe });
       log(`👊 ${h.data.name} uses Flurry of Blows!`, 'crit');
       this.heroAttackRoll(h, foe, alive, {});
       this.refreshAbilityHud();
     }
 
-    /* Berserker frenzy — free extra attack */
-    if (sc && sc.active.key === 'frenzy' && !h.data.abilityUsed.short && foe.data.hp > 0 && h.raging) {
-      h.data.abilityUsed.short = true;
+    /* Berserker frenzy — free extra attack, don't waste on near-dead foes */
+    else if (sc && sc.active.key === 'frenzy' && !h.data.abilityUsed.short && foe.data.hp > 0
+        && h.raging && foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.35 && !h._abilityUsedThisCycle) {
+      h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
       this.playAbilityFx(h, 'frenzy', { at: foe });
       log(`😤 ${h.data.name} frenzies — another strike!`, 'crit');
       this.heroAttackRoll(h, foe, alive, {});
@@ -292,13 +331,21 @@ export const combatMethods = {
     }
   },
 
-  /* defensive / buff reflexes that fire outside the attack cadence */
-  runCombatReflexes(h, alive) {
+  /* defensive / buff reflexes that fire outside the attack cadence
+   *   Now staggered: only ONE reflex fires per cycle, and most require
+   *   a minimum combat duration so we don't dump everything on frame 1. */
+  runCombatReflexes(h, alive, foe) {
     const d = h.data;
     let hudDirty = false;
-    /* Second Wind */
+
+    /* ── Rage expiry ── */
+    if (h.raging && this.elapsed > (h.rageUntil || 0)) h.raging = false;
+
+    const sc = subclassOf(d);
+
+    /* ── Second Wind — immediate save if critically low ── */
     if ((d.secondWind || hasFeature(d, 'secondWind')) && !d.secondWindUsed && d.hp < d.maxHp * 0.3) {
-      d.secondWindUsed = true;
+      d.secondWindUsed = true; h._abilityUsedThisCycle = true;
       const amt = roll(1, 10, d.level);
       d.hp = Math.min(d.maxHp, d.hp + amt);
       this.playAbilityFx(h, 'secondWind', { at: h });
@@ -308,67 +355,84 @@ export const combatMethods = {
       hudDirty = true;
     }
 
-    /* Cunning Action — class or Thief subclass */
-    const sc = subclassOf(d);
-    const cunning = hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction');
-    if (cunning && !d.abilityUsed.short && d.hp < d.maxHp * 0.4) {
-      d.abilityUsed.short = true;
-      h.cunningUntil = this.elapsed + 6;
-      this.playAbilityFx(h, 'cunningAction', { at: h });
-      log(`💨 ${d.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
-      hudDirty = true;
-    }
-
-    /* Rage */
-    if (hasFeature(d, 'rage') && !h.raging && !d.rageUsed && d.hp < d.maxHp * 0.55) {
-      d.rageUsed = true;
-      h.raging = true;
-      h.rageUntil = this.elapsed + 12;
-      this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
-      log(`😡 ${d.name} enters a Rage!`, 'crit');
-      hudDirty = true;
-    }
-    if (h.raging && this.elapsed > (h.rageUntil || 0)) h.raging = false;
-
-    /* Bear Totem */
-    if (sc && sc.active.key === 'bearTotem' && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
-      d.abilityUsed.short = true;
-      h.bearTotemUntil = this.elapsed + 8;
-      this.playAbilityFx(h, 'bearTotem', { at: h, scale: 1.6 });
-      log(`🐻 ${d.name} summons the Bear Totem — damage halved!`, 'heal');
-      hudDirty = true;
-    }
-
-    /* Bardic Inspiration */
-    if (hasFeature(d, 'bardicInspiration') && !d.abilityUsed.short && alive.length >= 2) {
-      const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.7);
-      if (anyHurt) {
-        d.abilityUsed.short = true;
-        for (const a of alive) a.inspiredUntil = this.elapsed + 8;
-        this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
-        log(`🎵 ${d.name} inspires the party! (+2 to hit)`, 'heal');
+    /* ── Cunning Action — dodge when bloodied ── */
+    else if (!h._abilityUsedThisCycle) {
+      const cunning = hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction');
+      if (cunning && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
+        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+        h.cunningUntil = this.elapsed + 6;
+        this.playAbilityFx(h, 'cunningAction', { at: h });
+        log(`💨 ${d.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
         hudDirty = true;
       }
     }
 
-    /* Wild Shape */
-    if (hasFeature(d, 'wildShapeClass') && !d.abilityUsed.short && d.hp < d.maxHp * 0.4) {
-      d.abilityUsed.short = true;
-      h.wildShapeUntil = this.elapsed + 8;
-      h.tempHp = (h.tempHp || 0) + 15 + d.level;
-      this.playAbilityFx(h, 'wildShape', { at: h, scale: 1.8 });
-      log(`🐻 ${d.name} Wild Shapes! (+temp HP, fierce claws)`, 'heal');
-      hudDirty = true;
+    /* ── Rage — only after combat has been going a bit ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (hasFeature(d, 'rage') && !h.raging && !d.rageUsed && d.hp < d.maxHp * 0.45
+          && this._combatStable(1.2)) {
+        d.rageUsed = true; h._abilityUsedThisCycle = true;
+        h.raging = true;
+        h.rageUntil = this.elapsed + 12;
+        this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
+        log(`😡 ${d.name} enters a Rage!`, 'crit');
+        hudDirty = true;
+      }
     }
 
-    /* Combat Inspiration (Valor bard subclass) */
-    if (sc && sc.active.key === 'combatInspiration' && !d.abilityUsed.short) {
-      d.abilityUsed.short = true;
-      for (const a of alive) a.inspiredUntil = this.elapsed + 8;
-      this.playAbilityFx(h, 'combatSong', { at: h, alsoAt: alive, spell: true });
-      log(`🎶 ${d.name} plays a battle song! (+3 to hit)`, 'heal');
-      hudDirty = true;
+    /* ── Bear Totem — emergency DR for bear barbarians ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'bearTotem' && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
+        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+        h.bearTotemUntil = this.elapsed + 8;
+        this.playAbilityFx(h, 'bearTotem', { at: h, scale: 1.6 });
+        log(`🐻 ${d.name} summons the Bear Totem — damage halved!`, 'heal');
+        hudDirty = true;
+      }
     }
+
+    /* ── Bardic Inspiration — don't inspire in the first 2s, wait for real trouble ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (hasFeature(d, 'bardicInspiration') && !d.abilityUsed.short && alive.length >= 2
+          && this._combatStable(2.0)) {
+        const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.6);
+        if (anyHurt) {
+          d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+          for (const a of alive) a.inspiredUntil = this.elapsed + 8;
+          this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
+          log(`🎵 ${d.name} inspires the party! (+2 to hit)`, 'heal');
+          hudDirty = true;
+        }
+      }
+    }
+
+    /* ── Wild Shape — druid panic button ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (hasFeature(d, 'wildShapeClass') && !d.abilityUsed.short && d.hp < d.maxHp * 0.4) {
+        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+        h.wildShapeUntil = this.elapsed + 8;
+        h.tempHp = (h.tempHp || 0) + 15 + d.level;
+        this.playAbilityFx(h, 'wildShape', { at: h, scale: 1.8 });
+        log(`🐻 ${d.name} Wild Shapes! (+temp HP, fierce claws)`, 'heal');
+        hudDirty = true;
+      }
+    }
+
+    /* ── Combat Inspiration (Valor bard) — requires combat to be underway ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'combatInspiration' && !d.abilityUsed.short
+          && this._combatStable(2.5) && alive.length >= 2) {
+        const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.65);
+        if (anyHurt) {
+          d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+          for (const a of alive) a.inspiredUntil = this.elapsed + 8;
+          this.playAbilityFx(h, 'combatSong', { at: h, alsoAt: alive, spell: true });
+          log(`🎶 ${d.name} plays a battle song! (+3 to hit)`, 'heal');
+          hudDirty = true;
+        }
+      }
+    }
+
     if (hudDirty) this.refreshAbilityHud();
   },
 
@@ -376,58 +440,70 @@ export const combatMethods = {
     const opts = {};
     const d = h.data;
     let hudDirty = false;
+    const stable = this._combatStable(1.5);
     if (sc && !d.abilityUsed.short) {
-      if (sc.active.key === 'deathstrike' && foe.data.hp >= foe.data.maxHp) {
+      if (sc.active.key === 'deathstrike' && foe.data.hp >= foe.data.maxHp
+          && this._worthSpending(h, foe, null, 'normal')) {
         d.abilityUsed.short = true; opts.autoCrit = true;
         this.playAbilityFx(h, 'deathstrike', { at: foe });
         log(`🗡 ${d.name} lines up a Deathstrike!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'guidedStrike' && (foe.isBoss || this.monsterEliteRoom(foe))) {
+      } else if (sc.active.key === 'guidedStrike' && (foe.isBoss || this.monsterEliteRoom(foe))
+          && this._worthSpending(h, foe, null, 'high')) {
         d.abilityUsed.short = true; opts.atkBonus = 10; opts.extraDmg = roll(2, 8);
         this.playAbilityFx(h, 'guidedStrike', { at: foe, spell: true });
         log(`⚡ ${d.name} calls a Guided Strike! (+10 to hit, +2d8)`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'vowOfEnmity' && (foe.isBoss || this.monsterEliteRoom(foe))) {
+      } else if (sc.active.key === 'vowOfEnmity' && (foe.isBoss || this.monsterEliteRoom(foe))
+          && this._worthSpending(h, foe, null, 'high')) {
         d.abilityUsed.short = true; opts.atkBonus = 5;
         this.playAbilityFx(h, 'vowOfEnmity', { at: foe, spell: true });
         log(`⚔️ ${d.name} swears a Vow of Enmity!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'shadowStep') {
+      } else if (sc.active.key === 'shadowStep' && stable
+          && this._worthSpending(h, foe, null, 'low')) {
         d.abilityUsed.short = true; opts.atkBonus = 4; opts.extraDmg = roll(2, 6);
         this.playAbilityFx(h, 'shadowStep', { at: foe });
         log(`🌑 ${d.name} Shadow Steps behind the foe!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'sacredWeapon') {
+      } else if (sc.active.key === 'sacredWeapon' && stable
+          && this._worthSpending(h, foe, null, 'normal')) {
         d.abilityUsed.short = true;
         h.sacredUntil = this.elapsed + 8;
         this.playAbilityFx(h, 'sacredWeapon', { at: h, spell: true });
         log(`✨ ${d.name} blesses their weapon!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'colossusSlayer' && foe.data.hp < foe.data.maxHp) {
+      } else if (sc.active.key === 'colossusSlayer' && foe.data.hp < foe.data.maxHp
+          && this._worthSpending(h, foe, null, 'low')) {
         d.abilityUsed.short = true; opts.extraDmg = roll(1, 8);
         this.playAbilityFx(h, 'colossusSlayer', { at: foe });
         log(`🏹 ${d.name}'s Colossus Slayer finds the wound!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'companionStrike') {
+      } else if (sc.active.key === 'companionStrike' && stable
+          && this._worthSpending(h, foe, null, 'normal')) {
         d.abilityUsed.short = true; opts.extraDmg = roll(1, 8, 3);
         this.playAbilityFx(h, 'companionStrike', { at: foe });
         log(`🐺 ${d.name}'s companion strikes!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'quiveringPalm' && (foe.isBoss || this.monsterEliteRoom(foe))) {
+      } else if (sc.active.key === 'quiveringPalm' && (foe.isBoss || this.monsterEliteRoom(foe))
+          && this._worthSpending(h, foe, null, 'high')) {
         d.abilityUsed.short = true; opts.extraDmg = roll(4, 10);
         this.playAbilityFx(h, 'quiveringPalm', { at: foe });
         log(`✋ ${d.name} delivers Quivering Palm!`, 'crit');
         hudDirty = true;
       }
     }
-    if (hasFeature(d, 'divineSmite') && !d.smiteUsed && (foe.isBoss || this.monsterEliteRoom(foe))) {
+    if (hasFeature(d, 'divineSmite') && !d.smiteUsed
+        && (foe.isBoss || this.monsterEliteRoom(foe))
+        && this._worthSpending(h, foe, null, 'high')) {
       d.smiteUsed = true;
       opts.extraDmg = (opts.extraDmg || 0) + roll(2, 8);
       this.playAbilityFx(h, 'divineSmite', { at: foe, spell: true });
       log(`💫 ${d.name} Divine Smites!`, 'crit');
       hudDirty = true;
     }
-    if (hasFeature(d, 'tidesOfChaos') && !d.tidesUsed) {
+    if (hasFeature(d, 'tidesOfChaos') && !d.tidesUsed && stable
+        && this._worthSpending(h, foe, null, 'normal')) {
       d.tidesUsed = true;
       opts.atkBonus = (opts.atkBonus || 0) + 5;
       this.playAbilityFx(h, 'tidesOfChaos', { at: h, spell: true });
@@ -671,7 +747,9 @@ export const combatMethods = {
     }
   },
 
-  /* Idle AI: pick the best known spell for this moment. */
+  /* Idle AI: pick the best known spell for this moment.
+   *   Now conservative — "any" spells gate behind combat time + threat,
+   *   elite/boss spells check threat, and nearly-dead targets are skipped. */
   tryCastKnownSpell(h, foe, alive) {
     const known = h.data.knownSpells || [];
     if (!known.length) return false;
@@ -682,8 +760,16 @@ export const combatMethods = {
       if (!sp || !this.canUseSpellRecharge(h, sp)) continue;
       const ai = sp.ai || { when: 'any', priority: 1 };
       let ok = false;
-      if (ai.when === 'any') ok = true;
-      else if (ai.when === 'eliteOrBoss') ok = foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15;
+      if (ai.when === 'any') {
+        // "Any" spells (Bless, Chaos Bolt) are always eligible — but we gate
+        // them behind combat stability + threat so they aren't wasted on trash.
+        ok = this._combatStable(ai.minCombatSec || 2.0)
+          && this._worthSpending(h, foe, alive, 'low');
+      }
+      else if (ai.when === 'eliteOrBoss') {
+        ok = (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)
+          && this._worthSpending(h, foe, alive, 'normal');
+      }
       else if (ai.when === 'selfHurt') ok = h.data.hp / h.data.maxHp < (ai.hpFrac || 0.4);
       else if (ai.when === 'hurtAlly') {
         ok = alive.some(a => a.data.hp / a.data.maxHp < (ai.hpFrac || 0.5));
@@ -694,6 +780,12 @@ export const combatMethods = {
       if (ok && ai.priority > bestP) { bestP = ai.priority; best = key; }
     }
     if (!best) return false;
+    // Final guard: don't cast at a foe that's one hit from death (unless it's a defensive/urgent spell)
+    const sp = SPELLS[best];
+    if (sp && sp.ai && sp.ai.when !== 'selfHurt' && sp.ai.when !== 'hurtAlly'
+        && foe.data.hp / Math.max(foe.data.maxHp, 1) < 0.25 && foe.data.hp < 8) {
+      return false;
+    }
     return this.resolveSpell(h, best, foe, alive);
   },
 
@@ -879,10 +971,12 @@ export const combatMethods = {
     if (key === 'fireball' && d.slots > 0) {
       return this.resolveSpell(h, 'fireball', foe, alive);
     }
-    if (key === 'magicMissile' && d.slots > 0 && (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)) {
+    if (key === 'magicMissile' && d.slots > 0
+        && (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)
+        && this._worthSpending(h, foe, alive, 'normal')) {
       return this.resolveSpell(h, 'magicMissile', foe, alive);
     }
-    if (key === 'dragonBreath' && !d.abilityUsed.short) {
+    if (key === 'dragonBreath' && !d.abilityUsed.short && this._combatStable(1.0)) {
       const foes = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 3);
       if (foes.length >= 2) {
         d.abilityUsed.short = true;
@@ -893,15 +987,20 @@ export const combatMethods = {
         return true;
       }
     }
-    if (key === 'wildSurge' && !d.abilityUsed.short) {
-      d.abilityUsed.short = true;
-      this.playAbilityFx(h, 'wildSurge', { at: h, alsoAt: alive, spell: true });
-      log(`🌈 ${d.name}'s Wild Magic heals the party!`, 'heal');
-      for (const a of alive) this.healHero(a, roll(1, 10, d.level));
-      this.refreshAbilityHud();
-      return true;
+    if (key === 'wildSurge' && !d.abilityUsed.short && this._combatStable(1.5)) {
+      // Only surge when someone is actually hurt — don't waste the heal
+      const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.8);
+      if (anyHurt) {
+        d.abilityUsed.short = true;
+        this.playAbilityFx(h, 'wildSurge', { at: h, alsoAt: alive, spell: true });
+        log(`🌈 ${d.name}'s Wild Magic heals the party!`, 'heal');
+        for (const a of alive) this.healHero(a, roll(1, 10, d.level));
+        this.refreshAbilityHud();
+        return true;
+      }
     }
-    if (key === 'cuttingWords' && !d.abilityUsed.short && (foe.isBoss || this.monsterEliteRoom(foe))) {
+    if (key === 'cuttingWords' && !d.abilityUsed.short && (foe.isBoss || this.monsterEliteRoom(foe))
+        && this._worthSpending(h, foe, alive, 'high')) {
       d.abilityUsed.short = true;
       foe.cutWordsUntil = this.elapsed + 6;
       foe.data._acPenalty = 4;
@@ -910,7 +1009,8 @@ export const combatMethods = {
       this.refreshAbilityHud();
       return true;
     }
-    if (key === 'fiendishBlessing' && !d.abilityUsed.short) {
+    if (key === 'fiendishBlessing' && !d.abilityUsed.short
+        && this._combatStable(1.8) && d.hp < d.maxHp * 0.8) {
       d.abilityUsed.short = true;
       h.tempHp = (h.tempHp || 0) + 10;
       this.playAbilityFx(h, 'fiendishBlessing', { at: h, spell: true });
@@ -918,7 +1018,7 @@ export const combatMethods = {
       this.refreshAbilityHud();
       return true;
     }
-    if (key === 'feyPresence' && !d.abilityUsed.short) {
+    if (key === 'feyPresence' && !d.abilityUsed.short && this._combatStable(1.2)) {
       const foes = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 3);
       if (foes.length) {
         d.abilityUsed.short = true;
@@ -929,7 +1029,8 @@ export const combatMethods = {
         return true;
       }
     }
-    if (key === 'wildShape' && !d.abilityUsed.short) {
+    if (key === 'wildShape' && !d.abilityUsed.short
+        && d.hp < d.maxHp * 0.55) {
       d.abilityUsed.short = true;
       h.wildShapeUntil = this.elapsed + 8;
       h.tempHp = (h.tempHp || 0) + 20;
