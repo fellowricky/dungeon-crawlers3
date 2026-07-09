@@ -1,122 +1,7044 @@
 [
-  {"id":"giant-rat","name":"Giant Rat","cr":0.125,"tier":1,"ac":12,"hp":[2,6],"atk":4,"dmg":[1,4,2],"xp":25,"color":8751722,"scale":0.6,"speed":3.4,"sprite":"animals/rat.png","type":"beast","size":"small","tags":["vermin"],"threat":10},
-  {"id":"grey-rat","name":"Grey Rat","cr":0.125,"tier":1,"ac":11,"hp":[1,6],"atk":3,"dmg":[1,4,1],"xp":15,"color":8026746,"scale":0.55,"speed":3.6,"sprite":"animals/grey_rat.png","type":"beast","size":"tiny","tags":["vermin"],"threat":8},
-  {"id":"giant-bat","name":"Giant Bat","cr":0.25,"tier":1,"ac":13,"hp":[1,8],"atk":4,"dmg":[1,4,1],"xp":20,"color":5925434,"scale":0.7,"speed":3.8,"sprite":"animals/giant_bat.png","type":"beast","size":"medium","tags":["vermin"],"threat":10},
-  {"id":"goblin","name":"Goblin","cr":0.25,"tier":1,"ac":15,"hp":[2,6],"atk":4,"dmg":[1,6,2],"xp":50,"color":6986314,"scale":0.75,"speed":3.2,"sprite":"goblin.png","type":"humanoid","size":"small","tags":["goblinoid"],"threat":12},
-  {"id":"skeleton","name":"Skeleton","cr":0.25,"tier":1,"ac":13,"hp":[2,8],"atk":4,"dmg":[1,6,2],"xp":50,"color":13294408,"scale":0.85,"speed":3.0,"sprite":"undead/skeletons/skeleton_humanoid_large.png","type":"undead","size":"medium","tags":["undead"],"threat":11},
-  {"id":"zombie","name":"Zombie","cr":0.25,"tier":1,"ac":8,"hp":[3,8],"atk":3,"dmg":[1,6,1],"xp":50,"color":5937754,"scale":0.9,"speed":2.0,"sprite":"undead/zombies/zombie_small.png","type":"undead","size":"medium","tags":["undead"],"threat":10},
-  {"id":"giant-centipede","name":"Giant Centipede","cr":0.25,"tier":1,"ac":12,"hp":[2,6],"atk":4,"dmg":[1,4,2],"xp":30,"color":11156026,"scale":0.7,"speed":3.2,"sprite":"animals/giant_centipede.png","type":"beast","size":"small","tags":["vermin"],"threat":10},
-  {"id":"adder","name":"Adder","cr":0.25,"tier":1,"ac":13,"hp":[1,8],"atk":4,"dmg":[1,4,1],"xp":25,"color":3836506,"scale":0.6,"speed":3.5,"sprite":"animals/adder.png","type":"beast","size":"tiny","tags":["vermin"],"threat":9},
-  {"id":"kobold","name":"Kobold","cr":0.125,"tier":1,"ac":12,"hp":[2,6,2],"atk":4,"dmg":[1,4,2],"xp":25,"color":10526880,"scale":0.65,"speed":3.2,"sprite":"kobold.png","type":"humanoid","size":"small","tags":["draconic","goblinoid"],"threat":10},
-  {"id":"stirge","name":"Stirge","cr":0.125,"tier":1,"ac":14,"hp":[1,4],"atk":5,"dmg":[1,4,3],"xp":25,"color":7874580,"scale":0.45,"speed":4.0,"sprite":"animals/bat.png","type":"beast","size":"tiny","tags":["vermin"],"threat":9},
-  {"id":"giant-frog","name":"Giant Frog","cr":0.25,"tier":1,"ac":11,"hp":[2,8],"atk":3,"dmg":[1,6,1],"xp":25,"color":3386670,"scale":0.7,"speed":3.2,"sprite":"animals/giant_frog.png","type":"beast","size":"medium","tags":["vermin"],"threat":10},
-  {"id":"giant-weasel","name":"Giant Weasel","cr":0.125,"tier":1,"ac":13,"hp":[2,6],"atk":5,"dmg":[1,4,3],"xp":25,"color":8876646,"scale":0.55,"speed":3.6,"sprite":"animals/green_rat.png","type":"beast","size":"medium","tags":["vermin"],"threat":10},
-  {"id":"wolf","name":"Wolf","cr":0.25,"tier":1,"ac":13,"hp":[2,8,2],"atk":4,"dmg":[2,4,2],"xp":50,"color":9868950,"scale":0.8,"speed":3.5,"sprite":"animals/wolf.png","type":"beast","size":"medium","tags":["beast"],"threat":12},
-  {"id":"swarm-of-rats","name":"Swarm of Rats","cr":0.25,"tier":1,"ac":10,"hp":[5,8],"atk":2,"dmg":[2,6],"xp":50,"color":8751722,"scale":0.9,"speed":3.0,"sprite":"animals/rat.png","type":"beast","size":"medium","tags":["vermin","swarm"],"threat":13},
-  {"id":"swarm-of-bats","name":"Swarm of Bats","cr":0.25,"tier":1,"ac":12,"hp":[5,8],"atk":4,"dmg":[2,4],"xp":50,"color":5925434,"scale":0.9,"speed":3.4,"sprite":"animals/bat.png","type":"beast","size":"medium","tags":["vermin","swarm"],"threat":13},
-  {"id":"giant-badger","name":"Giant Badger","cr":0.25,"tier":1,"ac":10,"hp":[2,8,4],"atk":3,"dmg":[2,4,1],"xp":50,"color":5395026,"scale":0.75,"speed":3.2,"sprite":"animals/grizzly_bear.png","type":"beast","size":"medium","tags":["beast"],"threat":10},
-  {"id":"giant-owl","name":"Giant Owl","cr":0.25,"tier":1,"ac":12,"hp":[3,10,3],"atk":3,"dmg":[2,6,1],"xp":50,"color":12105912,"scale":0.8,"speed":3.8,"sprite":"animals/bat.png","type":"beast","size":"large","tags":["beast"],"threat":12},
-  {"id":"poisonous-snake","name":"Poisonous Snake","cr":0.125,"tier":1,"ac":13,"hp":[1,4],"atk":5,"dmg":[1,1,2],"xp":25,"color":3386670,"scale":0.4,"speed":3.5,"sprite":"animals/snake.png","type":"beast","size":"tiny","tags":["vermin"],"threat":8},
-  {"id":"giant-poisonous-snake","name":"Giant Poisonous Snake","cr":0.25,"tier":1,"ac":14,"hp":[2,8],"atk":6,"dmg":[1,4,4],"xp":50,"color":3386670,"scale":0.65,"speed":3.5,"sprite":"animals/snake.png","type":"beast","size":"medium","tags":["vermin"],"threat":12},
-  {"id":"giant-wolf-spider","name":"Giant Wolf Spider","cr":0.25,"tier":1,"ac":13,"hp":[2,8],"atk":3,"dmg":[1,6,1],"xp":50,"color":3815994,"scale":0.8,"speed":3.6,"sprite":"animals/wolf_spider.png","type":"beast","size":"medium","tags":["vermin"],"threat":10},
-  {"id":"dretch","name":"Dretch","cr":0.25,"tier":1,"ac":11,"hp":[3,6,6],"atk":5,"dmg":[1,6,3],"xp":50,"color":13369344,"scale":0.9,"speed":2.6,"sprite":"demons/lemure.png","type":"fiend","size":"small","tags":["fiendish"],"threat":14},
-  {"id":"lemure","name":"Lemure","cr":0,"tier":1,"ac":7,"hp":[2,8],"atk":3,"dmg":[1,4],"xp":10,"color":13750737,"scale":0.85,"speed":2.2,"sprite":"undead/ghoul.png","type":"fiend","size":"medium","tags":["fiendish"],"threat":8},
-  {"id":"manes","name":"Manes","cr":0.125,"tier":1,"ac":9,"hp":[2,8],"atk":2,"dmg":[1,6,1],"xp":25,"color":13369344,"scale":0.85,"speed":2.4,"sprite":"undead/manes.png","type":"fiend","size":"small","tags":["fiendish"],"threat":9},
-
-  {"id":"orc","name":"Orc","cr":0.5,"tier":2,"ac":13,"hp":[2,8,6],"atk":5,"dmg":[1,12,3],"xp":100,"color":4878906,"scale":0.95,"speed":3.2,"sprite":"orc.png","type":"humanoid","size":"medium","tags":["orc"],"threat":19},
-  {"id":"gnoll","name":"Gnoll","cr":0.5,"tier":2,"ac":14,"hp":[3,8,3],"atk":4,"dmg":[1,8,2],"xp":100,"color":9076298,"scale":0.95,"speed":3.1,"sprite":"gnoll.png","type":"humanoid","size":"medium","tags":["orc"],"threat":20},
-  {"id":"hobgoblin","name":"Hobgoblin","cr":0.5,"tier":2,"ac":18,"hp":[2,8,2],"atk":3,"dmg":[1,8,1],"xp":100,"color":10111546,"scale":0.9,"speed":3.0,"sprite":"hobgoblin.png","type":"humanoid","size":"medium","tags":["goblinoid"],"threat":19},
-  {"id":"giant-spider","name":"Giant Spider","cr":1,"tier":2,"ac":14,"hp":[4,8,4],"atk":5,"dmg":[1,8,3],"xp":200,"color":3815994,"scale":0.9,"speed":3.6,"sprite":"animals/spider.png","type":"beast","size":"large","tags":["vermin"],"threat":25},
-  {"id":"wolf-spider","name":"Wolf Spider","cr":1,"tier":2,"ac":14,"hp":[5,8,5],"atk":5,"dmg":[1,8,4],"xp":200,"color":5000268,"scale":0.95,"speed":3.7,"sprite":"animals/wolf_spider.png","type":"beast","size":"medium","tags":["vermin"],"threat":24},
-  {"id":"ghoul","name":"Ghoul","cr":1,"tier":2,"ac":12,"hp":[5,8],"atk":4,"dmg":[2,6,2],"xp":200,"color":8039018,"scale":0.9,"speed":3.2,"sprite":"undead/ghoul.png","type":"undead","size":"medium","tags":["undead"],"threat":21},
-  {"id":"mummy","name":"Mummy","cr":0.5,"tier":2,"ac":11,"hp":[4,8,8],"atk":4,"dmg":[1,10,2],"xp":150,"color":14606014,"scale":0.9,"speed":2.4,"sprite":"undead/mummy.png","type":"undead","size":"medium","tags":["undead"],"threat":22},
-  {"id":"warg","name":"Warg","cr":0.5,"tier":2,"ac":13,"hp":[4,8,8],"atk":4,"dmg":[2,6,1],"xp":150,"color":5921370,"scale":0.9,"speed":3.6,"sprite":"animals/warg.png","type":"monstrosity","size":"large","tags":["beast"],"threat":22},
-  {"id":"crocodile","name":"Crocodile","cr":0.5,"tier":2,"ac":15,"hp":[3,10,9],"atk":4,"dmg":[1,10,2],"xp":150,"color":3824986,"scale":1.0,"speed":2.8,"sprite":"animals/crocodile.png","type":"beast","size":"large","tags":["beast"],"threat":21},
-  {"id":"dire-wolf","name":"Dire Wolf","cr":1,"tier":2,"ac":14,"hp":[5,10,10],"atk":5,"dmg":[2,6,3],"xp":200,"color":5395026,"scale":1.05,"speed":3.6,"sprite":"animals/wolf.png","type":"beast","size":"large","tags":["beast"],"threat":26},
-  {"id":"shadow","name":"Shadow","cr":0.5,"tier":2,"ac":12,"hp":[3,8,6],"atk":4,"dmg":[2,6,2],"xp":100,"color":1973790,"scale":0.9,"speed":3.4,"sprite":"undead/shadow.png","type":"undead","size":"medium","tags":["undead"],"threat":19},
-  {"id":"harpy","name":"Harpy","cr":1,"tier":2,"ac":11,"hp":[5,8,5],"atk":3,"dmg":[2,4,1],"xp":200,"color":8876646,"scale":0.85,"speed":4.2,"sprite":"harpy.png","type":"monstrosity","size":"medium","tags":["beast"],"threat":21},
-  {"id":"imp","name":"Imp","cr":1,"tier":2,"ac":13,"hp":[3,4,6],"atk":5,"dmg":[1,4,3],"xp":200,"color":13369344,"scale":0.55,"speed":3.6,"sprite":"demons/imp.png","type":"fiend","size":"tiny","tags":["fiendish"],"threat":18},
-  {"id":"quasit","name":"Quasit","cr":1,"tier":2,"ac":13,"hp":[2,4,3],"atk":4,"dmg":[1,4,3],"xp":200,"color":5937754,"scale":0.55,"speed":3.6,"sprite":"quasit.png","type":"fiend","size":"tiny","tags":["fiendish"],"threat":17},
-  {"id":"dryad","name":"Dryad","cr":1,"tier":2,"ac":11,"hp":[5,8],"atk":6,"dmg":[1,8,4],"xp":200,"color":3386670,"scale":0.9,"speed":3.2,"sprite":"dryad.png","type":"fey","size":"medium","tags":["fey"],"threat":21},
-  {"id":"satyr","name":"Satyr","cr":0.5,"tier":2,"ac":14,"hp":[5,8,3],"atk":3,"dmg":[1,6,1],"xp":100,"color":8876646,"scale":0.95,"speed":3.4,"sprite":"satyr.png","type":"fey","size":"medium","tags":["fey"],"threat":20},
-  {"id":"centaur","name":"Centaur","cr":2,"tier":2,"ac":12,"hp":[6,8,12],"atk":6,"dmg":[1,10,4],"xp":450,"color":8876646,"scale":1.1,"speed":3.8,"sprite":"centaur.png","type":"monstrosity","size":"large","tags":["beast"],"threat":28},
-  {"id":"thug","name":"Thug","cr":0.5,"tier":2,"ac":11,"hp":[5,8,5],"atk":4,"dmg":[1,6,2],"xp":100,"color":9076298,"scale":0.9,"speed":3.0,"sprite":"human.png","type":"humanoid","size":"medium","tags":["humanoid"],"threat":19},
-  {"id":"scout","name":"Scout","cr":0.5,"tier":2,"ac":13,"hp":[3,8,3],"atk":4,"dmg":[1,8,2],"xp":100,"color":9076298,"scale":0.9,"speed":3.2,"sprite":"human.png","type":"humanoid","size":"medium","tags":["humanoid"],"threat":18},
-  {"id":"cockatrice","name":"Cockatrice","cr":0.5,"tier":2,"ac":11,"hp":[3,6,6],"atk":3,"dmg":[1,4,1],"xp":100,"color":13369344,"scale":0.7,"speed":3.0,"sprite":"animals/gila_monster.png","type":"monstrosity","size":"small","tags":["beast"],"threat":16},
-  {"id":"magmin","name":"Magmin","cr":0.5,"tier":2,"ac":14,"hp":[2,6,2],"atk":4,"dmg":[2,6],"xp":100,"color":16742400,"scale":0.65,"speed":3.0,"sprite":"nonliving/fire_elemental.png","type":"elemental","size":"small","tags":["elemental"],"threat":14},
-  {"id":"deep-gnome","name":"Deep Gnome","cr":0.5,"tier":2,"ac":15,"hp":[3,6,6],"atk":4,"dmg":[1,6,2],"xp":100,"color":9868950,"scale":0.7,"speed":2.8,"sprite":"gnome.png","type":"humanoid","size":"small","tags":["humanoid"],"threat":17},
-  {"id":"rust-monster","name":"Rust Monster","cr":0.5,"tier":2,"ac":14,"hp":[3,8,6],"atk":3,"dmg":[1,8,1],"xp":100,"color":13220000,"scale":0.85,"speed":3.0,"sprite":"animals/gila_monster.png","type":"monstrosity","size":"medium","tags":["beast"],"threat":17},
-  {"id":"darkmantle","name":"Darkmantle","cr":0.5,"tier":2,"ac":11,"hp":[4,6,4],"atk":5,"dmg":[1,6,3],"xp":100,"color":3947580,"scale":0.75,"speed":2.4,"sprite":"animals/bat.png","type":"monstrosity","size":"small","tags":["aberrant"],"threat":18},
-
-  {"id":"bugbear","name":"Bugbear","cr":1,"tier":3,"ac":16,"hp":[5,8,5],"atk":4,"dmg":[2,8,2],"xp":200,"color":9076298,"scale":1.1,"speed":3.0,"sprite":"orc_warrior.png","type":"humanoid","size":"medium","tags":["goblinoid"],"threat":23},
-  {"id":"werewolf","name":"Werewolf","cr":3,"tier":3,"ac":12,"hp":[9,8,18],"atk":4,"dmg":[2,6,2],"xp":700,"color":6974058,"scale":1.05,"speed":3.6,"sprite":"shapeshifter.png","type":"humanoid","size":"medium","tags":["beast"],"threat":37},
-  {"id":"ogre","name":"Ogre","cr":2,"tier":3,"ac":11,"hp":[7,10,21],"atk":6,"dmg":[2,8,4],"xp":450,"color":10120282,"scale":1.35,"speed":2.6,"sprite":"ogre.png","type":"giant","size":"large","tags":["giantkind"],"threat":36},
-  {"id":"minotaur","name":"Minotaur","cr":3,"tier":3,"ac":14,"hp":[9,10,27],"atk":6,"dmg":[2,12,4],"xp":700,"color":8021366,"scale":1.2,"speed":3.2,"sprite":"minotaur.png","type":"monstrosity","size":"large","tags":["giantkind"],"threat":42},
-  {"id":"deep-troll","name":"Deep Troll","cr":3,"tier":3,"ac":14,"hp":[8,10,32],"atk":6,"dmg":[2,6,4],"xp":700,"color":3832394,"scale":1.35,"speed":2.8,"sprite":"deep_troll.png","type":"giant","size":"large","tags":["giantkind"],"threat":40},
-  {"id":"manticore","name":"Manticore","cr":3,"tier":3,"ac":13,"hp":[6,10,12],"atk":5,"dmg":[2,4,2],"xp":450,"color":11162954,"scale":1.25,"speed":3.3,"sprite":"manticore.png","type":"monstrosity","size":"large","tags":["beast"],"threat":32},
-  {"id":"polar-bear","name":"Polar Bear","cr":2,"tier":3,"ac":12,"hp":[5,10,20],"atk":5,"dmg":[2,6,2],"xp":400,"color":16777215,"scale":1.2,"speed":3.2,"sprite":"animals/polar_bear.png","type":"beast","size":"large","tags":["beast"],"threat":31},
-  {"id":"wight","name":"Wight","cr":3,"tier":3,"ac":14,"hp":[6,8,6],"atk":4,"dmg":[1,8,2],"xp":400,"color":9089930,"scale":1.0,"speed":2.8,"sprite":"undead/wight.png","type":"undead","size":"medium","tags":["undead"],"threat":24},
-  {"id":"vampire","name":"Vampire","cr":3,"tier":3,"ac":15,"hp":[8,8,8],"atk":6,"dmg":[1,10,3],"xp":600,"color":11185023,"scale":1.05,"speed":3.4,"sprite":"undead/vampire.png","type":"undead","size":"medium","tags":["undead"],"threat":32},
-  {"id":"owlbear","name":"Owlbear","cr":3,"tier":3,"ac":13,"hp":[7,10,21],"atk":7,"dmg":[2,8,5],"xp":700,"color":8876646,"scale":1.3,"speed":3.2,"sprite":"animals/grizzly_bear.png","type":"monstrosity","size":"large","tags":["beast"],"threat":38},
-  {"id":"ghast","name":"Ghast","cr":2,"tier":3,"ac":13,"hp":[8,8],"atk":3,"dmg":[2,6,3],"xp":450,"color":9089930,"scale":0.95,"speed":3.2,"sprite":"undead/ghoul.png","type":"undead","size":"medium","tags":["undead"],"threat":25},
-  {"id":"mimic","name":"Mimic","cr":2,"tier":3,"ac":12,"hp":[9,8,9],"atk":5,"dmg":[1,8,3],"xp":450,"color":13220000,"scale":1.0,"speed":2.0,"sprite":"animals/giant_slug.png","type":"monstrosity","size":"medium","tags":["aberrant"],"threat":28},
-  {"id":"gargoyle","name":"Gargoyle","cr":2,"tier":3,"ac":15,"hp":[7,8,21],"atk":4,"dmg":[1,6,2],"xp":450,"color":11184810,"scale":0.9,"speed":3.2,"sprite":"nonliving/gargoyle.png","type":"elemental","size":"medium","tags":["elemental"],"threat":26},
-  {"id":"ankheg","name":"Ankheg","cr":2,"tier":3,"ac":14,"hp":[6,10,6],"atk":5,"dmg":[2,6,3],"xp":450,"color":8876646,"scale":1.2,"speed":3.0,"sprite":"animals/boulder_beetle.png","type":"monstrosity","size":"large","tags":["vermin"],"threat":28},
-  {"id":"gelatinous-cube","name":"Gelatinous Cube","cr":2,"tier":3,"ac":6,"hp":[8,10,32],"atk":4,"dmg":[3,6],"xp":450,"color":8978176,"scale":1.6,"speed":2.0,"sprite":"amorphous/jelly.png","type":"ooze","size":"large","tags":["fungal"],"threat":32},
-  {"id":"ochre-jelly","name":"Ochre Jelly","cr":2,"tier":3,"ac":8,"hp":[6,10,18],"atk":4,"dmg":[2,6,2],"xp":450,"color":13816530,"scale":1.3,"speed":2.2,"sprite":"amorphous/ooze.png","type":"ooze","size":"large","tags":["fungal"],"threat":27},
-  {"id":"ettercap","name":"Ettercap","cr":2,"tier":3,"ac":13,"hp":[6,8,6],"atk":4,"dmg":[1,8,2],"xp":450,"color":8026746,"scale":0.95,"speed":3.2,"sprite":"animals/spider.png","type":"monstrosity","size":"medium","tags":["vermin"],"threat":23},
-  {"id":"giant-constrictor-snake","name":"Giant Constrictor Snake","cr":2,"tier":3,"ac":12,"hp":[8,12,8],"atk":6,"dmg":[2,8,4],"xp":450,"color":5937754,"scale":1.2,"speed":3.2,"sprite":"animals/anaconda.png","type":"beast","size":"huge","tags":["vermin"],"threat":30},
-  {"id":"giant-scorpion","name":"Giant Scorpion","cr":3,"tier":3,"ac":15,"hp":[7,10,14],"atk":4,"dmg":[1,10,2],"xp":700,"color":13220000,"scale":1.0,"speed":3.2,"sprite":"animals/emperor_scorpion.png","type":"beast","size":"large","tags":["vermin"],"threat":28},
-  {"id":"phase-spider","name":"Phase Spider","cr":3,"tier":3,"ac":13,"hp":[5,10,10],"atk":5,"dmg":[1,10,3],"xp":700,"color":5911350,"scale":1.0,"speed":3.6,"sprite":"animals/spider.png","type":"monstrosity","size":"large","tags":["vermin"],"threat":26},
-  {"id":"green-hag","name":"Green Hag","cr":3,"tier":3,"ac":17,"hp":[6,8,12],"atk":6,"dmg":[2,8,4],"xp":700,"color":3442380,"scale":0.95,"speed":3.0,"sprite":"dryad.png","type":"fey","size":"medium","tags":["fey"],"threat":28},
-  {"id":"hell-hound","name":"Hell Hound","cr":3,"tier":3,"ac":15,"hp":[7,8,14],"atk":5,"dmg":[2,6,3],"xp":700,"color":13369344,"scale":0.95,"speed":3.6,"sprite":"animals/hell_hound.png","type":"fiend","size":"medium","tags":["fiendish"],"threat":28},
-  {"id":"bearded-devil","name":"Bearded Devil","cr":3,"tier":3,"ac":13,"hp":[8,8,16],"atk":5,"dmg":[1,8,3],"xp":700,"color":13369344,"scale":1.05,"speed":3.0,"sprite":"demons/red_devil.png","type":"fiend","size":"medium","tags":["fiendish"],"threat":30},
-  {"id":"wraith","name":"Wraith","cr":3,"tier":3,"ac":13,"hp":[9,8,18],"atk":6,"dmg":[1,8,3],"xp":700,"color":8553090,"scale":1.0,"speed":4.2,"sprite":"undead/wraith.png","type":"undead","size":"medium","tags":["undead"],"threat":30},
-  {"id":"doppelganger","name":"Doppelganger","cr":3,"tier":3,"ac":14,"hp":[8,8,8],"atk":6,"dmg":[1,6,4],"xp":700,"color":11842740,"scale":0.9,"speed":3.2,"sprite":"shapeshifter.png","type":"monstrosity","size":"medium","tags":["aberrant"],"threat":26},
-  {"id":"basilisk","name":"Basilisk","cr":3,"tier":3,"ac":15,"hp":[8,8,16],"atk":5,"dmg":[2,6,3],"xp":700,"color":5937754,"scale":1.1,"speed":2.8,"sprite":"animals/basilisk.png","type":"monstrosity","size":"medium","tags":["beast"],"threat":30},
-
-  {"id":"troll","name":"Troll","cr":5,"tier":4,"ac":15,"hp":[8,10,40],"atk":7,"dmg":[2,6,4],"xp":1800,"color":4887146,"scale":1.6,"speed":3.0,"sprite":"troll.png","type":"giant","size":"large","tags":["giantkind"],"threat":52},
-  {"id":"bulette","name":"Bulette","cr":5,"tier":4,"ac":17,"hp":[9,10,45],"atk":7,"dmg":[4,12,4],"xp":1800,"color":8026746,"scale":1.7,"speed":3.2,"sprite":"animals/boulder_beetle.png","type":"monstrosity","size":"large","tags":["beast"],"threat":58},
-  {"id":"chimera","name":"Chimera","cr":6,"tier":4,"ac":14,"hp":[12,10,24],"atk":7,"dmg":[2,6,4],"xp":2300,"color":13369344,"scale":1.4,"speed":3.6,"sprite":"manticore.png","type":"monstrosity","size":"large","tags":["beast"],"threat":55},
-  {"id":"medusa","name":"Medusa","cr":6,"tier":4,"ac":15,"hp":[17,8,17],"atk":5,"dmg":[1,6,2],"xp":2300,"color":5937754,"scale":1.0,"speed":3.0,"sprite":"naga_warrior.png","type":"monstrosity","size":"medium","tags":["aberrant"],"threat":42},
-  {"id":"hydra","name":"Hydra","cr":8,"tier":4,"ac":15,"hp":[15,12,30],"atk":8,"dmg":[2,10,4],"xp":3900,"color":5937754,"scale":1.8,"speed":3.0,"sprite":"hydrataur.png","type":"monstrosity","size":"huge","tags":["beast"],"threat":68},
-  {"id":"stone-giant","name":"Stone Giant","cr":7,"tier":4,"ac":17,"hp":[11,12,44],"atk":9,"dmg":[3,8,6],"xp":2900,"color":9089930,"scale":1.9,"speed":2.8,"sprite":"stone_giant.png","type":"giant","size":"huge","tags":["giantkind"],"threat":75},
-  {"id":"hill-giant","name":"Hill Giant","cr":5,"tier":4,"ac":13,"hp":[10,12,40],"atk":8,"dmg":[3,8,5],"xp":1800,"color":8876646,"scale":1.7,"speed":2.6,"sprite":"hill_giant.png","type":"giant","size":"huge","tags":["giantkind"],"threat":60},
-  {"id":"air-elemental","name":"Air Elemental","cr":5,"tier":4,"ac":15,"hp":[12,10,12],"atk":8,"dmg":[2,8,5],"xp":1800,"color":12105912,"scale":1.2,"speed":4.5,"sprite":"nonliving/air_elemental.png","type":"elemental","size":"large","tags":["elemental"],"threat":48},
-  {"id":"earth-elemental","name":"Earth Elemental","cr":5,"tier":4,"ac":17,"hp":[12,10,24],"atk":8,"dmg":[2,8,5],"xp":1800,"color":13220000,"scale":1.5,"speed":2.4,"sprite":"nonliving/earth_elemental.png","type":"elemental","size":"large","tags":["elemental"],"threat":52},
-  {"id":"fire-elemental","name":"Fire Elemental","cr":5,"tier":4,"ac":13,"hp":[12,10,24],"atk":6,"dmg":[2,6,3],"xp":1800,"color":16742400,"scale":1.3,"speed":3.6,"sprite":"nonliving/fire_elemental.png","type":"elemental","size":"large","tags":["elemental"],"threat":44},
-  {"id":"water-elemental","name":"Water Elemental","cr":5,"tier":4,"ac":14,"hp":[12,10,24],"atk":7,"dmg":[2,8,4],"xp":1800,"color":4244735,"scale":1.4,"speed":3.4,"sprite":"nonliving/water_elemental.png","type":"elemental","size":"large","tags":["elemental"],"threat":48},
-  {"id":"salamander","name":"Salamander","cr":5,"tier":4,"ac":15,"hp":[12,10,24],"atk":7,"dmg":[2,6,3],"xp":1800,"color":16742400,"scale":1.2,"speed":3.0,"sprite":"salamander.png","type":"elemental","size":"large","tags":["elemental"],"threat":42},
-  {"id":"flesh-golem","name":"Flesh Golem","cr":5,"tier":4,"ac":9,"hp":[11,8,44],"atk":7,"dmg":[2,8,4],"xp":1800,"color":9089930,"scale":1.5,"speed":2.4,"sprite":"nonliving/flesh_golem.png","type":"construct","size":"medium","tags":["construct"],"threat":52},
-  {"id":"vrock","name":"Vrock","cr":6,"tier":4,"ac":15,"hp":[11,10,22],"atk":6,"dmg":[2,6,3],"xp":2300,"color":13369344,"scale":1.3,"speed":3.6,"sprite":"demons/fiend.png","type":"fiend","size":"large","tags":["fiendish"],"threat":45},
-  {"id":"barbed-devil","name":"Barbed Devil","cr":5,"tier":4,"ac":15,"hp":[13,8,26],"atk":6,"dmg":[1,8,4],"xp":1800,"color":13369344,"scale":1.15,"speed":3.2,"sprite":"demons/iron_devil.png","type":"fiend","size":"medium","tags":["fiendish"],"threat":44},
-  {"id":"young-black-dragon","name":"Young Black Dragon","cr":7,"tier":4,"ac":18,"hp":[15,10,30],"atk":7,"dmg":[2,10,4],"xp":2900,"color":1973790,"scale":1.7,"speed":3.6,"sprite":"dragons/mottled_dragon.png","type":"dragon","size":"large","tags":["draconic"],"threat":62},
-  {"id":"young-white-dragon","name":"Young White Dragon","cr":6,"tier":4,"ac":17,"hp":[14,10,28],"atk":7,"dmg":[2,10,4],"xp":2300,"color":16777215,"scale":1.7,"speed":3.6,"sprite":"dragons/mottled_dragon.png","type":"dragon","size":"large","tags":["draconic"],"threat":58},
-  {"id":"young-green-dragon","name":"Young Green Dragon","cr":8,"tier":4,"ac":18,"hp":[16,10,32],"atk":7,"dmg":[2,10,4],"xp":3900,"color":3386670,"scale":1.7,"speed":3.6,"sprite":"dragons/mottled_dragon.png","type":"dragon","size":"large","tags":["draconic"],"threat":66},
-  {"id":"wyvern","name":"Wyvern","cr":6,"tier":4,"ac":13,"hp":[13,10,13],"atk":7,"dmg":[2,6,4],"xp":2300,"color":8876646,"scale":1.5,"speed":4.2,"sprite":"dragons/dragon.png","type":"dragon","size":"large","tags":["draconic"],"threat":50},
-  {"id":"ghost","name":"Ghost","cr":4,"tier":4,"ac":11,"hp":[10,8],"atk":5,"dmg":[2,6,3],"xp":1100,"color":9211020,"scale":1.0,"speed":4.4,"sprite":"undead/ghost.png","type":"undead","size":"medium","tags":["undead"],"threat":32},
-
-  {"id":"fire-giant","name":"Fire Giant","cr":9,"tier":5,"ac":18,"hp":[13,12,52],"atk":11,"dmg":[6,6,7],"xp":5000,"color":16742400,"scale":1.9,"speed":2.8,"sprite":"fire_giant.png","type":"giant","size":"huge","tags":["giantkind"],"threat":95},
-  {"id":"frost-giant","name":"Frost Giant","cr":8,"tier":5,"ac":15,"hp":[12,12,48],"atk":9,"dmg":[3,12,6],"xp":3900,"color":8454143,"scale":1.9,"speed":2.6,"sprite":"frost_giant.png","type":"giant","size":"huge","tags":["giantkind"],"threat":85},
-  {"id":"cloud-giant","name":"Cloud Giant","cr":9,"tier":5,"ac":14,"hp":[16,12,32],"atk":12,"dmg":[3,10,8],"xp":5000,"color":12105912,"scale":2.0,"speed":2.6,"sprite":"hill_giant.png","type":"giant","size":"huge","tags":["giantkind"],"threat":95},
-  {"id":"behir","name":"Behir","cr":11,"tier":5,"ac":17,"hp":[16,12,48],"atk":10,"dmg":[3,10,6],"xp":7200,"color":4244735,"scale":2.0,"speed":3.6,"sprite":"dragons/dragon.png","type":"monstrosity","size":"huge","tags":["draconic"],"threat":105},
-  {"id":"remorhaz","name":"Remorhaz","cr":11,"tier":5,"ac":17,"hp":[17,12,51],"atk":11,"dmg":[6,10,7],"xp":7200,"color":13369344,"scale":1.9,"speed":3.2,"sprite":"animals/anaconda.png","type":"monstrosity","size":"huge","tags":["beast"],"threat":108},
-  {"id":"adult-white-dragon","name":"Adult White Dragon","cr":13,"tier":5,"ac":18,"hp":[18,12,72],"atk":11,"dmg":[2,10,6],"xp":10000,"color":16777215,"scale":2.1,"speed":3.6,"sprite":"dragons/mottled_dragon.png","type":"dragon","size":"huge","tags":["draconic"],"threat":120},
-  {"id":"hezrou","name":"Hezrou","cr":8,"tier":5,"ac":16,"hp":[13,10,39],"atk":7,"dmg":[1,8,4],"xp":3900,"color":13369344,"scale":1.5,"speed":2.8,"sprite":"demons/fiend.png","type":"fiend","size":"large","tags":["fiendish"],"threat":58},
-  {"id":"glabrezu","name":"Glabrezu","cr":9,"tier":5,"ac":17,"hp":[15,10,45],"atk":9,"dmg":[2,10,5],"xp":5000,"color":13369344,"scale":1.7,"speed":3.2,"sprite":"demons/fiend.png","type":"fiend","size":"large","tags":["fiendish"],"threat":75},
-  {"id":"young-red-dragon","name":"Young Red Dragon","cr":10,"tier":5,"ac":18,"hp":[17,10,51],"atk":10,"dmg":[2,10,6],"xp":5900,"color":13369344,"scale":1.8,"speed":3.6,"sprite":"dragons/dragon.png","type":"dragon","size":"large","tags":["draconic"],"threat":80},
-  {"id":"iron-golem","name":"Iron Golem","cr":16,"tier":5,"ac":20,"hp":[20,10,60],"atk":13,"dmg":[3,8,7],"xp":15000,"color":11184810,"scale":1.8,"speed":2.4,"sprite":"nonliving/iron_golem.png","type":"construct","size":"large","tags":["construct"],"threat":120},
-
-  {"id":"ettin","name":"Ettin","cr":4,"tier":"boss","ac":12,"hp":[10,10,30],"atk":7,"dmg":[2,8,5],"xp":1100,"color":11162954,"scale":1.7,"speed":2.6,"sprite":"ettin.png","type":"giant","size":"large","tags":["giantkind"],"threat":48},
-  {"id":"young-dragon","name":"Young Dragon","cr":6,"tier":"boss","ac":17,"hp":[11,10,33],"atk":7,"dmg":[2,10,4],"xp":1800,"color":11540912,"scale":1.8,"speed":3.2,"sprite":"dragons/dragon.png","type":"dragon","size":"large","tags":["draconic"],"threat":65},
-  {"id":"boss-troll","name":"Troll Brute","cr":5,"tier":"boss","ac":15,"hp":[8,10,40],"atk":7,"dmg":[2,6,4],"xp":1800,"color":4887146,"scale":1.6,"speed":3.0,"sprite":"troll.png","type":"giant","size":"large","tags":["giantkind"],"threat":56},
-  {"id":"stone-giant-lord","name":"Stone Giant Lord","cr":7,"tier":"boss","ac":17,"hp":[11,12,44],"atk":9,"dmg":[3,8,6],"xp":2900,"color":9089930,"scale":1.9,"speed":2.8,"sprite":"stone_giant.png","type":"giant","size":"huge","tags":["giantkind"],"threat":75},
-  {"id":"adult-red-dragon","name":"Adult Red Dragon","cr":17,"tier":"boss","ac":19,"hp":[19,12,95],"atk":14,"dmg":[2,10,8],"xp":18000,"color":13369344,"scale":2.4,"speed":3.6,"sprite":"dragons/dragon.png","type":"dragon","size":"huge","tags":["draconic"],"threat":155},
-  {"id":"adult-gold-dragon","name":"Adult Gold Dragon","cr":17,"tier":"boss","ac":19,"hp":[19,12,95],"atk":14,"dmg":[2,10,8],"xp":18000,"color":13816530,"scale":2.4,"speed":3.8,"sprite":"golden_dragon.png","type":"dragon","size":"huge","tags":["draconic"],"threat":155},
-  {"id":"lich","name":"Lich","cr":21,"tier":"boss","ac":17,"hp":[18,8,72],"atk":12,"dmg":[3,6,5],"xp":33000,"color":9211020,"scale":1.0,"speed":2.8,"sprite":"undead/lich.png","type":"undead","size":"medium","tags":["undead"],"threat":130},
-  {"id":"kraken","name":"Kraken","cr":23,"tier":"boss","ac":18,"hp":[27,20,27],"atk":17,"dmg":[3,8,10],"xp":50000,"color":5937754,"scale":2.6,"speed":2.6,"sprite":"aquatic/kraken_head.png","type":"monstrosity","size":"gargantuan","tags":["aquatic","aberrant"],"threat":200},
-  {"id":"purple-worm","name":"Purple Worm","cr":15,"tier":"boss","ac":18,"hp":[15,20,90],"atk":9,"dmg":[3,8,9],"xp":13000,"color":11162954,"scale":2.5,"speed":2.8,"sprite":"animals/anaconda.png","type":"monstrosity","size":"gargantuan","tags":["beast"],"threat":140},
-  {"id":"balor","name":"Balor","cr":19,"tier":"boss","ac":19,"hp":[21,12,63],"atk":14,"dmg":[2,8,8],"xp":22000,"color":13369344,"scale":2.0,"speed":3.6,"sprite":"demons/fiend.png","type":"fiend","size":"huge","tags":["fiendish"],"threat":165},
-  {"id":"pit-fiend","name":"Pit Fiend","cr":20,"tier":"boss","ac":19,"hp":[24,10,72],"atk":14,"dmg":[2,8,8],"xp":25000,"color":13369344,"scale":2.1,"speed":3.4,"sprite":"demons/pit_fiend.png","type":"fiend","size":"huge","tags":["fiendish"],"threat":175},
-  {"id":"tarrasque","name":"Tarrasque","cr":30,"tier":"boss","ac":25,"hp":[33,20,110],"atk":19,"dmg":[4,12,10],"xp":155000,"color":13220000,"scale":2.8,"speed":2.6,"sprite":"dragons/dragon.png","type":"monstrosity","size":"gargantuan","tags":["beast"],"threat":280}
+  {
+    "id": "giant-rat",
+    "name": "Giant Rat",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      2,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      2
+    ],
+    "xp": 25,
+    "color": 8751722,
+    "scale": 0.6,
+    "speed": 3.4,
+    "sprite": "animals/rat.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "grey-rat",
+    "name": "Grey Rat",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 11,
+    "hp": [
+      1,
+      6
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 15,
+    "color": 8026746,
+    "scale": 0.55,
+    "speed": 3.6,
+    "sprite": "animals/grey_rat.png",
+    "type": "beast",
+    "size": "tiny",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "giant-bat",
+    "name": "Giant Bat",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 20,
+    "color": 5925434,
+    "scale": 0.7,
+    "speed": 3.8,
+    "sprite": "animals/giant_bat.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "goblin",
+    "name": "Goblin",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 15,
+    "hp": [
+      2,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 50,
+    "color": 6986314,
+    "scale": 0.75,
+    "speed": 3.2,
+    "sprite": "goblin.png",
+    "type": "humanoid",
+    "size": "small",
+    "tags": [
+      "goblinoid"
+    ],
+    "threat": 12
+  },
+  {
+    "id": "skeleton",
+    "name": "Skeleton",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 50,
+    "color": 13294408,
+    "scale": 0.85,
+    "speed": 3,
+    "sprite": "undead/skeletons/skeleton_humanoid_large.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 11
+  },
+  {
+    "id": "zombie",
+    "name": "Zombie",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 8,
+    "hp": [
+      3,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 50,
+    "color": 5937754,
+    "scale": 0.9,
+    "speed": 2,
+    "sprite": "undead/zombies/zombie_small.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "giant-centipede",
+    "name": "Giant Centipede",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      2,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      2
+    ],
+    "xp": 30,
+    "color": 11156026,
+    "scale": 0.7,
+    "speed": 3.2,
+    "sprite": "animals/giant_centipede.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "adder",
+    "name": "Adder",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 25,
+    "color": 3836506,
+    "scale": 0.6,
+    "speed": 3.5,
+    "sprite": "animals/adder.png",
+    "type": "beast",
+    "size": "tiny",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "kobold",
+    "name": "Kobold",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      2,
+      6,
+      2
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      2
+    ],
+    "xp": 25,
+    "color": 10526880,
+    "scale": 0.65,
+    "speed": 3.2,
+    "sprite": "kobold.png",
+    "type": "humanoid",
+    "size": "small",
+    "tags": [
+      "draconic",
+      "goblinoid"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "stirge",
+    "name": "Stirge",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 14,
+    "hp": [
+      1,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      4,
+      3
+    ],
+    "xp": 25,
+    "color": 7874580,
+    "scale": 0.45,
+    "speed": 4,
+    "sprite": "animals/bat.png",
+    "type": "beast",
+    "size": "tiny",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "giant-frog",
+    "name": "Giant Frog",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 11,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 25,
+    "color": 3386670,
+    "scale": 0.7,
+    "speed": 3.2,
+    "sprite": "animals/giant_frog.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "giant-weasel",
+    "name": "Giant Weasel",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      2,
+      6
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      4,
+      3
+    ],
+    "xp": 25,
+    "color": 8876646,
+    "scale": 0.55,
+    "speed": 3.6,
+    "sprite": "animals/green_rat.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "wolf",
+    "name": "Wolf",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      2,
+      8,
+      2
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      4,
+      2
+    ],
+    "xp": 50,
+    "color": 9868950,
+    "scale": 0.8,
+    "speed": 3.5,
+    "sprite": "animals/wolf.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 12
+  },
+  {
+    "id": "swarm-of-rats",
+    "name": "Swarm of Rats",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 10,
+    "hp": [
+      5,
+      8
+    ],
+    "atk": 2,
+    "dmg": [
+      2,
+      6
+    ],
+    "xp": 50,
+    "color": 8751722,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "animals/rat.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin",
+      "swarm"
+    ],
+    "threat": 13
+  },
+  {
+    "id": "swarm-of-bats",
+    "name": "Swarm of Bats",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      5,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      4
+    ],
+    "xp": 50,
+    "color": 5925434,
+    "scale": 0.9,
+    "speed": 3.4,
+    "sprite": "animals/bat.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin",
+      "swarm"
+    ],
+    "threat": 13
+  },
+  {
+    "id": "giant-badger",
+    "name": "Giant Badger",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 10,
+    "hp": [
+      2,
+      8,
+      4
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      4,
+      1
+    ],
+    "xp": 50,
+    "color": 5395026,
+    "scale": 0.75,
+    "speed": 3.2,
+    "sprite": "animals/grizzly_bear.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "giant-owl",
+    "name": "Giant Owl",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      3,
+      10,
+      3
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      1
+    ],
+    "xp": 50,
+    "color": 12105912,
+    "scale": 0.8,
+    "speed": 3.8,
+    "sprite": "animals/bat.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 12
+  },
+  {
+    "id": "poisonous-snake",
+    "name": "Poisonous Snake",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      1,
+      2
+    ],
+    "xp": 25,
+    "color": 3386670,
+    "scale": 0.4,
+    "speed": 3.5,
+    "sprite": "animals/snake.png",
+    "type": "beast",
+    "size": "tiny",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "giant-poisonous-snake",
+    "name": "Giant Poisonous Snake",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 14,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      4,
+      4
+    ],
+    "xp": 50,
+    "color": 3386670,
+    "scale": 0.65,
+    "speed": 3.5,
+    "sprite": "animals/snake.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 12
+  },
+  {
+    "id": "giant-wolf-spider",
+    "name": "Giant Wolf Spider",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 50,
+    "color": 3815994,
+    "scale": 0.8,
+    "speed": 3.6,
+    "sprite": "animals/wolf_spider.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "dretch",
+    "name": "Dretch",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 11,
+    "hp": [
+      3,
+      6,
+      6
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      6,
+      3
+    ],
+    "xp": 50,
+    "color": 13369344,
+    "scale": 0.9,
+    "speed": 2.6,
+    "sprite": "demons/lemure.png",
+    "type": "fiend",
+    "size": "small",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 14
+  },
+  {
+    "id": "lemure",
+    "name": "Lemure",
+    "cr": 0,
+    "tier": 1,
+    "ac": 7,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4
+    ],
+    "xp": 10,
+    "color": 13750737,
+    "scale": 0.85,
+    "speed": 2.2,
+    "sprite": "undead/ghoul.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "manes",
+    "name": "Manes",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 9,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 2,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 25,
+    "color": 13369344,
+    "scale": 0.85,
+    "speed": 2.4,
+    "sprite": "undead/manes.png",
+    "type": "fiend",
+    "size": "small",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "orc",
+    "name": "Orc",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      2,
+      8,
+      6
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      12,
+      3
+    ],
+    "xp": 100,
+    "color": 4878906,
+    "scale": 0.95,
+    "speed": 3.2,
+    "sprite": "orc.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "orc"
+    ],
+    "threat": 19
+  },
+  {
+    "id": "gnoll",
+    "name": "Gnoll",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      3,
+      8,
+      3
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 100,
+    "color": 9076298,
+    "scale": 0.95,
+    "speed": 3.1,
+    "sprite": "gnoll.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "orc"
+    ],
+    "threat": 20
+  },
+  {
+    "id": "hobgoblin",
+    "name": "Hobgoblin",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 18,
+    "hp": [
+      2,
+      8,
+      2
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      8,
+      1
+    ],
+    "xp": 100,
+    "color": 10111546,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "hobgoblin.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "goblinoid"
+    ],
+    "threat": 19
+  },
+  {
+    "id": "giant-spider",
+    "name": "Giant Spider",
+    "cr": 1,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      4,
+      8,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 200,
+    "color": 3815994,
+    "scale": 0.9,
+    "speed": 3.6,
+    "sprite": "animals/spider.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 25
+  },
+  {
+    "id": "wolf-spider",
+    "name": "Wolf Spider",
+    "cr": 1,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      5,
+      8,
+      5
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      4
+    ],
+    "xp": 200,
+    "color": 5000268,
+    "scale": 0.95,
+    "speed": 3.7,
+    "sprite": "animals/wolf_spider.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "ghoul",
+    "name": "Ghoul",
+    "cr": 1,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      5,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 200,
+    "color": 8039018,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "undead/ghoul.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 21
+  },
+  {
+    "id": "mummy",
+    "name": "Mummy",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      4,
+      8,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      10,
+      2
+    ],
+    "xp": 150,
+    "color": 14606014,
+    "scale": 0.9,
+    "speed": 2.4,
+    "sprite": "undead/mummy.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 22
+  },
+  {
+    "id": "warg",
+    "name": "Warg",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      4,
+      8,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6,
+      1
+    ],
+    "xp": 150,
+    "color": 5921370,
+    "scale": 0.9,
+    "speed": 3.6,
+    "sprite": "animals/warg.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 22
+  },
+  {
+    "id": "crocodile",
+    "name": "Crocodile",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 15,
+    "hp": [
+      3,
+      10,
+      9
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      10,
+      2
+    ],
+    "xp": 150,
+    "color": 3824986,
+    "scale": 1,
+    "speed": 2.8,
+    "sprite": "animals/crocodile.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 21
+  },
+  {
+    "id": "dire-wolf",
+    "name": "Dire Wolf",
+    "cr": 1,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      5,
+      10,
+      10
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 200,
+    "color": 5395026,
+    "scale": 1.05,
+    "speed": 3.6,
+    "sprite": "animals/wolf.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "shadow",
+    "name": "Shadow",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      3,
+      8,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 100,
+    "color": 1973790,
+    "scale": 0.9,
+    "speed": 3.4,
+    "sprite": "undead/shadow.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 19
+  },
+  {
+    "id": "harpy",
+    "name": "Harpy",
+    "cr": 1,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      5,
+      8,
+      5
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      4,
+      1
+    ],
+    "xp": 200,
+    "color": 8876646,
+    "scale": 0.85,
+    "speed": 4.2,
+    "sprite": "harpy.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 21
+  },
+  {
+    "id": "imp",
+    "name": "Imp",
+    "cr": 1,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      3,
+      4,
+      6
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      4,
+      3
+    ],
+    "xp": 200,
+    "color": 13369344,
+    "scale": 0.55,
+    "speed": 3.6,
+    "sprite": "demons/imp.png",
+    "type": "fiend",
+    "size": "tiny",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 18
+  },
+  {
+    "id": "quasit",
+    "name": "Quasit",
+    "cr": 1,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      2,
+      4,
+      3
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      3
+    ],
+    "xp": 200,
+    "color": 5937754,
+    "scale": 0.55,
+    "speed": 3.6,
+    "sprite": "quasit.png",
+    "type": "fiend",
+    "size": "tiny",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 17
+  },
+  {
+    "id": "dryad",
+    "name": "Dryad",
+    "cr": 1,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      5,
+      8
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      8,
+      4
+    ],
+    "xp": 200,
+    "color": 3386670,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "dryad.png",
+    "type": "fey",
+    "size": "medium",
+    "tags": [
+      "fey"
+    ],
+    "threat": 21
+  },
+  {
+    "id": "satyr",
+    "name": "Satyr",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      5,
+      8,
+      3
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 100,
+    "color": 8876646,
+    "scale": 0.95,
+    "speed": 3.4,
+    "sprite": "satyr.png",
+    "type": "fey",
+    "size": "medium",
+    "tags": [
+      "fey"
+    ],
+    "threat": 20
+  },
+  {
+    "id": "centaur",
+    "name": "Centaur",
+    "cr": 2,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      6,
+      8,
+      12
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      10,
+      4
+    ],
+    "xp": 450,
+    "color": 8876646,
+    "scale": 1.1,
+    "speed": 3.8,
+    "sprite": "centaur.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "thug",
+    "name": "Thug",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      5,
+      8,
+      5
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 100,
+    "color": 9076298,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "human.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 19
+  },
+  {
+    "id": "scout",
+    "name": "Scout",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      3,
+      8,
+      3
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 100,
+    "color": 9076298,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "human.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 18
+  },
+  {
+    "id": "cockatrice",
+    "name": "Cockatrice",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      3,
+      6,
+      6
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 100,
+    "color": 13369344,
+    "scale": 0.7,
+    "speed": 3,
+    "sprite": "animals/gila_monster.png",
+    "type": "monstrosity",
+    "size": "small",
+    "tags": [
+      "beast"
+    ],
+    "threat": 16
+  },
+  {
+    "id": "magmin",
+    "name": "Magmin",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      2,
+      6,
+      2
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6
+    ],
+    "xp": 100,
+    "color": 16742400,
+    "scale": 0.65,
+    "speed": 3,
+    "sprite": "nonliving/fire_elemental.png",
+    "type": "elemental",
+    "size": "small",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 14
+  },
+  {
+    "id": "deep-gnome",
+    "name": "Deep Gnome",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 15,
+    "hp": [
+      3,
+      6,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 100,
+    "color": 9868950,
+    "scale": 0.7,
+    "speed": 2.8,
+    "sprite": "gnome.png",
+    "type": "humanoid",
+    "size": "small",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 17
+  },
+  {
+    "id": "rust-monster",
+    "name": "Rust Monster",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      3,
+      8,
+      6
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      8,
+      1
+    ],
+    "xp": 100,
+    "color": 13220000,
+    "scale": 0.85,
+    "speed": 3,
+    "sprite": "animals/gila_monster.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 17
+  },
+  {
+    "id": "darkmantle",
+    "name": "Darkmantle",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      4,
+      6,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      6,
+      3
+    ],
+    "xp": 100,
+    "color": 3947580,
+    "scale": 0.75,
+    "speed": 2.4,
+    "sprite": "animals/bat.png",
+    "type": "monstrosity",
+    "size": "small",
+    "tags": [
+      "aberrant"
+    ],
+    "threat": 18
+  },
+  {
+    "id": "bugbear",
+    "name": "Bugbear",
+    "cr": 1,
+    "tier": 3,
+    "ac": 16,
+    "hp": [
+      5,
+      8,
+      5
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      8,
+      2
+    ],
+    "xp": 200,
+    "color": 9076298,
+    "scale": 1.1,
+    "speed": 3,
+    "sprite": "orc_warrior.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "goblinoid"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "werewolf",
+    "name": "Werewolf",
+    "cr": 3,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      9,
+      8,
+      18
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 700,
+    "color": 6974058,
+    "scale": 1.05,
+    "speed": 3.6,
+    "sprite": "shapeshifter.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 37
+  },
+  {
+    "id": "ogre",
+    "name": "Ogre",
+    "cr": 2,
+    "tier": 3,
+    "ac": 11,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 450,
+    "color": 10120282,
+    "scale": 1.35,
+    "speed": 2.6,
+    "sprite": "ogre.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 36
+  },
+  {
+    "id": "minotaur",
+    "name": "Minotaur",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      9,
+      10,
+      27
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      12,
+      4
+    ],
+    "xp": 700,
+    "color": 8021366,
+    "scale": 1.2,
+    "speed": 3.2,
+    "sprite": "minotaur.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 42
+  },
+  {
+    "id": "deep-troll",
+    "name": "Deep Troll",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      8,
+      10,
+      32
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 700,
+    "color": 3832394,
+    "scale": 1.35,
+    "speed": 2.8,
+    "sprite": "deep_troll.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 40
+  },
+  {
+    "id": "manticore",
+    "name": "Manticore",
+    "cr": 3,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      6,
+      10,
+      12
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      4,
+      2
+    ],
+    "xp": 450,
+    "color": 11162954,
+    "scale": 1.25,
+    "speed": 3.3,
+    "sprite": "manticore.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 32
+  },
+  {
+    "id": "polar-bear",
+    "name": "Polar Bear",
+    "cr": 2,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      5,
+      10,
+      20
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 400,
+    "color": 16777215,
+    "scale": 1.2,
+    "speed": 3.2,
+    "sprite": "animals/polar_bear.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 31
+  },
+  {
+    "id": "wight",
+    "name": "Wight",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      6,
+      8,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 400,
+    "color": 9089930,
+    "scale": 1,
+    "speed": 2.8,
+    "sprite": "undead/wight.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "vampire",
+    "name": "Vampire",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      8,
+      8,
+      8
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      10,
+      3
+    ],
+    "xp": 600,
+    "color": 11185023,
+    "scale": 1.05,
+    "speed": 3.4,
+    "sprite": "undead/vampire.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 32
+  },
+  {
+    "id": "owlbear",
+    "name": "Owlbear",
+    "cr": 3,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 700,
+    "color": 8876646,
+    "scale": 1.3,
+    "speed": 3.2,
+    "sprite": "animals/grizzly_bear.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 38
+  },
+  {
+    "id": "ghast",
+    "name": "Ghast",
+    "cr": 2,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      8,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 450,
+    "color": 9089930,
+    "scale": 0.95,
+    "speed": 3.2,
+    "sprite": "undead/ghoul.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 25
+  },
+  {
+    "id": "mimic",
+    "name": "Mimic",
+    "cr": 2,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      9,
+      8,
+      9
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 450,
+    "color": 13220000,
+    "scale": 1,
+    "speed": 2,
+    "sprite": "animals/giant_slug.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "aberrant"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "gargoyle",
+    "name": "Gargoyle",
+    "cr": 2,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      8,
+      21
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 11184810,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "nonliving/gargoyle.png",
+    "type": "elemental",
+    "size": "medium",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "ankheg",
+    "name": "Ankheg",
+    "cr": 2,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      6,
+      10,
+      6
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 450,
+    "color": 8876646,
+    "scale": 1.2,
+    "speed": 3,
+    "sprite": "animals/boulder_beetle.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "gelatinous-cube",
+    "name": "Gelatinous Cube",
+    "cr": 2,
+    "tier": 3,
+    "ac": 6,
+    "hp": [
+      8,
+      10,
+      32
+    ],
+    "atk": 4,
+    "dmg": [
+      3,
+      6
+    ],
+    "xp": 450,
+    "color": 8978176,
+    "scale": 1.6,
+    "speed": 2,
+    "sprite": "amorphous/jelly.png",
+    "type": "ooze",
+    "size": "large",
+    "tags": [
+      "fungal"
+    ],
+    "threat": 32
+  },
+  {
+    "id": "ochre-jelly",
+    "name": "Ochre Jelly",
+    "cr": 2,
+    "tier": 3,
+    "ac": 8,
+    "hp": [
+      6,
+      10,
+      18
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 13816530,
+    "scale": 1.3,
+    "speed": 2.2,
+    "sprite": "amorphous/ooze.png",
+    "type": "ooze",
+    "size": "large",
+    "tags": [
+      "fungal"
+    ],
+    "threat": 27
+  },
+  {
+    "id": "ettercap",
+    "name": "Ettercap",
+    "cr": 2,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      6,
+      8,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 450,
+    "color": 8026746,
+    "scale": 0.95,
+    "speed": 3.2,
+    "sprite": "animals/spider.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "giant-constrictor-snake",
+    "name": "Giant Constrictor Snake",
+    "cr": 2,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      8,
+      12,
+      8
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 450,
+    "color": 5937754,
+    "scale": 1.2,
+    "speed": 3.2,
+    "sprite": "animals/anaconda.png",
+    "type": "beast",
+    "size": "huge",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "giant-scorpion",
+    "name": "Giant Scorpion",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      10,
+      14
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      10,
+      2
+    ],
+    "xp": 700,
+    "color": 13220000,
+    "scale": 1,
+    "speed": 3.2,
+    "sprite": "animals/emperor_scorpion.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "phase-spider",
+    "name": "Phase Spider",
+    "cr": 3,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      5,
+      10,
+      10
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      10,
+      3
+    ],
+    "xp": 700,
+    "color": 5911350,
+    "scale": 1,
+    "speed": 3.6,
+    "sprite": "animals/spider.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "green-hag",
+    "name": "Green Hag",
+    "cr": 3,
+    "tier": 3,
+    "ac": 17,
+    "hp": [
+      6,
+      8,
+      12
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 700,
+    "color": 3442380,
+    "scale": 0.95,
+    "speed": 3,
+    "sprite": "dryad.png",
+    "type": "fey",
+    "size": "medium",
+    "tags": [
+      "fey"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "hell-hound",
+    "name": "Hell Hound",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      8,
+      14
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 700,
+    "color": 13369344,
+    "scale": 0.95,
+    "speed": 3.6,
+    "sprite": "animals/hell_hound.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "bearded-devil",
+    "name": "Bearded Devil",
+    "cr": 3,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      8,
+      8,
+      16
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 700,
+    "color": 13369344,
+    "scale": 1.05,
+    "speed": 3,
+    "sprite": "demons/red_devil.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "wraith",
+    "name": "Wraith",
+    "cr": 3,
+    "tier": 3,
+    "ac": 13,
+    "hp": [
+      9,
+      8,
+      18
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 700,
+    "color": 8553090,
+    "scale": 1,
+    "speed": 4.2,
+    "sprite": "undead/wraith.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "doppelganger",
+    "name": "Doppelganger",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      8,
+      8,
+      8
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      6,
+      4
+    ],
+    "xp": 700,
+    "color": 11842740,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "shapeshifter.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "aberrant"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "basilisk",
+    "name": "Basilisk",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      8,
+      8,
+      16
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 700,
+    "color": 5937754,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "animals/basilisk.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "troll",
+    "name": "Troll",
+    "cr": 5,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      8,
+      10,
+      40
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 1800,
+    "color": 4887146,
+    "scale": 1.6,
+    "speed": 3,
+    "sprite": "troll.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 52
+  },
+  {
+    "id": "bulette",
+    "name": "Bulette",
+    "cr": 5,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      9,
+      10,
+      45
+    ],
+    "atk": 7,
+    "dmg": [
+      4,
+      12,
+      4
+    ],
+    "xp": 1800,
+    "color": 8026746,
+    "scale": 1.7,
+    "speed": 3.2,
+    "sprite": "animals/boulder_beetle.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "chimera",
+    "name": "Chimera",
+    "cr": 6,
+    "tier": 4,
+    "ac": 14,
+    "hp": [
+      12,
+      10,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 2300,
+    "color": 13369344,
+    "scale": 1.4,
+    "speed": 3.6,
+    "sprite": "manticore.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 55
+  },
+  {
+    "id": "medusa",
+    "name": "Medusa",
+    "cr": 6,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      17,
+      8,
+      17
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 2300,
+    "color": 5937754,
+    "scale": 1,
+    "speed": 3,
+    "sprite": "naga_warrior.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "aberrant"
+    ],
+    "threat": 42
+  },
+  {
+    "id": "hydra",
+    "name": "Hydra",
+    "cr": 8,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      15,
+      12,
+      30
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      10,
+      4
+    ],
+    "xp": 3900,
+    "color": 5937754,
+    "scale": 1.8,
+    "speed": 3,
+    "sprite": "hydrataur.png",
+    "type": "monstrosity",
+    "size": "huge",
+    "tags": [
+      "beast"
+    ],
+    "threat": 68
+  },
+  {
+    "id": "stone-giant",
+    "name": "Stone Giant",
+    "cr": 7,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      11,
+      12,
+      44
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 2900,
+    "color": 9089930,
+    "scale": 1.9,
+    "speed": 2.8,
+    "sprite": "stone_giant.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 75
+  },
+  {
+    "id": "hill-giant",
+    "name": "Hill Giant",
+    "cr": 5,
+    "tier": 4,
+    "ac": 13,
+    "hp": [
+      10,
+      12,
+      40
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      8,
+      5
+    ],
+    "xp": 1800,
+    "color": 8876646,
+    "scale": 1.7,
+    "speed": 2.6,
+    "sprite": "hill_giant.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 60
+  },
+  {
+    "id": "air-elemental",
+    "name": "Air Elemental",
+    "cr": 5,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      12,
+      10,
+      12
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 1800,
+    "color": 12105912,
+    "scale": 1.2,
+    "speed": 4.5,
+    "sprite": "nonliving/air_elemental.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 48
+  },
+  {
+    "id": "earth-elemental",
+    "name": "Earth Elemental",
+    "cr": 5,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      12,
+      10,
+      24
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 1800,
+    "color": 13220000,
+    "scale": 1.5,
+    "speed": 2.4,
+    "sprite": "nonliving/earth_elemental.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 52
+  },
+  {
+    "id": "fire-elemental",
+    "name": "Fire Elemental",
+    "cr": 5,
+    "tier": 4,
+    "ac": 13,
+    "hp": [
+      12,
+      10,
+      24
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 1800,
+    "color": 16742400,
+    "scale": 1.3,
+    "speed": 3.6,
+    "sprite": "nonliving/fire_elemental.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 44
+  },
+  {
+    "id": "water-elemental",
+    "name": "Water Elemental",
+    "cr": 5,
+    "tier": 4,
+    "ac": 14,
+    "hp": [
+      12,
+      10,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 1800,
+    "color": 4244735,
+    "scale": 1.4,
+    "speed": 3.4,
+    "sprite": "nonliving/water_elemental.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 48
+  },
+  {
+    "id": "salamander",
+    "name": "Salamander",
+    "cr": 5,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      12,
+      10,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 1800,
+    "color": 16742400,
+    "scale": 1.2,
+    "speed": 3,
+    "sprite": "salamander.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "elemental"
+    ],
+    "threat": 42
+  },
+  {
+    "id": "flesh-golem",
+    "name": "Flesh Golem",
+    "cr": 5,
+    "tier": 4,
+    "ac": 9,
+    "hp": [
+      11,
+      8,
+      44
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 1800,
+    "color": 9089930,
+    "scale": 1.5,
+    "speed": 2.4,
+    "sprite": "nonliving/flesh_golem.png",
+    "type": "construct",
+    "size": "medium",
+    "tags": [
+      "construct"
+    ],
+    "threat": 52
+  },
+  {
+    "id": "vrock",
+    "name": "Vrock",
+    "cr": 6,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      11,
+      10,
+      22
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 2300,
+    "color": 13369344,
+    "scale": 1.3,
+    "speed": 3.6,
+    "sprite": "demons/fiend.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 45
+  },
+  {
+    "id": "barbed-devil",
+    "name": "Barbed Devil",
+    "cr": 5,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      13,
+      8,
+      26
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      8,
+      4
+    ],
+    "xp": 1800,
+    "color": 13369344,
+    "scale": 1.15,
+    "speed": 3.2,
+    "sprite": "demons/iron_devil.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 44
+  },
+  {
+    "id": "young-black-dragon",
+    "name": "Young Black Dragon",
+    "cr": 7,
+    "tier": 4,
+    "ac": 18,
+    "hp": [
+      15,
+      10,
+      30
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      10,
+      4
+    ],
+    "xp": 2900,
+    "color": 1973790,
+    "scale": 1.7,
+    "speed": 3.6,
+    "sprite": "dragons/mottled_dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 62
+  },
+  {
+    "id": "young-white-dragon",
+    "name": "Young White Dragon",
+    "cr": 6,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      14,
+      10,
+      28
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      10,
+      4
+    ],
+    "xp": 2300,
+    "color": 16777215,
+    "scale": 1.7,
+    "speed": 3.6,
+    "sprite": "dragons/mottled_dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "young-green-dragon",
+    "name": "Young Green Dragon",
+    "cr": 8,
+    "tier": 4,
+    "ac": 18,
+    "hp": [
+      16,
+      10,
+      32
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      10,
+      4
+    ],
+    "xp": 3900,
+    "color": 3386670,
+    "scale": 1.7,
+    "speed": 3.6,
+    "sprite": "dragons/mottled_dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 66
+  },
+  {
+    "id": "wyvern",
+    "name": "Wyvern",
+    "cr": 6,
+    "tier": 4,
+    "ac": 13,
+    "hp": [
+      13,
+      10,
+      13
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 2300,
+    "color": 8876646,
+    "scale": 1.5,
+    "speed": 4.2,
+    "sprite": "dragons/dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 50
+  },
+  {
+    "id": "ghost",
+    "name": "Ghost",
+    "cr": 4,
+    "tier": 4,
+    "ac": 11,
+    "hp": [
+      10,
+      8
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      3
+    ],
+    "xp": 1100,
+    "color": 9211020,
+    "scale": 1,
+    "speed": 4.4,
+    "sprite": "undead/ghost.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 32
+  },
+  {
+    "id": "fire-giant",
+    "name": "Fire Giant",
+    "cr": 9,
+    "tier": 5,
+    "ac": 18,
+    "hp": [
+      13,
+      12,
+      52
+    ],
+    "atk": 11,
+    "dmg": [
+      6,
+      6,
+      7
+    ],
+    "xp": 5000,
+    "color": 16742400,
+    "scale": 1.9,
+    "speed": 2.8,
+    "sprite": "fire_giant.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 95
+  },
+  {
+    "id": "frost-giant",
+    "name": "Frost Giant",
+    "cr": 8,
+    "tier": 5,
+    "ac": 15,
+    "hp": [
+      12,
+      12,
+      48
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      12,
+      6
+    ],
+    "xp": 3900,
+    "color": 8454143,
+    "scale": 1.9,
+    "speed": 2.6,
+    "sprite": "frost_giant.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 85
+  },
+  {
+    "id": "cloud-giant",
+    "name": "Cloud Giant",
+    "cr": 9,
+    "tier": 5,
+    "ac": 14,
+    "hp": [
+      16,
+      12,
+      32
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      10,
+      8
+    ],
+    "xp": 5000,
+    "color": 12105912,
+    "scale": 2,
+    "speed": 2.6,
+    "sprite": "hill_giant.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 95
+  },
+  {
+    "id": "behir",
+    "name": "Behir",
+    "cr": 11,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      16,
+      12,
+      48
+    ],
+    "atk": 10,
+    "dmg": [
+      3,
+      10,
+      6
+    ],
+    "xp": 7200,
+    "color": 4244735,
+    "scale": 2,
+    "speed": 3.6,
+    "sprite": "dragons/dragon.png",
+    "type": "monstrosity",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 105
+  },
+  {
+    "id": "remorhaz",
+    "name": "Remorhaz",
+    "cr": 11,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      17,
+      12,
+      51
+    ],
+    "atk": 11,
+    "dmg": [
+      6,
+      10,
+      7
+    ],
+    "xp": 7200,
+    "color": 13369344,
+    "scale": 1.9,
+    "speed": 3.2,
+    "sprite": "animals/anaconda.png",
+    "type": "monstrosity",
+    "size": "huge",
+    "tags": [
+      "beast"
+    ],
+    "threat": 108
+  },
+  {
+    "id": "adult-white-dragon",
+    "name": "Adult White Dragon",
+    "cr": 13,
+    "tier": 5,
+    "ac": 18,
+    "hp": [
+      18,
+      12,
+      72
+    ],
+    "atk": 11,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 10000,
+    "color": 16777215,
+    "scale": 2.1,
+    "speed": 3.6,
+    "sprite": "dragons/mottled_dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 120
+  },
+  {
+    "id": "hezrou",
+    "name": "Hezrou",
+    "cr": 8,
+    "tier": 5,
+    "ac": 16,
+    "hp": [
+      13,
+      10,
+      39
+    ],
+    "atk": 7,
+    "dmg": [
+      1,
+      8,
+      4
+    ],
+    "xp": 3900,
+    "color": 13369344,
+    "scale": 1.5,
+    "speed": 2.8,
+    "sprite": "demons/fiend.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "glabrezu",
+    "name": "Glabrezu",
+    "cr": 9,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      15,
+      10,
+      45
+    ],
+    "atk": 9,
+    "dmg": [
+      2,
+      10,
+      5
+    ],
+    "xp": 5000,
+    "color": 13369344,
+    "scale": 1.7,
+    "speed": 3.2,
+    "sprite": "demons/fiend.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 75
+  },
+  {
+    "id": "young-red-dragon",
+    "name": "Young Red Dragon",
+    "cr": 10,
+    "tier": 5,
+    "ac": 18,
+    "hp": [
+      17,
+      10,
+      51
+    ],
+    "atk": 10,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 5900,
+    "color": 13369344,
+    "scale": 1.8,
+    "speed": 3.6,
+    "sprite": "dragons/dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 80
+  },
+  {
+    "id": "iron-golem",
+    "name": "Iron Golem",
+    "cr": 16,
+    "tier": 5,
+    "ac": 20,
+    "hp": [
+      20,
+      10,
+      60
+    ],
+    "atk": 13,
+    "dmg": [
+      3,
+      8,
+      7
+    ],
+    "xp": 15000,
+    "color": 11184810,
+    "scale": 1.8,
+    "speed": 2.4,
+    "sprite": "nonliving/iron_golem.png",
+    "type": "construct",
+    "size": "large",
+    "tags": [
+      "construct"
+    ],
+    "threat": 120
+  },
+  {
+    "id": "ettin",
+    "name": "Ettin",
+    "cr": 4,
+    "tier": "boss",
+    "ac": 12,
+    "hp": [
+      10,
+      10,
+      30
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 1100,
+    "color": 11162954,
+    "scale": 1.7,
+    "speed": 2.6,
+    "sprite": "ettin.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 48
+  },
+  {
+    "id": "young-dragon",
+    "name": "Young Dragon",
+    "cr": 6,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      11,
+      10,
+      33
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      10,
+      4
+    ],
+    "xp": 1800,
+    "color": 11540912,
+    "scale": 1.8,
+    "speed": 3.2,
+    "sprite": "dragons/dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 65
+  },
+  {
+    "id": "boss-troll",
+    "name": "Troll Brute",
+    "cr": 5,
+    "tier": "boss",
+    "ac": 15,
+    "hp": [
+      8,
+      10,
+      40
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 1800,
+    "color": 4887146,
+    "scale": 1.6,
+    "speed": 3,
+    "sprite": "troll.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 56
+  },
+  {
+    "id": "stone-giant-lord",
+    "name": "Stone Giant Lord",
+    "cr": 7,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      11,
+      12,
+      44
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 2900,
+    "color": 9089930,
+    "scale": 1.9,
+    "speed": 2.8,
+    "sprite": "stone_giant.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 75
+  },
+  {
+    "id": "adult-red-dragon",
+    "name": "Adult Red Dragon",
+    "cr": 17,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      19,
+      12,
+      95
+    ],
+    "atk": 14,
+    "dmg": [
+      2,
+      10,
+      8
+    ],
+    "xp": 18000,
+    "color": 13369344,
+    "scale": 2.4,
+    "speed": 3.6,
+    "sprite": "dragons/dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 155
+  },
+  {
+    "id": "adult-gold-dragon",
+    "name": "Adult Gold Dragon",
+    "cr": 17,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      19,
+      12,
+      95
+    ],
+    "atk": 14,
+    "dmg": [
+      2,
+      10,
+      8
+    ],
+    "xp": 18000,
+    "color": 13816530,
+    "scale": 2.4,
+    "speed": 3.8,
+    "sprite": "golden_dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 155
+  },
+  {
+    "id": "lich",
+    "name": "Lich",
+    "cr": 21,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      18,
+      8,
+      72
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      6,
+      5
+    ],
+    "xp": 33000,
+    "color": 9211020,
+    "scale": 1,
+    "speed": 2.8,
+    "sprite": "undead/lich.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 130
+  },
+  {
+    "id": "kraken",
+    "name": "Kraken",
+    "cr": 23,
+    "tier": "boss",
+    "ac": 18,
+    "hp": [
+      27,
+      20,
+      27
+    ],
+    "atk": 17,
+    "dmg": [
+      3,
+      8,
+      10
+    ],
+    "xp": 50000,
+    "color": 5937754,
+    "scale": 2.6,
+    "speed": 2.6,
+    "sprite": "aquatic/kraken_head.png",
+    "type": "monstrosity",
+    "size": "gargantuan",
+    "tags": [
+      "aquatic",
+      "aberrant"
+    ],
+    "threat": 200
+  },
+  {
+    "id": "purple-worm",
+    "name": "Purple Worm",
+    "cr": 15,
+    "tier": "boss",
+    "ac": 18,
+    "hp": [
+      15,
+      20,
+      90
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      8,
+      9
+    ],
+    "xp": 13000,
+    "color": 11162954,
+    "scale": 2.5,
+    "speed": 2.8,
+    "sprite": "animals/anaconda.png",
+    "type": "monstrosity",
+    "size": "gargantuan",
+    "tags": [
+      "beast"
+    ],
+    "threat": 140
+  },
+  {
+    "id": "balor",
+    "name": "Balor",
+    "cr": 19,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      21,
+      12,
+      63
+    ],
+    "atk": 14,
+    "dmg": [
+      2,
+      8,
+      8
+    ],
+    "xp": 22000,
+    "color": 13369344,
+    "scale": 2,
+    "speed": 3.6,
+    "sprite": "demons/fiend.png",
+    "type": "fiend",
+    "size": "huge",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 165
+  },
+  {
+    "id": "pit-fiend",
+    "name": "Pit Fiend",
+    "cr": 20,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      24,
+      10,
+      72
+    ],
+    "atk": 14,
+    "dmg": [
+      2,
+      8,
+      8
+    ],
+    "xp": 25000,
+    "color": 13369344,
+    "scale": 2.1,
+    "speed": 3.4,
+    "sprite": "demons/pit_fiend.png",
+    "type": "fiend",
+    "size": "huge",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 175
+  },
+  {
+    "id": "tarrasque",
+    "name": "Tarrasque",
+    "cr": 30,
+    "tier": "boss",
+    "ac": 25,
+    "hp": [
+      33,
+      20,
+      110
+    ],
+    "atk": 19,
+    "dmg": [
+      4,
+      12,
+      10
+    ],
+    "xp": 155000,
+    "color": 13220000,
+    "scale": 2.8,
+    "speed": 2.6,
+    "sprite": "dragons/dragon.png",
+    "type": "monstrosity",
+    "size": "gargantuan",
+    "tags": [
+      "beast"
+    ],
+    "threat": 280
+  },
+  {
+    "id": "giant-ant",
+    "name": "Giant Ant",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 14,
+    "hp": [
+      2,
+      6
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 25,
+    "color": 6702114,
+    "scale": 0.7,
+    "speed": 3.2,
+    "sprite": "animals/giant_ant.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "giant-cockroach",
+    "name": "Giant Cockroach",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4
+    ],
+    "xp": 20,
+    "color": 5588019,
+    "scale": 0.6,
+    "speed": 3.4,
+    "sprite": "animals/giant_cockroach.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "giant-fire-beetle",
+    "name": "Giant Fire Beetle",
+    "cr": 0,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      6
+    ],
+    "atk": 1,
+    "dmg": [
+      1,
+      6
+    ],
+    "xp": 10,
+    "color": 16737792,
+    "scale": 0.65,
+    "speed": 3,
+    "sprite": "animals/boring_beetle.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 7
+  },
+  {
+    "id": "giant-beetle",
+    "name": "Giant Beetle",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 14,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 25,
+    "color": 6702114,
+    "scale": 0.7,
+    "speed": 2.8,
+    "sprite": "animals/giant_beetle.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "boulder-beetle",
+    "name": "Boulder Beetle",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 15,
+    "hp": [
+      2,
+      10
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      8,
+      1
+    ],
+    "xp": 50,
+    "color": 8943462,
+    "scale": 0.9,
+    "speed": 2.4,
+    "sprite": "animals/boulder_beetle.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 14
+  },
+  {
+    "id": "giant-mite",
+    "name": "Giant Mite",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      1,
+      6
+    ],
+    "atk": 2,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 15,
+    "color": 11167300,
+    "scale": 0.45,
+    "speed": 3,
+    "sprite": "animals/giant_mite.png",
+    "type": "beast",
+    "size": "tiny",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 7
+  },
+  {
+    "id": "giant-slug",
+    "name": "Giant Slug",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 10,
+    "hp": [
+      1,
+      10
+    ],
+    "atk": 2,
+    "dmg": [
+      1,
+      6
+    ],
+    "xp": 15,
+    "color": 8956484,
+    "scale": 0.85,
+    "speed": 1.8,
+    "sprite": "animals/giant_slug.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "vermin",
+      "fungal"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "giant-snail",
+    "name": "Giant Snail",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 16,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 2,
+    "dmg": [
+      1,
+      4
+    ],
+    "xp": 20,
+    "color": 11180407,
+    "scale": 0.8,
+    "speed": 1.6,
+    "sprite": "animals/giant_snail.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "giant-blowfly",
+    "name": "Giant Blowfly",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      1,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 20,
+    "color": 3359880,
+    "scale": 0.5,
+    "speed": 4,
+    "sprite": "animals/giant_blowfly.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "giant-mosquito",
+    "name": "Giant Mosquito",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      4,
+      2
+    ],
+    "xp": 20,
+    "color": 6706500,
+    "scale": 0.4,
+    "speed": 4.2,
+    "sprite": "animals/giant_mosquito.png",
+    "type": "beast",
+    "size": "tiny",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "giant-leech",
+    "name": "Giant Leech",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 11,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 15,
+    "color": 4465186,
+    "scale": 0.55,
+    "speed": 2,
+    "sprite": "animals/giant_leech.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "giant-firefly",
+    "name": "Giant Firefly",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      1,
+      6
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4
+    ],
+    "xp": 20,
+    "color": 16777028,
+    "scale": 0.5,
+    "speed": 3.8,
+    "sprite": "animals/giant_firefly.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 8
+  },
+  {
+    "id": "bumblebee",
+    "name": "Giant Bumblebee",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      1,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 20,
+    "color": 16763904,
+    "scale": 0.5,
+    "speed": 4,
+    "sprite": "animals/bumblebee.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "fire-bat",
+    "name": "Fire Bat",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      4,
+      2
+    ],
+    "xp": 25,
+    "color": 16729088,
+    "scale": 0.65,
+    "speed": 3.8,
+    "sprite": "animals/fire_bat.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin",
+      "elemental"
+    ],
+    "threat": 10
+  },
+  {
+    "id": "fire-crab",
+    "name": "Fire Crab",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 15,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 50,
+    "color": 16729088,
+    "scale": 0.7,
+    "speed": 2.6,
+    "sprite": "animals/fire_crab.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin",
+      "elemental"
+    ],
+    "threat": 12
+  },
+  {
+    "id": "ghost-moth",
+    "name": "Ghost Moth",
+    "cr": 0.5,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      3,
+      8,
+      3
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 100,
+    "color": 13426175,
+    "scale": 0.65,
+    "speed": 4.2,
+    "sprite": "animals/ghost_moth.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 15
+  },
+  {
+    "id": "blink-frog",
+    "name": "Blink Frog",
+    "cr": 0.25,
+    "tier": 1,
+    "ac": 12,
+    "hp": [
+      2,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      1
+    ],
+    "xp": 50,
+    "color": 4521796,
+    "scale": 0.7,
+    "speed": 3.4,
+    "sprite": "animals/blink_frog.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 11
+  },
+  {
+    "id": "giant-gecko",
+    "name": "Giant Gecko",
+    "cr": 0.125,
+    "tier": 1,
+    "ac": 13,
+    "hp": [
+      1,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      4,
+      1
+    ],
+    "xp": 20,
+    "color": 4500036,
+    "scale": 0.6,
+    "speed": 3.4,
+    "sprite": "animals/giant_gecko.png",
+    "type": "beast",
+    "size": "small",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 9
+  },
+  {
+    "id": "caustic-shrike",
+    "name": "Caustic Shrike",
+    "cr": 0.5,
+    "tier": 1,
+    "ac": 14,
+    "hp": [
+      2,
+      10,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 100,
+    "color": 8978244,
+    "scale": 0.7,
+    "speed": 4.2,
+    "sprite": "animals/caustic_shrike.png",
+    "type": "beast",
+    "size": "medium",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 16
+  },
+  {
+    "id": "brain-worm",
+    "name": "Brain Worm",
+    "cr": 0.5,
+    "tier": 1,
+    "ac": 11,
+    "hp": [
+      3,
+      6,
+      6
+    ],
+    "atk": 3,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 100,
+    "color": 16746632,
+    "scale": 0.55,
+    "speed": 2.4,
+    "sprite": "animals/brain_worm.png",
+    "type": "aberration",
+    "size": "small",
+    "tags": [
+      "aberrant"
+    ],
+    "threat": 15
+  },
+  {
+    "id": "deep-elf-fighter",
+    "name": "Deep Elf Fighter",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 16,
+    "hp": [
+      3,
+      8,
+      3
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 100,
+    "color": 13413085,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_fighter.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 18
+  },
+  {
+    "id": "deep-elf-mage",
+    "name": "Deep Elf Mage",
+    "cr": 1,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      4,
+      8,
+      4
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6
+    ],
+    "xp": 200,
+    "color": 13413085,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_mage.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 20
+  },
+  {
+    "id": "deep-elf-priest",
+    "name": "Deep Elf Priest",
+    "cr": 1,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      4,
+      8,
+      8
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 200,
+    "color": 14531566,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_priest.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 21
+  },
+  {
+    "id": "deep-elf-knight",
+    "name": "Deep Elf Knight",
+    "cr": 1,
+    "tier": 2,
+    "ac": 18,
+    "hp": [
+      5,
+      8,
+      5
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 200,
+    "color": 13413085,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_knight.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 22
+  },
+  {
+    "id": "deep-elf-sorcerer",
+    "name": "Deep Elf Sorcerer",
+    "cr": 2,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      5,
+      8,
+      10
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 14531566,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_sorcerer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "deep-elf-conjurer",
+    "name": "Deep Elf Conjurer",
+    "cr": 2,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      5,
+      8,
+      10
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 14531566,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_conjurer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "deep-elf-demonologist",
+    "name": "Deep Elf Demonologist",
+    "cr": 2,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      6,
+      8,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 450,
+    "color": 13404364,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_demonologist.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow",
+      "fiendish"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "deep-elf-high-priest",
+    "name": "Deep Elf High Priest",
+    "cr": 2,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      6,
+      8,
+      12
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 450,
+    "color": 14531583,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_high_priest.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "giant-toad",
+    "name": "Giant Toad",
+    "cr": 1,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      6,
+      10,
+      6
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      10,
+      2
+    ],
+    "xp": 200,
+    "color": 4491332,
+    "scale": 1,
+    "speed": 2.8,
+    "sprite": "animals/giant_toad.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "griffon",
+    "name": "Griffon",
+    "cr": 2,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 450,
+    "color": 14527044,
+    "scale": 1.1,
+    "speed": 4.2,
+    "sprite": "griffon.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "hippogriff",
+    "name": "Hippogriff",
+    "cr": 1,
+    "tier": 2,
+    "ac": 11,
+    "hp": [
+      5,
+      10,
+      5
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      10,
+      2
+    ],
+    "xp": 200,
+    "color": 13408580,
+    "scale": 1,
+    "speed": 4.2,
+    "sprite": "hippogriff.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "gnoll-sergeant",
+    "name": "Gnoll Sergeant",
+    "cr": 1,
+    "tier": 2,
+    "ac": 15,
+    "hp": [
+      4,
+      8,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      10,
+      3
+    ],
+    "xp": 200,
+    "color": 151478936,
+    "scale": 0.95,
+    "speed": 3.1,
+    "sprite": "gnoll_sergeant.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "orc"
+    ],
+    "threat": 22
+  },
+  {
+    "id": "orc-warrior",
+    "name": "Orc Warrior",
+    "cr": 1,
+    "tier": 2,
+    "ac": 16,
+    "hp": [
+      4,
+      8,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      12,
+      3
+    ],
+    "xp": 200,
+    "color": 75991302,
+    "scale": 0.95,
+    "speed": 3.2,
+    "sprite": "orc_warrior.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "orc"
+    ],
+    "threat": 22
+  },
+  {
+    "id": "orc-priest",
+    "name": "Orc Priest",
+    "cr": 1,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      4,
+      8,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      4,
+      2
+    ],
+    "xp": 200,
+    "color": 6702114,
+    "scale": 0.95,
+    "speed": 3,
+    "sprite": "orc_priest.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "orc"
+    ],
+    "threat": 20
+  },
+  {
+    "id": "orc-knight",
+    "name": "Orc Knight",
+    "cr": 2,
+    "tier": 2,
+    "ac": 18,
+    "hp": [
+      6,
+      8,
+      6
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      12,
+      4
+    ],
+    "xp": 450,
+    "color": 5583633,
+    "scale": 1,
+    "speed": 3,
+    "sprite": "orc_knight.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "orc"
+    ],
+    "threat": 27
+  },
+  {
+    "id": "big-kobold",
+    "name": "Big Kobold",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      3,
+      8,
+      3
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      6,
+      2
+    ],
+    "xp": 100,
+    "color": 11176021,
+    "scale": 0.75,
+    "speed": 3.2,
+    "sprite": "big_kobold.png",
+    "type": "humanoid",
+    "size": "small",
+    "tags": [
+      "draconic",
+      "goblinoid"
+    ],
+    "threat": 17
+  },
+  {
+    "id": "tengu-warrior",
+    "name": "Tengu Warrior",
+    "cr": 1,
+    "tier": 2,
+    "ac": 15,
+    "hp": [
+      4,
+      8,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 200,
+    "color": 4478310,
+    "scale": 0.9,
+    "speed": 3.6,
+    "sprite": "tengu_warrior.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 22
+  },
+  {
+    "id": "tengu-conjurer",
+    "name": "Tengu Conjurer",
+    "cr": 1,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      4,
+      6,
+      8
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6
+    ],
+    "xp": 200,
+    "color": 5596808,
+    "scale": 0.9,
+    "speed": 3.4,
+    "sprite": "tengu_conjurer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 19
+  },
+  {
+    "id": "tengu-reaver",
+    "name": "Tengu Reaver",
+    "cr": 2,
+    "tier": 2,
+    "ac": 16,
+    "hp": [
+      6,
+      8,
+      6
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      8,
+      4
+    ],
+    "xp": 450,
+    "color": 3359829,
+    "scale": 0.9,
+    "speed": 3.6,
+    "sprite": "tengu_reaver.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "merfolk-fighter",
+    "name": "Merfolk Fighter",
+    "cr": 0.5,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      3,
+      8,
+      3
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      2
+    ],
+    "xp": 100,
+    "color": 4491434,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "merfolk_fighter.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "aquatic"
+    ],
+    "threat": 17
+  },
+  {
+    "id": "merfolk-javelineer",
+    "name": "Merfolk Javelineer",
+    "cr": 1,
+    "tier": 2,
+    "ac": 15,
+    "hp": [
+      4,
+      8,
+      4
+    ],
+    "atk": 5,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 200,
+    "color": 4491434,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "merfolk_javelineer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "aquatic"
+    ],
+    "threat": 21
+  },
+  {
+    "id": "merfolk-impaler",
+    "name": "Merfolk Impaler",
+    "cr": 1,
+    "tier": 2,
+    "ac": 16,
+    "hp": [
+      5,
+      8,
+      5
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      10,
+      4
+    ],
+    "xp": 200,
+    "color": 4491434,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "merfolk_impaler.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "aquatic"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "merfolk-aquamancer",
+    "name": "Merfolk Aquamancer",
+    "cr": 2,
+    "tier": 2,
+    "ac": 12,
+    "hp": [
+      5,
+      8,
+      10
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 3377356,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "merfolk_aquamancer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "aquatic"
+    ],
+    "threat": 23
+  },
+  {
+    "id": "naga-warrior",
+    "name": "Naga Warrior",
+    "cr": 2,
+    "tier": 2,
+    "ac": 16,
+    "hp": [
+      7,
+      10,
+      7
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      10,
+      4
+    ],
+    "xp": 450,
+    "color": 8939076,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "naga_warrior.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "naga-mage",
+    "name": "Naga Mage",
+    "cr": 2,
+    "tier": 2,
+    "ac": 13,
+    "hp": [
+      6,
+      10,
+      12
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 10057557,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "naga_mage.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "naga-ritualist",
+    "name": "Naga Ritualist",
+    "cr": 2,
+    "tier": 2,
+    "ac": 14,
+    "hp": [
+      6,
+      10,
+      12
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 450,
+    "color": 8939144,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "naga_ritualist.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "guardian-naga",
+    "name": "Guardian Naga",
+    "cr": 4,
+    "tier": 2,
+    "ac": 18,
+    "hp": [
+      11,
+      10,
+      22
+    ],
+    "atk": 8,
+    "dmg": [
+      1,
+      8,
+      5
+    ],
+    "xp": 1100,
+    "color": 11184708,
+    "scale": 1.3,
+    "speed": 2.8,
+    "sprite": "guardian_naga.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 42
+  },
+  {
+    "id": "deep-elf-blademaster",
+    "name": "Deep Elf Blademaster",
+    "cr": 3,
+    "tier": 3,
+    "ac": 18,
+    "hp": [
+      7,
+      8,
+      7
+    ],
+    "atk": 7,
+    "dmg": [
+      1,
+      8,
+      5
+    ],
+    "xp": 700,
+    "color": 13413085,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "deep_elf_blademaster.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "deep-elf-death-mage",
+    "name": "Deep Elf Death Mage",
+    "cr": 4,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      8,
+      8,
+      16
+    ],
+    "atk": 3,
+    "dmg": [
+      3,
+      6
+    ],
+    "xp": 1100,
+    "color": 8939144,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_death_mage.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow",
+      "undead"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "deep-elf-summoner",
+    "name": "Deep Elf Summoner",
+    "cr": 3,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      7,
+      8,
+      14
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 700,
+    "color": 13404364,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_summoner.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "deep-elf-annihilator",
+    "name": "Deep Elf Annihilator",
+    "cr": 4,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      8,
+      8,
+      16
+    ],
+    "atk": 3,
+    "dmg": [
+      3,
+      8
+    ],
+    "xp": 1100,
+    "color": 13404415,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "deep_elf_annihilator.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 31
+  },
+  {
+    "id": "deep-dwarf-berserker",
+    "name": "Deep Dwarf Berserker",
+    "cr": 2,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      10,
+      14
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 450,
+    "color": 8943445,
+    "scale": 0.85,
+    "speed": 2.8,
+    "sprite": "deep_dwarf_berserker.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "deep-dwarf-death-knight",
+    "name": "Deep Dwarf Death Knight",
+    "cr": 3,
+    "tier": 3,
+    "ac": 18,
+    "hp": [
+      8,
+      10,
+      16
+    ],
+    "atk": 7,
+    "dmg": [
+      1,
+      10,
+      5
+    ],
+    "xp": 700,
+    "color": 6706500,
+    "scale": 0.85,
+    "speed": 2.6,
+    "sprite": "deep_dwarf_death_knight.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "undead",
+      "giantkind"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "deep-dwarf-artificer",
+    "name": "Deep Dwarf Artificer",
+    "cr": 2,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      6,
+      8,
+      12
+    ],
+    "atk": 4,
+    "dmg": [
+      1,
+      8,
+      3
+    ],
+    "xp": 450,
+    "color": 8943445,
+    "scale": 0.85,
+    "speed": 2.6,
+    "sprite": "deep_dwarf_artificer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "construct"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "death-knight",
+    "name": "Death Knight",
+    "cr": 4,
+    "tier": 3,
+    "ac": 18,
+    "hp": [
+      11,
+      8,
+      22
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 1100,
+    "color": 4465220,
+    "scale": 1,
+    "speed": 2.8,
+    "sprite": "death_knight.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 40
+  },
+  {
+    "id": "necromancer",
+    "name": "Necromancer",
+    "cr": 4,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      8,
+      8,
+      16
+    ],
+    "atk": 3,
+    "dmg": [
+      3,
+      6,
+      2
+    ],
+    "xp": 1100,
+    "color": 4465220,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "necromancer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "wizard",
+    "name": "Evil Wizard",
+    "cr": 3,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      7,
+      8,
+      7
+    ],
+    "atk": 3,
+    "dmg": [
+      3,
+      6
+    ],
+    "xp": 700,
+    "color": 4465288,
+    "scale": 0.9,
+    "speed": 3,
+    "sprite": "wizard.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "humanoid"
+    ],
+    "threat": 24
+  },
+  {
+    "id": "greater-naga",
+    "name": "Greater Naga",
+    "cr": 4,
+    "tier": 3,
+    "ac": 17,
+    "hp": [
+      10,
+      12,
+      20
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 1100,
+    "color": 11184708,
+    "scale": 1.4,
+    "speed": 2.8,
+    "sprite": "greater_naga.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 44
+  },
+  {
+    "id": "naga-sharpshooter",
+    "name": "Naga Sharpshooter",
+    "cr": 3,
+    "tier": 3,
+    "ac": 16,
+    "hp": [
+      7,
+      10,
+      7
+    ],
+    "atk": 6,
+    "dmg": [
+      1,
+      10,
+      4
+    ],
+    "xp": 700,
+    "color": 10057557,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "naga_sharpshooter.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "alligator",
+    "name": "Giant Alligator",
+    "cr": 2,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      5,
+      10,
+      15
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 450,
+    "color": 3364147,
+    "scale": 1.3,
+    "speed": 2.6,
+    "sprite": "animals/alligator.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "anaconda",
+    "name": "Giant Anaconda",
+    "cr": 2,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      8,
+      12,
+      16
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 450,
+    "color": 3359778,
+    "scale": 1.3,
+    "speed": 2.8,
+    "sprite": "animals/anaconda.png",
+    "type": "beast",
+    "size": "huge",
+    "tags": [
+      "vermin"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "elephant",
+    "name": "Elephant",
+    "cr": 4,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      8,
+      12,
+      16
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 1100,
+    "color": 8947831,
+    "scale": 1.6,
+    "speed": 2.6,
+    "sprite": "animals/elephant.png",
+    "type": "beast",
+    "size": "huge",
+    "tags": [
+      "beast"
+    ],
+    "threat": 44
+  },
+  {
+    "id": "death-yak",
+    "name": "Death Yak",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      8,
+      10,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 700,
+    "color": 6702148,
+    "scale": 1.4,
+    "speed": 3,
+    "sprite": "animals/death_yak.png",
+    "type": "monstrosity",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 34
+  },
+  {
+    "id": "dire-elephant",
+    "name": "Dire Elephant",
+    "cr": 6,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      10,
+      12,
+      30
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      10,
+      6
+    ],
+    "xp": 2300,
+    "color": 8943462,
+    "scale": 1.8,
+    "speed": 2.4,
+    "sprite": "animals/elephant_dire.png",
+    "type": "beast",
+    "size": "huge",
+    "tags": [
+      "beast"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "grizzly-bear",
+    "name": "Grizzly Bear",
+    "cr": 1,
+    "tier": 3,
+    "ac": 11,
+    "hp": [
+      4,
+      10,
+      12
+    ],
+    "atk": 5,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 200,
+    "color": 8943445,
+    "scale": 1,
+    "speed": 3,
+    "sprite": "animals/grizzly_bear.png",
+    "type": "beast",
+    "size": "large",
+    "tags": [
+      "beast"
+    ],
+    "threat": 20
+  },
+  {
+    "id": "cyclops",
+    "name": "Cyclops",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      9,
+      12,
+      27
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      8,
+      5
+    ],
+    "xp": 700,
+    "color": 11180390,
+    "scale": 1.5,
+    "speed": 2.6,
+    "sprite": "cyclops.png",
+    "type": "giant",
+    "size": "huge",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 40
+  },
+  {
+    "id": "lindwurm",
+    "name": "Lindwurm",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 700,
+    "color": 8947814,
+    "scale": 1.2,
+    "speed": 3.2,
+    "sprite": "lindwurm.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "giant-amoeba",
+    "name": "Giant Amoeba",
+    "cr": 2,
+    "tier": 3,
+    "ac": 8,
+    "hp": [
+      6,
+      10,
+      18
+    ],
+    "atk": 4,
+    "dmg": [
+      2,
+      6,
+      2
+    ],
+    "xp": 450,
+    "color": 8956552,
+    "scale": 1.2,
+    "speed": 2,
+    "sprite": "giant_amoeba.png",
+    "type": "ooze",
+    "size": "large",
+    "tags": [
+      "fungal",
+      "aberrant"
+    ],
+    "threat": 26
+  },
+  {
+    "id": "giant-orange-brain",
+    "name": "Giant Orange Brain",
+    "cr": 3,
+    "tier": 3,
+    "ac": 12,
+    "hp": [
+      8,
+      8,
+      16
+    ],
+    "atk": 3,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 700,
+    "color": 16746564,
+    "scale": 0.9,
+    "speed": 2,
+    "sprite": "giant_orange_brain.png",
+    "type": "aberration",
+    "size": "large",
+    "tags": [
+      "aberrant"
+    ],
+    "threat": 28
+  },
+  {
+    "id": "deep-troll-berserker",
+    "name": "Deep Troll Berserker",
+    "cr": 5,
+    "tier": 4,
+    "ac": 14,
+    "hp": [
+      10,
+      10,
+      40
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      6,
+      6
+    ],
+    "xp": 1800,
+    "color": 3368516,
+    "scale": 1.5,
+    "speed": 2.8,
+    "sprite": "deep_troll_berserker.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 56
+  },
+  {
+    "id": "deep-troll-earth-mage",
+    "name": "Deep Troll Earth Mage",
+    "cr": 5,
+    "tier": 4,
+    "ac": 13,
+    "hp": [
+      9,
+      10,
+      36
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 1800,
+    "color": 4482611,
+    "scale": 1.4,
+    "speed": 2.6,
+    "sprite": "deep_troll_earth_mage.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind",
+      "elemental"
+    ],
+    "threat": 50
+  },
+  {
+    "id": "deep-troll-shaman",
+    "name": "Deep Troll Shaman",
+    "cr": 5,
+    "tier": 4,
+    "ac": 14,
+    "hp": [
+      10,
+      8,
+      30
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      5
+    ],
+    "xp": 1800,
+    "color": 3368533,
+    "scale": 1.4,
+    "speed": 2.6,
+    "sprite": "deep_troll_shaman.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 50
+  },
+  {
+    "id": "iron-troll",
+    "name": "Iron Troll",
+    "cr": 6,
+    "tier": 4,
+    "ac": 19,
+    "hp": [
+      12,
+      10,
+      48
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      6,
+      7
+    ],
+    "xp": 2300,
+    "color": 8947848,
+    "scale": 1.6,
+    "speed": 2.6,
+    "sprite": "iron_troll.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind",
+      "elemental"
+    ],
+    "threat": 68
+  },
+  {
+    "id": "rock-troll",
+    "name": "Rock Troll",
+    "cr": 5,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      10,
+      10,
+      40
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      6,
+      6
+    ],
+    "xp": 1800,
+    "color": 10061943,
+    "scale": 1.6,
+    "speed": 2.6,
+    "sprite": "rock_troll.png",
+    "type": "giant",
+    "size": "large",
+    "tags": [
+      "giantkind"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "juggernaut",
+    "name": "Juggernaut",
+    "cr": 8,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      14,
+      12,
+      42
+    ],
+    "atk": 10,
+    "dmg": [
+      4,
+      8,
+      7
+    ],
+    "xp": 3900,
+    "color": 11158596,
+    "scale": 1.8,
+    "speed": 2.4,
+    "sprite": "juggernaut.png",
+    "type": "construct",
+    "size": "huge",
+    "tags": [
+      "construct"
+    ],
+    "threat": 78
+  },
+  {
+    "id": "titan-skeleton",
+    "name": "Titan Skeleton",
+    "cr": 6,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      14,
+      12,
+      28
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 2300,
+    "color": 12303274,
+    "scale": 1.8,
+    "speed": 2.8,
+    "sprite": "titan.png",
+    "type": "undead",
+    "size": "huge",
+    "tags": [
+      "undead",
+      "giantkind"
+    ],
+    "threat": 62
+  },
+  {
+    "id": "ancient-lich",
+    "name": "Ancient Lich",
+    "cr": 8,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      14,
+      8,
+      56
+    ],
+    "atk": 7,
+    "dmg": [
+      3,
+      8,
+      5
+    ],
+    "xp": 3900,
+    "color": 13417471,
+    "scale": 1,
+    "speed": 2.8,
+    "sprite": "undead/ancient_lich.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 62
+  },
+  {
+    "id": "bone-dragon",
+    "name": "Bone Dragon",
+    "cr": 7,
+    "tier": 4,
+    "ac": 16,
+    "hp": [
+      15,
+      10,
+      30
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      10,
+      4
+    ],
+    "xp": 2900,
+    "color": 14540236,
+    "scale": 1.8,
+    "speed": 3.2,
+    "sprite": "undead/bone_dragon.png",
+    "type": "undead",
+    "size": "huge",
+    "tags": [
+      "undead",
+      "draconic"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "freezing-wraith",
+    "name": "Freezing Wraith",
+    "cr": 5,
+    "tier": 4,
+    "ac": 14,
+    "hp": [
+      10,
+      8,
+      20
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 1800,
+    "color": 11193599,
+    "scale": 1,
+    "speed": 4.2,
+    "sprite": "undead/freezing_wraith.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 42
+  },
+  {
+    "id": "shadow-wraith",
+    "name": "Shadow Wraith",
+    "cr": 5,
+    "tier": 4,
+    "ac": 14,
+    "hp": [
+      10,
+      8,
+      20
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 1800,
+    "color": 3351108,
+    "scale": 1,
+    "speed": 4.2,
+    "sprite": "undead/shadow_wraith.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 42
+  },
+  {
+    "id": "phantasmal-warrior",
+    "name": "Phantasmal Warrior",
+    "cr": 4,
+    "tier": 4,
+    "ac": 16,
+    "hp": [
+      9,
+      8,
+      18
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 1100,
+    "color": 8952268,
+    "scale": 1,
+    "speed": 3.4,
+    "sprite": "undead/phantasmal_warrior.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 36
+  },
+  {
+    "id": "eidolon",
+    "name": "Eidolon",
+    "cr": 5,
+    "tier": 4,
+    "ac": 15,
+    "hp": [
+      10,
+      8,
+      20
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 1800,
+    "color": 8952251,
+    "scale": 1,
+    "speed": 3.6,
+    "sprite": "undead/eidolon.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 40
+  },
+  {
+    "id": "profane-servitor",
+    "name": "Profane Servitor",
+    "cr": 6,
+    "tier": 4,
+    "ac": 16,
+    "hp": [
+      12,
+      8,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 2300,
+    "color": 6702216,
+    "scale": 1.1,
+    "speed": 3.2,
+    "sprite": "undead/profane_servitor.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 48
+  },
+  {
+    "id": "daeva",
+    "name": "Daeva",
+    "cr": 5,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      11,
+      8,
+      22
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      6,
+      5
+    ],
+    "xp": 1800,
+    "color": 16777164,
+    "scale": 1.1,
+    "speed": 3.6,
+    "sprite": "daeva.png",
+    "type": "celestial",
+    "size": "medium",
+    "tags": [
+      "celestial"
+    ],
+    "threat": 46
+  },
+  {
+    "id": "angel",
+    "name": "Angel",
+    "cr": 6,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      12,
+      10,
+      24
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      6,
+      5
+    ],
+    "xp": 2300,
+    "color": 16777181,
+    "scale": 1.1,
+    "speed": 3.8,
+    "sprite": "angel.png",
+    "type": "celestial",
+    "size": "medium",
+    "tags": [
+      "celestial"
+    ],
+    "threat": 50
+  },
+  {
+    "id": "ice-devil",
+    "name": "Ice Devil",
+    "cr": 8,
+    "tier": 4,
+    "ac": 18,
+    "hp": [
+      14,
+      10,
+      42
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 3900,
+    "color": 11193599,
+    "scale": 1.2,
+    "speed": 3.2,
+    "sprite": "demons/ice_devil.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 64
+  },
+  {
+    "id": "soul-eater",
+    "name": "Soul Eater",
+    "cr": 6,
+    "tier": 4,
+    "ac": 16,
+    "hp": [
+      12,
+      8,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 2300,
+    "color": 4465220,
+    "scale": 1.1,
+    "speed": 3.4,
+    "sprite": "demons/soul_eater.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 48
+  },
+  {
+    "id": "reaper",
+    "name": "Reaper",
+    "cr": 7,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      15,
+      8,
+      30
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      6,
+      6
+    ],
+    "xp": 2900,
+    "color": 2232610,
+    "scale": 1,
+    "speed": 3.6,
+    "sprite": "demons/reaper.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "executioner",
+    "name": "Executioner",
+    "cr": 7,
+    "tier": 4,
+    "ac": 18,
+    "hp": [
+      16,
+      10,
+      32
+    ],
+    "atk": 10,
+    "dmg": [
+      3,
+      8,
+      7
+    ],
+    "xp": 2900,
+    "color": 4465186,
+    "scale": 1.3,
+    "speed": 3,
+    "sprite": "demons/executioner.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 66
+  },
+  {
+    "id": "hell-sentinel",
+    "name": "Hell Sentinel",
+    "cr": 8,
+    "tier": 4,
+    "ac": 19,
+    "hp": [
+      16,
+      12,
+      32
+    ],
+    "atk": 9,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 3900,
+    "color": 11158596,
+    "scale": 1.5,
+    "speed": 2.6,
+    "sprite": "demons/hell_sentinel.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 68
+  },
+  {
+    "id": "shadow-fiend",
+    "name": "Shadow Fiend",
+    "cr": 8,
+    "tier": 4,
+    "ac": 16,
+    "hp": [
+      15,
+      10,
+      30
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 3900,
+    "color": 1114163,
+    "scale": 1.3,
+    "speed": 3.4,
+    "sprite": "demons/shadow_fiend.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 62
+  },
+  {
+    "id": "ice-fiend",
+    "name": "Ice Fiend",
+    "cr": 7,
+    "tier": 4,
+    "ac": 17,
+    "hp": [
+      14,
+      10,
+      28
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 2900,
+    "color": 11184895,
+    "scale": 1.3,
+    "speed": 3.2,
+    "sprite": "demons/ice_fiend.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 58
+  },
+  {
+    "id": "deep-elf-master-archer",
+    "name": "Deep Elf Master Archer",
+    "cr": 5,
+    "tier": 5,
+    "ac": 16,
+    "hp": [
+      10,
+      8,
+      20
+    ],
+    "atk": 8,
+    "dmg": [
+      1,
+      8,
+      5
+    ],
+    "xp": 1800,
+    "color": 13413085,
+    "scale": 0.9,
+    "speed": 3.2,
+    "sprite": "deep_elf_master_archer.png",
+    "type": "humanoid",
+    "size": "medium",
+    "tags": [
+      "drow"
+    ],
+    "threat": 40
+  },
+  {
+    "id": "titan",
+    "name": "Titan",
+    "cr": 9,
+    "tier": 5,
+    "ac": 18,
+    "hp": [
+      18,
+      12,
+      54
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      10,
+      8
+    ],
+    "xp": 5000,
+    "color": 14535748,
+    "scale": 2,
+    "speed": 3,
+    "sprite": "titan.png",
+    "type": "celestial",
+    "size": "huge",
+    "tags": [
+      "giantkind",
+      "celestial"
+    ],
+    "threat": 100
+  },
+  {
+    "id": "golden-dragon",
+    "name": "Golden Dragon",
+    "cr": 10,
+    "tier": 5,
+    "ac": 19,
+    "hp": [
+      18,
+      12,
+      54
+    ],
+    "atk": 10,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 5900,
+    "color": 16768324,
+    "scale": 2,
+    "speed": 3.8,
+    "sprite": "golden_dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 95
+  },
+  {
+    "id": "shadow-dragon",
+    "name": "Shadow Dragon",
+    "cr": 11,
+    "tier": 5,
+    "ac": 18,
+    "hp": [
+      16,
+      12,
+      48
+    ],
+    "atk": 9,
+    "dmg": [
+      2,
+      10,
+      5
+    ],
+    "xp": 7200,
+    "color": 2232644,
+    "scale": 2,
+    "speed": 3.6,
+    "sprite": "dragons/shadow_dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 88
+  },
+  {
+    "id": "mottled-dragon",
+    "name": "Mottled Dragon",
+    "cr": 9,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      15,
+      12,
+      45
+    ],
+    "atk": 9,
+    "dmg": [
+      2,
+      10,
+      5
+    ],
+    "xp": 5000,
+    "color": 10057557,
+    "scale": 1.8,
+    "speed": 3.4,
+    "sprite": "dragons/mottled_dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 78
+  },
+  {
+    "id": "quicksilver-dragon",
+    "name": "Quicksilver Dragon",
+    "cr": 12,
+    "tier": 5,
+    "ac": 19,
+    "hp": [
+      18,
+      12,
+      54
+    ],
+    "atk": 10,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 8400,
+    "color": 13421789,
+    "scale": 2,
+    "speed": 4,
+    "sprite": "dragons/quicksilver_dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 98
+  },
+  {
+    "id": "iron-dragon",
+    "name": "Iron Dragon",
+    "cr": 13,
+    "tier": 5,
+    "ac": 20,
+    "hp": [
+      20,
+      12,
+      60
+    ],
+    "atk": 11,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 10000,
+    "color": 8947848,
+    "scale": 2.1,
+    "speed": 3.2,
+    "sprite": "dragons/iron_dragon.png",
+    "type": "dragon",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 110
+  },
+  {
+    "id": "steam-dragon",
+    "name": "Steam Dragon",
+    "cr": 9,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      15,
+      12,
+      45
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      10,
+      5
+    ],
+    "xp": 5000,
+    "color": 13421772,
+    "scale": 1.8,
+    "speed": 3.4,
+    "sprite": "dragons/steam_dragon.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 76
+  },
+  {
+    "id": "phoenix",
+    "name": "Phoenix",
+    "cr": 9,
+    "tier": 5,
+    "ac": 16,
+    "hp": [
+      15,
+      12,
+      30
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      8,
+      5
+    ],
+    "xp": 5000,
+    "color": 16737860,
+    "scale": 1.3,
+    "speed": 4.4,
+    "sprite": "phoenix.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "elemental",
+      "draconic"
+    ],
+    "threat": 72
+  },
+  {
+    "id": "fiend",
+    "name": "Fiend",
+    "cr": 10,
+    "tier": 5,
+    "ac": 18,
+    "hp": [
+      18,
+      10,
+      54
+    ],
+    "atk": 10,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 5900,
+    "color": 8921634,
+    "scale": 1.5,
+    "speed": 3.2,
+    "sprite": "demons/fiend.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 80
+  },
+  {
+    "id": "balrug",
+    "name": "Balrug",
+    "cr": 12,
+    "tier": 5,
+    "ac": 19,
+    "hp": [
+      18,
+      12,
+      54
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      10,
+      7
+    ],
+    "xp": 8400,
+    "color": 16729122,
+    "scale": 1.8,
+    "speed": 3.2,
+    "sprite": "demons/balrug.png",
+    "type": "fiend",
+    "size": "huge",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 100
+  },
+  {
+    "id": "green-death",
+    "name": "Green Death",
+    "cr": 11,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      16,
+      12,
+      48
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 7200,
+    "color": 4500036,
+    "scale": 1.5,
+    "speed": 3,
+    "sprite": "demons/green_death.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 85
+  },
+  {
+    "id": "blue-death",
+    "name": "Blue Death",
+    "cr": 11,
+    "tier": 5,
+    "ac": 17,
+    "hp": [
+      16,
+      12,
+      48
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 7200,
+    "color": 2245802,
+    "scale": 1.5,
+    "speed": 3,
+    "sprite": "demons/blue_death.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 85
+  },
+  {
+    "id": "swamp-drake",
+    "name": "Swamp Drake",
+    "cr": 3,
+    "tier": 3,
+    "ac": 14,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      8,
+      4
+    ],
+    "xp": 700,
+    "color": 4482611,
+    "scale": 1.2,
+    "speed": 3.4,
+    "sprite": "swamp_drake.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 30
+  },
+  {
+    "id": "fire-drake",
+    "name": "Fire Drake",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 700,
+    "color": 16729088,
+    "scale": 1.2,
+    "speed": 3.6,
+    "sprite": "fire_drake.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 29
+  },
+  {
+    "id": "forest-drake",
+    "name": "Forest Drake",
+    "cr": 3,
+    "tier": 3,
+    "ac": 15,
+    "hp": [
+      7,
+      10,
+      21
+    ],
+    "atk": 6,
+    "dmg": [
+      2,
+      6,
+      4
+    ],
+    "xp": 700,
+    "color": 4500036,
+    "scale": 1.2,
+    "speed": 3.4,
+    "sprite": "forest_drake.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 29
+  },
+  {
+    "id": "death-drake",
+    "name": "Death Drake",
+    "cr": 4,
+    "tier": 3,
+    "ac": 16,
+    "hp": [
+      8,
+      10,
+      24
+    ],
+    "atk": 7,
+    "dmg": [
+      2,
+      6,
+      5
+    ],
+    "xp": 1100,
+    "color": 6702182,
+    "scale": 1.3,
+    "speed": 3.2,
+    "sprite": "death_drake.png",
+    "type": "dragon",
+    "size": "large",
+    "tags": [
+      "draconic",
+      "undead"
+    ],
+    "threat": 34
+  },
+  {
+    "id": "ancient-lich-lord",
+    "name": "Ancient Lich Lord",
+    "cr": 18,
+    "tier": "boss",
+    "ac": 18,
+    "hp": [
+      20,
+      8,
+      80
+    ],
+    "atk": 10,
+    "dmg": [
+      4,
+      8,
+      6
+    ],
+    "xp": 20000,
+    "color": 12294655,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "undead/ancient_lich.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 140
+  },
+  {
+    "id": "hell-knight",
+    "name": "Hell Knight",
+    "cr": 14,
+    "tier": "boss",
+    "ac": 20,
+    "hp": [
+      18,
+      10,
+      54
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      8,
+      8
+    ],
+    "xp": 11500,
+    "color": 8930338,
+    "scale": 1.2,
+    "speed": 3,
+    "sprite": "hell_knight.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 130
+  },
+  {
+    "id": "iron-dragon-ancient",
+    "name": "Ancient Iron Dragon",
+    "cr": 19,
+    "tier": "boss",
+    "ac": 21,
+    "hp": [
+      25,
+      12,
+      75
+    ],
+    "atk": 14,
+    "dmg": [
+      3,
+      10,
+      8
+    ],
+    "xp": 22000,
+    "color": 10066329,
+    "scale": 2.4,
+    "speed": 3,
+    "sprite": "dragons/iron_dragon.png",
+    "type": "dragon",
+    "size": "gargantuan",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 175
+  },
+  {
+    "id": "shadow-dragon-ancient",
+    "name": "Ancient Shadow Dragon",
+    "cr": 18,
+    "tier": "boss",
+    "ac": 20,
+    "hp": [
+      23,
+      12,
+      69
+    ],
+    "atk": 13,
+    "dmg": [
+      3,
+      10,
+      7
+    ],
+    "xp": 20000,
+    "color": 1114163,
+    "scale": 2.4,
+    "speed": 3.4,
+    "sprite": "dragons/shadow_dragon.png",
+    "type": "dragon",
+    "size": "gargantuan",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 165
+  },
+  {
+    "id": "golden-dragon-ancient",
+    "name": "Ancient Golden Dragon",
+    "cr": 22,
+    "tier": "boss",
+    "ac": 22,
+    "hp": [
+      28,
+      12,
+      112
+    ],
+    "atk": 16,
+    "dmg": [
+      3,
+      10,
+      9
+    ],
+    "xp": 41000,
+    "color": 16768324,
+    "scale": 2.6,
+    "speed": 3.8,
+    "sprite": "golden_dragon.png",
+    "type": "dragon",
+    "size": "gargantuan",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 220
+  },
+  {
+    "id": "cacodemon",
+    "name": "Cacodemon",
+    "cr": 15,
+    "tier": "boss",
+    "ac": 18,
+    "hp": [
+      20,
+      12,
+      60
+    ],
+    "atk": 11,
+    "dmg": [
+      3,
+      10,
+      7
+    ],
+    "xp": 13000,
+    "color": 16729122,
+    "scale": 1.8,
+    "speed": 3.2,
+    "sprite": "demons/cacodemon.png",
+    "type": "fiend",
+    "size": "huge",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 135
+  },
+  {
+    "id": "hellion",
+    "name": "Hellion",
+    "cr": 16,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      22,
+      12,
+      66
+    ],
+    "atk": 12,
+    "dmg": [
+      4,
+      8,
+      8
+    ],
+    "xp": 15000,
+    "color": 16720384,
+    "scale": 1.6,
+    "speed": 3.6,
+    "sprite": "demons/hellion.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 145
+  },
+  {
+    "id": "tormentor",
+    "name": "Tormentor",
+    "cr": 15,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      20,
+      10,
+      60
+    ],
+    "atk": 10,
+    "dmg": [
+      3,
+      8,
+      7
+    ],
+    "xp": 13000,
+    "color": 4460868,
+    "scale": 1.4,
+    "speed": 3.4,
+    "sprite": "demons/tormentor.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 130
+  },
+  {
+    "id": "guardian-mummy",
+    "name": "Guardian Mummy",
+    "cr": 12,
+    "tier": "boss",
+    "ac": 16,
+    "hp": [
+      15,
+      10,
+      45
+    ],
+    "atk": 9,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 8400,
+    "color": 13417352,
+    "scale": 1.2,
+    "speed": 2.4,
+    "sprite": "undead/guardian_mummy.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 100
+  },
+  {
+    "id": "greater-mummy",
+    "name": "Greater Mummy",
+    "cr": 14,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      18,
+      10,
+      54
+    ],
+    "atk": 11,
+    "dmg": [
+      2,
+      10,
+      7
+    ],
+    "xp": 11500,
+    "color": 13417318,
+    "scale": 1.3,
+    "speed": 2.4,
+    "sprite": "undead/greater_mummy.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 125
+  },
+  {
+    "id": "skeletal-warrior",
+    "name": "Skeletal Champion",
+    "cr": 14,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      18,
+      10,
+      54
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      8,
+      8
+    ],
+    "xp": 11500,
+    "color": 14540236,
+    "scale": 1.2,
+    "speed": 2.8,
+    "sprite": "undead/skeletal_warrior.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 130
+  },
+  {
+    "id": "vampire-knight",
+    "name": "Vampire Knight",
+    "cr": 14,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      18,
+      10,
+      36
+    ],
+    "atk": 12,
+    "dmg": [
+      2,
+      8,
+      7
+    ],
+    "xp": 11500,
+    "color": 8939144,
+    "scale": 1.05,
+    "speed": 3.4,
+    "sprite": "undead/vampire_knight.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 130
+  },
+  {
+    "id": "vampire-mage",
+    "name": "Vampire Mage",
+    "cr": 15,
+    "tier": "boss",
+    "ac": 16,
+    "hp": [
+      16,
+      10,
+      48
+    ],
+    "atk": 8,
+    "dmg": [
+      3,
+      8,
+      6
+    ],
+    "xp": 13000,
+    "color": 8939178,
+    "scale": 1.05,
+    "speed": 3.2,
+    "sprite": "undead/vampire_mage.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 120
+  },
+  {
+    "id": "wight-king",
+    "name": "Wight King",
+    "cr": 12,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      16,
+      10,
+      32
+    ],
+    "atk": 10,
+    "dmg": [
+      2,
+      8,
+      6
+    ],
+    "xp": 8400,
+    "color": 10066312,
+    "scale": 1.1,
+    "speed": 2.8,
+    "sprite": "undead/wight_king.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 105
+  },
+  {
+    "id": "mummy-priest",
+    "name": "Mummy Priest",
+    "cr": 13,
+    "tier": "boss",
+    "ac": 16,
+    "hp": [
+      17,
+      10,
+      34
+    ],
+    "atk": 9,
+    "dmg": [
+      2,
+      10,
+      6
+    ],
+    "xp": 10000,
+    "color": 13417335,
+    "scale": 1.1,
+    "speed": 2.4,
+    "sprite": "undead/mummy_priest.png",
+    "type": "undead",
+    "size": "medium",
+    "tags": [
+      "undead"
+    ],
+    "threat": 110
+  },
+  {
+    "id": "reaper-lord",
+    "name": "Reaper Lord",
+    "cr": 17,
+    "tier": "boss",
+    "ac": 18,
+    "hp": [
+      22,
+      10,
+      66
+    ],
+    "atk": 13,
+    "dmg": [
+      3,
+      8,
+      8
+    ],
+    "xp": 18000,
+    "color": 1114146,
+    "scale": 1.3,
+    "speed": 3.6,
+    "sprite": "demons/reaper.png",
+    "type": "fiend",
+    "size": "large",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 160
+  },
+  {
+    "id": "efreeti",
+    "name": "Efreeti",
+    "cr": 12,
+    "tier": "boss",
+    "ac": 17,
+    "hp": [
+      16,
+      10,
+      48
+    ],
+    "atk": 10,
+    "dmg": [
+      2,
+      8,
+      6
+    ],
+    "xp": 8400,
+    "color": 16737826,
+    "scale": 1.5,
+    "speed": 3.6,
+    "sprite": "demons/efreet.png",
+    "type": "elemental",
+    "size": "large",
+    "tags": [
+      "fiendish",
+      "elemental"
+    ],
+    "threat": 110
+  },
+  {
+    "id": "rakshasa",
+    "name": "Rakshasa",
+    "cr": 14,
+    "tier": "boss",
+    "ac": 18,
+    "hp": [
+      18,
+      10,
+      54
+    ],
+    "atk": 10,
+    "dmg": [
+      2,
+      8,
+      6
+    ],
+    "xp": 11500,
+    "color": 13404228,
+    "scale": 1.1,
+    "speed": 3.2,
+    "sprite": "demons/rakshasa.png",
+    "type": "fiend",
+    "size": "medium",
+    "tags": [
+      "fiendish"
+    ],
+    "threat": 120
+  },
+  {
+    "id": "guardian-serpent",
+    "name": "Guardian Serpent",
+    "cr": 14,
+    "tier": "boss",
+    "ac": 19,
+    "hp": [
+      20,
+      12,
+      60
+    ],
+    "atk": 12,
+    "dmg": [
+      3,
+      8,
+      8
+    ],
+    "xp": 11500,
+    "color": 11184708,
+    "scale": 1.8,
+    "speed": 2.8,
+    "sprite": "guardian_serpent.png",
+    "type": "monstrosity",
+    "size": "huge",
+    "tags": [
+      "draconic"
+    ],
+    "threat": 135
+  },
+  {
+    "id": "harpy-matriarch",
+    "name": "Harpy Matriarch",
+    "cr": 10,
+    "tier": "boss",
+    "ac": 14,
+    "hp": [
+      14,
+      10,
+      28
+    ],
+    "atk": 8,
+    "dmg": [
+      2,
+      6,
+      5
+    ],
+    "xp": 5900,
+    "color": 8952132,
+    "scale": 1.1,
+    "speed": 4.2,
+    "sprite": "harpy.png",
+    "type": "monstrosity",
+    "size": "medium",
+    "tags": [
+      "beast"
+    ],
+    "threat": 90
+  }
 ]
