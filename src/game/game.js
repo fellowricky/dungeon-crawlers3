@@ -344,7 +344,9 @@ class Game {
 
   /* move entity along its path; returns true if moving.
      Wall repulsion is applied after each position update to keep
-     sprites from clipping into wall geometry. */
+     sprites from clipping into wall geometry.  Uses a generous
+     capture radius (0.35 tiles) so entities flow through cells
+     without needing exact center occupancy. */
   stepAlong(e, speed, dt){
     if(!e.path || e.pathI >= e.path.length) return false;
     const { W } = this.D;
@@ -352,15 +354,32 @@ class Game {
     const tx = this.wx(c % W), tz = this.wz(Math.floor(c / W));
     const dx = tx - e.x, dz = tz - e.z;
     const dist = Math.hypot(dx, dz);
-    const step = speed * dt;
-    if(dist <= step){
+  
+    const CAPTURE = 0.35;
+    if(dist <= CAPTURE){
       e.x = tx; e.z = tz; e.pathI++;
       this.wallRepel(e);
+      if(e.pathI < e.path.length){
+        const nx = this.wx(e.path[e.pathI] % W);
+        const nz = this.wz(Math.floor(e.path[e.pathI] / W));
+        const targetAngle = Math.atan2(nx - e.x, nz - e.z);
+        let delta = targetAngle - e.ent.grp.rotation.y;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+      }
       return e.pathI < e.path.length;
     }
-    e.x += dx/dist*step; e.z += dz/dist*step;
+  
+    const step = speed * dt;
+    e.x += dx/dist*step;
+    e.z += dz/dist*step;
     this.wallRepel(e);
-    e.ent.grp.rotation.y = Math.atan2(dx, dz);
+    const targetAngle = Math.atan2(dx, dz);
+    let delta = targetAngle - e.ent.grp.rotation.y;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
     return true;
   }
 
