@@ -599,7 +599,9 @@ function tryGenerate(seed, params){
       let count = Math.round((area/18) * (0.5 + r.difficulty));
       if(r.type===TYPE.ELITE) count = Math.max(2, Math.round(count*0.6));
       if(r.type===TYPE.BOSS)  count = rng.i(2,3);
-      const tier = r.type===TYPE.ELITE ? 3 : Math.max(1, Math.ceil(r.difficulty*3));
+      /* 5-tier system: difficulty 0-1 maps to tiers 1-5 */
+      const rawTier = Math.max(1, Math.ceil(r.difficulty * 5));
+      const tier = r.type===TYPE.ELITE ? Math.min(5, rawTier + 1) : Math.min(5, rawTier);
       let guard=0;
       while(count>0 && guard++<220){
         const x=rng.i(Math.floor(r.cx-r.w/2)+1, Math.ceil(r.cx+r.w/2)-1);

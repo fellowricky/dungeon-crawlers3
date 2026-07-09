@@ -175,105 +175,6 @@ export function pickSubclass(h, key){
 /* cantrips add a damage die at character levels 5 (SRD cantrip scaling) */
 export const cantripDice = lvl => lvl >= 5 ? 2 : 1;
 
-/* ---------------- monsters (SRD stat blocks) ----------------
-   tier 1–3 come from the generator's spawn data; boss is its own pool.
-   scale = visual size multiplier. */
-export const MONSTERS = {
-  1: [
-    { name:'Giant Rat', ac:12, hp:[2,6],  atk:4, dmg:[1,4,2],  xp:25,  color:0x8a7a6a, scale:0.6, speed:3.4, sprite:'animals/rat.png' },
-    { name:'Grey Rat', ac:11, hp:[1,6],  atk:3, dmg:[1,4,1],  xp:15,  color:0x7a7a7a, scale:0.55, speed:3.6, sprite:'animals/grey_rat.png' },
-    { name:'Giant Bat', ac:13, hp:[1,8],  atk:4, dmg:[1,4,1],  xp:20,  color:0x5a4a3a, scale:0.7, speed:3.8, sprite:'animals/giant_bat.png' },
-    { name:'Goblin',    ac:15, hp:[2,6],  atk:4, dmg:[1,6,2],  xp:50,  color:0x6a8a4a, scale:0.75, speed:3.2, sprite:'goblin.png' },
-    { name:'Skeleton',  ac:13, hp:[2,8],  atk:4, dmg:[1,6,2],  xp:50,  color:0xcabfa8, scale:0.85, speed:3.0, sprite:'undead/skeletons/skeleton_humanoid_large.png' },
-    { name:'Zombie',    ac:8,  hp:[3,8],  atk:3, dmg:[1,6,1],  xp:50,  color:0x5a7a5a, scale:0.9, speed:2.0, sprite:'undead/ghoul.png' },
-    { name:'Giant Centipede', ac:12, hp:[2,6], atk:4, dmg:[1,4,2], xp:30, color:0xaa5a3a, scale:0.7, speed:3.2, sprite:'animals/giant_centipede.png' },
-    { name:'Adder', ac:13, hp:[1,8], atk:4, dmg:[1,4,1], xp:25, color:0x3a8a3a, scale:0.6, speed:3.5, sprite:'animals/adder.png' }
-  ],
-  2: [
-    { name:'Orc',        ac:13, hp:[2,8,6],  atk:5, dmg:[1,12,3], xp:100, color:0x4a6a3a, scale:0.95, speed:3.2, sprite:'orc.png' },
-    { name:'Gnoll',      ac:14, hp:[3,8,3],  atk:4, dmg:[1,8,2],  xp:100, color:0x8a6a4a, scale:0.95, speed:3.1, sprite:'gnoll.png' },
-    { name:'Hobgoblin',  ac:18, hp:[2,8,2],  atk:3, dmg:[1,8,1],  xp:100, color:0x9a5a3a, scale:0.9, speed:3.0, sprite:'hobgoblin.png' },
-    { name:'Giant Spider',ac:14, hp:[4,8,4], atk:5, dmg:[1,8,3],  xp:200, color:0x3a3a4a, scale:0.9, speed:3.6, sprite:'animals/spider.png' },
-    { name:'Wolf Spider', ac:14, hp:[5,8,5], atk:5, dmg:[1,8,4],  xp:200, color:0x4a4a4a, scale:0.95, speed:3.7, sprite:'animals/wolf_spider.png' },
-    { name:'Ghoul',      ac:12, hp:[5,8],    atk:4, dmg:[2,6,2],  xp:200, color:0x7a8a6a, speed:3.2, scale:0.9, sprite:'undead/ghoul.png' },
-    { name:'Mummy',      ac:11, hp:[4,8,8],  atk:4, dmg:[1,10,2], xp:150, color:0xdedebe, scale:0.9, speed:2.4, sprite:'undead/mummy.png' },
-    { name:'Warg',       ac:13, hp:[4,8,8],  atk:4, dmg:[2,6,1],  xp:150, color:0x5a5a5a, scale:0.9, speed:3.6, sprite:'animals/warg.png' },
-    { name:'Crocodile',  ac:15, hp:[3,10,9], atk:4, dmg:[1,10,2], xp:150, color:0x3a5a3a, scale:1.0, speed:2.8, sprite:'animals/crocodile.png' }
-  ],
-  3: [
-    { name:'Bugbear',    ac:16, hp:[5,8,5],   atk:4, dmg:[2,8,2],  xp:200, color:0x8a6a3a, scale:1.1, speed:3.0, sprite:'orc_warrior.png' },
-    { name:'Werewolf',   ac:12, hp:[9,8,18],  atk:4, dmg:[2,6,2],  xp:700, color:0x6a5a4a, scale:1.05, speed:3.6, sprite:'shapeshifter.png' },
-    { name:'Ogre',       ac:11, hp:[7,10,21], atk:6, dmg:[2,8,4],  xp:450, color:0x9a8a5a, scale:1.35, speed:2.6, sprite:'ogre.png' },
-    { name:'Minotaur',   ac:14, hp:[9,10,27], atk:6, dmg:[2,12,4], xp:700, color:0x7a4a3a, scale:1.2, speed:3.2, sprite:'minotaur.png' },
-    { name:'Deep Troll', ac:14, hp:[8,10,32], atk:6, dmg:[2,6,4],  xp:700, color:0x3a6a4a, scale:1.35, speed:2.8, sprite:'deep_troll.png' },
-    { name:'Manticore',  ac:13, hp:[6,10,12], atk:5, dmg:[2,4,2],  xp:450, color:0xaa6a4a, scale:1.25, speed:3.3, sprite:'manticore.png' },
-    { name:'Polar Bear', ac:12, hp:[5,10,20], atk:5, dmg:[2,6,2],  xp:400, color:0xeeeeee, scale:1.2, speed:3.2, sprite:'animals/polar_bear.png' },
-    { name:'Wight',      ac:14, hp:[6,8,6],   atk:4, dmg:[1,8,2],  xp:400, color:0x8a9a8a, scale:1.0, speed:2.8, sprite:'undead/wight.png' },
-    { name:'Vampire',    ac:15, hp:[8,8,8],   atk:6, dmg:[1,10,3], xp:600, color:0xaaaaff, scale:1.05, speed:3.4, sprite:'undead/vampire.png' }
-  ],
-  boss: [
-    { name:'Ettin',        ac:12, hp:[10,10,30], atk:7, dmg:[2,8,5],  xp:1100, color:0xaa7a4a, scale:1.7, speed:2.6, sprite:'ettin.png' },
-    { name:'Young Dragon', ac:17, hp:[11,10,33], atk:7, dmg:[2,10,4], xp:1800, color:0xb04030, scale:1.8, speed:3.2, sprite:'dragons/fire_dragon.png' },
-    { name:'Troll',        ac:15, hp:[8,10,40],  atk:7, dmg:[2,6,4],  xp:1800, color:0x4a8a6a, scale:1.6, speed:3.0, sprite:'troll.png' },
-    { name:'Stone Giant',  ac:17, hp:[11,12,44], atk:9, dmg:[3,8,6], xp:2900, color:0x8a8a9a, scale:1.9, speed:2.8, sprite:'stone_giant.png' }
-  ]
-};
-
-export const MONSTER_THEMES = [
-  {
-    name: 'Goblinoid',
-    monsters: {
-      1: ['Goblin'],
-      2: ['Hobgoblin'],
-      3: ['Bugbear']
-    }
-  },
-  {
-    name: 'Undead',
-    monsters: {
-      1: ['Skeleton', 'Zombie'],
-      2: ['Ghoul', 'Mummy'],
-      3: ['Wight', 'Vampire']
-    }
-  },
-  {
-    name: 'Beasts & Spiders',
-    monsters: {
-      1: ['Giant Rat', 'Grey Rat', 'Giant Bat', 'Giant Centipede', 'Adder'],
-      2: ['Giant Spider', 'Wolf Spider', 'Warg', 'Crocodile'],
-      3: ['Werewolf', 'Manticore', 'Polar Bear']
-    }
-  },
-  {
-    name: 'Horde',
-    monsters: {
-      1: ['Goblin'],
-      2: ['Orc', 'Gnoll'],
-      3: ['Ogre', 'Minotaur', 'Deep Troll']
-    }
-  }
-];
-
-/* dungeonLevel scaling: extra HP dice + attack/AC bump so SRD blocks stay
-   threatening as the party levels. */
-export function spawnMonster(tier, dungeonLevel, rngPick, allowedNames = null){
-  let pool = MONSTERS[tier] || MONSTERS[1];
-  if (allowedNames) {
-    const filtered = pool.filter(spec => allowedNames.includes(spec.name));
-    if (filtered.length > 0) pool = filtered;
-  }
-  const spec = pool[Math.floor(rngPick()*pool.length)];
-  const lvlB = Math.max(0, dungeonLevel-1);
-  const hp = roll(spec.hp[0] + Math.floor(lvlB* (tier==='boss' ? 2 : 0.7)), spec.hp[1], spec.hp[2]||0);
-  return {
-    name: spec.name, ac: spec.ac + Math.floor(lvlB/3), maxHp: hp, hp,
-    atk: spec.atk + Math.floor(lvlB/2),
-    dmg: spec.dmg, xp: Math.round(spec.xp * (1 + lvlB*0.25)),
-    color: spec.color, scale: spec.scale, speed: spec.speed,
-    gold: Math.round((spec.xp/10) * (1 + lvlB*0.3) * (0.6+Math.random()*0.8))
-  };
-}
-
 /* ---------------- hero construction ---------------- */
 export const HERO_NAMES = ['Bram','Kira','Aldric','Wren','Doric','Sariel','Toby','Magda','Fenn','Isolde','Garrick','Nyx','Piotr','Vessa','Odo','Lyra'];
 
@@ -442,4 +343,185 @@ export function pendingPoints(h){
 /* whether a hero can equip an item given class armor proficiency */
 export function canEquip(h, item){
   return PROF_RANK[item.prof||'none'] <= PROF_RANK[CLASSES[h.classKey].armorProf||'none'];
+}
+
+/* ============== MONSTERS ============== */
+
+import MONSTERS_RAW from './monsters.json';
+
+/* Index by tier for O(1) spawn-pool lookup */
+const _byTier = {};
+for (const m of MONSTERS_RAW) {
+  const t = m.tier;
+  if (!_byTier[t]) _byTier[t] = [];
+  _byTier[t].push(m);
+}
+export const MONSTERS = _byTier;
+
+/* Approximate threat cost per tier — used by the dungeon generator's budget
+ * system to decide spawn counts. Computed from the median threat of each tier. */
+export const TIER_THREAT = { 1: 12, 2: 21, 3: 38, 4: 55, 5: 90, boss: 120 };
+
+/**
+ * Dungeon visual theme → monster theme index mapping.
+ * Each visual theme maps to 2–3 MONSTER_THEMES entries so monsters feel
+ * native to the environment. */
+export const DUNGEON_MONSTER_MAP = {
+  ancient: [0, 1, 9],     // Goblinoid + Undead + Fungal
+  molten:  [7, 6, 10],    // Fiendish + Elemental + Giantkind
+  frost:   [3, 1, 10],    // Beasts + Undead + Giantkind
+  grim:    [1, 7, 11],    // Undead + Fiendish + Drow
+  verdant: [4, 8, 3],     // Orc + Fey + Beasts
+};
+
+export const MONSTER_THEMES = [
+  {
+    name: 'Goblinoid',
+    monsters: {
+      1: ['goblin', 'kobold'],
+      2: ['hobgoblin'],
+      3: ['bugbear'],
+      4: ['hobgoblin-iron-shadow'],
+      5: ['hobgoblin-iron-shadow']
+    }
+  },
+  {
+    name: 'Undead',
+    monsters: {
+      1: ['skeleton', 'zombie'],
+      2: ['ghoul', 'shadow', 'mummy'],
+      3: ['wight', 'ghast', 'vampire'],
+      4: ['wraith', 'ghost'],
+      5: ['wraith', 'vampire']
+    }
+  },
+  {
+    name: 'Vermin',
+    monsters: {
+      1: ['giant-rat', 'grey-rat', 'giant-centipede', 'giant-wolf-spider', 'stirge', 'giant-frog', 'giant-weasel'],
+      2: ['giant-spider', 'wolf-spider'],
+      3: ['giant-scorpion', 'phase-spider', 'ettercap', 'giant-constrictor-snake', 'ankheg'],
+      4: [],
+      5: ['drider']
+    }
+  },
+  {
+    name: 'Beasts',
+    monsters: {
+      1: ['wolf', 'giant-bat', 'giant-badger', 'giant-owl', 'poisonous-snake', 'giant-poisonous-snake'],
+      2: ['dire-wolf', 'crocodile', 'warg', 'harpy'],
+      3: ['owlbear', 'polar-bear', 'giant-constrictor-snake', 'basilisk'],
+      4: ['bulette', 'chimera', 'hydra'],
+      5: ['remorhaz', 'behir']
+    }
+  },
+  {
+    name: 'Orc Horde',
+    monsters: {
+      1: ['orc', 'kobold'],
+      2: ['gnoll', 'orc'],
+      3: ['ogre'],
+      4: ['hill-giant'],
+      5: ['fire-giant', 'frost-giant']
+    }
+  },
+  {
+    name: 'Draconic',
+    monsters: {
+      1: ['kobold'],
+      2: ['kobold'],
+      3: ['young-white-dragon'],
+      4: ['young-black-dragon', 'young-white-dragon', 'young-green-dragon', 'wyvern'],
+      5: ['young-red-dragon', 'adult-white-dragon'],
+    }
+  },
+  {
+    name: 'Elemental',
+    monsters: {
+      1: ['magmin'],
+      2: ['magmin', 'gargoyle'],
+      3: ['gargoyle', 'hell-hound'],
+      4: ['air-elemental', 'earth-elemental', 'fire-elemental', 'water-elemental', 'salamander'],
+      5: ['fire-elemental']
+    }
+  },
+  {
+    name: 'Fiendish',
+    monsters: {
+      1: ['dretch', 'manes', 'lemure'],
+      2: ['imp', 'quasit'],
+      3: ['hell-hound', 'bearded-devil'],
+      4: ['vrock', 'barbed-devil'],
+      5: ['hezrou', 'glabrezu']
+    }
+  },
+  {
+    name: 'Fey',
+    monsters: {
+      1: ['giant-owl'],
+      2: ['satyr', 'dryad', 'centaur'],
+      3: ['green-hag'],
+      4: ['chimera'],
+      5: []
+    }
+  },
+  {
+    name: 'Fungal',
+    monsters: {
+      1: ['swarm-of-rats', 'swarm-of-bats', 'giant-frog'],
+      2: ['darkmantle', 'cockatrice'],
+      3: ['gelatinous-cube', 'ochre-jelly', 'mimic'],
+      4: ['flesh-golem'],
+      5: []
+    }
+  },
+  {
+    name: 'Giantkind',
+    monsters: {
+      1: ['giant-poisonous-snake'],
+      2: ['ogre'],
+      3: ['minotaur', 'ogre', 'deep-troll', 'manticore'],
+      4: ['troll', 'hill-giant', 'stone-giant'],
+      5: ['frost-giant', 'fire-giant', 'cloud-giant']
+    }
+  },
+  {
+    name: 'Drow',
+    monsters: {
+      1: ['giant-spider', 'giant-poisonous-snake'],
+      2: ['deep-gnome'],
+      3: ['doppelganger', 'ettercap'],
+      4: ['medusa'],
+      5: ['behir']
+    }
+  }
+];
+
+/* effectiveLevel = max(dungeonLevel, partyLevel) so over-levelled parties
+   still face threatening monsters and under-levelled ones aren't crushed.
+   Gentle depth scaling: most difficulty comes from tier selection (based on
+   quest level), not from stat inflation per floor. */
+export function spawnMonster(tier, effectiveLevel, rngPick, allowedNames = null){
+  let pool = MONSTERS[tier] || MONSTERS[1];
+  if (allowedNames) {
+    const filtered = pool.filter(spec => allowedNames.includes(spec.id));
+    if (filtered.length > 0) pool = filtered;
+  }
+  const spec = pool[Math.floor(rngPick()*pool.length)];
+  const lvlB = Math.max(0, effectiveLevel-1);
+  /* Gentle depth scaling — most difficulty comes from tier, not floor stats.
+     Per-floor bump is only ~0.15 effective levels, so lvlB grows slowly. */
+  let hpBonus = Math.floor(lvlB * (tier==='boss' ? 1.5 : 0.5));
+  let hp = roll(spec.hp[0] + 1 + hpBonus, spec.hp[1], spec.hp[2]||0);
+  let atk = spec.atk + Math.floor(lvlB / 4);
+  /* training-wheels boss: SRD boss blocks are deadly to a level-2 party */
+  if(tier==='boss' && effectiveLevel<=2){ hp = Math.round(hp*0.65); atk -= 2; }
+  return {
+    name: spec.name, ac: spec.ac + Math.floor(lvlB/5), maxHp: hp, hp,
+    atk,
+    dmg: spec.dmg, xp: Math.round(spec.xp * (1 + lvlB*0.25)),
+    color: spec.color, scale: spec.scale, speed: spec.speed,
+    sprite: spec.sprite,
+    gold: Math.round((spec.xp/10) * (1 + lvlB*0.3) * (0.6+Math.random()*0.8))
+  };
 }

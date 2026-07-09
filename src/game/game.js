@@ -43,6 +43,7 @@ class Game {
     this.potions = { heal:2, greater:0 };
     this.inventory = [];
     this.dungeonLevel = 1;
+    this.effectiveLevel = 1;
     this.follow = null;
     this.freeCamUntil = 0;
     this.elapsed = 0;
@@ -144,6 +145,9 @@ class Game {
       return c;
     });
 
+    /* --- compute effective difficulty with gentle per-floor scaling --- */
+    this.effectiveLevel = Math.max(1, 1 + (this.dungeonLevel - 1) * 0.15);
+
     /* --- monsters from generator spawn data --- */
     this.monsters = [];
     const roomThemes = {};
@@ -154,12 +158,12 @@ class Game {
       }
       const theme = roomThemes[sp.roomId];
       const allowedNames = theme ? theme.monsters[sp.tier] : null;
-      const m = spawnMonster(sp.tier, this.dungeonLevel, Math.random, allowedNames);
+      const m = spawnMonster(sp.tier, this.effectiveLevel, Math.random, allowedNames);
       this.addMonster(m, sp.x, sp.y, sp.roomId);
     }
     /* boss */
     const br = rooms[d.boss];
-    const bossSpec = spawnMonster('boss', this.dungeonLevel, Math.random);
+    const bossSpec = spawnMonster('boss', this.effectiveLevel, Math.random);
     const ba = this.roomAnchor[d.boss];
     this.addMonster(bossSpec, (ba%W)+1, Math.floor(ba/W), d.boss, true);
     this.boss = this.monsters[this.monsters.length-1];
