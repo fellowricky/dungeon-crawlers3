@@ -592,22 +592,57 @@ function tryGenerate(seed, params){
       }
     }
     if(r.type===TYPE.COMBAT || r.type===TYPE.ELITE || r.type===TYPE.BOSS){
-      let area=0;
-      for(let y=Math.floor(r.cy-r.h/2); y<=Math.ceil(r.cy+r.h/2); y++)
-        for(let x=Math.floor(r.cx-r.w/2); x<=Math.ceil(r.cx+r.w/2); x++)
-          if(inB(x,y) && roomId[idx(x,y)]===r.id) area++;
-      let count = Math.round((area/18) * (0.5 + r.difficulty));
-      if(r.type===TYPE.ELITE) count = Math.max(2, Math.round(count*0.6));
-      if(r.type===TYPE.BOSS)  count = rng.i(2,3);
-      const tier = r.type===TYPE.ELITE ? 3 : Math.max(1, Math.ceil(r.difficulty*3));
-      let guard=0;
-      while(count>0 && guard++<220){
-        const x=rng.i(Math.floor(r.cx-r.w/2)+1, Math.ceil(r.cx+r.w/2)-1);
-        const y=rng.i(Math.floor(r.cy-r.h/2)+1, Math.ceil(r.cy+r.h/2)-1);
-        if(!inB(x,y)) continue;
-        const c=idx(x,y);
-        if(roomId[c]===r.id && grid[c]===FLOOR && !occ[c] && !doorway[c] && !lakeMask[c]){
-          spawns.push({x,y,tier,roomId:r.id}); occ[c]=1; count--;
+      /* ---- threat-budget spawn system ----
+         Rooms get a budget of "threat points" scaled by difficulty and room
+         type.  Each tier has an approximate threat cost (kept in sync with
+         TIER_THREAT in srd.js).  The budget is spent greedily, with weighted
+         random tier picks so rooms don't feel monotone.
+
+         This replaces the old area-based count formula, which made large
+         rooms disproportionately dangerous and small rooms too easy. */
+      const BASE_BUDGET = 55;
+      const typeMult = { combat:1.0, elite:1.6, boss:2.2 };
+      const budget = Math.round(BASE_BUDGET * (0.35 + 0.65*r.difficulty) * (typeMult[r.type]||1.0));
+      const tierCost = { 1:12, 2:21, 3:38 };
+      const naturalTier = r.type===TYPE.ELITE ? 3 : Math.max(1, Math.ceil(r.difficulty*4));
+      const minTier = r.type===TYPE.BOSS ? 2 : 1;
+      let remaining = budget;
+      const tiers = [];
+      const MAX_SPAWNS = 6;
+
+      while(remaining >= tierCost[minTier] && tiers.length < MAX_SPAWNS){
+        const roll = rng.raw();
+        let t;
+        if(roll < 0.2)      t = Math.max(minTier, naturalTier-1);
+        else if(roll < 0.85) t = naturalTier;
+        else                 t = Math.min(3, naturalTier+1);
+        const cost = tierCost[t];
+        if(cost <= remaining + tierCost[minTier]*0.7){
+          tiers.push(t); remaining -= cost;
+        } else {
+          /* budget won't cover this tier — try stepping down */
+          let found = false;
+          for(let tt = t-1; tt >= minTier; tt--){
+            if(tierCost[tt] <= remaining + tierCost[minTier]*0.7){
+              tiers.push(tt); remaining -= tierCost[tt]; found = true; break;
+            }
+          }
+          if(!found) break;
+        }
+      }
+      /* ensure every combat room has at least one spawn */
+      if(tiers.length===0) tiers.push(Math.max(1, Math.ceil(r.difficulty*3)));
+
+      for(const tier of tiers){
+        let placed = false;
+        for(let attempt=0; attempt<80 && !placed; attempt++){
+          const x=rng.i(Math.floor(r.cx-r.w/2)+1, Math.ceil(r.cx+r.w/2)-1);
+          const y=rng.i(Math.floor(r.cy-r.h/2)+1, Math.ceil(r.cy+r.h/2)-1);
+          if(!inB(x,y)) continue;
+          const c=idx(x,y);
+          if(roomId[c]===r.id && grid[c]===FLOOR && !occ[c] && !doorway[c] && !lakeMask[c]){
+            spawns.push({x,y,tier,roomId:r.id}); occ[c]=1; placed=true;
+          }
         }
       }
     }
@@ -757,7 +792,7 @@ function tryGenerate(seed, params){
 
   const loops = edges.filter(e=>e.isLoop).length;
   return {
-    valid, params, seed, name:dungeonName(rng, TH),
+    valid, params, seed, name:dungeonName(rng, TH), themeKey: params.themeKey,
     W,H, grid, roomId, corridor, doorway, bfs, maxBfs,
     rooms, edges, entrance, boss, maxDepth,
     props, spawns, torches, pools, lakeCells, lakeMask, arches,

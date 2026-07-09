@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import {
-  makeHero, normalizeHero, spawnMonster, MONSTER_THEMES, grantXp
+  makeHero, normalizeHero, spawnMonster, MONSTER_THEMES, DUNGEON_MONSTER_MAP, grantXp
 } from './srd.js';
 import {
   makeHeroMesh, makeMonsterMesh, drawBar, updateFloatTexts,
@@ -46,6 +46,7 @@ class Game {
     this.potions = { heal: 2, greater: 0 };
     this.inventory = [];
     this.dungeonLevel = 1;
+    this.effectiveLevel = 1;
     this.activeQuest = null;
     this.questFloor = 0;
     this.follow = null;
@@ -54,6 +55,14 @@ class Game {
     this.gameGroup = null;
     this.saveTimer = 0;
     this.paused = false;
+  }
+
+  /** Average hero level, floored at 1.  Used to set a floor under
+   *  dungeonLevel so over-levelled parties aren't fighting wet noodles. */
+  partyLevel() {
+    return Math.max(1, Math.round(
+      this.heroes.reduce((s, h) => s + (h.data.level || 1), 0) / Math.max(1, this.heroes.length)
+    ));
   }
 
   /* ============ boot / setup ============ */
@@ -177,18 +186,27 @@ class Game {
       return c;
     });
 
+    /* blend dungeon depth with party strength so scaling never falls behind */
+    this.effectiveLevel = Math.max(this.dungeonLevel, this.partyLevel());
+
     this.monsters = [];
+    /* dungeon-theme-aware monster selection: each visual theme maps to 2–3
+       monster families (e.g. frost → beasts + undead).  Rooms pick
+       deterministically from that subset instead of the global pool. */
+    const themePool = d.themeKey && DUNGEON_MONSTER_MAP[d.themeKey]
+      ? DUNGEON_MONSTER_MAP[d.themeKey] : [0, 1, 2, 3];
     const roomThemes = {};
     for (const sp of d.spawns) {
       if (roomThemes[sp.roomId] === undefined) {
-        roomThemes[sp.roomId] = MONSTER_THEMES[sp.roomId % MONSTER_THEMES.length];
+        const idx = themePool[sp.roomId % themePool.length];
+        roomThemes[sp.roomId] = MONSTER_THEMES[idx];
       }
       const theme = roomThemes[sp.roomId];
       const allowedNames = theme ? theme.monsters[sp.tier] : null;
-      const m = spawnMonster(sp.tier, this.dungeonLevel, Math.random, allowedNames);
+      const m = spawnMonster(sp.tier, this.effectiveLevel, Math.random, allowedNames);
       this.addMonster(m, sp.x, sp.y, sp.roomId);
     }
-    const bossSpec = spawnMonster('boss', this.dungeonLevel, Math.random);
+    const bossSpec = spawnMonster('boss', this.effectiveLevel, Math.random);
     const ba = this.roomAnchor[d.boss];
     this.addMonster(bossSpec, (ba % W) + 1, Math.floor(ba / W), d.boss, true);
     this.boss = this.monsters[this.monsters.length - 1];
