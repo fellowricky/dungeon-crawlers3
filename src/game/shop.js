@@ -1,7 +1,7 @@
 /**
  * Shop System — an overlay shown between dungeon floors.
  */
-import { rollItem, bonusText } from './items.js';
+import { rollItem, bonusText, perkText, ilvlText, migrateItem } from './items.js';
 import { log, updateResources } from './ui.js';
 import { refreshMenus } from './menus.js';
 
@@ -12,6 +12,13 @@ let selItem = null;
 
 const $ = id => document.getElementById(id);
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function itemIconHTML(icon, className="") {
+  if (icon && icon.includes('/')) {
+    return `<img class="${className}" src="./${icon}" style="width:28px;height:28px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;" />`;
+  }
+  return icon || '';
+}
 
 export function initShop(game) {
   G = game;
@@ -73,8 +80,7 @@ function closeShopAndDescend() {
   open = false;
   G.setPaused(false);
   $('shopscreen').classList.remove('show');
-  log(`The party descends to floor ${G.dungeonLevel}…`, 'sys');
-  G.nextDungeon();
+  G.onShopExit();
 }
 
 function renderShop() {
@@ -100,7 +106,7 @@ function renderShop() {
     }
 
     return `<div class="bag-item ${selItem === shopObj ? 'sel' : ''}" data-i="${i}" style="border-color:${color}">
-      <span class="bag-ico">${icon}</span>
+      <span class="bag-ico">${itemIconHTML(icon)}</span>
       <span class="bag-r" style="background:${color}"></span>
     </div>`;
   }).join('');
@@ -118,15 +124,18 @@ function renderShop() {
     let content = '';
     if (selItem.type === 'potion') {
       content = `
-        <div class="id-name">${selItem.icon} ${selItem.name}</div>
+        <div class="id-name">${itemIconHTML(selItem.icon)} ${selItem.name}</div>
         <div class="id-bonus">${selItem.desc}</div>
       `;
     } else {
       const it = selItem.item;
+      migrateItem(it);
+      const pLine = perkText(it);
       content = `
-        <div class="id-name" style="color:${it.color}">${it.icon} ${it.name}</div>
-        <div class="id-slot">${cap(it.slot)} · ${cap(it.rarity)}</div>
+        <div class="id-name" style="color:${it.color}">${itemIconHTML(it.icon)} ${it.name}</div>
+        <div class="id-slot">${cap(it.slot)} — ${cap(it.rarity)} · ${ilvlText(it)}</div>
         <div class="id-bonus">${bonusText(it) || 'No bonuses'}</div>
+        ${pLine ? `<div class="id-perk">${pLine}</div>` : ''}
       `;
     }
 
@@ -169,5 +178,18 @@ function renderShop() {
     }
   } else {
     detail.innerHTML = '<div class="item-detail" style="margin-top:0; text-align:center; color:#6a6558; padding:20px 0;">Select an item to view details.</div>';
+  }
+
+  const descendBtn = $('shop-descend');
+  if (descendBtn) {
+    if (G.currentQuest) {
+      if (G.currentFloorInQuest < G.currentQuest.floors) {
+        descendBtn.innerHTML = `Descend to Floor <span id="shop-next-floor">${G.currentFloorInQuest + 1}</span> of ${G.currentQuest.floors}`;
+      } else {
+        descendBtn.innerHTML = `Complete Quest &amp; Return to Map`;
+      }
+    } else {
+      descendBtn.innerHTML = `Descend to Floor <span id="shop-next-floor">${G.dungeonLevel}</span>`;
+    }
   }
 }

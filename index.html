@@ -115,12 +115,21 @@
     <div id="gamelog"></div>
     <div id="banner"></div>
 
+    <!-- ===== debug overlay (D key) ===== -->
+    <div id="dbg" style="display:none">
+      <div class="dbg-header">DEBUG — pathing &amp; AI</div>
+      <div id="dbg-body"></div>
+    </div>
+
     <!-- ===== party setup ===== -->
     <div id="setup">
       <div class="setup-inner">
         <h1>DUNGEON CRAWLERS</h1>
         <div class="tagline">Forge a party of four. They'll handle the rest — you just keep the potions coming.</div>
-        <div id="setup-slots"></div>
+        <div class="setup-columns">
+          <div id="setup-roster"></div>
+          <div id="setup-slots"></div>
+        </div>
         <div class="actions">
           <button id="setup-continue">CONTINUE SAVED PARTY</button>
           <button id="setup-embark">⚔ EMBARK</button>
@@ -128,6 +137,41 @@
         <div class="srd-note">
           Mechanics from the SRD 5.1 by Wizards of the Coast LLC (CC-BY-4.0). ·
           Dungeon engine: Dungeon Forge by Majid Manzarpour (MIT).
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== world map / quest selection ===== -->
+    <div id="worldmapscreen">
+      <div class="wm-frame">
+        <div class="wm-header">
+          <h2>🗺️ World Map</h2>
+          <div class="wm-subtitle">Select a quest to explore the dungeons</div>
+        </div>
+        <div class="wm-content">
+          <div class="wm-map-container" id="wm-map-container">
+            <img id="wm-map-bg" src="./world_map.png" alt="World Map" />
+            <div id="wm-quest-nodes"></div>
+          </div>
+          <div class="wm-sidebar" id="wm-sidebar">
+            <div id="wm-detail-placeholder">Select a quest on the map to view details.</div>
+            <div id="wm-detail-content" style="display:none;">
+              <h3 id="wm-quest-name" class="q-name"></h3>
+              <div id="wm-quest-desc" class="q-desc"></div>
+              <div class="q-meta-grid">
+                <div class="q-meta-row"><span>Theme:</span> <strong id="wm-quest-theme" class="q-theme"></strong></div>
+                <div class="q-meta-row"><span>Floors:</span> <strong id="wm-quest-floors"></strong></div>
+                <div class="q-meta-row"><span>Difficulty:</span> <strong id="wm-quest-level"></strong></div>
+              </div>
+              <div class="q-rewards">
+                <h4>Rewards (on final floor clear)</h4>
+                <div class="q-reward-item">🪙 <span id="wm-quest-reward-gold"></span> gold</div>
+                <div class="q-reward-item">✨ <span id="wm-quest-reward-xp"></span> XP</div>
+                <div id="wm-quest-reward-item-row" class="q-reward-item" style="display:none;"><span id="wm-quest-reward-item"></span></div>
+              </div>
+              <button id="wm-embark-btn" class="btn primary">EMBARK QUEST</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

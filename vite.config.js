@@ -9,4 +9,10 @@ export default defineConfig({
     target: 'es2020',
     outDir: 'dist',
   },
+  // The lpc_repo checkout has its own HTML/TS entries that break vite's
+  // dependency scan (and skip pre-bundling → slow first load). Only scan
+  // the game's real entry point.
+  optimizeDeps: {
+    entries: ['index.html'],
+  },
 });

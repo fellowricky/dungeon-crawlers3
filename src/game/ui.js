@@ -2,7 +2,8 @@
  * Game HUD + party setup screen. All DOM, no three.js.
  */
 import { RACES, CLASSES, ABILITIES, ABILITY_LABEL, rollStat, mod, fmtMod, XP_TABLE, MAX_LEVEL, HERO_NAMES,
-         subclassOf } from './srd.js';
+         subclassOf, SKILLS, getDefaultProficiencies } from './srd.js';
+import { SPELLS } from './features.js';
 
 const $ = id => document.getElementById(id);
 
@@ -21,36 +22,155 @@ export function log(msg, kind=''){
 
 /* ---------------- party frames ---------------- */
 const ABILITY_ICON = {
-  actionSurge:'⚔', rallyingCry:'📣', cunningAction:'💨', deathstrike:'🗡',
-  preserveLife:'✨', guidedStrike:'⚡', fireball:'🔥', magicMissile:'✴'
+  actionSurge:'⚔', actionSurgeClass:'⚔', rallyingCry:'📣', cunningAction:'💨',
+  cunningActionClass:'💨', deathstrike:'🗡', preserveLife:'✨', guidedStrike:'⚡',
+  fireball:'🔥', magicMissile:'✴', frenzy:'🪓', bearTotem:'🐻', cuttingWords:'💬',
+  combatInspiration:'🎵', entangle:'🌿', wildShape:'🐺', wildShapeClass:'🐺',
+  quiveringPalm:'🫱', shadowStep:'👥', sacredWeapon:'✨', vowOfEnmity:'🎯',
+  colossusSlayer:'🏹', companionStrike:'🐺', dragonBreath:'🐲', wildSurge:'🔮',
+  fiendishBlessing:'😈', feyPresence:'🌸', flurryOfBlows:'👊', rage:'😡',
+  divineSmite:'💫', tidesOfChaos:'🌀', bardicInspiration:'🎵', indomitable:'🛡',
+  layOnHands:'🙏', shield:'🛡', scorchingRay:'🔥', haste:'⚡', bless:'✨',
+  spiritualWeapon:'⚔', spiritGuardians:'👻', moonbeam:'🌙', callLightning:'⚡',
+  healingWord:'💬', shatter:'💥', chaosBolt:'🌈', dragonBreathSpell:'🔥',
+  hex:'🔮', armsOfHadar:'🦑', thunderousSmite:'⚡', huntersMark:'🎯'
 };
 
+/* Class features that appear on the HUD with ready/spent state */
+const REST_TIP = {
+  short: { ready: 'ready · short rest (shrine / rest skill)', spent: 'spent · short rest to recover' },
+  long:  { ready: 'ready · long rest (clear floor)', spent: 'spent · long rest to recover' }
+};
+
+const HUD_FEATURES = [
+  { key:'secondWind', ico:'🌀', label:'Second Wind', recharge:'short',
+    spent: h => !!h.secondWindUsed,
+    has: h => !!(h.secondWind || (h.features && h.features.includes('secondWind'))) },
+  { key:'actionSurgeClass', ico:'⚔', label:'Action Surge', recharge:'short',
+    has: h => h.features && h.features.includes('actionSurgeClass') },
+  { key:'flurryOfBlows', ico:'👊', label:'Flurry of Blows', recharge:'short',
+    has: h => h.features && h.features.includes('flurryOfBlows') },
+  { key:'cunningActionClass', ico:'💨', label:'Cunning Action', recharge:'short',
+    has: h => h.features && h.features.includes('cunningActionClass') },
+  { key:'rage', ico:'😡', label:'Rage', recharge:'long',
+    spent: h => !!h.rageUsed,
+    has: h => h.features && h.features.includes('rage') },
+  { key:'divineSmite', ico:'💫', label:'Divine Smite', recharge:'short',
+    spent: h => !!h.smiteUsed,
+    has: h => h.features && h.features.includes('divineSmite') },
+  { key:'tidesOfChaos', ico:'🌀', label:'Tides of Chaos', recharge:'short',
+    spent: h => !!h.tidesUsed,
+    has: h => h.features && h.features.includes('tidesOfChaos') },
+  { key:'bardicInspiration', ico:'🎵', label:'Bardic Inspiration', recharge:'short',
+    has: h => h.features && h.features.includes('bardicInspiration') },
+  { key:'wildShapeClass', ico:'🐺', label:'Wild Shape', recharge:'short',
+    has: h => h.features && h.features.includes('wildShapeClass') },
+  { key:'indomitable', ico:'🛡', label:'Indomitable', recharge:'long',
+    has: h => h.features && h.features.includes('indomitable') },
+  { key:'channelDivinity', ico:'✝', label:'Channel Divinity', recharge:'short',
+    has: h => h.features && h.features.includes('channelDivinity') }
+];
+
 /* one small icon per class/subclass ability, lit when ready / dim when spent;
-   slot-pool abilities show a count badge instead */
+   resource pools show a count badge instead */
 function abilityIconsHTML(h){
   const cls = CLASSES[h.classKey];
   const icons = [];
-  if(h.secondWind)
-    icons.push({ ico:'🌀', ready:!h.secondWindUsed,
-      tip:`Second Wind — self-heal when badly hurt (${h.secondWindUsed?'spent · recharges at shrines/floors':'ready'})` });
-  if(cls.healer)
-    icons.push({ ico:'✚', count:h.healSlots ?? h.healSlotsMax ?? 0,
-      tip:'Cure Wounds — heal slots (refresh at shrines/floors)' });
+  const seen = new Set();
+
+  const pushReady = (key, ico, label, ready, tipExtra) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    icons.push({
+      ico, ready, tip: `${label} — ${tipExtra || (ready ? 'ready' : 'spent')}`
+    });
+  };
+  const pushCount = (key, ico, label, count, tip) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    icons.push({ ico, count, tip: tip || `${label} (${count})` });
+  };
+
+  /* Resource pools first — always visible when the hero has them */
+  if (cls.healer || (h.healSlotsMax != null && h.healSlotsMax > 0)) {
+    pushCount('healSlots', '✚', 'Cure Wounds', h.healSlots ?? h.healSlotsMax ?? 0,
+      'Cure Wounds — heal slots (+1 short rest · full long rest)');
+  }
+  if (h.slotsMax > 0) {
+    const slotTip = h.classKey === 'warlock'
+      ? `Pact slots ${h.slots ?? 0}/${h.slotsMax} (full on short or long rest)`
+      : `Spell slots ${h.slots ?? 0}/${h.slotsMax} (+1 short rest · full long rest)`;
+    pushCount('spellSlots', '✦', 'Spell slots', h.slots ?? 0, slotTip);
+  }
+  if (h.features && h.features.includes('layOnHands')) {
+    pushCount('layOnHands', '🙏', 'Lay on Hands', h.layOnHands ?? h.layOnHandsMax ?? 0,
+      `Lay on Hands — ${h.layOnHands ?? 0}/${h.layOnHandsMax ?? 0} (half short · full long)`);
+  }
+
+  /* Class combat features */
+  for (const f of HUD_FEATURES) {
+    if (!f.has(h)) continue;
+    const bucket = f.recharge === 'long' ? 'long' : 'short';
+    let spent;
+    if (f.spent) spent = f.spent(h);
+    else if (bucket === 'long') spent = !!h.abilityUsed?.long;
+    else spent = !!h.abilityUsed?.short;
+    const tips = REST_TIP[bucket];
+    pushReady(f.key, f.ico, f.label, !spent, spent ? tips.spent : tips.ready);
+  }
+
+  /* Known spells (learned via progression) */
+  for (const key of (h.knownSpells || [])) {
+    const sp = SPELLS[key];
+    if (!sp) continue;
+    const ico = ABILITY_ICON[key] || '★';
+    let ready = true;
+    let tipExtra = sp.desc || '';
+    if (sp.recharge === 'slot') {
+      ready = (h.slots || 0) > 0;
+      tipExtra = `${sp.label} — costs a spell slot (${ready ? 'ready' : 'no slots'})`;
+    } else if (sp.recharge === 'short') {
+      ready = !h.abilityUsed?.short;
+      tipExtra = `${sp.label} — ${ready ? REST_TIP.short.ready : REST_TIP.short.spent}`;
+    } else if (sp.recharge === 'long' || sp.recharge === 'day') {
+      ready = !h.abilityUsed?.long;
+      tipExtra = `${sp.label} — ${ready ? REST_TIP.long.ready : REST_TIP.long.spent}`;
+    } else {
+      tipExtra = `${sp.label} — ready`;
+    }
+    pushReady('spell:' + key, ico, sp.label, ready, tipExtra);
+  }
+
+  /* Subclass active (if not already covered by a feature/spell key) */
   const sc = subclassOf(h);
-  if(sc){
+  if (sc) {
     const a = sc.active;
-    if(a.recharge==='slot')
-      icons.push({ ico:ABILITY_ICON[a.key]||'★', count:h.slots ?? 0,
-        tip:`${a.name} — spell slots (refresh at shrines/floors)` });
-    else {
-      const spent = a.recharge==='day' ? h.abilityUsed?.day : h.abilityUsed?.short;
-      icons.push({ ico:ABILITY_ICON[a.key]||'★', ready:!spent,
-        tip:`${a.name} — ${a.recharge==='day'?'1/day (recharges next floor)':'1/short rest (recharges after combat)'} · ${spent?'spent':'ready'}` });
+    /* Avoid duplicate icons when class feature + subclass share the same ability */
+    const aliases = {
+      actionSurge: 'actionSurgeClass',
+      cunningAction: 'cunningActionClass',
+      wildShape: 'wildShapeClass',
+      colossusSlayer: 'colossusSlayerClass'
+    };
+    const alias = aliases[a.key];
+    if (!seen.has(a.key) && !seen.has('spell:' + a.key) && !(alias && seen.has(alias))) {
+      if (a.recharge === 'slot') {
+        pushCount(a.key, ABILITY_ICON[a.key] || '★', a.name, h.slots ?? 0,
+          `${a.name} — spell slots`);
+      } else {
+        const bucket = (a.recharge === 'long' || a.recharge === 'day') ? 'long' : 'short';
+        const spent = bucket === 'long' ? h.abilityUsed?.long : h.abilityUsed?.short;
+        const tips = REST_TIP[bucket];
+        pushReady(a.key, ABILITY_ICON[a.key] || '★', a.name, !spent,
+          spent ? tips.spent : tips.ready);
+      }
     }
   }
-  return icons.map(ic=>{
-    const state = ic.count!==undefined ? (ic.count>0?'ready':'spent') : (ic.ready?'ready':'spent');
-    return `<span class="pf-abil ${state}" title="${ic.tip}">${ic.ico}${ic.count!==undefined?`<b>${ic.count}</b>`:''}</span>`;
+
+  return icons.map(ic => {
+    const state = ic.count !== undefined ? (ic.count > 0 ? 'ready' : 'spent') : (ic.ready ? 'ready' : 'spent');
+    const badge = ic.count !== undefined ? `<b>${ic.count}</b>` : '';
+    return `<span class="pf-abil ${state}" title="${ic.tip.replace(/"/g, '&quot;')}">${ic.ico}${badge}</span>`;
   }).join('');
 }
 
@@ -68,7 +188,7 @@ export function buildPartyFrames(heroes){
         <span class="pf-name">${h.name}</span>
         <span class="pf-lvl">Lv <b id="pf${i}-lvl">${h.level}</b></span>
       </div>
-      <div class="pf-sub" id="pf${i}-sub">${RACES[h.raceKey].label} ${cls.label} · AC ${h.ac}</div>
+      <div class="pf-sub" id="pf${i}-sub">${RACES[h.raceKey].label} ${cls.label} — AC ${h.ac}</div>
       <div class="pf-hpbar"><div class="pf-hpfill" id="pf${i}-hp"></div><span class="pf-hptext" id="pf${i}-hpt"></span></div>
       <div class="pf-abils" id="pf${i}-ab"></div>
       <div class="pf-xpbar"><div class="pf-xpfill" id="pf${i}-xp"></div></div>`;
@@ -87,7 +207,7 @@ export function updatePartyFrames(heroes){
     $('pf'+i+'-lvl').textContent = h.level;
     const sub = subclassOf(h);
     $('pf'+i+'-sub').textContent =
-      `${RACES[h.raceKey].label} ${sub?sub.label:CLASSES[h.classKey].label} · AC ${h.ac}`;
+      `${RACES[h.raceKey].label} ${sub?sub.label:CLASSES[h.classKey].label} — AC ${h.ac}`;
     $('pf'+i+'-ab').innerHTML = abilityIconsHTML(h);
     const lo = XP_TABLE[h.level], hi = XP_TABLE[Math.min(h.level+1, MAX_LEVEL)];
     $('pf'+i+'-xp').style.width = (h.level>=MAX_LEVEL ? 100 : 100*(h.xp-lo)/Math.max(1,hi-lo))+'%';
@@ -103,7 +223,11 @@ export function updateResources(state){
   $('potgreater-n').textContent = state.potions.greater;
   $('potheal').classList.toggle('empty', state.potions.heal<=0);
   $('potgreater').classList.toggle('empty', state.potions.greater<=0);
-  $('floorval').textContent = state.dungeonLevel;
+  if (state.activeQuest) {
+    $('floorval').textContent = `${state.questFloor || 1}/${state.activeQuest.floors} · d${state.dungeonLevel}`;
+  } else {
+    $('floorval').textContent = state.dungeonLevel;
+  }
 }
 
 export function showBanner(text, sub=''){
@@ -134,30 +258,68 @@ export function showSetup(hasSave, onEmbark, onContinue){
 
   const VISUAL_OPTS = {
     gender: ['male', 'female'],
-    skinColor: ['#ffddcc', '#f1c27d', '#e0ac69', '#8d5524', '#c68642', '#3e2723', '#7cb342'],
+    skinColor: ['#ffddcc', '#f1c27d', '#e0ac69', '#8d5524', '#c68642', '#3e2723', '#7cb342', '#bb4444', '#aabbaa', '#dd5566', '#ffeeee'],
     hair: ['none', 'bangs/adult', 'braid/adult', 'long/adult', 'page/adult', 'messy1/adult', 'pixie/adult', 'bob/adult', 'curly_long/adult', 'dreadlocks_long/adult', 'ponytail/adult', 'spiked/adult', 'loose/adult', 'swoop/adult', 'parted/adult', 'mop/adult'],
     facialHair: ['none', 'beard/basic', 'beard/medium', 'beard/5oclock_shadow', 'mustache/basic'],
     hairColor: ['#000000', '#663311', '#ddbb55', '#cc4422', '#eeeeee', '#66aacc', '#cc66aa'],
     eyeColor: ['#000000', '#4477ff', '#228822', '#884422', '#aa2222', '#ffffff']
   };
 
+  /* non-human head sprites baked into LPC (value = folder path, '' = human).
+     A custom head replaces the human face/eyes/ears/hair/beard entirely. */
+  const HEAD_OPTS = [
+    ['', 'Human'],
+    ['lizard/male', 'Draconic'],
+    ['orc/male', 'Orcish'],
+    ['goblin/adult', 'Goblin'],
+    ['minotaur/male', 'Minotaur'],
+    ['wolf/male', 'Wolfkin'],
+    ['troll/adult', 'Troll'],
+    ['rat/adult', 'Ratfolk'],
+    ['alien/adult', 'Alien'],
+    ['frankenstein/adult', 'Flesh Golem']
+  ];
+
+  /* Per-race defaults. `head` assigns a distinctive LPC head where one fits
+     the race (dragonborn→lizard, half-orc→orc); the rest read as human and
+     differentiate via ears / beard / skin. (LPC in this checkout has no
+     horns/tails/wings assets, so tieflings rely on red skin + pointed ears.) */
   const getRaceDefaults = (raceKey) => {
     switch(raceKey) {
-      case 'halforc': return { skinColor: '#7cb342', hairColor: '#222222', ears: 'elven', facialHair: 'none', eyeColor: '#aa2222' };
-      case 'elf': return { skinColor: '#ffddcc', hairColor: '#eeeeee', ears: 'elven', facialHair: 'none', eyeColor: '#4477ff' };
-      case 'dwarf': return { skinColor: '#e0ac69', hairColor: '#663311', ears: 'none', facialHair: 'beard/medium', eyeColor: '#884422' };
-      case 'halfling': return { skinColor: '#f1c27d', hairColor: '#ddbb55', ears: 'none', facialHair: 'none', eyeColor: '#228822' };
-      default: return { skinColor: '#ffddcc', hairColor: '#663311', ears: 'none', facialHair: 'none', eyeColor: '#000000' };
+      case 'halforc': return { head: 'orc/male', skinColor: '#8fae7a', hairColor: '#111111', ears: 'none', facialHair: 'none', eyeColor: '#5a1010' };
+      case 'elf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', facialHair: 'none', eyeColor: '#203a3a' };
+      case 'dwarf': return { head: '', skinColor: '#ffddbb', hairColor: '#bbaa55', ears: 'none', facialHair: 'beard/medium', eyeColor: '#3a2010' };
+      case 'halfling': return { head: '', skinColor: '#eeddbb', hairColor: '#664422', ears: 'none', facialHair: 'none', eyeColor: '#3a2010' };
+      case 'dragonborn': return { head: 'lizard/male', skinColor: '#7fa25a', hairColor: '#000000', ears: 'none', facialHair: 'none', eyeColor: '#ffcc00' };
+      case 'gnome': return { head: '', skinColor: '#eeddbb', hairColor: '#a3e635', ears: 'elven', facialHair: 'none', eyeColor: '#3a2010' };
+      case 'halfelf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', facialHair: 'none', eyeColor: '#203a3a' };
+      case 'tiefling': return { head: '', skinColor: '#dd5566', hairColor: '#111111', ears: 'elven', facialHair: 'none', eyeColor: '#ffcc00' };
+      default: return { head: '', skinColor: '#ffddcc', hairColor: '#663311', ears: 'none', facialHair: 'none', eyeColor: '#000000' };
     }
   };
+
+  /* Skin swatches are race-dependent: the body (and beast heads) are recoloured
+     by a multiply tint, so each race only offers colours that read correctly
+     over its base art (tinting a green orc/lizard head with pink just muddies
+     it). Each palette's FIRST entry is that race's default skin. */
+  const SKIN_PALETTES = {
+    human:    ['#ffeeee','#ffddcc','#ffddbb','#eeddbb','#f1c27d','#e0ac69','#c68642','#8d5524','#5a3a20','#3e2723'],
+    orc:      ['#8fae7a','#7a9a5a','#6a8a4a','#9ab98a','#57794a','#8a9a8a','#67787a','#4a5a3a'],
+    draconic: ['#7fa25a','#5f8a45','#4a7040','#b0824a','#9a6a3a','#7a8a9a','#4a5a6a','#3a3a3a','#b0a850'],
+    tiefling: ['#dd5566','#c0455a','#a03a4a','#8a3550','#dd7788','#b05070','#7a3a5a','#5a2a3a']
+  };
+  const RACE_SKIN = { halforc:'orc', dragonborn:'draconic', tiefling:'tiefling' };
+  const skinColorsFor = raceKey => SKIN_PALETTES[RACE_SKIN[raceKey] || 'human'];
 
   DEFAULT_BUILDS.forEach((def,i)=>{
     const raceDefs = getRaceDefaults(def.raceKey);
     slots.push({ 
       name:pickName(), raceKey:def.raceKey, classKey:def.classKey,
       baseStats: { str:8, dex:8, con:8, int:8, wis:8, cha:8 }, // Point buy default
-      visual: { 
+      proficiencies: getDefaultProficiencies(def.raceKey, def.classKey),
+      visual: {
         gender: Math.random()>0.5 ? 'male' : 'female',
+        head: raceDefs.head || '',
         skinColor: raceDefs.skinColor,
         hair: VISUAL_OPTS.hair[1 + Math.floor(Math.random()*(VISUAL_OPTS.hair.length-1))], // avoid none
         facialHair: raceDefs.facialHair,
@@ -211,26 +373,27 @@ export function showSetup(hasSave, onEmbark, onContinue){
     const visual = slot.visual;
     const g = visual.gender;
     const isMonster = (g === 'skeleton' || g === 'zombie');
-    
+    const customHead = visual.head;                 // '' / undefined = human
+
     let w = null;
     let t = 'clothes/shortsleeve/shortsleeve'; // default
     let l = 'pants'; // default
-    
+
     if (slot.classKey === 'fighter') { w = 'sword/longsword'; t = 'chainmail'; }
     else if (slot.classKey === 'rogue') { w = 'sword/dagger'; t = 'armour/leather'; }
     else if (slot.classKey === 'cleric') { w = 'blunt/mace'; t = 'chainmail'; }
     else if (slot.classKey === 'wizard') { w = 'sword/dagger'; t = 'clothes/longsleeve/longsleeve'; }
-    
+
     const paths = {
       body: `body/bodies/${g}`,
-      head: isMonster ? null : `head/heads/human/${g}`,
-      eyes: isMonster ? null : `eyes/human/adult`,
-      ears: (!isMonster && visual.ears === 'elven') ? `head/ears/elven/adult` : null,
+      head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${g}`),
+      eyes: (isMonster || customHead) ? null : `eyes/human/adult`,
+      ears: (!isMonster && !customHead && visual.ears === 'elven') ? `head/ears/elven/adult` : null,
       legs: isMonster ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : g}`,
       torso: isMonster ? null : `torso/${t}/${g}`,
       feet: isMonster ? null : `feet/${l === 'armour/plate' ? 'armour/plate' : 'shoes/basic'}/${g==='male'?'male':'thin'}`,
-      facialHair: (isMonster || !visual.facialHair || visual.facialHair === 'none') ? null : `beards/${visual.facialHair}`,
-      hair: (isMonster || visual.hair==='none') ? null : `hair/${visual.hair}`,
+      facialHair: (isMonster || customHead || !visual.facialHair || visual.facialHair === 'none') ? null : `beards/${visual.facialHair}`,
+      hair: (isMonster || customHead || visual.hair==='none') ? null : `hair/${visual.hair}`,
       weapon: w ? `weapon/${w}` : null
     };
     
@@ -255,24 +418,48 @@ export function showSetup(hasSave, onEmbark, onContinue){
     }
   }
 
+  /* left-side party roster: every hero with a live sprite + basic info,
+     click to edit. Kept in sync whenever a hero changes. */
+  function renderRoster(){
+    const rosterWrap = $('setup-roster');
+    if(!rosterWrap) return;
+    rosterWrap.innerHTML = `<div class="roster-title">Your Party</div>` + slots.map((s,i)=>{
+      const c = CLASSES[s.classKey], r = RACES[s.raceKey];
+      const stats = ABILITIES.map(ab=>{
+        const total = (s.baseStats[ab]||8) + (r.bonus[ab]||0);
+        return `<span class="rstat"><em>${ABILITY_LABEL[ab]}</em><b>${total}</b></span>`;
+      }).join('');
+      return `<button type="button" class="roster-hero ${i===currentSlotIdx?'on':''}" data-i="${i}">
+        <canvas class="roster-sprite" width="64" height="64"></canvas>
+        <span class="roster-meta">
+          <b id="roster-name-${i}">${s.name}</b>
+          <i class="roster-race">${r.label}</i>
+          <i class="roster-class">${c.label}</i>
+          <span class="roster-stats">${stats}</span>
+        </span>
+      </button>`;
+    }).join('');
+    rosterWrap.querySelectorAll('.roster-hero').forEach(btn=>{
+      const i = +btn.dataset.i;
+      btn.addEventListener('click', ()=>{ currentSlotIdx = i; renderSlot(); });
+      drawPreview(btn.querySelector('.roster-sprite'), slots[i]);
+    });
+  }
+
   function renderSlot() {
     const slot = slots[currentSlotIdx];
     const cls = CLASSES[slot.classKey], race = RACES[slot.raceKey];
     
-    const colorSwatches = (key, current) => {
-      return `<div style="display:flex; gap:4px;">` + 
-        VISUAL_OPTS[key].map(c => 
+    const colorSwatches = (key, current, listOverride) => {
+      return `<div style="display:flex; gap:4px; flex-wrap:wrap;">` +
+        (listOverride || VISUAL_OPTS[key]).map(c =>
           `<div class="swatch ${key}" data-val="${c}" style="width:16px; height:16px; border-radius:50%; background-color:${c}; border: 2px solid ${c===current ? '#fff' : '#444'}; cursor:pointer;"></div>`
         ).join('') + 
         `</div>`;
     };
 
     slotWrap.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-        <button id="prev-hero" style="padding:4px 8px; cursor:pointer;">&larr; Prev</button>
-        <span style="font-weight:bold; font-size:16px;">Hero ${currentSlotIdx + 1} of 4</span>
-        <button id="next-hero" style="padding:4px 8px; cursor:pointer;">Next &rarr;</button>
-      </div>
+      <div class="editor-title">Editing <b>${slot.name}</b> — Hero ${currentSlotIdx + 1} of ${slots.length}</div>
       <div class="slot" style="margin: 0; padding: 16px;">
         <div class="slot-header" style="display:flex;gap:16px;align-items:center;">
           <canvas class="slot-preview" width="64" height="64" style="background:#1a1c23;border-radius:4px;image-rendering:pixelated;width:128px;height:128px;flex-shrink:0;"></canvas>
@@ -286,11 +473,12 @@ export function showSetup(hasSave, onEmbark, onContinue){
         </div>
         
         <div class="slot-visuals" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;font-size:14px;">
+          <label style="display:flex; justify-content:space-between; align-items:center;">Head: <select class="vis-head" style="width:110px; padding:2px;">${HEAD_OPTS.map(([v,l])=>`<option value="${v}" ${v===(slot.visual.head||'')?'selected':''}>${l}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Gender: <select class="vis-gender" style="width:110px; padding:2px;">${VISUAL_OPTS.gender.map(v=>`<option value="${v}" ${v===slot.visual.gender?'selected':''}>${v}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Ears: <select class="vis-ears" style="width:110px; padding:2px;"><option value="none" ${slot.visual.ears==='none'?'selected':''}>Human</option><option value="elven" ${slot.visual.ears==='elven'?'selected':''}>Elven</option></select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Hair: <select class="vis-hair" style="width:110px; padding:2px;">${VISUAL_OPTS.hair.map(v=>`<option value="${v}" ${v===slot.visual.hair?'selected':''}>${v.split('/')[0]}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Facial Hair: <select class="vis-facialHair" style="width:110px; padding:2px;">${VISUAL_OPTS.facialHair.map(v=>`<option value="${v}" ${v===slot.visual.facialHair?'selected':''}>${v.split('/').pop()}</option>`).join('')}</select></label>
-          <div style="display:flex; justify-content:space-between; align-items:center;"><span>Skin:</span> ${colorSwatches('skinColor', slot.visual.skinColor)}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center;"><span>Skin:</span> ${colorSwatches('skinColor', slot.visual.skinColor, skinColorsFor(slot.raceKey))}</div>
           <div style="display:flex; justify-content:space-between; align-items:center;"><span>Hair:</span> ${colorSwatches('hairColor', slot.visual.hairColor)}</div>
           <div style="display:flex; justify-content:space-between; align-items:center; grid-column: 1 / -1;">
             <div style="display:flex; justify-content:space-between; align-items:center; width:calc(50% - 6px);"><span>Eyes:</span> ${colorSwatches('eyeColor', slot.visual.eyeColor)}</div>
@@ -303,6 +491,9 @@ export function showSetup(hasSave, onEmbark, onContinue){
           <button id="btn-recommend-stats" style="flex:1; padding:4px; cursor:pointer;">Recommend</button>
           <button id="btn-random-stats" style="flex:1; padding:4px; cursor:pointer;">🎲 Randomize</button>
         </div>
+
+        <div id="setup-skills-section" style="margin-bottom: 12px; padding: 10px; background: #181818; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05);"></div>
+
         <div class="slot-traits" id="active-traits" style="margin-top:12px; font-size:13px; color:#aaa; line-height:1.4;"></div>
       </div>
     `;
@@ -389,38 +580,116 @@ export function showSetup(hasSave, onEmbark, onContinue){
       };
 
       $('active-traits').innerHTML =
-        `<div>⚔ ${cls.attack.name} · ${cls.acDesc}</div><div style="margin-top:4px;">✨ ${cls.feature}</div><div style="margin-top:4px;">🧬 ${race.trait}</div>`;
-      
+        `<div>⚔ ${cls.attack.name} — ${cls.acDesc}</div><div style="margin-top:4px;">✨ ${cls.feature}</div><div style="margin-top:4px;">🧬 ${race.trait}</div>`;
+
+      /* keep the active roster card's stat readout live as points are spent */
+      const rs = document.querySelector('.roster-hero.on .roster-stats');
+      if(rs){
+        rs.innerHTML = ABILITIES.map(ab=>{
+          const total = (slot.baseStats[ab]||8) + (race.bonus[ab]||0);
+          return `<span class="rstat"><em>${ABILITY_LABEL[ab]}</em><b>${total}</b></span>`;
+        }).join('');
+      }
+
       drawPreview(canvas, slot);
     };
+
+    const renderSkills = () => {
+      const activeSkillsSection = $('setup-skills-section');
+      if (!activeSkillsSection) return;
+
+      const classChoices = cls.skillChoices || { count: 2, list: [] };
+      const racialSkills = race.skills || [];
+      
+      if (!slot.proficiencies) {
+        slot.proficiencies = getDefaultProficiencies(slot.raceKey, slot.classKey);
+      }
+
+      // Count selected class skills (excluding those granted by race)
+      const selectedClassSkills = slot.proficiencies.filter(p => classChoices.list.includes(p) && !racialSkills.includes(p));
+      const slotsLeft = classChoices.count - selectedClassSkills.length;
+
+      let skillsHtml = `
+        <div class="setup-skill-head">
+          <span>Choose Class Skills</span>
+          <span class="setup-skill-count" style="color:${slotsLeft===0 ? '#4ade80' : (slotsLeft<0 ? '#e0483a' : '#888')}">
+            Selected ${selectedClassSkills.length}/${classChoices.count}
+          </span>
+        </div>
+        <div class="setup-skill-grid">
+      `;
+
+      classChoices.list.forEach(sKey => {
+        const skill = SKILLS[sKey];
+        const isRacial = racialSkills.includes(sKey);
+        const isChecked = slot.proficiencies.includes(sKey);
+
+        skillsHtml += `
+          <label class="setup-skill-item ${isRacial ? 'racial' : ''}" title="${skill.label}${isRacial ? ' (Granted by Race)' : ''}">
+            <input type="checkbox" class="setup-skill-cb" data-skill="${sKey}"
+              ${isChecked ? 'checked' : ''} ${isRacial ? 'disabled' : ''} />
+            <span>${skill.label}${isRacial ? ' <i class="race-tag">(Race)</i>' : ''}</span>
+          </label>
+        `;
+      });
+
+      skillsHtml += `</div>`;
+      activeSkillsSection.innerHTML = skillsHtml;
+
+      // Bind events to checkboxes
+      activeSkillsSection.querySelectorAll('.setup-skill-cb').forEach(cb => {
+        cb.onchange = (e) => {
+          const sKey = e.target.dataset.skill;
+          if (e.target.checked) {
+            const currentSelected = slot.proficiencies.filter(p => classChoices.list.includes(p) && !racialSkills.includes(p));
+            if (currentSelected.length < classChoices.count) {
+              if (!slot.proficiencies.includes(sKey)) {
+                slot.proficiencies.push(sKey);
+              }
+            } else {
+              e.target.checked = false; // Block selecting more
+            }
+          } else {
+            slot.proficiencies = slot.proficiencies.filter(p => p !== sKey);
+          }
+          renderSkills();
+        };
+      });
+    };
+
     updateStats();
+    renderSkills();
+    renderRoster();
 
-    $('prev-hero').onclick = () => {
-      currentSlotIdx = (currentSlotIdx - 1 + slots.length) % slots.length;
-      renderSlot();
-    };
-    $('next-hero').onclick = () => {
-      currentSlotIdx = (currentSlotIdx + 1) % slots.length;
-      renderSlot();
-    };
-
-    slotWrap.querySelector('.slot-name').addEventListener('input', e=>{ slot.name = e.target.value.trim() || slot.name; });
-    slotWrap.querySelector('.slot-class').addEventListener('change', e=>{ slot.classKey = e.target.value; renderSlot(); });
+    slotWrap.querySelector('.slot-name').addEventListener('input', e=>{
+      slot.name = e.target.value.trim() || slot.name;
+      const rn = $('roster-name-'+currentSlotIdx); if(rn) rn.textContent = slot.name;
+    });
+    slotWrap.querySelector('.slot-class').addEventListener('change', e=>{ 
+      slot.classKey = e.target.value; 
+      slot.proficiencies = getDefaultProficiencies(slot.raceKey, slot.classKey);
+      renderSlot(); 
+    });
     slotWrap.querySelector('.slot-race').addEventListener('change', e=>{ 
       slot.raceKey = e.target.value; 
+      slot.proficiencies = getDefaultProficiencies(slot.raceKey, slot.classKey);
       const raceDefs = getRaceDefaults(slot.raceKey);
+      slot.visual.head = raceDefs.head || '';
       slot.visual.skinColor = raceDefs.skinColor;
       slot.visual.hairColor = raceDefs.hairColor;
       slot.visual.eyeColor = raceDefs.eyeColor;
       slot.visual.ears = raceDefs.ears;
       slot.visual.facialHair = raceDefs.facialHair;
-      renderSlot(); 
+      renderSlot();
     });
-    
-    ['gender', 'hair', 'facialHair', 'ears'].forEach(key => {
-      slotWrap.querySelector('.vis-'+key).addEventListener('change', e=>{
+
+    /* visual selects re-render the whole slot so the roster sprite updates too */
+    ['head', 'gender', 'hair', 'facialHair', 'ears'].forEach(key => {
+      const el = slotWrap.querySelector('.vis-'+key);
+      if(!el) return;
+      el.addEventListener('change', e=>{
         slot.visual[key] = e.target.value;
-        drawPreview(canvas, slot);
+        renderSlot();
       });
     });
     ['skinColor', 'hairColor', 'eyeColor'].forEach(key => {

@@ -19,15 +19,64 @@ function makeBar(){
   const spr = new THREE.Sprite(mat);
   spr.scale.set(0.9, 0.14, 1);
   spr.renderOrder = 50;
-  return { spr, cv, g: cv.getContext('2d'), tex };
+  return { spr, cv, g: cv.getContext('2d'), tex, isCircular: false };
 }
+
+function makeCircularBar(baseColor) {
+  const cv = document.createElement('canvas');
+  cv.width = 64; cv.height = 64;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearFilter;
+  
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+  
+  const geom = new THREE.PlaneGeometry(0.7, 0.7).rotateX(-Math.PI / 2).translate(0, 0.02, 0);
+  const mesh = new THREE.Mesh(geom, mat);
+  
+  return { spr: mesh, cv, g: cv.getContext('2d'), tex, isCircular: true, baseColor };
+}
+
 export function drawBar(bar, frac, color='#4ade4a'){
-  const { g, cv, tex } = bar;
+  const { g, cv, tex, isCircular, baseColor } = bar;
   g.clearRect(0,0,cv.width,cv.height);
-  g.fillStyle = 'rgba(10,10,14,0.75)';
-  g.fillRect(0,0,cv.width,cv.height);
-  g.fillStyle = frac > 0.5 ? color : (frac > 0.25 ? '#e8b23f' : '#e0483a');
-  g.fillRect(1,1,(cv.width-2)*Math.max(0,frac),cv.height-2);
+  
+  if (isCircular) {
+    const cx = cv.width / 2;
+    const cy = cv.height / 2;
+    const r = 24;
+    const lineWidth = 6;
+    
+    // 1. Draw full background track ring (dark grey, semi-transparent)
+    g.beginPath();
+    g.arc(cx, cy, r, 0, Math.PI * 2);
+    g.lineWidth = lineWidth;
+    g.strokeStyle = 'rgba(25, 25, 30, 0.5)';
+    g.stroke();
+    
+    // 2. Draw active health arc (from top, clockwise)
+    if (frac > 0) {
+      g.beginPath();
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (Math.PI * 2 * Math.max(0, Math.min(1, frac)));
+      g.arc(cx, cy, r, startAngle, endAngle);
+      g.lineWidth = lineWidth;
+      g.strokeStyle = frac > 0.5 ? (baseColor || color) : (frac > 0.25 ? '#e8b23f' : '#e0483a');
+      g.stroke();
+    }
+  } else {
+    g.fillStyle = 'rgba(10,10,14,0.75)';
+    g.fillRect(0,0,cv.width,cv.height);
+    g.fillStyle = frac > 0.5 ? color : (frac > 0.25 ? '#e8b23f' : '#e0483a');
+    g.fillRect(1,1,(cv.width-2)*Math.max(0,frac),cv.height-2);
+  }
+  
   tex.needsUpdate = true;
 }
 
@@ -40,15 +89,9 @@ export function makeHeroMesh(hero){
   const anim = new HeroSprite(hero, cls.color);
   grp.add(anim.mesh);
 
-  const bar = makeBar();
-  bar.spr.position.y = 1.25;
+  const bar = makeCircularBar(cls.color);
   drawBar(bar, 1);
   grp.add(bar.spr);
-
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.24,0.3,20).rotateX(-Math.PI/2).translate(0,0.02,0),
-    new THREE.MeshBasicMaterial({ color:cls.color, transparent:true, opacity:0.55, depthWrite:false }));
-  grp.add(ring);
 
   return { grp, bar, anim };
 }
