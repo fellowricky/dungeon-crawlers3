@@ -119,6 +119,23 @@ class Game {
       return (cx<0||cy<0||cx>=W||cy>=H) ? -1 : cy*W + cx;
     };
 
+    /* Precompute wall-adjacency for pathfinding tiebreaker —
+       cells next to a wall are less desirable waypoints so paths
+       prefer centre routes through rooms. */
+    const total = W * H;
+    const wallAdj = new Uint8Array(total);
+    for (let i = 0; i < total; i++) {
+      if (grid[i] !== FLOOR) continue;
+      const x = i % W;
+      if ((x > 0 && grid[i - 1] === WALL) ||
+          (x < W - 1 && grid[i + 1] === WALL) ||
+          (i >= W && grid[i - W] === WALL) ||
+          (i < total - W && grid[i + W] === WALL)) {
+        wallAdj[i] = 1;
+      }
+    }
+    d.wallAdj = wallAdj;
+
     /* --- fog: map cells -> instance indices (must match buildScene order) --- */
     this.floorInst = new Int32Array(W*H).fill(-1);
     this.wallInst  = new Int32Array(W*H).fill(-1);
@@ -289,15 +306,22 @@ class Game {
     const q = new Int32Array(W*H); let qh=0, qt=0;
     q[qt++] = from;
     const total = W*H;
+    const wallAdj = this.D.wallAdj;
     while(qh<qt){
       const c = q[qh++];
       if(c===to) break;
       const x = c % W;
+      /* Collect unvisited neighbours, then sort so non-wall-adjacent
+         cells are explored first — this biases BFS toward centre-room
+         paths without changing the hop-count distance. */
+      const nb = [];
       let n;
-      if(x>0       && grid[n=c-1]===FLOOR && par[n]===-2){ par[n]=c; q[qt++]=n; }
-      if(x<W-1     && grid[n=c+1]===FLOOR && par[n]===-2){ par[n]=c; q[qt++]=n; }
-      if(c>=W      && grid[n=c-W]===FLOOR && par[n]===-2){ par[n]=c; q[qt++]=n; }
-      if(c<total-W && grid[n=c+W]===FLOOR && par[n]===-2){ par[n]=c; q[qt++]=n; }
+      if(x>0       && grid[n=c-1]===FLOOR && par[n]===-2){ nb.push(n); }
+      if(x<W-1     && grid[n=c+1]===FLOOR && par[n]===-2){ nb.push(n); }
+      if(c>=W      && grid[n=c-W]===FLOOR && par[n]===-2){ nb.push(n); }
+      if(c<total-W && grid[n=c+W]===FLOOR && par[n]===-2){ nb.push(n); }
+      if(nb.length>1) nb.sort((a,b)=>wallAdj[a]-wallAdj[b]);
+      for(const nn of nb){ par[nn]=c; q[qt++]=nn; }
     }
     if(par[to]===-2) return null;
     const path = [];
@@ -318,7 +342,9 @@ class Game {
     return true;
   }
 
-  /* move entity along its path; returns true if moving */
+  /* move entity along its path; returns true if moving.
+     Wall repulsion is applied after each position update to keep
+     sprites from clipping into wall geometry. */
   stepAlong(e, speed, dt){
     if(!e.path || e.pathI >= e.path.length) return false;
     const { W } = this.D;
@@ -329,11 +355,48 @@ class Game {
     const step = speed * dt;
     if(dist <= step){
       e.x = tx; e.z = tz; e.pathI++;
+      this.wallRepel(e);
       return e.pathI < e.path.length;
     }
     e.x += dx/dist*step; e.z += dz/dist*step;
+    this.wallRepel(e);
     e.ent.grp.rotation.y = Math.atan2(dx, dz);
     return true;
+  }
+
+  /* Push entity away from nearby walls — prevents sprite clipping
+     and keeps heroes centred in corridors instead of hugging walls.
+     Uses a soft falloff so repulsion is gentle at normal distances
+     and ramps up only when the entity drifts too close. */
+  wallRepel(e){
+    const { W, H, grid } = this.D;
+    const cx = this.cellOf(e.x, e.z);
+    if(cx < 0) return;
+    const cxX = cx % W, cxY = Math.floor(cx / W);
+    let pushX = 0, pushZ = 0;
+    /* Check 4 cardinal directions for nearby walls */
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    for(const [dx,dz] of dirs){
+      const nx = cxX + dx, ny = cxY + dz;
+      if(nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      if(grid[ny * W + nx] !== WALL) continue;
+      const wx = this.wx(nx), wz = this.wz(ny);
+      const tox = e.x - wx, toz = e.z - wz;
+      const d = Math.hypot(tox, toz);
+      if(d < 0.48 && d > 0.001){
+        const force = (0.48 - d) / 0.48 * 2.2;
+        pushX += (tox / d) * force;
+        pushZ += (toz / d) * force;
+      }
+    }
+    const mag = Math.hypot(pushX, pushZ);
+    if(mag < 0.0005) return;
+    /* Cap per-frame push so entities don't jitter */
+    const maxPush = 0.05;
+    const s = Math.min(mag, maxPush) / mag;
+    const nx = e.x + pushX * s;
+    const nz = e.z + pushZ * s;
+    if(!this.blocked(nx, nz, 0.22)){ e.x = nx; e.z = nz; }
   }
 
   /* ============ main update ============ */
