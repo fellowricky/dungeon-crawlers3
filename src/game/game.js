@@ -313,6 +313,7 @@ class Game {
     if (this.combat) this.wasCombat = true;
     else if (this.wasCombat) {
       this.wasCombat = false;
+      this._combatEngagedAt = null;  // reset combat pacing timer
       for (const h of alive) {
         h._foughtThisCombat = false; // First Strike perk
         h.uncannyUsed = false;       // Uncanny Dodge once per fight
