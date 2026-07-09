@@ -199,7 +199,18 @@ export class HeroSprite {
     }
 
     const frames = meta.cols;
-    let currentFrame = Math.floor(this.time * meta.speed) % frames;
+    let currentFrame;
+    if (this.state === 'walk') {
+      // Official LPC walk cycle uses frames 1-8, skipping frame 0 (standing/idle pose).
+      // When time ≈ 0 (hero is idle), show frame 0 so the hero stands still.
+      if (this.time * meta.speed < 1.0) {
+        currentFrame = 0;
+      } else {
+        currentFrame = 1 + Math.floor(this.time * meta.speed - 1) % 8;
+      }
+    } else {
+      currentFrame = Math.floor(this.time * meta.speed) % frames;
+    }
     
     if (this.state !== 'walk' && this.time * meta.speed >= frames) {
       currentFrame = frames - 1;
