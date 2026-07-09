@@ -49,14 +49,19 @@ export function showShop() {
   shopInventory = [];
 
   // Always stock potions
-  shopInventory.push({ type: 'potion', kind: 'heal', name: 'Healing Potion', icon: '🧪', price: 50, desc: 'Heals the most wounded hero (2d4+2)' });
-  shopInventory.push({ type: 'potion', kind: 'greater', name: 'Greater Healing Potion', icon: '⚗️', price: 150, desc: 'Greater healing (4d4+4)' });
+  shopInventory.push({ type: 'potion', kind: 'heal', name: 'Healing Potion', icon: '🧪', price: 100, desc: 'Heals the most wounded hero (2d4+2)' });
+  shopInventory.push({ type: 'potion', kind: 'greater', name: 'Greater Healing Potion', icon: '⚗️', price: 350, desc: 'Greater healing (4d4+4)' });
+
+  // Rarity-scaled shop markup: higher rarities cost exponentially more.
+  // Players can afford commons easily, but rares+ are aspirational purchases.
+  const RARITY_MARKUP = { common: 4, uncommon: 7, rare: 12, epic: 20, legendary: 35 };
 
   // 4-6 random gear items scaled to the *next* floor
   const numItems = 4 + Math.floor(Math.random() * 3);
   for (let i = 0; i < numItems; i++) {
     const item = rollItem(G.dungeonLevel);
-    shopInventory.push({ type: 'gear', item: item, price: Math.round(item.value * 2.5) });
+    const markup = RARITY_MARKUP[item.rarity] || 4;
+    shopInventory.push({ type: 'gear', item: item, price: Math.round(item.value * markup) });
   }
 
   $('shopscreen').classList.add('show');
