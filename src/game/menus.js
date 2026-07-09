@@ -218,7 +218,7 @@ function equipHTML(){
         <button id="id-equip" ${eqOk?'':'disabled'} title="${eqOk?'':'Class not proficient'}">Equip on ${d.name}</button>
         <button id="id-sell">Sell — ${selItem.value}g</button>
       </div>
-      ${eqOk?'':`<div class="id-warn">${CLASSES[d.classKey].label} can't use this armor.</div>`}
+      ${eqOk?'':`<div class="id-warn">${CLASSES[d.classKey].label} can't use ${selItem.slot==='shield'?'shields':'this armor'}.</div>`}
       ${selItem.rarity==='legendary' ? `<div class="id-hint">Quest reward · grows with the wearer</div>` : ''}
     </div>`;
   }
