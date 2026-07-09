@@ -282,19 +282,18 @@ export function showSetup(hasSave, onEmbark, onContinue){
 
   /* Per-race defaults. `head` assigns a distinctive LPC head where one fits
      the race (dragonborn→lizard, half-orc→orc); the rest read as human and
-     differentiate via ears / beard / skin. (LPC in this checkout has no
-     horns/tails/wings assets, so tieflings rely on red skin + pointed ears.) */
+     differentiate via ears / horns / beard / skin / sprite scaling. */
   const getRaceDefaults = (raceKey) => {
     switch(raceKey) {
-      case 'halforc': return { head: 'orc/male', skinColor: '#8fae7a', hairColor: '#111111', ears: 'none', facialHair: 'none', eyeColor: '#5a1010' };
-      case 'elf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', facialHair: 'none', eyeColor: '#203a3a' };
-      case 'dwarf': return { head: '', skinColor: '#ffddbb', hairColor: '#bbaa55', ears: 'none', facialHair: 'beard/medium', eyeColor: '#3a2010' };
-      case 'halfling': return { head: '', skinColor: '#eeddbb', hairColor: '#664422', ears: 'none', facialHair: 'none', eyeColor: '#3a2010' };
-      case 'dragonborn': return { head: 'lizard/male', skinColor: '#7fa25a', hairColor: '#000000', ears: 'none', facialHair: 'none', eyeColor: '#ffcc00' };
-      case 'gnome': return { head: '', skinColor: '#eeddbb', hairColor: '#a3e635', ears: 'elven', facialHair: 'none', eyeColor: '#3a2010' };
-      case 'halfelf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', facialHair: 'none', eyeColor: '#203a3a' };
-      case 'tiefling': return { head: '', skinColor: '#dd5566', hairColor: '#111111', ears: 'elven', facialHair: 'none', eyeColor: '#ffcc00' };
-      default: return { head: '', skinColor: '#ffddcc', hairColor: '#663311', ears: 'none', facialHair: 'none', eyeColor: '#000000' };
+      case 'halforc': return { head: 'orc/male', skinColor: '#8fae7a', hairColor: '#111111', ears: 'none', horns: 'none', facialHair: 'none', eyeColor: '#5a1010', spriteScaleX: 1.0, spriteScaleY: 1.0 };
+      case 'elf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', horns: 'none', facialHair: 'none', eyeColor: '#203a3a', spriteScaleX: 1.0, spriteScaleY: 1.0 };
+      case 'dwarf': return { head: '', skinColor: '#ffddbb', hairColor: '#bbaa55', ears: 'none', horns: 'none', facialHair: 'beard/medium', eyeColor: '#3a2010', spriteScaleX: 1.15, spriteScaleY: 0.85 };
+      case 'halfling': return { head: '', skinColor: '#eeddbb', hairColor: '#664422', ears: 'none', horns: 'none', facialHair: 'none', eyeColor: '#3a2010', spriteScaleX: 0.82, spriteScaleY: 0.82 };
+      case 'dragonborn': return { head: 'lizard/male', skinColor: '#7fa25a', hairColor: '#000000', ears: 'dragon', horns: 'backwards', facialHair: 'none', eyeColor: '#ffcc00', spriteScaleX: 1.0, spriteScaleY: 1.0 };
+      case 'gnome': return { head: '', skinColor: '#eeddbb', hairColor: '#a3e635', ears: 'elven', horns: 'none', facialHair: 'none', eyeColor: '#3a2010', spriteScaleX: 0.88, spriteScaleY: 0.88 };
+      case 'halfelf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', horns: 'none', facialHair: 'none', eyeColor: '#203a3a', spriteScaleX: 1.0, spriteScaleY: 1.0 };
+      case 'tiefling': return { head: '', skinColor: '#dd5566', hairColor: '#111111', ears: 'elven', horns: 'backwards', facialHair: 'none', eyeColor: '#ffcc00', spriteScaleX: 1.0, spriteScaleY: 1.0 };
+      default: return { head: '', skinColor: '#ffddcc', hairColor: '#663311', ears: 'none', horns: 'none', facialHair: 'none', eyeColor: '#000000', spriteScaleX: 1.0, spriteScaleY: 1.0 };
     }
   };
 
@@ -325,7 +324,10 @@ export function showSetup(hasSave, onEmbark, onContinue){
         facialHair: raceDefs.facialHair,
         hairColor: raceDefs.hairColor,
         eyeColor: raceDefs.eyeColor,
-        ears: raceDefs.ears
+        ears: raceDefs.ears,
+        horns: raceDefs.horns || 'none',
+        spriteScaleX: raceDefs.spriteScaleX || 1.0,
+        spriteScaleY: raceDefs.spriteScaleY || 1.0
       }
     });
   });
@@ -388,7 +390,9 @@ export function showSetup(hasSave, onEmbark, onContinue){
       body: `body/bodies/${g}`,
       head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${g}`),
       eyes: (isMonster || customHead) ? null : `eyes/human/adult`,
-      ears: (!isMonster && !customHead && visual.ears === 'elven') ? `head/ears/elven/adult` : null,
+      ears: (!isMonster && visual.ears && visual.ears !== 'none'
+             && (!customHead || visual.ears === 'dragon')) ? `head/ears/${visual.ears}/adult` : null,
+      horns: (!isMonster && visual.horns && visual.horns !== 'none') ? `head/horns/${visual.horns}` : null,
       legs: isMonster ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : g}`,
       torso: isMonster ? null : `torso/${t}/${g}`,
       feet: isMonster ? null : `feet/${l === 'armour/plate' ? 'armour/plate' : 'shoes/basic'}/${g==='male'?'male':'thin'}`,
@@ -397,13 +401,13 @@ export function showSetup(hasSave, onEmbark, onContinue){
       weapon: w ? `weapon/${w}` : null
     };
     
-    const LAYER_ORDER = ['body', 'head', 'eyes', 'legs', 'torso', 'feet', 'ears', 'facialHair', 'hair', 'weapon'];
+    const LAYER_ORDER = ['body', 'head', 'eyes', 'legs', 'torso', 'feet', 'ears', 'horns', 'facialHair', 'hair', 'weapon'];
     
     for (const layer of LAYER_ORDER) {
       if (!paths[layer]) continue;
       try {
         const img = await loadImage(ASSETS_ROOT + paths[layer] + '/walk.png');
-        if (layer === 'body' || layer === 'head' || layer === 'ears') {
+        if (layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') {
           drawTintedLayer(ctx, img, visual.skinColor);
         } else if (layer === 'hair' || layer === 'facialHair') {
           drawTintedLayer(ctx, img, visual.hairColor);
@@ -475,7 +479,8 @@ export function showSetup(hasSave, onEmbark, onContinue){
         <div class="slot-visuals" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;font-size:14px;">
           <label style="display:flex; justify-content:space-between; align-items:center;">Head: <select class="vis-head" style="width:110px; padding:2px;">${HEAD_OPTS.map(([v,l])=>`<option value="${v}" ${v===(slot.visual.head||'')?'selected':''}>${l}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Gender: <select class="vis-gender" style="width:110px; padding:2px;">${VISUAL_OPTS.gender.map(v=>`<option value="${v}" ${v===slot.visual.gender?'selected':''}>${v}</option>`).join('')}</select></label>
-          <label style="display:flex; justify-content:space-between; align-items:center;">Ears: <select class="vis-ears" style="width:110px; padding:2px;"><option value="none" ${slot.visual.ears==='none'?'selected':''}>Human</option><option value="elven" ${slot.visual.ears==='elven'?'selected':''}>Elven</option></select></label>
+          <label style="display:flex; justify-content:space-between; align-items:center;">Ears: <select class="vis-ears" style="width:110px; padding:2px;"><option value="none" ${slot.visual.ears==='none'?'selected':''}>Human</option><option value="elven" ${slot.visual.ears==='elven'?'selected':''}>Elven</option><option value="dragon" ${slot.visual.ears==='dragon'?'selected':''}>Dragon</option></select></label>
+          <label style="display:flex; justify-content:space-between; align-items:center;">Horns: <select class="vis-horns" style="width:110px; padding:2px;"><option value="none" ${(slot.visual.horns||'none')==='none'?'selected':''}>None</option><option value="backwards" ${slot.visual.horns==='backwards'?'selected':''}>Backwards</option></select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Hair: <select class="vis-hair" style="width:110px; padding:2px;">${VISUAL_OPTS.hair.map(v=>`<option value="${v}" ${v===slot.visual.hair?'selected':''}>${v.split('/')[0]}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Facial Hair: <select class="vis-facialHair" style="width:110px; padding:2px;">${VISUAL_OPTS.facialHair.map(v=>`<option value="${v}" ${v===slot.visual.facialHair?'selected':''}>${v.split('/').pop()}</option>`).join('')}</select></label>
           <div style="display:flex; justify-content:space-between; align-items:center;"><span>Skin:</span> ${colorSwatches('skinColor', slot.visual.skinColor, skinColorsFor(slot.raceKey))}</div>
@@ -670,8 +675,8 @@ export function showSetup(hasSave, onEmbark, onContinue){
       slot.proficiencies = getDefaultProficiencies(slot.raceKey, slot.classKey);
       renderSlot(); 
     });
-    slotWrap.querySelector('.slot-race').addEventListener('change', e=>{ 
-      slot.raceKey = e.target.value; 
+    slotWrap.querySelector('.slot-race').addEventListener('change', e=>{
+      slot.raceKey = e.target.value;
       slot.proficiencies = getDefaultProficiencies(slot.raceKey, slot.classKey);
       const raceDefs = getRaceDefaults(slot.raceKey);
       slot.visual.head = raceDefs.head || '';
@@ -679,12 +684,15 @@ export function showSetup(hasSave, onEmbark, onContinue){
       slot.visual.hairColor = raceDefs.hairColor;
       slot.visual.eyeColor = raceDefs.eyeColor;
       slot.visual.ears = raceDefs.ears;
+      slot.visual.horns = raceDefs.horns || 'none';
       slot.visual.facialHair = raceDefs.facialHair;
+      slot.visual.spriteScaleX = raceDefs.spriteScaleX || 1.0;
+      slot.visual.spriteScaleY = raceDefs.spriteScaleY || 1.0;
       renderSlot();
     });
 
     /* visual selects re-render the whole slot so the roster sprite updates too */
-    ['head', 'gender', 'hair', 'facialHair', 'ears'].forEach(key => {
+    ['head', 'gender', 'hair', 'facialHair', 'ears', 'horns'].forEach(key => {
       const el = slotWrap.querySelector('.vis-'+key);
       if(!el) return;
       el.addEventListener('change', e=>{
