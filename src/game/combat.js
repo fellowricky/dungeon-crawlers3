@@ -51,11 +51,7 @@ export const combatMethods = {
         h.path = this.findPath(this.cellOf(h.x, h.z), this.cellOf(foe.x, foe.z));
         h.pathI = 0; h.repathT = 0.5;
       }
-      /* build entity list for local steering during combat chase */
-      const steerEnts = alive.concat(
-        this.monsters.filter(m => m.data.hp > 0 && m.active)
-      );
-      h.moving = this.stepAlong(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt, steerEnts);
+      h.moving = this.stepAlong(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt);
 
       /* multi-stage stuck recovery during combat */
       if (!h.moving && h !== alive[0]) {

@@ -119,7 +119,6 @@ export const exploreMethods = {
           log("The party can't find a way there.", 'sys');
         }
       }
-      /* leader uses direct stepAlong (no entity steering — has right-of-way) */
       leader.moving = this.stepAlong(leader, HERO_SPEED * leader.data.speedMult, dt);
     } else leader.moving = false;
 
@@ -135,11 +134,6 @@ export const exploreMethods = {
     }
 
     /* --- follower movement with formation offsets --- */
-    /* build entity list for local steering (all alive heroes + active monsters) */
-    const steerEntities = alive.concat(
-      this.monsters.filter(m => m.data.hp > 0 && m.active)
-    );
-
     alive.forEach((h) => {
       if (h === leader) return;
       const idx = alive.indexOf(h) - 1; /* 0-based follower index */
@@ -163,7 +157,7 @@ export const exploreMethods = {
       }
 
       const catchup = 1.1 + Math.min(1.2, Math.max(0, (dFormation - 1.5) * 0.25));
-      h.moving = this.stepAlong(h, HERO_SPEED * catchup * h.data.speedMult, dt, steerEntities);
+      h.moving = this.stepAlong(h, HERO_SPEED * catchup * h.data.speedMult, dt);
 
       if (!h.moving) {
         this.handleStuck(h, leader, dt);

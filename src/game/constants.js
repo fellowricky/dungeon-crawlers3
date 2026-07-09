@@ -22,9 +22,6 @@ export const COMBAT_SPEED = 0.72;     // fraction of move speed used for combat 
 export const FORMATION_SPACING = 1.8;  // tiles behind leader for follower slots
 export const FORMATION_WIDTH = 1.2;    // tiles to side for follower wedge spread
 
-// --- Local steering ---
-export const STEER_ENTITY_RADIUS = 0.45; // entity body radius for clearance checks
-
 // --- Chokepoint ---
 export const CHOKEPOINT_COST = 3;        // BFS penalty weight for chokepoint cells
 

@@ -4,7 +4,7 @@
  * Methods are mixed onto Game — they expect `this.D`, `this.cellOf`,
  * `this.wx` / `this.wz`, and FLOOR/WALL tile constants on the dungeon grid.
  */
-import { FLOOR, WALL, STEER_ENTITY_RADIUS, CHOKEPOINT_COST } from './constants.js';
+import { FLOOR, WALL, CHOKEPOINT_COST } from './constants.js';
 
 /** Precompute wall-adjacency for BFS tiebreaking (prefer centre-room paths). */
 export function buildWallAdj(grid, W, H) {
@@ -113,9 +113,10 @@ export const pathfindingMethods = {
      sprites from clipping into wall geometry.  Uses a generous
      capture radius (0.35 tiles) so entities flow through cells
      without needing exact center occupancy.
-     When otherEntities is provided, uses local steering to avoid
-     entity-entity collisions without a full repath. */
-  stepAlong(e, speed, dt, otherEntities = null) {
+     If the direct step hits a wall, probes angled deviations before
+     giving up — this helps entities slide past corners and through
+     tight doorways without a full repath. */
+  stepAlong(e, speed, dt) {
     if (!e.path || e.pathI >= e.path.length) return false;
 
     /* track movement delta for classifyStuck */
@@ -140,31 +141,50 @@ export const pathfindingMethods = {
         while (delta < -Math.PI) delta += Math.PI * 2;
         e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
       }
-      /* store movement delta */
       e._lastDx = e._dx; e._lastDz = e._dz;
       e._dx = e.x - prevX; e._dz = e.z - prevZ;
       return e.pathI < e.path.length;
     }
 
-    /* use entity-aware steering when we have other entities to avoid */
-    if (otherEntities && otherEntities.length > 0) {
-      const moved = this.steerStep(e, tx, tz, speed, dt, otherEntities);
-      if (moved) {
-        const targetAngle = Math.atan2(dx, dz);
-        let delta = targetAngle - e.ent.grp.rotation.y;
-        while (delta > Math.PI) delta -= Math.PI * 2;
-        while (delta < -Math.PI) delta += Math.PI * 2;
-        e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+    const step = speed * dt;
+    const baseAngle = Math.atan2(dx, dz);
+
+    /* try direct step first */
+    const nx = e.x + Math.sin(baseAngle) * step;
+    const nz = e.z + Math.cos(baseAngle) * step;
+    if (!this.blocked(nx, nz, 0.3)) {
+      e.x = nx; e.z = nz;
+      this.wallRepel(e);
+    } else {
+      /* wall blocked — try angled deviations to slide past corners */
+      let moved = false;
+      const angles = [0.26, -0.26, 0.52, -0.52, 0.79, -0.79];
+      for (const angle of angles) {
+        const ax = e.x + Math.sin(baseAngle + angle) * step;
+        const az = e.z + Math.cos(baseAngle + angle) * step;
+        if (!this.blocked(ax, az, 0.3)) {
+          e.x = ax; e.z = az;
+          this.wallRepel(e);
+          moved = true;
+          break;
+        }
       }
-      e._lastDx = e._dx; e._lastDz = e._dz;
-      e._dx = e.x - prevX; e._dz = e.z - prevZ;
-      return moved;
+      if (!moved) {
+        /* axis-aligned slides as last resort */
+        const nxOnly = e.x + Math.sin(baseAngle) * step;
+        if (!this.blocked(nxOnly, e.z, 0.3)) { e.x = nxOnly; this.wallRepel(e); moved = true; }
+        else {
+          const nzOnly = e.z + Math.cos(baseAngle) * step;
+          if (!this.blocked(e.x, nzOnly, 0.3)) { e.z = nzOnly; this.wallRepel(e); moved = true; }
+        }
+      }
+      if (!moved) {
+        e._lastDx = e._dx; e._lastDz = e._dz;
+        e._dx = e.x - prevX; e._dz = e.z - prevZ;
+        return false;
+      }
     }
 
-    const step = speed * dt;
-    e.x += dx / dist * step;
-    e.z += dz / dist * step;
-    this.wallRepel(e);
     const targetAngle = Math.atan2(dx, dz);
     let delta = targetAngle - e.ent.grp.rotation.y;
     while (delta > Math.PI) delta -= Math.PI * 2;
@@ -173,68 +193,6 @@ export const pathfindingMethods = {
     e._lastDx = e._dx; e._lastDz = e._dz;
     e._dx = e.x - prevX; e._dz = e.z - prevZ;
     return true;
-  },
-
-  /* Local obstacle-aware steering: tries the direct step toward (tx,tz)
-     first; if blocked by another entity (not a wall), probes ±15°/±30°/±45°
-     deviations and picks the first clear one.  Falls back to axis decomposition
-     (X-only, Z-only) before giving up. */
-  steerStep(e, tx, tz, speed, dt, otherEntities) {
-    const dx = tx - e.x, dz = tz - e.z;
-    const dist = Math.hypot(dx, dz);
-    if (dist < 0.005) return false;
-    const step = Math.min(dist, speed * dt);
-    if (step < 0.005) return false;
-    const baseAngle = Math.atan2(dx, dz);
-
-    /* try direct step first */
-    const nx = e.x + Math.sin(baseAngle) * step;
-    const nz = e.z + Math.cos(baseAngle) * step;
-    if (!this.blocked(nx, nz, 0.3) && !this.entityBlocked(nx, nz, e, otherEntities)) {
-      e.x = nx; e.z = nz;
-      this.wallRepel(e);
-      return true;
-    }
-
-    /* try angled deviations (±15°, ±30°, ±45°) */
-    const angles = [0.26, -0.26, 0.52, -0.52, 0.79, -0.79];
-    for (const angle of angles) {
-      const ax = e.x + Math.sin(baseAngle + angle) * step;
-      const az = e.z + Math.cos(baseAngle + angle) * step;
-      if (!this.blocked(ax, az, 0.3) && !this.entityBlocked(ax, az, e, otherEntities)) {
-        e.x = ax; e.z = az;
-        this.wallRepel(e);
-        return true;
-      }
-    }
-
-    /* last resort: axis-aligned slides */
-    const nxOnly = e.x + Math.sin(baseAngle) * step;
-    if (!this.blocked(nxOnly, e.z, 0.3) && !this.entityBlocked(nxOnly, e.z, e, otherEntities)) {
-      e.x = nxOnly;
-      this.wallRepel(e);
-      return true;
-    }
-    const nzOnly = e.z + Math.cos(baseAngle) * step;
-    if (!this.blocked(e.x, nzOnly, 0.3) && !this.entityBlocked(e.x, nzOnly, e, otherEntities)) {
-      e.z = nzOnly;
-      this.wallRepel(e);
-      return true;
-    }
-    return false;
-  },
-
-  /* Check whether a world position overlaps with any entity in the given set
-     (excluding self).  Uses a generous body radius. */
-  entityBlocked(x, z, self, others) {
-    const r2 = STEER_ENTITY_RADIUS * STEER_ENTITY_RADIUS;
-    for (const o of others) {
-      if (o === self) continue;
-      if (o.data && o.data.hp <= 0) continue;
-      const dx = o.x - x, dz = o.z - z;
-      if (dx * dx + dz * dz < r2) return true;
-    }
-    return false;
   },
 
   /* Push entity away from nearby walls — prevents sprite clipping
@@ -328,32 +286,31 @@ export const pathfindingMethods = {
      spot — overlapping bodies push each other apart a little each frame,
      which spreads melee scrums into a readable ring. Wall-aware.
      Includes predictive separation: if two entities are moving toward each
-     other, separation triggers at 1.6× the overlap radius to avoid collision
-     before it happens. */
+     other, separation triggers at 1.25× the overlap radius to gently avoid
+     collision before it happens.  Push force is clamped low per-frame so
+     entities slide apart smoothly rather than jittering. */
   applySeparation(alive, dt) {
     const ents = [];
     for (const h of alive) ents.push({ e: h, r: 0.36 });
     for (const m of this.monsters)
       if (m.data.hp > 0 && m.active) ents.push({ e: m, r: 0.34 * (m.data.scale || 1) });
-    const maxPush = 4.5 * dt;
+    const maxPush = 2.8 * dt; /* gentler than 4.5 — less jitter */
     for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) {
       const A = ents[i], B = ents[j];
       let dx = B.e.x - A.e.x, dz = B.e.z - A.e.z;
       let dd = Math.hypot(dx, dz);
       let min = A.r + B.r;
 
-      /* Predictive expansion: if both entities are moving toward each
-         other, increase the separation radius so they start yielding
-         before they actually overlap. */
+      /* Predictive expansion: if entities are moving toward each
+         other, gently expand the separation radius. */
       if (A.e.moving || B.e.moving) {
         const vAx = A.e.x - ((A.e._prevX !== undefined) ? A.e._prevX : A.e.x);
         const vAz = A.e.z - ((A.e._prevZ !== undefined) ? A.e._prevZ : A.e.z);
         const vBx = B.e.x - ((B.e._prevX !== undefined) ? B.e._prevX : B.e.x);
         const vBz = B.e.z - ((B.e._prevZ !== undefined) ? B.e._prevZ : B.e.z);
         const relVx = vAx - vBx, relVz = vAz - vBz;
-        /* dot product negative = relative velocity points toward each other */
         if (dx * relVx + dz * relVz < 0) {
-          min *= 1.6;
+          min *= 1.25;
         }
       }
 
