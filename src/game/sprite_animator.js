@@ -13,6 +13,7 @@ const LAYER_ORDER = [
   'shoulders',
   'gloves',
   'ears',
+  'horns',
   'facialHair',
   'hair',
   'helm',
@@ -57,7 +58,9 @@ export class HeroSprite {
     this.textures = {}; 
     this.material = new THREE.SpriteMaterial({ transparent: true, depthTest: true, depthWrite: false });
     this.mesh = new THREE.Sprite(this.material);
-    this.mesh.scale.set(1.5, 1.5, 1);
+    const sx = this.visual.spriteScaleX || 1.0;
+    const sy = this.visual.spriteScaleY || 1.0;
+    this.mesh.scale.set(1.5 * sx, 1.5 * sy, 1);
     // LPC frames leave only ~3% transparent padding below the feet — anchor
     // there so feet sit ON the floor instead of sinking through it
     this.mesh.center.set(0.5, 0.04);
@@ -90,7 +93,9 @@ export class HeroSprite {
     const glv = this.equipment.gloves ? `${this.equipment.gloves.visualGloves}|${this.equipment.gloves.visualColor||''}` : 'none';
     return [
       action, this.visual.gender, this.visual.skinColor, this.visual.hair, this.visual.hairColor,
-      w, t, l, hm, sh, f, glv
+      w, t, l, hm, sh, f, glv,
+      this.visual.horns || 'none', this.visual.ears || 'none',
+      this.visual.spriteScaleX || 1.0, this.visual.spriteScaleY || 1.0
     ].join('|');
   }
 
@@ -161,7 +166,9 @@ export class HeroSprite {
       body: `body/bodies/${g}`,
       head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
       eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
-      ears: (!isMonster && !customHead && this.visual.ears === 'elven') ? `head/ears/elven/adult` : null,
+      ears: (!isMonster && this.visual.ears && this.visual.ears !== 'none'
+             && (!customHead || this.visual.ears === 'dragon')) ? `head/ears/${this.visual.ears}/adult` : null,
+      horns: (!isMonster && this.visual.horns && this.visual.horns !== 'none') ? `head/horns/${this.visual.horns}` : null,
       legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
       torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
       feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
@@ -179,7 +186,7 @@ export class HeroSprite {
       if (!paths[layer]) continue;
       const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/${action}.png`);
       if (img) {
-        if (layer === 'body' || layer === 'head' || layer === 'ears') {
+        if (layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') {
           this.drawTintedLayer(ctx, img, this.visual.skinColor);
         } else if (layer === 'hair' || layer === 'facialHair') {
           this.drawTintedLayer(ctx, img, this.visual.hairColor);
@@ -325,7 +332,9 @@ export async function drawHeroPortrait(canvas, hero){
     body: `body/bodies/${g}`,
     head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
     eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
-    ears: (!isMonster && !customHead && visual.ears === 'elven') ? `head/ears/elven/adult` : null,
+    ears: (!isMonster && visual.ears && visual.ears !== 'none'
+           && (!customHead || visual.ears === 'dragon')) ? `head/ears/${visual.ears}/adult` : null,
+    horns: (!isMonster && visual.horns && visual.horns !== 'none') ? `head/horns/${visual.horns}` : null,
     legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
     torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
     feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
@@ -344,7 +353,7 @@ export async function drawHeroPortrait(canvas, hero){
     const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/walk.png`);
     if(canvas._portraitToken !== token) return;   // a newer draw superseded us
     if(!img) continue;
-    if(layer === 'body' || layer === 'head' || layer === 'ears') drawPortraitFrame(ctx, img, visual.skinColor);
+    if(layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') drawPortraitFrame(ctx, img, visual.skinColor);
     else if(layer === 'hair' || layer === 'facialHair') drawPortraitFrame(ctx, img, visual.hairColor);
     else if(layer === 'eyes' && visual.eyeColor) drawPortraitFrame(ctx, img, visual.eyeColor);
     else {
