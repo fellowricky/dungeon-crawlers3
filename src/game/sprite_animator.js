@@ -49,8 +49,9 @@ export class HeroSprite {
     this.material = new THREE.SpriteMaterial({ transparent: true, depthTest: true, depthWrite: false });
     this.mesh = new THREE.Sprite(this.material);
     this.mesh.scale.set(1.5, 1.5, 1);
-    // 0.15 represents the vertical padding from bottom to character's feet
-    this.mesh.center.set(0.5, 0.15); 
+    // Anchor sprite at its feet (~3% above the bottom of the LPC 64px cell)
+    // so the character stands ON the position ring rather than floating or sinking.
+    this.mesh.center.set(0.5, 0.03);
     this.mesh.visible = false; // Hide until texture loads to prevent white box
     
     this.state = 'walk';
