@@ -486,7 +486,8 @@ export const MONSTER_THEMES = [
       2: ['hobgoblin'],
       3: ['bugbear'],
       4: ['hobgoblin-iron-shadow'],
-      5: ['hobgoblin-iron-shadow']
+      5: ['hobgoblin-iron-shadow'],
+      boss: []
     }
   },
   {
@@ -496,7 +497,10 @@ export const MONSTER_THEMES = [
       2: ['ghoul', 'shadow', 'mummy'],
       3: ['wight', 'ghast', 'vampire'],
       4: ['wraith', 'ghost'],
-      5: ['wraith', 'vampire']
+      5: ['wraith', 'vampire'],
+      boss: ['lich', 'ancient-lich-lord', 'guardian-mummy', 'greater-mummy',
+             'skeletal-warrior', 'vampire-knight', 'vampire-mage',
+             'wight-king', 'mummy-priest']
     }
   },
   {
@@ -506,7 +510,8 @@ export const MONSTER_THEMES = [
       2: ['giant-spider', 'wolf-spider'],
       3: ['giant-scorpion', 'phase-spider', 'ettercap', 'giant-constrictor-snake', 'ankheg'],
       4: [],
-      5: ['drider']
+      5: ['drider'],
+      boss: ['purple-worm']
     }
   },
   {
@@ -516,7 +521,8 @@ export const MONSTER_THEMES = [
       2: ['dire-wolf', 'crocodile', 'warg', 'harpy'],
       3: ['owlbear', 'polar-bear', 'giant-constrictor-snake', 'basilisk'],
       4: ['bulette', 'chimera', 'hydra'],
-      5: ['remorhaz', 'behir']
+      5: ['remorhaz', 'behir'],
+      boss: ['kraken', 'purple-worm', 'tarrasque', 'harpy-matriarch', 'guardian-serpent']
     }
   },
   {
@@ -526,7 +532,8 @@ export const MONSTER_THEMES = [
       2: ['gnoll', 'orc'],
       3: ['ogre'],
       4: ['hill-giant'],
-      5: ['fire-giant', 'frost-giant']
+      5: ['fire-giant', 'frost-giant'],
+      boss: []
     }
   },
   {
@@ -536,7 +543,10 @@ export const MONSTER_THEMES = [
       2: ['kobold'],
       3: ['young-white-dragon'],
       4: ['young-black-dragon', 'young-white-dragon', 'young-green-dragon', 'wyvern'],
-      5: ['young-red-dragon', 'adult-white-dragon']
+      5: ['young-red-dragon', 'adult-white-dragon'],
+      boss: ['young-dragon', 'adult-red-dragon', 'adult-gold-dragon',
+             'iron-dragon-ancient', 'shadow-dragon-ancient', 'golden-dragon-ancient',
+             'guardian-serpent']
     }
   },
   {
@@ -546,7 +556,8 @@ export const MONSTER_THEMES = [
       2: ['magmin', 'gargoyle'],
       3: ['gargoyle', 'hell-hound'],
       4: ['air-elemental', 'earth-elemental', 'fire-elemental', 'water-elemental', 'salamander'],
-      5: ['fire-elemental']
+      5: ['fire-elemental'],
+      boss: ['efreeti']
     }
   },
   {
@@ -556,7 +567,9 @@ export const MONSTER_THEMES = [
       2: ['imp', 'quasit'],
       3: ['hell-hound', 'bearded-devil'],
       4: ['vrock', 'barbed-devil'],
-      5: ['hezrou', 'glabrezu']
+      5: ['hezrou', 'glabrezu'],
+      boss: ['balor', 'pit-fiend', 'cacodemon', 'hellion', 'tormentor',
+             'hell-knight', 'adult-red-dragon', 'reaper-lord', 'efreeti', 'rakshasa']
     }
   },
   {
@@ -566,7 +579,8 @@ export const MONSTER_THEMES = [
       2: ['dryad', 'satyr', 'centaur'],
       3: ['green-hag'],
       4: ['green-hag'],
-      5: []
+      5: [],
+      boss: []
     }
   },
   {
@@ -576,7 +590,8 @@ export const MONSTER_THEMES = [
       2: [],
       3: ['ogre', 'minotaur', 'deep-troll'],
       4: ['troll', 'hill-giant', 'stone-giant'],
-      5: ['fire-giant', 'frost-giant', 'cloud-giant']
+      5: ['fire-giant', 'frost-giant', 'cloud-giant'],
+      boss: ['ettin', 'boss-troll', 'stone-giant-lord']
     }
   },
   {
@@ -586,7 +601,8 @@ export const MONSTER_THEMES = [
       2: ['deep-gnome', 'darkmantle', 'shadow'],
       3: ['doppelganger', 'wraith'],
       4: ['medusa', 'ghost'],
-      5: ['drider']
+      5: ['drider'],
+      boss: ['shadow-dragon-ancient']
     }
   }
 ];

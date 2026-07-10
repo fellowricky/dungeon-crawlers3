@@ -206,7 +206,14 @@ class Game {
       const m = spawnMonster(sp.tier, this.effectiveLevel, Math.random, allowedNames);
       this.addMonster(m, sp.x, sp.y, sp.roomId);
     }
-    const bossSpec = spawnMonster('boss', this.effectiveLevel, Math.random);
+    /* Boss is also theme-filtered: pick a random monster family from the
+       dungeon's theme pool and restrict the boss to that family's boss-tier
+       list. Falls back to the global boss pool if the family has none. */
+    const bossThemeIdx = themePool[Math.floor(Math.random() * themePool.length)];
+    const bossTheme = MONSTER_THEMES[bossThemeIdx];
+    const bossAllowed = (bossTheme && bossTheme.monsters['boss'] && bossTheme.monsters['boss'].length > 0)
+      ? bossTheme.monsters['boss'] : null;
+    const bossSpec = spawnMonster('boss', this.effectiveLevel, Math.random, bossAllowed);
     const ba = this.roomAnchor[d.boss];
     this.addMonster(bossSpec, (ba % W) + 1, Math.floor(ba / W), d.boss, true);
     this.boss = this.monsters[this.monsters.length - 1];

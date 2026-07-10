@@ -12,7 +12,7 @@ const THEMES = ['ancient', 'verdant', 'frost', 'grim', 'molten'];
 const FANTASY_LOCATIONS = {
   ancient: ["Vault", "Sepulcher", "Archives", "Sanctum", "Ruins", "Temple", "Tombs", "Monolith"],
   verdant: ["Canopy", "Glade", "Wilds", "Overgrowth", "Gardens", "Grove", "Thicket", "Brambles"],
-  frost: ["Sepulcher", "Glacier", "Sanctum", "Caverns", "Hold", "Peak", "Frostbite Crypt", "Icebound Lair"],
+  frost: ["Glacier", "Caverns", "Hold", "Peak", "Frostbite Crypt", "Icebound Lair", "Tundra", "Rime"],
   grim: ["Crypt", "Bastion", "Spire", "Prison", "Gallows", "Keep", "Shadowlands", "Abyss"],
   molten: ["Crucible", "Forge", "Core", "Fissure", "Chasm", "Caldera", "Vent", "Rift"]
 };
