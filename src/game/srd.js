@@ -55,7 +55,7 @@ export const SKILLS = {
 export const profBonus = lvl => 2 + Math.floor((lvl-1)/4);
 
 /* XP needed to REACH each level (index = level) */
-export const XP_TABLE = [0, 0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000];
+export const XP_TABLE = [0, 0, 300, 1000, 3000, 7000, 15000, 25000, 38000, 54000, 75000];
 export const MAX_LEVEL = 10;
 
 /* ---------------- races (SRD) ---------------- */
@@ -602,22 +602,22 @@ export function spawnMonster(tier, effectiveLevel, rngPick, allowedNames = null)
   }
   const spec = pool[Math.floor(rngPick()*pool.length)];
   const lvlB = Math.max(0, effectiveLevel-1);
-  /* gentle depth scaling — the old rates outpaced hero growth and made
-     every floor a meat grinder */
+  /* gentle depth scaling — softer per-floor bumps so fights stay
+     interesting longer without turning into meat grinders */
   /* +1 hit die across the board: fights last longer (slower combat), while
      the slow monster attack cadence keeps incoming damage in check */
-  let hp = roll(spec.hp[0] + 1 + Math.floor(lvlB* (tier==='boss' ? 1.5 : 0.5)), spec.hp[1], spec.hp[2]||0);
-  let atk = spec.atk + Math.floor(lvlB/3);
+  let hp = roll(spec.hp[0] + 1 + Math.floor(lvlB* (tier==='boss' ? 1.5 : 0.25)), spec.hp[1], spec.hp[2]||0);
+  let atk = spec.atk + Math.floor(lvlB/4);
   /* training-wheels boss: SRD boss blocks are deadly to a level-2 party,
      so the first floors' boss fights at reduced strength */
   if(tier==='boss' && effectiveLevel<=2){ hp = Math.round(hp*0.65); atk -= 2; }
   return {
-    name: spec.name, ac: spec.ac + Math.floor(lvlB/4), maxHp: hp, hp,
+    name: spec.name, ac: spec.ac + Math.floor(lvlB/5), maxHp: hp, hp,
     atk,
-    dmg: spec.dmg, xp: Math.round(spec.xp * (1 + lvlB*0.25)),
+    dmg: spec.dmg, xp: Math.round(spec.xp * Math.min(1.5, 1 + lvlB*0.25)),
     color: spec.color, scale: spec.scale, speed: spec.speed,
     sprite: spec.sprite,          // per-monster DCSS art (mesh falls back to orc.png without it)
-    gold: Math.round((spec.xp/10) * (1 + lvlB*0.3) * (0.6+Math.random()*0.8))
+    gold: Math.round((spec.xp/10) * Math.min(1.6, 1 + lvlB*0.3) * (0.6+Math.random()*0.8))
   };
 }
 
