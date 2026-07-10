@@ -603,9 +603,9 @@ function tryGenerate(seed, params){
       const BASE_BUDGET = 55;
       const typeMult = { combat:1.0, elite:1.6, boss:2.2 };
       const budget = Math.round(BASE_BUDGET * (0.35 + 0.65*r.difficulty) * (typeMult[r.type]||1.0));
-      const tierCost = { 1:12, 2:21, 3:38 };
-      const naturalTier = r.type===TYPE.ELITE ? 3 : Math.max(1, Math.ceil(r.difficulty*4));
-      const minTier = r.type===TYPE.BOSS ? 2 : 1;
+      const tierCost = { 1:12, 2:21, 3:38, 4:55, 5:90 };
+      const naturalTier = r.type===TYPE.ELITE ? 5 : Math.max(1, Math.ceil(r.difficulty*5));
+      const minTier = r.type===TYPE.BOSS ? 3 : 1;
       let remaining = budget;
       const tiers = [];
       const MAX_SPAWNS = 6;
@@ -615,7 +615,7 @@ function tryGenerate(seed, params){
         let t;
         if(roll < 0.2)      t = Math.max(minTier, naturalTier-1);
         else if(roll < 0.85) t = naturalTier;
-        else                 t = Math.min(3, naturalTier+1);
+        else                 t = Math.min(5, naturalTier+1);
         const cost = tierCost[t];
         if(cost <= remaining + tierCost[minTier]*0.7){
           tiers.push(t); remaining -= cost;
@@ -630,8 +630,7 @@ function tryGenerate(seed, params){
           if(!found) break;
         }
       }
-      /* ensure every combat room has at least one spawn */
-      if(tiers.length===0) tiers.push(Math.max(1, Math.ceil(r.difficulty*3)));
+      if(tiers.length===0) tiers.push(Math.max(1, Math.ceil(r.difficulty*5)));
 
       for(const tier of tiers){
         let placed = false;
