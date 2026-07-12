@@ -3,21 +3,142 @@
  */
 import { RACES, CLASSES, ABILITIES, ABILITY_LABEL, rollStat, mod, fmtMod, XP_TABLE, MAX_LEVEL, HERO_NAMES,
          subclassOf, SKILLS, getDefaultProficiencies } from './srd.js';
-import { SPELLS } from './features.js';
+import { SPELLS } from './spells.js';
+import { totalSlots, hasSlotFor, slotBreakdown } from './features.js';
 
 const $ = id => document.getElementById(id);
 
 /* ---------------- combat log ---------------- */
 const LOG_MAX = 90;
+/* kinds that count as "combat" for the log filter tabs */
+const COMBAT_KINDS = new Set(['roll','miss','kill','crit','heal','down','boss','elite']);
 export function log(msg, kind=''){
   const box = $('gamelog');
   if(!box) return;
   const div = document.createElement('div');
-  div.className = 'logline ' + kind;
+  div.className = 'logline ' + kind + (COMBAT_KINDS.has(kind) ? ' is-combat' : '');
   div.textContent = msg;
   box.appendChild(div);
   while(box.children.length > LOG_MAX) box.removeChild(box.firstChild);
   box.scrollTop = box.scrollHeight;
+
+  const panel = $('logpanel');
+  if (panel && panel.classList.contains('minimized')) {
+    const trayBtn = $('log-tray-btn');
+    if (trayBtn) trayBtn.classList.add('unread');
+  }
+}
+
+/* ---------------- initiative turn tracker ---------------- */
+export function updateInitiativeTracker(game){
+  const el = $('initiative');
+  if(!el) return;
+  const init = game.initiative;
+  const alive = e => e._side === 'hero' ? e.data.hp > 0 : (e.active && e.data.hp > 0);
+  if(!init || !init.active || !init.order.length){
+    el.classList.remove('show'); el.innerHTML = ''; return;
+  }
+  const cur = init.order[init.idx];
+  const rows = init.order.filter(alive).map(e => {
+    const on = e === cur ? ' on' : '';
+    const side = e._side === 'hero' ? 'hero' : 'mon';
+    const name = (e.data && e.data.name) || (e._side === 'hero' ? 'Hero' : 'Monster');
+    const val = e._init != null ? e._init : '';
+    return `<div class="init-row ${side}${on}">`
+         + `<span class="init-pip"></span>`
+         + `<span class="init-name">${name}</span>`
+         + `<span class="init-val">${val}</span></div>`;
+  }).join('');
+  el.innerHTML = `<div class="init-round">⚔ Round ${init.round}</div>`
+               + `<div class="init-list">${rows}</div>`;
+  el.classList.add('show');
+}
+
+/* Wire the log filter tabs (All / Combat / Other). Called once at boot. */
+export function initGameLog(){
+  const box = $('gamelog');
+  if(!box) return;
+  box.classList.add('filter-all');
+  const tabs = document.querySelectorAll('#logpanel .log-tab');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    box.classList.remove('filter-all','filter-combat','filter-other');
+    box.classList.add('filter-' + t.dataset.filter);
+    box.scrollTop = box.scrollHeight;
+  }));
+
+  const panel = $('logpanel');
+  const handle = $('log-resize-handle');
+  const minBtn = $('log-min-btn');
+  const trayBtn = $('log-tray-btn');
+
+  // Resizing logic
+  if(panel && handle){
+    let isDragging = false;
+    const startResize = e => {
+      isDragging = true;
+      e.preventDefault();
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('touchmove', onTouchMove, { passive: false });
+      document.addEventListener('touchend', onTouchEnd);
+    };
+
+    const resize = (clientX, clientY) => {
+      const minW = 280;
+      const maxW = window.innerWidth - 24;
+      const minH = 100;
+      const maxH = window.innerHeight - 80;
+
+      let w = window.innerWidth - 12 - clientX;
+      w = Math.max(minW, Math.min(maxW, w));
+      panel.style.width = w + 'px';
+
+      let h = window.innerHeight - 14 - clientY - 36;
+      h = Math.max(minH, Math.min(maxH, h));
+      box.style.maxHeight = h + 'px';
+      box.style.height = h + 'px';
+      box.scrollTop = box.scrollHeight;
+    };
+
+    const onMouseMove = e => { if(isDragging) resize(e.clientX, e.clientY); };
+    const onMouseUp = () => {
+      isDragging = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    const onTouchMove = e => {
+      if(isDragging && e.touches.length > 0) {
+        resize(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+      }
+    };
+    const onTouchEnd = () => {
+      isDragging = false;
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+
+    handle.addEventListener('mousedown', startResize);
+    handle.addEventListener('touchstart', startResize);
+  }
+
+  // Minimize logic
+  if(minBtn && panel && trayBtn){
+    minBtn.addEventListener('click', () => {
+      panel.classList.add('minimized');
+      trayBtn.style.display = 'block';
+    });
+    trayBtn.addEventListener('click', () => {
+      panel.classList.remove('minimized');
+      trayBtn.style.display = 'none';
+      trayBtn.classList.remove('unread');
+      // Scroll to bottom when restored to ensure latest messages are seen
+      box.scrollTop = box.scrollHeight;
+    });
+  }
 }
 
 /* ---------------- party frames ---------------- */
@@ -33,7 +154,8 @@ const ABILITY_ICON = {
   layOnHands:'🙏', shield:'🛡', scorchingRay:'🔥', haste:'⚡', bless:'✨',
   spiritualWeapon:'⚔', spiritGuardians:'👻', moonbeam:'🌙', callLightning:'⚡',
   healingWord:'💬', shatter:'💥', chaosBolt:'🌈', dragonBreathSpell:'🔥',
-  hex:'🔮', armsOfHadar:'🦑', thunderousSmite:'⚡', huntersMark:'🎯'
+  hex:'🔮', armsOfHadar:'🦑', thunderousSmite:'⚡', huntersMark:'🎯',
+  remarkableAthlete:'🏃', fastHands:'💨'
 };
 
 /* Class features that appear on the HUD with ready/spent state */
@@ -96,11 +218,12 @@ function abilityIconsHTML(h){
     pushCount('healSlots', '✚', 'Cure Wounds', h.healSlots ?? h.healSlotsMax ?? 0,
       'Cure Wounds — heal slots (+1 short rest · full long rest)');
   }
-  if (h.slotsMax > 0) {
+  if (totalSlots(h.slotsMax) > 0) {
+    const detail = slotBreakdown(h.slots, h.slotsMax);
     const slotTip = h.classKey === 'warlock'
-      ? `Pact slots ${h.slots ?? 0}/${h.slotsMax} (full on short or long rest)`
-      : `Spell slots ${h.slots ?? 0}/${h.slotsMax} (+1 short rest · full long rest)`;
-    pushCount('spellSlots', '✦', 'Spell slots', h.slots ?? 0, slotTip);
+      ? `Pact slots ${detail} (full on short or long rest)`
+      : `Spell slots ${detail} (recover lowest on short rest · full on long rest)`;
+    pushCount('spellSlots', '✦', 'Spell slots', totalSlots(h.slots), slotTip);
   }
   if (h.features && h.features.includes('layOnHands')) {
     pushCount('layOnHands', '🙏', 'Lay on Hands', h.layOnHands ?? h.layOnHandsMax ?? 0,
@@ -127,8 +250,8 @@ function abilityIconsHTML(h){
     let ready = true;
     let tipExtra = sp.desc || '';
     if (sp.recharge === 'slot') {
-      ready = (h.slots || 0) > 0;
-      tipExtra = `${sp.label} — costs a spell slot (${ready ? 'ready' : 'no slots'})`;
+      ready = hasSlotFor(h, sp.level || 1);
+      tipExtra = `${sp.label} — costs a level-${sp.level || 1}+ spell slot (${ready ? 'ready' : 'no slots'})`;
     } else if (sp.recharge === 'short') {
       ready = !h.abilityUsed?.short;
       tipExtra = `${sp.label} — ${ready ? REST_TIP.short.ready : REST_TIP.short.spent}`;
@@ -155,8 +278,8 @@ function abilityIconsHTML(h){
     const alias = aliases[a.key];
     if (!seen.has(a.key) && !seen.has('spell:' + a.key) && !(alias && seen.has(alias))) {
       if (a.recharge === 'slot') {
-        pushCount(a.key, ABILITY_ICON[a.key] || '★', a.name, h.slots ?? 0,
-          `${a.name} — spell slots`);
+        pushCount(a.key, ABILITY_ICON[a.key] || '★', a.name, totalSlots(h.slots),
+          `${a.name} — spell slots (${slotBreakdown(h.slots, h.slotsMax)})`);
       } else {
         const bucket = (a.recharge === 'long' || a.recharge === 'day') ? 'long' : 'short';
         const spent = bucket === 'long' ? h.abilityUsed?.long : h.abilityUsed?.short;
@@ -171,6 +294,139 @@ function abilityIconsHTML(h){
     const state = ic.count !== undefined ? (ic.count > 0 ? 'ready' : 'spent') : (ic.ready ? 'ready' : 'spent');
     const badge = ic.count !== undefined ? `<b>${ic.count}</b>` : '';
     return `<span class="pf-abil ${state}" title="${ic.tip.replace(/"/g, '&quot;')}">${ic.ico}${badge}</span>`;
+  }).join('');
+}
+
+const CONDITION_ICONS = {
+  raging: '😡',
+  hasted: '⚡',
+  inspired: '✨',
+  shielded: '🛡️',
+  sacredWeapon: '⚔️',
+  bearTotem: '🐻',
+  wildShape: '🐺',
+  phaseStep: '👥',
+  remarkableAthlete: '🏃',
+  deathWarded: '👼',
+  blinded: '👁️',
+  charmed: '💜',
+  frightened: '😱',
+  poisoned: '🤢',
+  paralyzed: '🌀',
+  stunned: '💫',
+  restrained: '🕸️',
+  slowed: '⏳',
+  burning: '🔥',
+  prone: '🛌',
+  deafened: '🔇',
+  incapacitated: '✖️',
+  unconscious: '💤',
+  weakenedDmg: '🥀',
+  baned: '📉',
+  faerieFire: '🧚',
+  hexMarked: '🔮',
+  huntersMarked: '🎯'
+};
+
+const CONDITION_NAMES = {
+  raging: 'Raging',
+  hasted: 'Hasted',
+  inspired: 'Inspired (Bardic Inspiration)',
+  shielded: 'Shielded (Shield spell)',
+  sacredWeapon: 'Sacred Weapon',
+  bearTotem: 'Bear Totem Aspect',
+  wildShape: 'Wild Shape',
+  phaseStep: 'Phase Step',
+  remarkableAthlete: 'Remarkable Athlete',
+  deathWarded: 'Death Warded',
+  blinded: 'Blinded',
+  charmed: 'Charmed',
+  frightened: 'Frightened',
+  poisoned: 'Poisoned',
+  paralyzed: 'Paralyzed',
+  stunned: 'Stunned',
+  restrained: 'Restrained',
+  slowed: 'Slowed',
+  burning: 'Burning',
+  prone: 'Prone',
+  deafened: 'Deafened',
+  incapacitated: 'Incapacitated',
+  unconscious: 'Unconscious',
+  weakenedDmg: 'Weakened Damage',
+  baned: 'Baned',
+  faerieFire: 'Faerie Fire',
+  hexMarked: 'Hex Marked',
+  huntersMarked: "Hunter's Marked"
+};
+
+const CONDITION_COLORS = {
+  raging: '#4ade4a', // green
+  hasted: '#38bdf8', // cyan
+  inspired: '#fbbf24', // gold
+  shielded: '#38bdf8',
+  sacredWeapon: '#fbbf24',
+  bearTotem: '#4ade4a',
+  wildShape: '#4ade4a',
+  phaseStep: '#38bdf8',
+  remarkableAthlete: '#4ade4a',
+  deathWarded: '#fbbf24',
+  blinded: '#e0483a', // red
+  charmed: '#c084fc', // purple
+  frightened: '#e0483a',
+  poisoned: '#4ade4a',
+  paralyzed: '#e8b23f', // yellow-orange
+  stunned: '#e8b23f',
+  restrained: '#e0483a',
+  slowed: '#e0483a',
+  burning: '#e0483a',
+  prone: '#64748b', // gray
+  deafened: '#64748b',
+  incapacitated: '#e0483a',
+  unconscious: '#64748b',
+  weakenedDmg: '#e0483a',
+  baned: '#e0483a',
+  faerieFire: '#c084fc',
+  hexMarked: '#c084fc',
+  huntersMarked: '#e0483a'
+};
+
+function buildEffectsHTML(h) {
+  if (!h._effects) return '';
+  const elapsed = window.__elapsedTime || 0;
+  const list = Object.entries(h._effects).sort((a, b) => a[0].localeCompare(b[0]));
+  if (list.length === 0) return '';
+
+  return list.map(([key, eff]) => {
+    const ico = CONDITION_ICONS[key] || '⭐';
+    const name = CONDITION_NAMES[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+    const color = CONDITION_COLORS[key] || '#fbbf24';
+
+    let remainingText = '';
+    let frac = 1.0;
+
+    if (eff.until != null) {
+      const remain = Math.max(0, eff.until - elapsed);
+      remainingText = `${remain.toFixed(1)}s`;
+      const dur = Math.max(1, eff.until - eff.applied);
+      frac = Math.max(0, Math.min(1, remain / dur));
+    } else {
+      remainingText = 'Indefinite';
+      frac = 1.0;
+    }
+
+    const strokeDashoffset = (62.8 * (1 - frac)).toFixed(2);
+
+    return `
+      <span class="pf-effect" title="${name} (${remainingText})">
+        <span class="pf-effect-emoji">${ico}</span>
+        <svg class="status-circle" width="24" height="24">
+          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.12)" stroke-width="1.8" fill="none" />
+          <circle cx="12" cy="12" r="10" stroke="${color}" stroke-width="1.8" fill="none"
+                  stroke-dasharray="62.8" stroke-dashoffset="${strokeDashoffset}"
+                  transform="rotate(-90 12 12)" />
+        </svg>
+      </span>
+    `;
   }).join('');
 }
 
@@ -191,6 +447,7 @@ export function buildPartyFrames(heroes){
       <div class="pf-sub" id="pf${i}-sub">${RACES[h.raceKey].label} ${cls.label} — AC ${h.ac}</div>
       <div class="pf-hpbar"><div class="pf-hpfill" id="pf${i}-hp"></div><span class="pf-hptext" id="pf${i}-hpt"></span></div>
       <div class="pf-abils" id="pf${i}-ab"></div>
+      <div class="pf-effects" id="pf${i}-eff"></div>
       <div class="pf-xpbar"><div class="pf-xpfill" id="pf${i}-xp"></div></div>`;
     wrap.appendChild(f);
   });
@@ -209,6 +466,10 @@ export function updatePartyFrames(heroes){
     $('pf'+i+'-sub').textContent =
       `${RACES[h.raceKey].label} ${sub?sub.label:CLASSES[h.classKey].label} — AC ${h.ac}`;
     $('pf'+i+'-ab').innerHTML = abilityIconsHTML(h);
+    const effEl = $('pf'+i+'-eff');
+    if (effEl) {
+      effEl.innerHTML = buildEffectsHTML(h);
+    }
     const lo = XP_TABLE[h.level], hi = XP_TABLE[Math.min(h.level+1, MAX_LEVEL)];
     $('pf'+i+'-xp').style.width = (h.level>=MAX_LEVEL ? 100 : 100*(h.xp-lo)/Math.max(1,hi-lo))+'%';
     const frame = $('pframe'+i);
@@ -248,37 +509,35 @@ const DEFAULT_BUILDS = [
 export function showSetup(hasSave, onEmbark, onContinue){
   const ov = $('setup');
   ov.classList.add('show');
-  const slots = [];
+  /* Race-specific fantasy name pools — first entry is each race's most
+     common default, fallback to HERO_NAMES if no pool defined. */
+  const RACE_NAMES = {
+    human:     ['Aldric','Bram','Kira','Garrick','Isolde','Lyra','Fenn','Magda','Vessa','Piotr','Elara','Caelum'],
+    dwarf:     ['Thoradin','Brunhilda','Durak','Helga','Torvi','Brynhild','Mardred','Odin','Freya','Gimli','Hilda','Borin'],
+    elf:       ['Sariel','Wren','Aelar','Elara','Finrod','Lúthien','Celeborn','Galadriel','Legolas','Arwen','Theron','Aelindra'],
+    halfling:  ['Toby','Doric','Nyx','Cade','Poppy','Rosie','Frodo','Bilbo','Merry','Pippin','Lila','Cori'],
+    halforc:   ['Garosh','Thrak','Mog','Ugga','Korr','Hagra','Drok','Orok','Zug','Grisha','Draka','Ruk'],
+    dragonborn:['Dracarys','Vermithrax','Krayt','Bahamut','Tiamat','Ignis','Arid','Sul','Keth','Sizzix','Nazir','Ragnar'],
+    gnome:     ['Fizzwick','Tinka','Nackle','Gimble','Namfoodle','Wixy','Zook','Bibble','Lilli','Bimp','Pip','Nix'],
+    halfelf:   ['Sylvan','Kael','Thalia','Ilyana','Caelen','Seraphine','Aldris','Mira','Orin','Lira','Vael','Mira'],
+    tiefling:  ['Zariel','Mephis','Lilith','Raziel','Shadow','Ember','Mort','Hellrider','Nyx','Vex','Korr','Sable']
+  };
   const usedNames = new Set();
-  const pickName = ()=>{
+  const pickName = (raceKey)=>{
+    const pool = RACE_NAMES[raceKey] || HERO_NAMES;
     let n; let guard=0;
-    do { n = HERO_NAMES[Math.floor(Math.random()*HERO_NAMES.length)]; } while(usedNames.has(n) && guard++<30);
+    do { n = pool[Math.floor(Math.random()*pool.length)]; } while(usedNames.has(n) && guard++<30);
     usedNames.add(n); return n;
   };
 
   const VISUAL_OPTS = {
     gender: ['male', 'female'],
     skinColor: ['#ffddcc', '#f1c27d', '#e0ac69', '#8d5524', '#c68642', '#3e2723', '#7cb342', '#bb4444', '#aabbaa', '#dd5566', '#ffeeee'],
-    hair: ['none', 'bangs/adult', 'braid/adult', 'long/adult', 'page/adult', 'messy1/adult', 'pixie/adult', 'bob/adult', 'curly_long/adult', 'dreadlocks_long/adult', 'ponytail/adult', 'spiked/adult', 'loose/adult', 'swoop/adult', 'parted/adult', 'mop/adult'],
+    hair: ['none', 'bangs/adult', 'long/adult', 'page/adult', 'messy1/adult', 'pixie/adult', 'bob/adult', 'curly_long/adult', 'dreadlocks_long/adult', 'spiked/adult', 'loose/adult', 'swoop/adult', 'parted/adult', 'mop/adult'],
     facialHair: ['none', 'beard/basic', 'beard/medium', 'beard/5oclock_shadow', 'mustache/basic'],
-    hairColor: ['#000000', '#663311', '#ddbb55', '#cc4422', '#eeeeee', '#66aacc', '#cc66aa'],
+    hairColor: ['#000000', '#111111', '#663311', '#8a4a20', '#ddbb55', '#e8c965', '#cc4422', '#ff6633', '#eeeeee', '#e0e0e0', '#66aacc', '#cc66aa', '#dda0dd'],
     eyeColor: ['#000000', '#4477ff', '#228822', '#884422', '#aa2222', '#ffffff']
   };
-
-  /* non-human head sprites baked into LPC (value = folder path, '' = human).
-     A custom head replaces the human face/eyes/ears/hair/beard entirely. */
-  const HEAD_OPTS = [
-    ['', 'Human'],
-    ['lizard/male', 'Draconic'],
-    ['orc/male', 'Orcish'],
-    ['goblin/adult', 'Goblin'],
-    ['minotaur/male', 'Minotaur'],
-    ['wolf/male', 'Wolfkin'],
-    ['troll/adult', 'Troll'],
-    ['rat/adult', 'Ratfolk'],
-    ['alien/adult', 'Alien'],
-    ['frankenstein/adult', 'Flesh Golem']
-  ];
 
   /* Per-race defaults. `head` assigns a distinctive LPC head where one fits
      the race (dragonborn→lizard, half-orc→orc); the rest read as human and
@@ -289,7 +548,7 @@ export function showSetup(hasSave, onEmbark, onContinue){
       case 'elf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', horns: 'none', facialHair: 'none', eyeColor: '#203a3a', spriteScaleX: 1.0, spriteScaleY: 1.0 };
       case 'dwarf': return { head: '', skinColor: '#ffddbb', hairColor: '#bbaa55', ears: 'none', horns: 'none', facialHair: 'beard/medium', eyeColor: '#3a2010', spriteScaleX: 1.15, spriteScaleY: 0.85 };
       case 'halfling': return { head: '', skinColor: '#eeddbb', hairColor: '#664422', ears: 'none', horns: 'none', facialHair: 'none', eyeColor: '#3a2010', spriteScaleX: 0.82, spriteScaleY: 0.82 };
-      case 'dragonborn': return { head: 'lizard/male', skinColor: '#7fa25a', hairColor: '#000000', ears: 'dragon', horns: 'backwards', facialHair: 'none', eyeColor: '#ffcc00', spriteScaleX: 1.0, spriteScaleY: 1.0 };
+      case 'dragonborn': return { head: 'lizard/male', skinColor: '#7fa25a', hairColor: '#000000', ears: 'dragon', horns: 'curl', facialHair: 'none', eyeColor: '#ffcc00', spriteScaleX: 1.0, spriteScaleY: 1.0 };
       case 'gnome': return { head: '', skinColor: '#eeddbb', hairColor: '#a3e635', ears: 'elven', horns: 'none', facialHair: 'none', eyeColor: '#3a2010', spriteScaleX: 0.88, spriteScaleY: 0.88 };
       case 'halfelf': return { head: '', skinColor: '#ffeeee', hairColor: '#eedd77', ears: 'elven', horns: 'none', facialHair: 'none', eyeColor: '#203a3a', spriteScaleX: 1.0, spriteScaleY: 1.0 };
       case 'tiefling': return { head: '', skinColor: '#dd5566', hairColor: '#111111', ears: 'elven', horns: 'backwards', facialHair: 'none', eyeColor: '#ffcc00', spriteScaleX: 1.0, spriteScaleY: 1.0 };
@@ -304,16 +563,21 @@ export function showSetup(hasSave, onEmbark, onContinue){
   const SKIN_PALETTES = {
     human:    ['#ffeeee','#ffddcc','#ffddbb','#eeddbb','#f1c27d','#e0ac69','#c68642','#8d5524','#5a3a20','#3e2723'],
     orc:      ['#8fae7a','#7a9a5a','#6a8a4a','#9ab98a','#57794a','#8a9a8a','#67787a','#4a5a3a'],
-    draconic: ['#7fa25a','#5f8a45','#4a7040','#b0824a','#9a6a3a','#7a8a9a','#4a5a6a','#3a3a3a','#b0a850'],
-    tiefling: ['#dd5566','#c0455a','#a03a4a','#8a3550','#dd7788','#b05070','#7a3a5a','#5a2a3a']
+    /* Dragonborn scale colours inspired by the chromatic and metallic
+       dragons of the SRD. First colour is the default draconic green. */
+    draconic: ['#7fa25a','#cc3333','#d4a017','#338833','#2a52be','#1a1a1a','#e8e8e8','#b0b0b0','#cd7f32','#b5a642','#b87333','#5f8a45','#4a7040','#b0824a','#7a8a9a','#4a5a6a'],
+    /* Tiefling skin tones inspired by infernal bloodlines — deep crimsons,
+       purples, blues, and ashen hues with a few pale/earthy options. */
+    tiefling: ['#dd5566','#cc3355','#8833aa','#3344aa','#7a7a8a','#eebbcc','#6a1528','#996699','#553366','#223355','#c0455a','#a03a4a','#b05070']
   };
   const RACE_SKIN = { halforc:'orc', dragonborn:'draconic', tiefling:'tiefling' };
   const skinColorsFor = raceKey => SKIN_PALETTES[RACE_SKIN[raceKey] || 'human'];
 
+  const slots = [];
   DEFAULT_BUILDS.forEach((def,i)=>{
     const raceDefs = getRaceDefaults(def.raceKey);
-    slots.push({ 
-      name:pickName(), raceKey:def.raceKey, classKey:def.classKey,
+    slots.push({
+      name:pickName(def.raceKey), raceKey:def.raceKey, classKey:def.classKey,
       baseStats: { str:8, dex:8, con:8, int:8, wis:8, cha:8 }, // Point buy default
       proficiencies: getDefaultProficiencies(def.raceKey, def.classKey),
       visual: {
@@ -348,25 +612,69 @@ export function showSetup(hasSave, onEmbark, onContinue){
     });
   }
 
-  function drawTintedLayer(ctx, img, tintColor) {
+  /* ---- HSL color utilities for proper sprite recolor ---- */
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return [r, g, b];
+  }
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    let h = 0, s = 0, l = (mx + mn) / 2;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (mx === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return [h, s, l];
+  }
+  function hslToRgb(h, s, l) {
+    if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    return [
+      Math.round(hue2rgb(p, q, h + 1/3) * 255),
+      Math.round(hue2rgb(p, q, h) * 255),
+      Math.round(hue2rgb(p, q, h - 1/3) * 255)
+    ];
+  }
+
+  /* Recolour a sprite frame using HSL replacement: preserves the original
+     shading (luminosity) but applies the tint's hue and saturation. Works on
+     both neutral (grayscale) and pre-coloured sprites, unlike multiply which
+     only looks good on grayscale bases. */
+  function drawSkinTintedLayer(ctx, img, tintColor) {
     if (!tintColor) {
       ctx.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
       return;
     }
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 64; tempCanvas.height = 64;
-    const tctx = tempCanvas.getContext('2d');
-    
-    // Draw only the specific frame we want to tint (walk, front, row 2)
-    tctx.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
-    tctx.globalCompositeOperation = 'multiply';
-    tctx.fillStyle = tintColor;
-    tctx.fillRect(0, 0, 64, 64);
-    
-    tctx.globalCompositeOperation = 'destination-in';
-    tctx.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
-    
-    ctx.drawImage(tempCanvas, 0, 0);
+    const tc = document.createElement('canvas');
+    tc.width = 64; tc.height = 64;
+    const t = tc.getContext('2d');
+    t.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
+    const id = t.getImageData(0, 0, 64, 64);
+    const d = id.data;
+    const [tr, tg, tb] = hexToRgb(tintColor);
+    const [th, ts] = rgbToHsl(tr, tg, tb);
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      const [, , l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+      const [cr, cg, cb] = hslToRgb(th, ts, l);
+      d[i] = cr; d[i+1] = cg; d[i+2] = cb;
+    }
+    t.putImageData(id, 0, 0);
+    ctx.drawImage(tc, 0, 0);
   }
 
   async function drawPreview(canvas, slot) {
@@ -376,6 +684,18 @@ export function showSetup(hasSave, onEmbark, onContinue){
     const g = visual.gender;
     const isMonster = (g === 'skeleton' || g === 'zombie');
     const customHead = visual.head;                 // '' / undefined = human
+    const clothG = (g === 'muscular' || g === 'teen' || g === 'child') ? 'male' : g;
+    const sx = visual.spriteScaleX || 1.0;
+    const sy = visual.spriteScaleY || 1.0;
+
+    /* Apply race body scaling (dwarf = wider, halfling = smaller) anchored
+       at bottom-centre so the sprite doesn't float above the ground. */
+    if (sx !== 1.0 || sy !== 1.0) {
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height);
+      ctx.scale(sx, sy);
+      ctx.translate(-canvas.width / 2, -canvas.height);
+    }
 
     let w = null;
     let t = 'clothes/shortsleeve/shortsleeve'; // default
@@ -388,37 +708,41 @@ export function showSetup(hasSave, onEmbark, onContinue){
 
     const paths = {
       body: `body/bodies/${g}`,
-      head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${g}`),
-      eyes: (isMonster || customHead) ? null : `eyes/human/adult`,
+      head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
+      eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
       ears: (!isMonster && visual.ears && visual.ears !== 'none'
              && (!customHead || visual.ears === 'dragon')) ? `head/ears/${visual.ears}/adult` : null,
       horns: (!isMonster && visual.horns && visual.horns !== 'none') ? `head/horns/${visual.horns}` : null,
-      legs: isMonster ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : g}`,
-      torso: isMonster ? null : `torso/${t}/${g}`,
-      feet: isMonster ? null : `feet/${l === 'armour/plate' ? 'armour/plate' : 'shoes/basic'}/${g==='male'?'male':'thin'}`,
+      legs: isMonster ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
+      torso: isMonster ? null : `torso/${t}/${clothG}`,
+      feet: isMonster ? null : `feet/${l === 'armour/plate' ? 'armour/plate' : 'shoes/basic'}/${clothG === 'male' ? 'male' : 'thin'}`,
       facialHair: (isMonster || customHead || !visual.facialHair || visual.facialHair === 'none') ? null : `beards/${visual.facialHair}`,
       hair: (isMonster || customHead || visual.hair==='none') ? null : `hair/${visual.hair}`,
       weapon: w ? `weapon/${w}` : null
     };
-    
+
     const LAYER_ORDER = ['body', 'head', 'eyes', 'legs', 'torso', 'feet', 'ears', 'horns', 'facialHair', 'hair', 'weapon'];
-    
+
     for (const layer of LAYER_ORDER) {
       if (!paths[layer]) continue;
       try {
         const img = await loadImage(ASSETS_ROOT + paths[layer] + '/walk.png');
         if (layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') {
-          drawTintedLayer(ctx, img, visual.skinColor);
+          drawSkinTintedLayer(ctx, img, visual.skinColor);
         } else if (layer === 'hair' || layer === 'facialHair') {
-          drawTintedLayer(ctx, img, visual.hairColor);
+          drawSkinTintedLayer(ctx, img, visual.hairColor);
         } else if (layer === 'eyes' && visual.eyeColor) {
-          drawTintedLayer(ctx, img, visual.eyeColor);
+          drawSkinTintedLayer(ctx, img, visual.eyeColor);
         } else {
           ctx.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
         }
       } catch (e) {
         // ignore missing layers
       }
+    }
+
+    if (sx !== 1.0 || sy !== 1.0) {
+      ctx.restore();
     }
   }
 
@@ -468,19 +792,21 @@ export function showSetup(hasSave, onEmbark, onContinue){
         <div class="slot-header" style="display:flex;gap:16px;align-items:center;">
           <canvas class="slot-preview" width="64" height="64" style="background:#1a1c23;border-radius:4px;image-rendering:pixelated;width:128px;height:128px;flex-shrink:0;"></canvas>
           <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
-            <input class="slot-name" value="${slot.name}" maxlength="12" style="font-size:18px; padding:6px; background:#111; color:#fff; border:1px solid #444;">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input class="slot-name" value="${slot.name}" maxlength="12" style="flex:1; font-size:18px; padding:6px; background:#111; color:#fff; border:1px solid #444;">
+              <button id="btn-random-name" style="padding:4px 8px; cursor:pointer; font-size:14px;" title="Randomize name">🎲</button>
+            </div>
             <div style="display:flex;gap:6px">
               <select class="slot-class" style="flex:1; padding:4px;">${Object.entries(CLASSES).map(([k,c])=>`<option value="${k}" ${k===slot.classKey?'selected':''}>${c.label}</option>`).join('')}</select>
               <select class="slot-race" style="flex:1; padding:4px;">${Object.entries(RACES).map(([k,r])=>`<option value="${k}" ${k===slot.raceKey?'selected':''}>${r.label}</option>`).join('')}</select>
             </div>
           </div>
         </div>
-        
+
         <div class="slot-visuals" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;font-size:14px;">
-          <label style="display:flex; justify-content:space-between; align-items:center;">Head: <select class="vis-head" style="width:110px; padding:2px;">${HEAD_OPTS.map(([v,l])=>`<option value="${v}" ${v===(slot.visual.head||'')?'selected':''}>${l}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Gender: <select class="vis-gender" style="width:110px; padding:2px;">${VISUAL_OPTS.gender.map(v=>`<option value="${v}" ${v===slot.visual.gender?'selected':''}>${v}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Ears: <select class="vis-ears" style="width:110px; padding:2px;"><option value="none" ${slot.visual.ears==='none'?'selected':''}>Human</option><option value="elven" ${slot.visual.ears==='elven'?'selected':''}>Elven</option><option value="dragon" ${slot.visual.ears==='dragon'?'selected':''}>Dragon</option></select></label>
-          <label style="display:flex; justify-content:space-between; align-items:center;">Horns: <select class="vis-horns" style="width:110px; padding:2px;"><option value="none" ${(slot.visual.horns||'none')==='none'?'selected':''}>None</option><option value="backwards" ${slot.visual.horns==='backwards'?'selected':''}>Backwards</option></select></label>
+          <label style="display:flex; justify-content:space-between; align-items:center;">Horns: <select class="vis-horns" style="width:110px; padding:2px;"><option value="none" ${(slot.visual.horns||'none')==='none'?'selected':''}>None</option><option value="backwards" ${slot.visual.horns==='backwards'?'selected':''}>Backwards</option><option value="curl" ${slot.visual.horns==='curl'?'selected':''}>Curl</option></select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Hair: <select class="vis-hair" style="width:110px; padding:2px;">${VISUAL_OPTS.hair.map(v=>`<option value="${v}" ${v===slot.visual.hair?'selected':''}>${v.split('/')[0]}</option>`).join('')}</select></label>
           <label style="display:flex; justify-content:space-between; align-items:center;">Facial Hair: <select class="vis-facialHair" style="width:110px; padding:2px;">${VISUAL_OPTS.facialHair.map(v=>`<option value="${v}" ${v===slot.visual.facialHair?'selected':''}>${v.split('/').pop()}</option>`).join('')}</select></label>
           <div style="display:flex; justify-content:space-between; align-items:center;"><span>Skin:</span> ${colorSwatches('skinColor', slot.visual.skinColor, skinColorsFor(slot.raceKey))}</div>
@@ -691,8 +1017,20 @@ export function showSetup(hasSave, onEmbark, onContinue){
       renderSlot();
     });
 
+    /* random name button */
+    const rnBtn = $('btn-random-name');
+    if (rnBtn) {
+      rnBtn.onclick = () => {
+        slot.name = pickName(slot.raceKey);
+        const inp = slotWrap.querySelector('.slot-name');
+        if (inp) inp.value = slot.name;
+        const rn = $('roster-name-'+currentSlotIdx); if(rn) rn.textContent = slot.name;
+        renderSlot();
+      };
+    }
+
     /* visual selects re-render the whole slot so the roster sprite updates too */
-    ['head', 'gender', 'hair', 'facialHair', 'ears', 'horns'].forEach(key => {
+    ['gender', 'hair', 'facialHair', 'ears', 'horns'].forEach(key => {
       const el = slotWrap.querySelector('.vis-'+key);
       if(!el) return;
       el.addEventListener('change', e=>{

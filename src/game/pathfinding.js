@@ -128,8 +128,10 @@ export const pathfindingMethods = {
 
     const CAPTURE = 0.35;
     if (dist <= CAPTURE) {
-      e.x = tx; e.z = tz; e.pathI++;
-      this.wallRepel(e);
+      /* Advance to the next waypoint without warping position — snapping
+         to the cell centre creates visible grid-jitter.  The entity
+         continues moving from its current smooth position next frame. */
+      e.pathI++;
       if (e.pathI < e.path.length) {
         const nx = this.wx(e.path[e.pathI] % W);
         const nz = this.wz(Math.floor(e.path[e.pathI] / W));
@@ -137,7 +139,7 @@ export const pathfindingMethods = {
         let delta = targetAngle - e.ent.grp.rotation.y;
         while (delta > Math.PI) delta -= Math.PI * 2;
         while (delta < -Math.PI) delta += Math.PI * 2;
-        e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+        e.ent.grp.rotation.y += delta * Math.min(1, dt * 3.5);
       }
       e._lastDx = e._dx; e._lastDz = e._dz;
       e._dx = e.x - prevX; e._dz = e.z - prevZ;
@@ -154,7 +156,7 @@ export const pathfindingMethods = {
     let bestX = e.x + Math.sin(baseAngle) * step;
     let bestZ = e.z + Math.cos(baseAngle) * step;
     if (this.blocked(bestX, bestZ, 0.22)) {
-      const angles = [0.26, -0.26, 0.52, -0.52, 0.79, -0.79];
+      const angles = [0.13, -0.13, 0.26, -0.26, 0.52, -0.52, 0.79, -0.79, 1.05, -1.05];
       for (const angle of angles) {
         const ax = e.x + Math.sin(baseAngle + angle) * step;
         const az = e.z + Math.cos(baseAngle + angle) * step;
@@ -171,7 +173,7 @@ export const pathfindingMethods = {
     let delta = targetAngle - e.ent.grp.rotation.y;
     while (delta > Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
-    e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+    e.ent.grp.rotation.y += delta * Math.min(1, dt * 3.5);
     e._lastDx = e._dx; e._lastDz = e._dz;
     e._dx = e.x - prevX; e._dz = e.z - prevZ;
     return true;
@@ -198,19 +200,23 @@ export const pathfindingMethods = {
       const tox = e.x - wx, toz = e.z - wz;
       const d = Math.hypot(tox, toz);
       if (d < 0.48 && d > 0.001) {
-        const force = (0.48 - d) / 0.48 * 2.2;
+        const force = (0.48 - d) / 0.48 * 1.5;
         pushX += (tox / d) * force;
         pushZ += (toz / d) * force;
       }
     }
 
     /* Corridor centring: if both cardinal neighbours in an axis are walls
-       (1-wide corridor), add a gentle pull toward the cell centreline. */
+       (1-wide corridor / doorway), add a gentle pull toward the corridor
+       centreline.  wx()/wz() already return the CELL CENTRE, and the pull
+       must act only on the walled axis — pulling along the corridor axis
+       drags the entity back toward its current cell and can exactly cancel
+       stepAlong's forward motion (the narrow-door soft-lock). */
     const xWalled = (cxX > 0 && grid[cx - 1] === WALL) && (cxX < W - 1 && grid[cx + 1] === WALL);
     const zWalled = (cxY > 0 && grid[cx - W] === WALL) && (cxY < H - 1 && grid[cx + W] === WALL);
     if (xWalled || zWalled) {
-      const midX = this.wx(cxX + 0.5), midZ = this.wz(cxY + 0.5);
-      const toMidX = midX - e.x, toMidZ = midZ - e.z;
+      const toMidX = xWalled ? this.wx(cxX) - e.x : 0;
+      const toMidZ = zWalled ? this.wz(cxY) - e.z : 0;
       const midDist = Math.hypot(toMidX, toMidZ);
       if (midDist > 0.01) {
         const midForce = Math.min(midDist * 0.25, 0.025);
@@ -221,7 +227,7 @@ export const pathfindingMethods = {
 
     const mag = Math.hypot(pushX, pushZ);
     if (mag < 0.0005) return;
-    const maxPush = 0.05;
+    const maxPush = 0.03;
     const s = Math.min(mag, maxPush) / mag;
     const nx = e.x + pushX * s;
     const nz = e.z + pushZ * s;
@@ -272,27 +278,41 @@ export const pathfindingMethods = {
      collision before it happens.  Push force is clamped low per-frame so
      entities slide apart smoothly rather than jittering. */
   applySeparation(alive, dt) {
+    const choke = this.D.chokepoint;
     const ents = [];
-    for (const h of alive) ents.push({ e: h, r: 0.36 });
+    for (const h of alive) ents.push({ e: h, r: 0.36, isHero: true });
     for (const m of this.monsters)
-      if (m.data.hp > 0 && m.active) ents.push({ e: m, r: 0.34 * (m.data.scale || 1) });
+      if (m.data.hp > 0 && m.active) ents.push({ e: m, r: 0.34 * (m.data.scale || 1), isHero: false });
+    for (const ent of ents) {
+      const c = this.cellOf(ent.e.x, ent.e.z);
+      ent.choked = !!(choke && c >= 0 && choke[c]);
+    }
     const maxPush = 2.8 * dt; /* gentler than 4.5 — less jitter */
     for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) {
       const A = ents[i], B = ents[j];
       let dx = B.e.x - A.e.x, dz = B.e.z - A.e.z;
       let dd = Math.hypot(dx, dz);
-      let min = A.r + B.r;
+      let min = A.isHero && B.isHero ? 0.25 : A.r + B.r;
 
-      /* Predictive expansion: if entities are moving toward each
-         other, gently expand the separation radius. */
-      if (A.e.moving || B.e.moving) {
-        const vAx = A.e.x - ((A.e._prevX !== undefined) ? A.e._prevX : A.e.x);
-        const vAz = A.e.z - ((A.e._prevZ !== undefined) ? A.e._prevZ : A.e.z);
-        const vBx = B.e.x - ((B.e._prevX !== undefined) ? B.e._prevX : B.e.x);
-        const vBz = B.e.z - ((B.e._prevZ !== undefined) ? B.e._prevZ : B.e.z);
-        const relVx = vAx - vBx, relVz = vAz - vBz;
-        if (dx * relVx + dz * relVz < 0) {
-          min *= 1.25;
+      if (!(A.isHero && B.isHero)) {
+        /* Inside a doorway there's no room for full body radii — shrink so
+           entities squeeze past instead of shoving each other into the jambs. */
+        if (A.choked && B.choked) {
+          min *= 0.55;
+        } else if (A.choked || B.choked) {
+          min *= 0.8;
+        } else
+        /* Predictive expansion: if entities are moving toward each
+           other, gently expand the separation radius. */
+        if (A.e.moving || B.e.moving) {
+          const vAx = A.e.x - ((A.e._prevX !== undefined) ? A.e._prevX : A.e.x);
+          const vAz = A.e.z - ((A.e._prevZ !== undefined) ? A.e._prevZ : A.e.z);
+          const vBx = B.e.x - ((B.e._prevX !== undefined) ? B.e._prevX : B.e.x);
+          const vBz = B.e.z - ((B.e._prevZ !== undefined) ? B.e._prevZ : B.e.z);
+          const relVx = vAx - vBx, relVz = vAz - vBz;
+          if (dx * relVx + dz * relVz < 0) {
+            min *= 1.25;
+          }
         }
       }
 
@@ -301,7 +321,8 @@ export const pathfindingMethods = {
         const a = Math.random() * Math.PI * 2;
         dx = Math.cos(a); dz = Math.sin(a); dd = 1;
       }
-      const push = Math.min((min - dd) * 0.5, maxPush);
+      let push = Math.min((min - dd) * 0.5, maxPush);
+      if (A.isHero && B.isHero) push *= 0.3;
       const px = dx / dd * push, pz = dz / dd * push;
       if (!this.blocked(A.e.x - px, A.e.z - pz, 0.3)) { A.e.x -= px; A.e.z -= pz; }
       if (!this.blocked(B.e.x + px, B.e.z + pz, 0.3)) { B.e.x += px; B.e.z += pz; }

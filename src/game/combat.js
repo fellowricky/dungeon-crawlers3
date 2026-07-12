@@ -8,78 +8,219 @@
 import * as THREE from 'three';
 import {
   grantXp, heroAttackBonus, heroDamage, subclassOf,
-  CLASSES, RACES, roll, d as die, mod, pendingPoints
+  CLASSES, RACES, roll, d as die, d20Roll, mod, pendingPoints
 } from './srd.js';
 import {
   drawBar, makeFloatText, hitFlash,
-  spawnProjectile, spawnSlash, spawnSpriteEffect
+  spawnProjectile, spawnSlash, spawnSpriteEffect, spawnDeathFountain
 } from './entities.js';
 import { rollItem, equippedPerks } from './items.js';
 import { log, updatePartyFrames, updateResources, showBanner } from './ui.js';
 import { refreshMenus } from './menus.js';
 import {
-  HERO_SPEED, HERO_ATTACK_CD, COMBAT_SPEED, XP_SHARE,
+  FLOOR, WALL, HERO_SPEED, HERO_ATTACK_CD, COMBAT_SPEED, XP_SHARE,
   STUCK_SIDESTEP_T, STUCK_TELEPORT_T, STUCK_SIDESTEP_DIST
 } from './constants.js';
 import { _v } from './shared.js';
-import { hasFeature, hasFeat, SPELLS } from './features.js';
+import { hasFeature, hasFeat, hasSlotFor, spendSlotFor, recoverSlots, totalSlots } from './features.js';
+import { onKill } from './quest_events.js';
+import { playSfx, spellSfx } from './audio.js';
 
-/** Sprite paths + tint colors for ability / spell feedback. */
+/** Sprite paths + tint colors for ability / spell feedback.
+ *  Each entry may include `frames` (texture-path array) + `frameInterval`
+ *  to produce an animated sprite effect that cycles through the sequence. */
 const ABILITY_FX = {
-  secondWind:      { sprite: 'dcss/effect/goldaura_0.png', color: 0x6ae06a, label: '2nd WIND', float: '#6ae06a' },
-  actionSurge:     { sprite: 'dcss/effect/heataura_0.png', color: 0xffd34a, label: 'SURGE', float: '#ffd34a' },
-  flurry:          { sprite: 'dcss/effect/gold_sparkles_1.png', color: 0xe8d8a8, label: 'FLURRY', float: '#e8d8a8' },
-  frenzy:          { sprite: 'dcss/effect/flame_0.png', color: 0xff6030, label: 'FRENZY', float: '#ff6030' },
-  cunningAction:   { sprite: 'dcss/effect/sanctuary.png', color: 0x8fd4e8, label: 'DASH', float: '#8fd4e8' },
-  rage:            { sprite: 'dcss/effect/flame_0.png', color: 0xff4020, label: 'RAGE', float: '#ff6040' },
-  bearTotem:       { sprite: 'dcss/effect/heataura_0.png', color: 0xc08040, label: 'BEAR', float: '#c08040' },
-  bardic:          { sprite: 'dcss/effect/gold_sparkles_2.png', color: 0xe8a8ff, label: 'INSPIRE', float: '#e8a8ff' },
-  wildShape:       { sprite: 'dcss/effect/cloud_forest_fire.png', color: 0x6aaa4a, label: 'WILD SHAPE', float: '#6aaa4a' },
-  combatSong:      { sprite: 'dcss/effect/gold_sparkles_1.png', color: 0xffd080, label: 'BATTLE SONG', float: '#ffd080' },
-  divineSmite:     { sprite: 'dcss/effect/goldaura_1.png', color: 0xffe08a, label: 'SMITE', float: '#ffe08a' },
-  tidesOfChaos:    { sprite: 'dcss/effect/cloud_chaos_2.png', color: 0xb06cf0, label: 'CHAOS', float: '#b06cf0' },
-  indomitable:     { sprite: 'dcss/effect/sanctuary.png', color: 0xa0c0ff, label: 'INDOMITABLE', float: '#a0c0ff' },
-  lucky:           { sprite: 'dcss/effect/gold_sparkles_3.png', color: 0x6aea6a, label: 'LUCKY', float: '#6aea6a' },
-  layOnHands:      { sprite: 'dcss/effect/goldaura_0.png', color: 0xffe08a, label: null, float: '#6ae06a' },
-  cureWounds:      { sprite: 'dcss/effect/sanctuary.png', color: 0x6ae06a, label: null, float: '#6ae06a' },
-  deathstrike:     { sprite: 'dcss/effect/cloud_neg_1.png', color: 0xc04040, label: 'DEATHSTRIKE', float: '#e07070' },
-  guidedStrike:    { sprite: 'dcss/effect/gold_sparkles_2.png', color: 0xffe08a, label: 'GUIDED', float: '#ffe08a' },
-  vowOfEnmity:     { sprite: 'dcss/effect/heataura_1.png', color: 0xe8a83f, label: 'VOW', float: '#e8a83f' },
-  shadowStep:      { sprite: 'dcss/effect/cloud_gloom.png', color: 0x6a5080, label: 'SHADOW STEP', float: '#a080c0' },
-  sacredWeapon:    { sprite: 'dcss/effect/goldaura_2.png', color: 0xffe08a, label: 'SACRED', float: '#ffe08a' },
-  colossusSlayer:  { sprite: 'dcss/effect/searing_ray_2.png', color: 0xe8a83f, label: 'PREY', float: '#e8a83f' },
-  companionStrike: { sprite: 'dcss/effect/cloud_magic_trail_1.png', color: 0xa0c080, label: 'COMPANION', float: '#a0c080' },
-  quiveringPalm:   { sprite: 'dcss/effect/quad_glow.png', color: 0xffd080, label: 'QUIVERING', float: '#ffd080' },
-  rallyingCry:     { sprite: 'dcss/effect/goldaura_0.png', color: 0xe8a83f, label: 'RALLY', float: '#e8a83f' },
-  preserveLife:    { sprite: 'dcss/effect/sanctuary.png', color: 0xbfe0ff, label: 'PRESERVE', float: '#bfe0ff' },
-  dragonBreath:    { sprite: 'dcss/effect/cloud_fire_2.png', color: 0xff6020, label: 'BREATH', float: '#ff6020' },
-  wildSurge:       { sprite: 'dcss/effect/cloud_chaos_3.png', color: 0xff8844, label: 'WILD MAGIC', float: '#ff8844' },
-  cuttingWords:    { sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0xd0a0ff, label: 'CUTTING WORDS', float: '#d0a0ff' },
-  fiendishBlessing:{ sprite: 'dcss/effect/cloud_neg_0.png', color: 0x9b59b6, label: 'FIENDISH', float: '#9b59b6' },
-  feyPresence:     { sprite: 'dcss/effect/cloud_spectral_1.png', color: 0xe8a8ff, label: 'FEY', float: '#e8a8ff' },
-  /* spells */
-  magicMissile:    { sprite: 'dcss/effect/magic_bolt_2.png', color: 0xb08cff, label: 'MISSILE', float: '#b08cff' },
-  shield:          { sprite: 'dcss/effect/sanctuary.png', color: 0x88aaff, label: 'SHIELD', float: '#88aaff' },
-  scorchingRay:    { sprite: 'dcss/effect/searing_ray_3.png', color: 0xff7a30, label: 'SCORCH', float: '#ff7a30' },
-  fireball:        { sprite: 'dcss/effect/cloud_fire_2.png', color: 0xff7a30, label: 'FIREBALL', float: '#ff7a30' },
-  haste:           { sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0xa0e0ff, label: 'HASTE', float: '#a0e0ff' },
-  bless:           { sprite: 'dcss/effect/gold_sparkles_2.png', color: 0xffe08a, label: 'BLESS', float: '#ffe08a' },
-  healingWord:     { sprite: 'dcss/effect/goldaura_0.png', color: 0xe8a8ff, label: null, float: '#6ae06a' },
-  spiritualWeapon: { sprite: 'dcss/effect/orb_glow_0.png', color: 0xbfe0ff, label: 'SPIRIT WEAPON', float: '#bfe0ff' },
-  spiritGuardians: { sprite: 'dcss/effect/cloud_spectral_2.png', color: 0xd0c0ff, label: 'GUARDIANS', float: '#d0c0ff' },
-  entangle:        { sprite: 'dcss/effect/cloud_magic_trail_2.png', color: 0x4cae4c, label: 'ENTANGLE', float: '#4cae4c' },
-  moonbeam:        { sprite: 'dcss/effect/orb_glow_1.png', color: 0xc0e8ff, label: 'MOONBEAM', float: '#c0e8ff' },
-  callLightning:   { sprite: 'dcss/effect/cloud_storm_2.png', color: 0x7090ff, label: 'LIGHTNING', float: '#7090ff' },
-  shatter:         { sprite: 'dcss/effect/cloud_storm_1.png', color: 0xd0a0ff, label: 'SHATTER', float: '#d0a0ff' },
-  chaosBolt:       { sprite: 'dcss/effect/cloud_chaos_4.png', color: 0xff8844, label: 'CHAOS BOLT', float: '#ff8844' },
-  dragonBreathSpell:{ sprite: 'dcss/effect/cloud_fire_1.png', color: 0xff6020, label: 'BURNING HANDS', float: '#ff6020' },
-  hex:             { sprite: 'dcss/effect/cloud_neg_2.png', color: 0x9b59b6, label: 'HEX', float: '#9b59b6' },
-  armsOfHadar:     { sprite: 'dcss/effect/cloud_gloom_new.png', color: 0x6a3080, label: 'HADAR', float: '#6a3080' },
-  thunderousSmite: { sprite: 'dcss/effect/cloud_storm_1.png', color: 0xf1c40f, label: 'THUNDEROUS', float: '#f1c40f' },
-  huntersMark:     { sprite: 'dcss/effect/searing_ray_1.png', color: 0x1abc9c, label: "HUNTER'S MARK", float: '#1abc9c' }
+  /* ── Class Features ── */
+  secondWind:      { sprite: 'dcss/effect/gold_sparkles_1.png', color: 0x6ae06a, label: '2nd WIND',     float: '#6ae06a' },
+  actionSurge:     { sprite: 'dcss/effect/heataura_1.png',      color: 0xffd34a, label: 'SURGE',         float: '#ffd34a' },
+  flurry:          { sprite: 'dcss/effect/heataura_2.png',      color: 0xe8d8a8, label: 'FLURRY',        float: '#e8d8a8' },
+  frenzy:          { sprite: 'dcss/effect/flame_0.png',
+    frames: ['dcss/effect/flame_0.png','dcss/effect/flame_1.png','dcss/effect/flame_2.png'],
+    frameInterval: 0.06,                                        color: 0xff6030, label: 'FRENZY',        float: '#ff6030' },
+  cunningAction:   { sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0x8fd4e8, label: 'DASH',         float: '#8fd4e8' },
+  remarkableAthlete: { sprite: 'dcss/effect/gold_sparkles_1.png', color: 0xaab4cc, label: 'ATHLETE',      float: '#aab4cc' },
+  fastHands:       { sprite: 'dcss/effect/cloud_magic_trail_0.png', color: 0x8fd4e8, label: 'SMOKE BOMB',   float: '#8fd4e8' },
+  rage:            { sprite: 'dcss/effect/flame_0.png',
+    frames: ['dcss/effect/flame_0.png','dcss/effect/flame_1.png','dcss/effect/flame_2.png'],
+    frameInterval: 0.07,                                        color: 0xff4020, label: 'RAGE',          float: '#ff6040' },
+  bearTotem:       { sprite: 'dcss/effect/cloud_forest_fire.png', color: 0xc08040, label: 'BEAR',          float: '#c08040' },
+  bardic:          { sprite: 'dcss/effect/gold_sparkles_1.png',
+    frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
+    frameInterval: 0.07,                                        color: 0xe8a8ff, label: 'INSPIRE',       float: '#e8a8ff' },
+  wildShape:       { sprite: 'dcss/effect/cloud_magic_trail_0.png',
+    frames: ['dcss/effect/cloud_magic_trail_0.png','dcss/effect/cloud_magic_trail_1.png','dcss/effect/cloud_magic_trail_2.png','dcss/effect/cloud_magic_trail_3.png'],
+    frameInterval: 0.06,                                        color: 0x6aaa4a, label: 'WILD SHAPE',    float: '#6aaa4a' },
+  combatSong:      { sprite: 'dcss/effect/goldaura_0.png',
+    frames: ['dcss/effect/goldaura_0.png','dcss/effect/goldaura_1.png','dcss/effect/goldaura_2.png'],
+    frameInterval: 0.07,                                        color: 0xffd080, label: 'BATTLE SONG',   float: '#ffd080' },
+  divineSmite:     { sprite: 'dcss/effect/searing_ray_0.png',
+    frames: ['dcss/effect/searing_ray_0.png','dcss/effect/searing_ray_1.png','dcss/effect/searing_ray_2.png','dcss/effect/searing_ray_3.png'],
+    frameInterval: 0.05,                                        color: 0xffe08a, label: 'SMITE',         float: '#ffe08a' },
+  tidesOfChaos:    { sprite: 'dcss/effect/cloud_chaos_1.png',
+    frames: ['dcss/effect/cloud_chaos_1.png','dcss/effect/cloud_chaos_2.png'],
+    frameInterval: 0.08,                                        color: 0xb06cf0, label: 'CHAOS',         float: '#b06cf0' },
+  indomitable:     { sprite: 'dcss/effect/sanctuary.png',         color: 0xa0c0ff, label: 'INDOMITABLE',   float: '#a0c0ff' },
+  lucky:           { sprite: 'dcss/effect/gold_sparkles_3.png',   color: 0x6aea6a, label: 'LUCKY',         float: '#6aea6a' },
+  layOnHands:      { sprite: 'dcss/effect/goldaura_1.png',        color: 0xffe08a, label: null,            float: '#6ae06a' },
+  cureWounds:      { sprite: 'dcss/effect/goldaura_0.png',        color: 0x6ae06a, label: null,            float: '#6ae06a' },
+  healingWord:     { sprite: 'dcss/effect/gold_sparkles_2.png',   color: 0xe8a8ff, label: null,            float: '#6ae06a' },
+  deathstrike:     { sprite: 'dcss/effect/drain_red_0.png',
+    frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
+    frameInterval: 0.06,                                        color: 0xc04040, label: 'DEATHSTRIKE',   float: '#e07070' },
+  guidedStrike:    { sprite: 'dcss/effect/quad_glow.png',         color: 0xffe08a, label: 'GUIDED',        float: '#ffe08a' },
+  vowOfEnmity:     { sprite: 'dcss/effect/flame_2.png',           color: 0xe8a83f, label: 'VOW',           float: '#e8a83f' },
+  shadowStep:      { sprite: 'dcss/effect/umbra_0.png',
+    frames: ['dcss/effect/umbra_0.png','dcss/effect/umbra_1.png','dcss/effect/umbra_2.png','dcss/effect/umbra_3.png'],
+    frameInterval: 0.05,                                        color: 0x6a5080, label: 'SHADOW STEP',   float: '#a080c0' },
+  sacredWeapon:    { sprite: 'dcss/effect/irradiate_0.png',
+    frames: ['dcss/effect/irradiate_0.png','dcss/effect/irradiate_1.png','dcss/effect/irradiate_2.png','dcss/effect/irradiate_3.png'],
+    frameInterval: 0.06,                                        color: 0xffe08a, label: 'SACRED',        float: '#ffe08a' },
+  colossusSlayer:  { sprite: 'dcss/effect/searing_ray_5.png',     color: 0xe8a83f, label: 'PREY',          float: '#e8a83f' },
+  companionStrike: { sprite: 'dcss/effect/cloud_magic_trail_3.png', color: 0xa0c080, label: 'COMPANION',    float: '#a0c080' },
+  quiveringPalm:   { sprite: 'dcss/effect/sandblast_0.png',
+    frames: ['dcss/effect/sandblast_0.png','dcss/effect/sandblast_1.png','dcss/effect/sandblast_2.png'],
+    frameInterval: 0.06,                                        color: 0xffd080, label: 'QUIVERING',     float: '#ffd080' },
+  rallyingCry:     { sprite: 'dcss/effect/goldaura_2.png',        color: 0xe8a83f, label: 'RALLY',         float: '#e8a83f' },
+  preserveLife:    { sprite: 'dcss/effect/orb_glow_0.png',
+    frames: ['dcss/effect/orb_glow_0.png','dcss/effect/orb_glow_1.png'],
+    frameInterval: 0.08,                                        color: 0xbfe0ff, label: 'PRESERVE',      float: '#bfe0ff' },
+  dragonBreath:    { sprite: 'dcss/effect/cloud_fire_0.png',
+    frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
+    frameInterval: 0.06,                                        color: 0xff6020, label: 'BREATH',        float: '#ff6020' },
+  wildSurge:       { sprite: 'dcss/effect/cloud_chaos_3.png',
+    frames: ['dcss/effect/cloud_chaos_3.png','dcss/effect/cloud_chaos_4.png','dcss/effect/cloud_chaos_5.png'],
+    frameInterval: 0.06,                                        color: 0xff8844, label: 'WILD MAGIC',    float: '#ff8844' },
+  cuttingWords:    { sprite: 'dcss/effect/cloud_neg_1.png',       color: 0xd0a0ff, label: 'CUTTING WORDS', float: '#d0a0ff' },
+  fiendishBlessing:{ sprite: 'dcss/effect/cloud_neg_0.png',
+    frames: ['dcss/effect/cloud_neg_0.png','dcss/effect/cloud_neg_1.png','dcss/effect/cloud_neg_2.png'],
+    frameInterval: 0.07,                                        color: 0x9b59b6, label: 'FIENDISH',      float: '#9b59b6' },
+  feyPresence:     { sprite: 'dcss/effect/cloud_spectral_0.png',
+    frames: ['dcss/effect/cloud_spectral_0.png','dcss/effect/cloud_spectral_1.png','dcss/effect/cloud_spectral_2.png'],
+    frameInterval: 0.07,                                        color: 0xe8a8ff, label: 'FEY',           float: '#e8a8ff' },
+  /* ── Spells ── */
+  magicMissile:    { sprite: 'dcss/effect/magic_bolt_1.png',
+    frames: ['dcss/effect/magic_bolt_1.png','dcss/effect/magic_bolt_2.png','dcss/effect/magic_bolt_3.png','dcss/effect/magic_bolt_4.png','dcss/effect/magic_bolt_5.png','dcss/effect/magic_bolt_6.png'],
+    frameInterval: 0.04,                                        color: 0xb08cff, label: 'MISSILE',       float: '#b08cff' },
+  shield:          { sprite: 'dcss/effect/sanctuary.png',         color: 0x88aaff, label: 'SHIELD',        float: '#88aaff' },
+  scorchingRay:    { sprite: 'dcss/effect/searing_ray_0.png',
+    frames: ['dcss/effect/searing_ray_0.png','dcss/effect/searing_ray_1.png','dcss/effect/searing_ray_2.png','dcss/effect/searing_ray_3.png','dcss/effect/searing_ray_4.png','dcss/effect/searing_ray_5.png'],
+    frameInterval: 0.04,                                        color: 0xff7a30, label: 'SCORCH',        float: '#ff7a30' },
+  fireball:        { sprite: 'dcss/effect/cloud_fire_0.png',
+    frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
+    frameInterval: 0.05,                                        color: 0xff7a30, label: 'FIREBALL',      float: '#ff7a30' },
+  haste:           { sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0xa0e0ff, label: 'HASTE',         float: '#a0e0ff' },
+  bless:           { sprite: 'dcss/effect/gold_sparkles_1.png',
+    frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
+    frameInterval: 0.07,                                        color: 0xffe08a, label: 'BLESS',         float: '#ffe08a' },
+  spiritualWeapon: { sprite: 'dcss/effect/orb_glow_0.png',
+    frames: ['dcss/effect/orb_glow_0.png','dcss/effect/orb_glow_1.png'],
+    frameInterval: 0.08,                                        color: 0xbfe0ff, label: 'SPIRIT WEAPON', float: '#bfe0ff' },
+  spiritGuardians: { sprite: 'dcss/effect/cloud_spectral_0.png',
+    frames: ['dcss/effect/cloud_spectral_0.png','dcss/effect/cloud_spectral_1.png','dcss/effect/cloud_spectral_2.png'],
+    frameInterval: 0.07,                                        color: 0xd0c0ff, label: 'GUARDIANS',     float: '#d0c0ff' },
+  entangle:        { sprite: 'dcss/effect/cloud_magic_trail_0.png',
+    frames: ['dcss/effect/cloud_magic_trail_0.png','dcss/effect/cloud_magic_trail_1.png','dcss/effect/cloud_magic_trail_2.png','dcss/effect/cloud_magic_trail_3.png'],
+    frameInterval: 0.06,                                        color: 0x4cae4c, label: 'ENTANGLE',      float: '#4cae4c' },
+  moonbeam:        { sprite: 'dcss/effect/cloud_cold_0.png',
+    frames: ['dcss/effect/cloud_cold_0.png','dcss/effect/cloud_cold_1.png','dcss/effect/cloud_cold_2.png'],
+    frameInterval: 0.07,                                        color: 0xc0e8ff, label: 'MOONBEAM',      float: '#c0e8ff' },
+  callLightning:   { sprite: 'dcss/effect/zap_0.png',
+    frames: ['dcss/effect/zap_0.png','dcss/effect/zap_1.png','dcss/effect/zap_2.png','dcss/effect/zap_3.png'],
+    frameInterval: 0.05,                                        color: 0x7090ff, label: 'LIGHTNING',     float: '#7090ff' },
+  shatter:         { sprite: 'dcss/effect/sandblast_0.png',
+    frames: ['dcss/effect/sandblast_0.png','dcss/effect/sandblast_1.png','dcss/effect/sandblast_2.png'],
+    frameInterval: 0.06,                                        color: 0xd0a0ff, label: 'SHATTER',       float: '#d0a0ff' },
+  chaosBolt:       { sprite: 'dcss/effect/cloud_chaos_3.png',
+    frames: ['dcss/effect/cloud_chaos_3.png','dcss/effect/cloud_chaos_4.png','dcss/effect/cloud_chaos_5.png'],
+    frameInterval: 0.05,                                        color: 0xff8844, label: 'CHAOS BOLT',    float: '#ff8844' },
+  dragonBreathSpell:{ sprite: 'dcss/effect/cloud_fire_0.png',
+    frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
+    frameInterval: 0.06,                                        color: 0xff6020, label: 'BURNING HANDS', float: '#ff6020' },
+  hex:             { sprite: 'dcss/effect/drain_red_0.png',
+    frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
+    frameInterval: 0.07,                                        color: 0x9b59b6, label: 'HEX',           float: '#9b59b6' },
+  armsOfHadar:     { sprite: 'dcss/effect/cloud_gloom_new.png',   color: 0x6a3080, label: 'HADAR',         float: '#6a3080' },
+  thunderousSmite: { sprite: 'dcss/effect/zap_0.png',
+    frames: ['dcss/effect/zap_0.png','dcss/effect/zap_1.png','dcss/effect/zap_2.png','dcss/effect/zap_3.png'],
+    frameInterval: 0.06,                                        color: 0xf1c40f, label: 'THUNDEROUS',    float: '#f1c40f' },
+  huntersMark:     { sprite: 'dcss/effect/searing_ray_1.png',     color: 0x1abc9c, label: "HUNTER'S MARK", float: '#1abc9c' },
+  /* ── New condition-based spells ── */
+  blindness:       { sprite: 'dcss/effect/cloud_black_smoke.png', color: 0x888899, label: 'BLINDED', float: '#888899' },
+  holdPerson:      { sprite: 'dcss/effect/silenced.png',         color: 0x8090c0, label: 'PARALYZED', float: '#8090c0' },
+  sleep:           { sprite: 'dcss/effect/cloud_yellow_smoke.png', color: 0x6688aa, label: 'SLEEP', float: '#6688aa' },
+  fear:            { sprite: 'dcss/effect/cloud_gloom_new.png',   color: 0x9b59b6, label: 'FEAR', float: '#9b59b6' },
+  slow:            { sprite: 'dcss/effect/cloud_blue_smoke.png',  color: 0x8fd4e8, label: 'SLOW', float: '#8fd4e8' },
+  bane:            { sprite: 'dcss/effect/cloud_neg_1.png',       color: 0xd0a0ff, label: 'BANE', float: '#d0a0ff' },
+  faerieFire:      { sprite: 'dcss/effect/cloud_spectral_0.png',
+    frames: ['dcss/effect/cloud_spectral_0.png','dcss/effect/cloud_spectral_1.png','dcss/effect/cloud_spectral_2.png'],
+    frameInterval: 0.07,                                        color: 0xb08cff, label: 'FAERIE FIRE', float: '#b08cff' },
+  rayOfEnfeeblement:{ sprite: 'dcss/effect/cloud_meph_0.png',    color: 0xd0a080, label: 'ENFEEBLED', float: '#d0a080' },
+  web:             { sprite: 'dcss/effect/net_trap.png',          color: 0xbfa060, label: 'WEB', float: '#bfa060' },
+  hideousLaughter: { sprite: 'dcss/effect/cloud_chaos_1.png',
+    frames: ['dcss/effect/cloud_chaos_1.png','dcss/effect/cloud_chaos_2.png'],
+    frameInterval: 0.08,                                        color: 0xe8a8ff, label: 'LAUGHTER!', float: '#e8a8ff' },
+  lesserRestoration:{ sprite: 'dcss/effect/gold_sparkles_1.png',
+    frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
+    frameInterval: 0.07,                                        color: 0x6ae06a, label: 'RESTORED', float: '#6ae06a' },
+  greaterRestoration:{ sprite: 'dcss/effect/goldaura_0.png',
+    frames: ['dcss/effect/goldaura_0.png','dcss/effect/goldaura_1.png','dcss/effect/goldaura_2.png'],
+    frameInterval: 0.06,                                        color: 0xffe08a, label: 'RESTORED!', float: '#ffe08a' },
+  protectionFromEvil:{ sprite: 'dcss/effect/sanctuary.png',      color: 0xffe08a, label: 'PROTECTED', float: '#ffe08a' },
+  /* ── Extended spell list ── */
+  grease:          { sprite: 'dcss/effect/cloud_yellow_smoke.png', color: 0xbfa060, label: 'GREASE', float: '#bfa060' },
+  inflictWounds:   { sprite: 'dcss/effect/drain_red_0.png',
+    frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
+    frameInterval: 0.06,                                        color: 0xc04040, label: 'WOUNDS', float: '#c04040' },
+  acidArrow:       { sprite: 'dcss/effect/acid_venom.png',        color: 0x4cae4c, label: 'ACID', float: '#4cae4c' },
+  mistyStep:       { sprite: 'dcss/effect/cloud_blue_smoke.png',  color: 0x8fd4e8, label: 'MISTY STEP', float: '#8fd4e8' },
+  silence:         { sprite: 'dcss/effect/silenced.png',          color: 0x888899, label: 'SILENCE', float: '#888899' },
+  bestowCurse:     { sprite: 'dcss/effect/cloud_neg_0.png',
+    frames: ['dcss/effect/cloud_neg_0.png','dcss/effect/cloud_neg_1.png','dcss/effect/cloud_neg_2.png'],
+    frameInterval: 0.06,                                        color: 0x9b59b6, label: 'CURSED', float: '#9b59b6' },
+  lightningBolt:   { sprite: 'dcss/effect/zap_0.png',
+    frames: ['dcss/effect/zap_0.png','dcss/effect/zap_1.png','dcss/effect/zap_2.png','dcss/effect/zap_3.png'],
+    frameInterval: 0.05,                                        color: 0x7090ff, label: 'BOLT!', float: '#7090ff' },
+  massHealingWord: { sprite: 'dcss/effect/gold_sparkles_1.png',
+    frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
+    frameInterval: 0.07,                                        color: 0x6ae06a, label: 'HEAL', float: '#6ae06a' },
+  vampiricTouch:   { sprite: 'dcss/effect/drain_red_0.png',
+    frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
+    frameInterval: 0.06,                                        color: 0xc04040, label: 'DRAIN', float: '#c04040' },
+  iceStorm:        { sprite: 'dcss/effect/cloud_cold_0.png',
+    frames: ['dcss/effect/cloud_cold_0.png','dcss/effect/cloud_cold_1.png','dcss/effect/cloud_cold_2.png'],
+    frameInterval: 0.06,                                        color: 0x7fd4ff, label: 'ICE STORM', float: '#7fd4ff' },
+  blight:          { sprite: 'dcss/effect/cloud_neg_0.png',
+    frames: ['dcss/effect/cloud_neg_0.png','dcss/effect/cloud_neg_1.png','dcss/effect/cloud_neg_2.png'],
+    frameInterval: 0.05,                                        color: 0x6a3080, label: 'BLIGHT', float: '#6a3080' },
+  deathWard:       { sprite: 'dcss/effect/sanctuary.png',         color: 0xffe08a, label: 'WARDED', float: '#ffe08a' },
+  wallOfFire:      { sprite: 'dcss/effect/cloud_fire_0.png',
+    frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
+    frameInterval: 0.05,                                        color: 0xff6020, label: 'FIRE WALL', float: '#ff6020' },
+  coneOfCold:      { sprite: 'dcss/effect/frost_0.png',
+    frames: ['dcss/effect/frost_0.png','dcss/effect/frost_1.png'],
+    frameInterval: 0.07,                                        color: 0x7fd4ff, label: 'CONE OF COLD', float: '#7fd4ff' },
+  flameStrike:     { sprite: 'dcss/effect/flame_0.png',
+    frames: ['dcss/effect/flame_0.png','dcss/effect/flame_1.png','dcss/effect/flame_2.png'],
+    frameInterval: 0.05,                                        color: 0xffd34a, label: 'FLAME STRIKE', float: '#ffd34a' },
+  massCureWounds:  { sprite: 'dcss/effect/goldaura_0.png',
+    frames: ['dcss/effect/goldaura_0.png','dcss/effect/goldaura_1.png','dcss/effect/goldaura_2.png'],
+    frameInterval: 0.06,                                        color: 0x6ae06a, label: 'CURED!', float: '#6ae06a' },
+  holdMonster:     { sprite: 'dcss/effect/silenced.png',          color: 0x8090c0, label: 'HELD', float: '#8090c0' },
 };
 
+import { SPELLS } from './spells.js';
+import { applyEffect, clearEffect, hasEffect, getEffect, getEffectMods, tickEffects, clearAllEffects, rollSave } from './conditions.js';
+
 export const combatMethods = {
+  /* ── FX bridge methods (called by spells.js cast() functions) ── */
+  _v3(x, y, z) { return new THREE.Vector3(x, y, z); },
+  fxSprite(path, pos, scale, dur) { spawnSpriteEffect(this.engine.scene, path, pos, scale, dur); },
+  fxProjectile(from, to, kind, color, onHit) { spawnProjectile(this.engine.scene, from, to, kind, color, onHit); },
+  fxSlash(pos, color, size) { spawnSlash(this.engine.scene, pos, color, size); },
+  fxText(text, pos, color) { makeFloatText(this.engine.scene, text, pos, color); },
+  fxLog(msg, style) { log(msg, style); },
+  tickEffectsOn(e) { tickEffects(e, this.elapsed); },
+
   /** Refresh ability icons on party frames after a cast/spend. */
   refreshAbilityHud() {
     updatePartyFrames(this.heroes.map(x => x.data));
@@ -92,6 +233,7 @@ export const combatMethods = {
    * @param {object} [opts] { at: entity|{x,z}, alsoAt: entity[], noAnim, scale, dur, floatY }
    */
   playAbilityFx(h, key, opts = {}) {
+    playSfx(spellSfx(key), { volume: 0.65 });
     const fx = ABILITY_FX[key] || { sprite: 'dcss/effect/magic_bolt_1.png', color: 0xc0a060, label: null, float: '#e8c25a' };
     const at = opts.at || h;
     const x = at.x, z = at.z;
@@ -100,7 +242,8 @@ export const combatMethods = {
     const dur = opts.dur || 0.45;
 
     if (fx.sprite) {
-      spawnSpriteEffect(this.engine.scene, fx.sprite, new THREE.Vector3(x, 0.55, z), scale, dur);
+      const spriteDef = fx.frames ? { sprite: fx.sprite, frames: fx.frames, frameInterval: fx.frameInterval } : fx.sprite;
+      spawnSpriteEffect(this.engine.scene, spriteDef, new THREE.Vector3(x, 0.55, z), scale, dur);
     }
     if (fx.color != null) {
       spawnSlash(this.engine.scene, { x, z }, fx.color, opts.ring || 1.2);
@@ -112,7 +255,8 @@ export const combatMethods = {
       for (const t of opts.alsoAt) {
         if (!t || t === at) continue;
         if (fx.sprite) {
-          spawnSpriteEffect(this.engine.scene, fx.sprite, new THREE.Vector3(t.x, 0.45, t.z), scale * 0.85, dur * 0.9);
+          const spriteDef2 = fx.frames ? { sprite: fx.sprite, frames: fx.frames, frameInterval: fx.frameInterval } : fx.sprite;
+          spawnSpriteEffect(this.engine.scene, spriteDef2, new THREE.Vector3(t.x, 0.45, t.z), scale * 0.85, dur * 0.9);
         }
         spawnSlash(this.engine.scene, { x: t.x, z: t.z }, fx.color || 0xc0a060, 0.9);
       }
@@ -145,45 +289,123 @@ export const combatMethods = {
    * @param {'normal'|'high'|'low'} threshold  high = boss/elite only; low = almost always
    */
   _worthSpending(h, foe, alive, threshold = 'normal') {
+    /* abilityUse: per-hero "how willingly do I spend limited resources" knob.
+       0 = never spend (pure basic attacks); 0.5 = original tuning; 1 = liberal. */
+    const w = h.data.aiPrefs && h.data.aiPrefs.abilityUse != null ? h.data.aiPrefs.abilityUse : 0.5;
+    if (w <= 0) return false;
     if (foe.isBoss) return true;
     if (this.monsterEliteRoom(foe)) return true;
     if (threshold === 'high') return false;
-    // Trash with decent HP — still worth a spell or two
-    if (foe.data.hp >= 12) return true;
-    // Party is struggling — use whatever we have
+    // Trash with decent HP — still worth a spell or two. Liberal heroes lower the bar.
+    const hpBar = 24 * (1 - w);
+    if (foe.data.hp >= hpBar) return true;
+    // Party is struggling — use whatever we have. Liberal heroes intervene sooner.
     if (alive && alive.length) {
       const partyFrac = alive.reduce((s, a) => s + a.data.hp / a.data.maxHp, 0) / alive.length;
-      if (partyFrac < 0.55) return true;
+      if (partyFrac < 0.3 + 0.5 * w) return true;
     }
-    // Don't waste on nearly-dead trash
-    if (foe.data.hp / Math.max(foe.data.maxHp, 1) < 0.35) return false;
+    // Don't waste on nearly-dead trash. Conservative heroes skip earlier.
+    const skipCut = 0.2 + 0.3 * (1 - w);
+    if (foe.data.hp / Math.max(foe.data.maxHp, 1) < skipCut) return false;
     return threshold !== 'high';
   },
 
   pickHeroTarget(h, alive) {
-    let tgt = null, best = 1e9;
+    /* targetPref: 0 = focus lowest-CR foe (clear trash first), 1 = focus highest-CR
+       foe (engage the boss/biggest threat), 0.5 = near-random. Randomization peaks
+       at 0.5 and vanishes at the extremes so the slider ends stay deterministic.
+       CR (m.data.cr) is the monster's difficulty-budget value. */
+    const pref = h.data.aiPrefs && h.data.aiPrefs.targetPref != null ? h.data.aiPrefs.targetPref : 0.5;
+    const cands = [];
     for (const m of this.monsters) {
       if (m.data.hp <= 0 || !m.active) continue;
       const dd = Math.hypot(m.x - h.x, m.z - h.z);
-      if (dd < best && dd < 13) { best = dd; tgt = m; }
+      if (dd < 13) cands.push({ m, dd, cr: (m.data.cr != null ? m.data.cr : 0) });
     }
-    return tgt;
+    if (!cands.length) return null;
+    if (cands.length === 1) return cands[0].m;
+    let minCr = Infinity, maxCr = -Infinity;
+    for (const c of cands) { if (c.cr < minCr) minCr = c.cr; if (c.cr > maxCr) maxCr = c.cr; }
+    const span = maxCr - minCr;
+    const noiseW = 1 - Math.abs(pref - 0.5) * 2;   // 0 at pref=0/1, 1 at pref=0.5
+    let best = null, bestScore = -1e9;
+    for (const c of cands) {
+      const crNorm = span > 1e-6 ? (c.cr - minCr) / span : 0;
+      const det = crNorm * (2 * pref - 1);         // pref=0 -> -crNorm (low CR wins); pref=1 -> +crNorm
+      const noise = (Math.random() - 0.5) * noiseW;
+      const score = det + noise - c.dd * 0.02;      // small distance tiebreak keeps heroes local
+      if (score > bestScore) { bestScore = score; best = c.m; }
+    }
+    return best;
+  },
+
+  /* A fight is on but this hero has no foe within engagement range —
+     run toward the nearest active monster so the party regroups on the
+     fight instead of standing frozen wherever combat caught them.
+     If no active monster is nearby, move toward the party leader to
+     close the gap and eventually activate distant monsters. */
+  combatCatchup(h, alive, dt) {
+    let anchor = null, best = 1e9;
+    for (const m of this.monsters) {
+      if (m.data.hp <= 0 || !m.active) continue;
+      const dd = Math.hypot(m.x - h.x, m.z - h.z);
+      if (dd < best) { best = dd; anchor = m; }
+    }
+    if (!anchor) {
+      anchor = alive[0];
+      if (h === anchor || Math.hypot(h.x - anchor.x, h.z - anchor.z) < 1.2) { h.moving = false; return; }
+    }
+    const goal = this.nearFloorCell(this.cellOf(anchor.x, anchor.z), 2);
+    if (goal < 0) { h.moving = false; return; }
+    h.repathT -= dt;
+    if (h.repathT <= 0 || !h.path || h.pathI >= h.path.length || h.pathGoal !== goal) {
+      h.path = this.findPath(this.cellOf(h.x, h.z), goal);
+      h.pathI = 0; h.repathT = 0.6; h.pathGoal = goal;
+    }
+    h.moving = this.stepAlong(h, HERO_SPEED * 1.05 * h.data.speedMult * this.hasteMult(h), dt);
+    if (!h.moving) {
+      if (this.handleStuck) this.handleStuck(h, alive[0], dt);
+      else { h.stuckT = 0; h.stuckStage = 0; }
+    } else { h.stuckT = 0; h.stuckStage = 0; }
   },
 
   heroCombat(h, foe, alive, dt) {
     const cls = CLASSES[h.data.classKey];
     const atk = cls.attack;
     const dist = Math.hypot(foe.x - h.x, foe.z - h.z);
-    h.cd -= dt;
+    /* Per-hero AI priority knobs (see menus.js AI Priorities tab). */
+    const ai = h.data.aiPrefs || {};
+    const abilityUse = ai.abilityUse != null ? ai.abilityUse : 0.5;
+    const cm = ai.combatMovement != null ? ai.combatMovement : 0.5;
+    /* Initiative gate: only the current actor's cooldown may reach "ready";
+       off-turn heroes stay frozen (they still move via combatMove below). */
+    if (this.initiative && this.initiative.active && !this.isCurrentActor(h)) {
+      if (h.cd < 0.05) h.cd = 0.05;
+    } else {
+      h.cd -= dt;
+    }
 
     // Track combat engagement for pacing / staggering
     if (!this._combatEngagedAt) this._combatEngagedAt = this.elapsed;
     h._abilityUsedThisCycle = false;
 
-    this.runCombatReflexes(h, alive, foe);
+    /* Defensive/buff reflexes are "abilities" — skip entirely at 0% ability-use. */
+    if (abilityUse > 0) this.runCombatReflexes(h, alive, foe);
 
     const inRange = dist <= atk.range && (atk.melee || this.hasLOS(h.x, h.z, foe.x, foe.z));
     if (!inRange) {
+      /* combatMovement: low values make the hero hold position instead of chasing
+         across the room. chaseRange runs from just beyond melee reach (cm=0) up to
+         the full 13-unit engagement range (cm=1). */
+      const baseReach = atk.range + 1.5;
+      const chaseRange = baseReach + (13 - baseReach) * cm;
+      if (dist > chaseRange) {
+        h.combatFoe = null;
+        h.moving = false;
+        h.stuckT = 0; h.stuckStage = 0;
+        h.ent.grp.rotation.y = Math.atan2(foe.x - h.x, foe.z - h.z);
+        return;
+      }
       h.combatFoe = null;
       h.repathT -= dt;
       if (h.repathT <= 0 || !h.path || h.pathI >= h.path.length) {
@@ -240,13 +462,45 @@ export const combatMethods = {
       h.stuckT = 0; h.stuckStage = 0;
     }
 
-    this.combatMove(h, foe, atk, dt);
+    /* In-range tactical repositioning (ring around the foe). Low combatMovement
+       suppresses the dance — the hero plants and attacks from where it engaged. */
+    if (cm > 0.12) {
+      this.combatMove(h, foe, atk, dt);
+    } else {
+      h.combatFoe = foe;
+    }
     h.ent.grp.rotation.y = Math.atan2(foe.x - h.x, foe.z - h.z);
     if (h.cd > 0) return;
 
+    /* AI potion: if this hero's HP is below their potionThreshold, drink from the
+       shared stash. Costs the turn just like an attack. potionThreshold=0 => never. */
+    {
+      const pt = ai.potionThreshold != null ? ai.potionThreshold : 0.5;
+      if (pt > 0 && h.data.hp > 0 && h.data.hp / h.data.maxHp < pt) {
+        const kind = this.potions.heal > 0 ? 'heal'
+          : (this.potions.greater > 0 ? 'greater' : null);
+        if (kind) {
+          this.potions[kind]--;
+          const amt = kind === 'greater' ? roll(4, 4, 4) : roll(2, 4, 2);
+          h.data.hp = Math.min(h.data.maxHp, h.data.hp + amt);
+          makeFloatText(this.engine.scene, '+' + amt, _v.set(h.x, 1.3, h.z), '#6ae0ff');
+          log(`🧪 ${h.data.name} drinks a potion (+${amt}).`, 'heal');
+          drawBar(h.ent.bar, h.data.hp / h.data.maxHp);
+          updatePartyFrames(this.heroes.map(x => x.data));
+          updateResources(this);
+          h.cd = HERO_ATTACK_CD;
+          return;
+        }
+      }
+    }
+
+    /* heal threshold scales with abilityUse: 0.5 ≈ original (0.45), liberal tops off
+       sooner, conservative waits. Blocked entirely at abilityUse=0. */
+    const healThresh = 0.2 + 0.5 * abilityUse;
+
     /* healers: heal a badly-hurt ally instead of attacking */
-    if (cls.healer && h.data.healSlots > 0) {
-      let worst = null, wf = 0.55;
+    if (abilityUse > 0 && cls.healer && h.data.healSlots > 0) {
+      let worst = null, wf = healThresh;
       for (const a of alive) { const f = a.data.hp / a.data.maxHp; if (f < wf) { wf = f; worst = a; } }
       if (worst) {
         h.cd = HERO_ATTACK_CD;
@@ -264,8 +518,8 @@ export const combatMethods = {
     }
 
     /* Lay on Hands (paladin) */
-    if (hasFeature(h.data, 'layOnHands') && (h.data.layOnHands || 0) > 0) {
-      let worst = null, wf = 0.45;
+    if (abilityUse > 0 && hasFeature(h.data, 'layOnHands') && (h.data.layOnHands || 0) > 0) {
+      let worst = null, wf = healThresh;
       for (const a of alive) { const f = a.data.hp / a.data.maxHp; if (f < wf) { wf = f; worst = a; } }
       if (worst) {
         const spend = Math.min(h.data.layOnHands, 10 + h.data.level);
@@ -282,10 +536,11 @@ export const combatMethods = {
     h.cd = HERO_ATTACK_CD;
 
     /* known spells (learned via progression) */
-    if (this.tryCastKnownSpell(h, foe, alive)) return;
-
     const sc = subclassOf(h.data);
-    if (sc && this.castSubclassSpell(h, sc, foe, alive)) return;
+    if (abilityUse > 0) {
+      if (this.tryCastKnownSpell(h, foe, alive)) return;
+      if (sc && this.castSubclassSpell(h, sc, foe, alive)) return;
+    }
 
     const opts = this.buildAttackOpts(h, foe, sc);
     this.heroAttackRoll(h, foe, alive, opts);
@@ -300,7 +555,8 @@ export const combatMethods = {
 
     /* Action Surge (class feature or Champion subclass) — only when it matters */
     const surgeWorthy = foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.30 || foe.isBoss || this.monsterEliteRoom(foe);
-    const canSurge = (hasFeature(h.data, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge'))
+    const canSurge = abilityUse > 0
+      && (hasFeature(h.data, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge'))
       && !h.data.abilityUsed.short && foe.data.hp > 0 && surgeWorthy && !h._abilityUsedThisCycle;
     if (canSurge) {
       h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
@@ -311,7 +567,7 @@ export const combatMethods = {
     }
 
     /* Flurry of Blows — only when foe is worth the effort */
-    else if (hasFeature(h.data, 'flurryOfBlows') && !h.data.abilityUsed.short && foe.data.hp > 0
+    else if (abilityUse > 0 && hasFeature(h.data, 'flurryOfBlows') && !h.data.abilityUsed.short && foe.data.hp > 0
         && h.data.hp < h.data.maxHp * 0.7 && surgeWorthy && !h._abilityUsedThisCycle) {
       h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
       this.playAbilityFx(h, 'flurry', { at: foe });
@@ -321,7 +577,7 @@ export const combatMethods = {
     }
 
     /* Berserker frenzy — free extra attack, don't waste on near-dead foes */
-    else if (sc && sc.active.key === 'frenzy' && !h.data.abilityUsed.short && foe.data.hp > 0
+    else if (abilityUse > 0 && sc && sc.active.key === 'frenzy' && !h.data.abilityUsed.short && foe.data.hp > 0
         && h.raging && foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.35 && !h._abilityUsedThisCycle) {
       h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
       this.playAbilityFx(h, 'frenzy', { at: foe });
@@ -338,8 +594,7 @@ export const combatMethods = {
     const d = h.data;
     let hudDirty = false;
 
-    /* ── Rage expiry ── */
-    if (h.raging && this.elapsed > (h.rageUntil || 0)) h.raging = false;
+    /* Rage expiry handled by tickEffects in game loop */
 
     const sc = subclassOf(d);
 
@@ -360,20 +615,48 @@ export const combatMethods = {
       const cunning = hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction');
       if (cunning && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
         d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        h.cunningUntil = this.elapsed + 6;
+        applyEffect(h, 'hasted', { duration: 30, elapsed: this.elapsed });
         this.playAbilityFx(h, 'cunningAction', { at: h });
         log(`💨 ${d.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
         hudDirty = true;
       }
     }
 
+    /* ── Fast Hands (Thief subclass active) — smoke bomb blinding nearby foes ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'fastHands' && !d.abilityUsed.short
+          && this.monsters.some(m => m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) < 4.0)) {
+        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+        this.playAbilityFx(h, 'fastHands', { at: h });
+        log(`💨 ${d.name} uses Fast Hands to throw a smoke bomb!`, 'heal');
+        for (const m of this.monsters) {
+          if (m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) < 4.0) {
+            applyEffect(m, 'blinded', { duration: 6, elapsed: this.elapsed, source: h });
+            makeFloatText(this.engine.scene, 'BLINDED', _v.set(m.x, 1.3, m.z), '#888899');
+          }
+        }
+        hudDirty = true;
+      }
+    }
+
+    /* ── Remarkable Athlete (Champion subclass active) ── */
+    else if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'remarkableAthlete' && !d.abilityUsed.short
+          && this._combatStable(1.5)) {
+        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+        applyEffect(h, 'remarkableAthlete', { duration: 30, elapsed: this.elapsed });
+        this.playAbilityFx(h, 'remarkableAthlete', { at: h });
+        log(`🏃 ${d.name} uses Remarkable Athlete — physical peak reached! (+2 AC, +10% speed)`, 'heal');
+        hudDirty = true;
+      }
+    }
+
     /* ── Rage — only after combat has been going a bit ── */
     else if (!h._abilityUsedThisCycle) {
-      if (hasFeature(d, 'rage') && !h.raging && !d.rageUsed && d.hp < d.maxHp * 0.45
+      if (hasFeature(d, 'rage') && !d.rageUsed && d.hp < d.maxHp * 0.45
           && this._combatStable(1.2)) {
         d.rageUsed = true; h._abilityUsedThisCycle = true;
-        h.raging = true;
-        h.rageUntil = this.elapsed + 12;
+        applyEffect(h, 'raging', { duration: 30, elapsed: this.elapsed });
         this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
         log(`😡 ${d.name} enters a Rage!`, 'crit');
         hudDirty = true;
@@ -384,7 +667,7 @@ export const combatMethods = {
     else if (!h._abilityUsedThisCycle) {
       if (sc && sc.active.key === 'bearTotem' && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
         d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        h.bearTotemUntil = this.elapsed + 8;
+        applyEffect(h, 'bearTotem', { duration: 30, elapsed: this.elapsed });
         this.playAbilityFx(h, 'bearTotem', { at: h, scale: 1.6 });
         log(`🐻 ${d.name} summons the Bear Totem — damage halved!`, 'heal');
         hudDirty = true;
@@ -398,9 +681,10 @@ export const combatMethods = {
         const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.6);
         if (anyHurt) {
           d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-          for (const a of alive) a.inspiredUntil = this.elapsed + 8;
+          for (const a of alive)
+            applyEffect(a, 'inspired', { duration: 30, elapsed: this.elapsed });
           this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
-          log(`🎵 ${d.name} inspires the party! (+2 to hit)`, 'heal');
+          log(`🎵 ${d.name} inspires the party! (+1d4 to hit)`, 'heal');
           hudDirty = true;
         }
       }
@@ -410,7 +694,7 @@ export const combatMethods = {
     else if (!h._abilityUsedThisCycle) {
       if (hasFeature(d, 'wildShapeClass') && !d.abilityUsed.short && d.hp < d.maxHp * 0.4) {
         d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        h.wildShapeUntil = this.elapsed + 8;
+        applyEffect(h, 'wildShape', { duration: 30, elapsed: this.elapsed });
         h.tempHp = (h.tempHp || 0) + 15 + d.level;
         this.playAbilityFx(h, 'wildShape', { at: h, scale: 1.8 });
         log(`🐻 ${d.name} Wild Shapes! (+temp HP, fierce claws)`, 'heal');
@@ -425,9 +709,10 @@ export const combatMethods = {
         const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.65);
         if (anyHurt) {
           d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-          for (const a of alive) a.inspiredUntil = this.elapsed + 8;
+          for (const a of alive)
+            applyEffect(a, 'inspired', { duration: 30, elapsed: this.elapsed });
           this.playAbilityFx(h, 'combatSong', { at: h, alsoAt: alive, spell: true });
-          log(`🎶 ${d.name} plays a battle song! (+3 to hit)`, 'heal');
+          log(`🎶 ${d.name} plays a battle song! (+1d4 to hit)`, 'heal');
           hudDirty = true;
         }
       }
@@ -456,9 +741,9 @@ export const combatMethods = {
         hudDirty = true;
       } else if (sc.active.key === 'vowOfEnmity' && (foe.isBoss || this.monsterEliteRoom(foe))
           && this._worthSpending(h, foe, null, 'high')) {
-        d.abilityUsed.short = true; opts.atkBonus = 5;
+        d.abilityUsed.short = true; opts.adv = (opts.adv || 0) + 1;
         this.playAbilityFx(h, 'vowOfEnmity', { at: foe, spell: true });
-        log(`⚔️ ${d.name} swears a Vow of Enmity!`, 'crit');
+        log(`⚔️ ${d.name} swears a Vow of Enmity! (advantage)`, 'crit');
         hudDirty = true;
       } else if (sc.active.key === 'shadowStep' && stable
           && this._worthSpending(h, foe, null, 'low')) {
@@ -469,7 +754,7 @@ export const combatMethods = {
       } else if (sc.active.key === 'sacredWeapon' && stable
           && this._worthSpending(h, foe, null, 'normal')) {
         d.abilityUsed.short = true;
-        h.sacredUntil = this.elapsed + 8;
+        applyEffect(h, 'sacredWeapon', { duration: 30, elapsed: this.elapsed });
         this.playAbilityFx(h, 'sacredWeapon', { at: h, spell: true });
         log(`✨ ${d.name} blesses their weapon!`, 'crit');
         hudDirty = true;
@@ -505,24 +790,26 @@ export const combatMethods = {
     if (hasFeature(d, 'tidesOfChaos') && !d.tidesUsed && stable
         && this._worthSpending(h, foe, null, 'normal')) {
       d.tidesUsed = true;
-      opts.atkBonus = (opts.atkBonus || 0) + 5;
+      opts.adv = (opts.adv || 0) + 1;
       this.playAbilityFx(h, 'tidesOfChaos', { at: h, spell: true });
-      log(`🌀 ${d.name} rides the Tides of Chaos!`, 'crit');
+      log(`🌀 ${d.name} rides the Tides of Chaos! (advantage)`, 'crit');
       hudDirty = true;
     }
     if (hudDirty) this.refreshAbilityHud();
     if (hasFeature(d, 'colossusSlayerClass') && foe.data.hp < foe.data.maxHp) {
       opts.extraDmg = (opts.extraDmg || 0) + roll(1, 8);
     }
-    if (h.raging && hasFeature(d, 'recklessAttack')) opts.atkBonus = (opts.atkBonus || 0) + 2;
-    if (h.raging) opts.extraDmg = (opts.extraDmg || 0) + 2;
-    if (h.sacredUntil > this.elapsed) {
-      opts.atkBonus = (opts.atkBonus || 0) + 4;
+    /* Reckless Attack: advantage on the attack (monsters get advantage back) */
+    if (hasEffect(h, 'raging') && hasFeature(d, 'recklessAttack')) opts.adv = (opts.adv || 0) + 1;
+    if (hasEffect(h, 'raging')) opts.extraDmg = (opts.extraDmg || 0) + 2;
+    /* sacredWeapon's +4 to hit comes from its effect mods in heroAttackRoll */
+    if (hasEffect(h, 'sacredWeapon')) {
       opts.extraDmg = (opts.extraDmg || 0) + roll(1, 8);
     }
-    if (h.inspiredUntil > this.elapsed) opts.atkBonus = (opts.atkBonus || 0) + 2;
-    if (h.hexTarget === foe && h.hexUntil > this.elapsed) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
-    if (h.markTarget === foe && h.markUntil > this.elapsed) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
+    const hexEff = getEffect(foe, 'hexMarked');
+    if (hexEff && hexEff.source === h) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
+    const markEff = getEffect(foe, 'huntersMarked');
+    if (markEff && markEff.source === h) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
     if (h.smiteNext) {
       opts.extraDmg = (opts.extraDmg || 0) + roll(2, 6);
       h.smiteNext = false;
@@ -536,13 +823,36 @@ export const combatMethods = {
   /* one d20 attack roll + resolution (extracted so Action Surge can repeat it) */
   heroAttackRoll(h, foe, alive, opts = {}) {
     const cls = CLASSES[h.data.classKey];
-    let d20 = die(20);
+
+    /* 5e advantage/disadvantage: sum sources, roll 2d20 take high/low */
+    const selfMods = getEffectMods(h);
+    const foeMods = getEffectMods(foe);
+    let adv = opts.adv || 0;
+    if (foeMods.defAdvantage) adv += 1;        // foe blinded / paralyzed / faerie-fired…
+    if (selfMods.atkDisadvantage) adv -= 1;    // attacker poisoned / frightened / prone…
+    let d20 = d20Roll(adv);
     if (d20 === 1 && RACES[h.data.raceKey].lucky) d20 = die(20);
-    let atkBonus = heroAttackBonus(h.data) + (opts.atkBonus || 0);
-    if (h.inspiredUntil > this.elapsed) atkBonus += 1; // stack gently with buildAttackOpts
+    let atkBonus = heroAttackBonus(h.data) + (opts.atkBonus || 0) + selfMods.atkBonus;
+    if (selfMods.blessDice) atkBonus += die(4);   // Bless / inspiration: +1d4 to hit
+    /* Boss intel (foreshadow phase): the party knows the final boss's weaknesses */
+    const qIntel = this.activeQuest;
+    const intel = !!(qIntel && qIntel.bossIntel && foe.isBoss
+      && (this.questFloor | 0) >= (qIntel.floors | 0));
+    if (intel) {
+      atkBonus += 2;
+      if (!this._intelLogged) {
+        this._intelLogged = true;
+        log('🔎 The party knows this foe — they strike where the old warnings said to strike.', 'story');
+      }
+    }
     let crit = !!opts.autoCrit || d20 >= h.data.critRange;
     let total = d20 + atkBonus;
-    let miss = !crit && total < foe.data.ac;
+    /* Foe AC reflects active effects (bossWeakened -2, faerieFire, etc.) */
+    const foeAc = foe.data.ac + foeMods.acBonus;
+    let miss = !crit && total < foeAc;
+    /* paralyzed / unconscious foes: any melee hit is a critical (5e) */
+    if (!miss && foeMods.autoCritMelee && cls.attack.melee) crit = true;
+    if (crit && this.engine) { this.engine.triggerHitStop(3); }
 
     /* Indomitable (long rest) / Lucky feat (short rest): convert a miss */
     if (miss && hasFeature(h.data, 'indomitable') && !h.data.abilityUsed?.long) {
@@ -580,8 +890,10 @@ export const combatMethods = {
       }
       /* Legendary perk pre-damage modifiers (execute, first strike, crit surge) */
       dmg = this.applyPerkDamageMods(h, foe, dmg, wasCrit);
+      if (intel) dmg = Math.round(dmg * 1.25);
     }
-    const vs = `(${d20}+${atkBonus} vs AC ${foe.data.ac})`;
+    const advTag = adv > 0 ? ', adv' : adv < 0 ? ', dis' : '';
+    const vs = `(${d20}+${atkBonus} vs AC ${foeAc}${advTag})`;
     if (crit && !miss) log(`💥 ${h.data.name} crits ${foe.data.name}! ${opts.autoCrit ? '(Deathstrike)' : `(nat ${d20})`} — ${dmg} dmg${sneak ? ' +sneak' : ''}`, 'crit');
     else if (miss) log(`${h.data.name} → ${foe.data.name}: ${total} ${vs} miss`, 'miss');
     else log(`${h.data.name} → ${foe.data.name}: ${total} ${vs} hit, ${dmg} dmg${sneak ? ' +sneak' : ''}`, 'roll');
@@ -669,8 +981,7 @@ export const combatMethods = {
       }
 
       if (id === 'manaFont' && Math.random() < 0.15) {
-        if (h.data.slotsMax && h.data.slots < h.data.slotsMax) {
-          h.data.slots++;
+        if (recoverSlots(h.data, 1) > 0) {
           makeFloatText(this.engine.scene, '+slot', _v.set(h.x, 1.5, h.z), '#b06cf0');
           log(`✦ ${h.data.name}'s ${item.name} restores a spell slot!`, 'heal');
           updatePartyFrames(this.heroes.map(x => x.data));
@@ -721,27 +1032,53 @@ export const combatMethods = {
     }
   },
 
-  /** Spend a spell slot if available. */
-  spendSlot(h) {
-    if ((h.data.slots || 0) <= 0) return false;
-    h.data.slots--;
+  /* ── Concentration (5e): one concentration spell per caster ────────
+     Casting a new concentration spell ends the old one; taking damage
+     forces a CON save (DC = max(10, half the damage)); going down ends it. */
+
+  /**
+   * Register a caster's concentration on a spell.
+   * @param {object} h caster entity
+   * @param {string} spellKey SPELLS registry key
+   * @param {Array<{e:object, key:string}>} applied effects this spell placed
+   */
+  concentrate(h, spellKey, applied) {
+    this.breakConcentration(h, 'casting another spell');
+    h.conc = { key: spellKey, targets: applied || [] };
+  },
+
+  breakConcentration(h, reason) {
+    if (!h.conc) return;
+    const label = SPELLS[h.conc.key]?.label || h.conc.key;
+    for (const t of h.conc.targets) {
+      if (t && t.e) clearEffect(t.e, t.key);
+    }
+    h.conc = null;
+    if (reason && h.data) log(`💫 ${h.data.name}'s concentration on ${label} ends (${reason}).`, 'miss');
+  },
+
+  /** Spend the lowest available slot of level ≥ spellLevel. */
+  spendSlot(h, spellLevel = 1) {
+    if (!spendSlotFor(h.data, spellLevel)) return false;
     this.refreshAbilityHud();
     return true;
   },
 
   canUseSpellRecharge(h, spell) {
-    if (spell.recharge === 'slot') return (h.data.slots || 0) > 0;
+    if (spell.recharge === 'slot') return hasSlotFor(h.data, spell.level || 1);
     if (spell.recharge === 'short') return !h.data.abilityUsed?.short;
     if (spell.recharge === 'long' || spell.recharge === 'day') return !h.data.abilityUsed?.long;
     return true;
   },
 
   markSpellUsed(h, spell) {
-    if (spell.recharge === 'slot') this.spendSlot(h);
+    if (spell.recharge === 'slot') this.spendSlot(h, spell.level || 1);
     else if (spell.recharge === 'short') {
+      if (!h.data.abilityUsed) h.data.abilityUsed = {};
       h.data.abilityUsed.short = true;
       this.refreshAbilityHud();
     } else if (spell.recharge === 'long' || spell.recharge === 'day') {
+      if (!h.data.abilityUsed) h.data.abilityUsed = {};
       h.data.abilityUsed.long = true;
       this.refreshAbilityHud();
     }
@@ -754,10 +1091,16 @@ export const combatMethods = {
     const known = h.data.knownSpells || [];
     if (!known.length) return false;
 
+    /* heal thresholds follow the hero's abilityUse knob (0.5 ≈ original). */
+    const _w = h.data.aiPrefs && h.data.aiPrefs.abilityUse != null ? h.data.aiPrefs.abilityUse : 0.5;
+    const healThresh = 0.2 + 0.5 * _w;
+
     let best = null, bestP = -1;
     for (const key of known) {
       const sp = SPELLS[key];
       if (!sp || !this.canUseSpellRecharge(h, sp)) continue;
+      /* already concentrating on this spell — don't waste a slot recasting it */
+      if (sp.concentration && h.conc?.key === key) continue;
       const ai = sp.ai || { when: 'any', priority: 1 };
       let ok = false;
       if (ai.when === 'any') {
@@ -770,9 +1113,9 @@ export const combatMethods = {
         ok = (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)
           && this._worthSpending(h, foe, alive, 'normal');
       }
-      else if (ai.when === 'selfHurt') ok = h.data.hp / h.data.maxHp < (ai.hpFrac || 0.4);
+      else if (ai.when === 'selfHurt') ok = h.data.hp / h.data.maxHp < (ai.hpFrac != null ? ai.hpFrac : healThresh);
       else if (ai.when === 'hurtAlly') {
-        ok = alive.some(a => a.data.hp / a.data.maxHp < (ai.hpFrac || 0.5));
+        ok = alive.some(a => a.data.hp / a.data.maxHp < (ai.hpFrac != null ? ai.hpFrac : healThresh));
       } else if (ai.when === 'cluster') {
         const n = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - foe.x, m.z - foe.z) < 2.2).length;
         ok = n >= (ai.minTargets || 3);
@@ -792,152 +1135,7 @@ export const combatMethods = {
   resolveSpell(h, key, foe, alive) {
     const sp = SPELLS[key];
     if (!sp || !this.canUseSpellRecharge(h, sp)) return false;
-    const d = h.data;
-    const from = new THREE.Vector3(h.x, 0.55, h.z);
-    const to = new THREE.Vector3(foe.x, 0.5 * (foe.data.scale || 1), foe.z);
-    const cluster = () => this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - foe.x, m.z - foe.z) < 2.2);
-    const castSelf = () => this.playAbilityFx(h, key, { at: h, spell: true });
-    const castOn = (t, extra = {}) => this.playAbilityFx(h, key, { at: t, spell: true, ...extra });
-
-    /* --- individual spell effects --- */
-    if (key === 'magicMissile') {
-      this.markSpellUsed(h, sp);
-      castSelf();
-      const darts = 3 + Math.floor(d.level / 4);
-      log(`✴ ${d.name} casts Magic Missile (${darts} darts)!`, 'crit');
-      for (let i = 0; i < darts; i++) {
-        const t = new THREE.Vector3(foe.x + (Math.random() - 0.5) * 0.5, 0.4 * foe.data.scale + 0.4, foe.z + (Math.random() - 0.5) * 0.5);
-        spawnProjectile(this.engine.scene, from, t, 'bolt', sp.color, () => {
-          if (foe.dead) return;
-          this.damageMonster(foe, roll(1, 4, 1) + d.dmgBonus, h, false);
-          spawnSpriteEffect(this.engine.scene, 'dcss/effect/magic_bolt_1.png', t, 0.9, 0.25);
-        });
-      }
-      return true;
-    }
-    if (key === 'shield') {
-      this.markSpellUsed(h, sp);
-      h.shieldUntil = this.elapsed + 6;
-      castSelf();
-      log(`🛡 ${d.name} casts Shield! (+5 AC)`, 'heal');
-      return true;
-    }
-    if (key === 'scorchingRay') {
-      this.markSpellUsed(h, sp);
-      castSelf();
-      log(`🔥 ${d.name} casts Scorching Ray!`, 'crit');
-      for (let i = 0; i < 3; i++) {
-        spawnProjectile(this.engine.scene, from, to, 'bolt', sp.color, () => {
-          if (foe.dead) return;
-          this.damageMonster(foe, roll(2, 6, d.dmgBonus), h, false);
-          spawnSpriteEffect(this.engine.scene, 'dcss/effect/searing_ray_3.png', to, 1.1, 0.28);
-        });
-      }
-      return true;
-    }
-    if (key === 'fireball') {
-      const foes = cluster();
-      if (foes.length < 2) return false;
-      this.markSpellUsed(h, sp);
-      castSelf();
-      log(`🔥 ${d.name} casts Fireball!`, 'crit');
-      spawnProjectile(this.engine.scene, from, to, 'bolt', sp.color, () => {
-        spawnSpriteEffect(this.engine.scene, 'dcss/effect/cloud_fire_2.png', to, 2.5, 0.5);
-        spawnSlash(this.engine.scene, { x: foe.x, z: foe.z }, sp.color, 2.4);
-        for (const m of foes) { if (!m.dead) this.damageMonster(m, roll(8, 6, d.dmgBonus), h, true); }
-      });
-      return true;
-    }
-    if (key === 'haste') {
-      this.markSpellUsed(h, sp);
-      h.cunningUntil = this.elapsed + 8;
-      h.shieldUntil = this.elapsed + 8;
-      castSelf();
-      log(`⚡ ${d.name} casts Haste!`, 'heal');
-      return true;
-    }
-    if (key === 'bless') {
-      this.markSpellUsed(h, sp);
-      for (const a of alive) a.inspiredUntil = this.elapsed + 8;
-      this.playAbilityFx(h, 'bless', { at: h, alsoAt: alive, spell: true });
-      log(`✨ ${d.name} casts Bless!`, 'heal');
-      return true;
-    }
-    if (key === 'healingWord') {
-      let worst = null, wf = 1;
-      for (const a of alive) { const f = a.data.hp / a.data.maxHp; if (f < wf) { wf = f; worst = a; } }
-      if (!worst || wf >= 0.55) return false;
-      this.markSpellUsed(h, sp);
-      const amt = roll(1, 4, mod(d.effStats.cha || d.effStats.wis) + d.healBonus);
-      this.healHero(worst, amt);
-      castOn(worst);
-      log(`💬 ${d.name} casts Healing Word on ${worst.data.name} (+${amt}).`, 'heal');
-      return true;
-    }
-    if (key === 'spiritualWeapon') {
-      this.markSpellUsed(h, sp);
-      const amt = roll(1, 8, mod(d.effStats.wis) + d.dmgBonus);
-      castSelf();
-      log(`⚔ ${d.name} casts Spiritual Weapon!`, 'crit');
-      spawnProjectile(this.engine.scene, from, to, 'bolt', sp.color, () => {
-        if (!foe.dead) {
-          this.damageMonster(foe, amt, h, false);
-          spawnSpriteEffect(this.engine.scene, 'dcss/effect/orb_glow_0.png', to, 1.2, 0.3);
-        }
-      });
-      return true;
-    }
-    if (key === 'spiritGuardians' || key === 'entangle' || key === 'callLightning' || key === 'shatter'
-      || key === 'dragonBreathSpell' || key === 'armsOfHadar') {
-      const foes = cluster();
-      if (foes.length < 1) return false;
-      this.markSpellUsed(h, sp);
-      const dice = key === 'callLightning' ? [3, 10] : key === 'spiritGuardians' ? [3, 8] : key === 'shatter' ? [3, 8]
-        : key === 'dragonBreathSpell' ? [3, 6] : key === 'armsOfHadar' ? [2, 6] : [1, 6];
-      castOn(foe, { alsoAt: foes, ring: 2.0, scale: 2.0 });
-      log(`✨ ${d.name} casts ${sp.label}!`, 'crit');
-      for (const m of foes) {
-        if (m.dead) continue;
-        this.damageMonster(m, roll(dice[0], dice[1], d.dmgBonus), h, false);
-        if (key === 'entangle') m.slowUntil = this.elapsed + 4;
-      }
-      return true;
-    }
-    if (key === 'moonbeam' || key === 'chaosBolt') {
-      this.markSpellUsed(h, sp);
-      const amt = key === 'moonbeam' ? roll(2, 10, d.dmgBonus) : roll(2, 8, mod(d.effStats.cha) + d.dmgBonus);
-      castSelf();
-      log(`✨ ${d.name} casts ${sp.label}!`, 'crit');
-      spawnProjectile(this.engine.scene, from, to, 'bolt', sp.color, () => {
-        if (!foe.dead) {
-          this.damageMonster(foe, amt, h, key === 'chaosBolt' && Math.random() < 0.15);
-          const spr = key === 'moonbeam' ? 'dcss/effect/orb_glow_1.png' : 'dcss/effect/cloud_chaos_4.png';
-          spawnSpriteEffect(this.engine.scene, spr, to, 1.3, 0.35);
-        }
-      });
-      return true;
-    }
-    if (key === 'hex') {
-      this.markSpellUsed(h, sp);
-      h.hexTarget = foe; h.hexUntil = this.elapsed + 8;
-      castOn(foe);
-      log(`🔮 ${d.name} casts Hex on ${foe.data.name}!`, 'crit');
-      return true;
-    }
-    if (key === 'huntersMark') {
-      this.markSpellUsed(h, sp);
-      h.markTarget = foe; h.markUntil = this.elapsed + 8;
-      castOn(foe);
-      log(`🎯 ${d.name} marks ${foe.data.name}!`, 'crit');
-      return true;
-    }
-    if (key === 'thunderousSmite') {
-      this.markSpellUsed(h, sp);
-      h.smiteNext = true;
-      castSelf();
-      log(`⚡ ${d.name} readies Thunderous Smite!`, 'crit');
-      return true;
-    }
+    if (sp.cast) return sp.cast(this, h, foe, alive);
     return false;
   },
 
@@ -968,10 +1166,10 @@ export const combatMethods = {
       }
       return false;
     }
-    if (key === 'fireball' && d.slots > 0) {
+    if (key === 'fireball' && hasSlotFor(d, 3)) {
       return this.resolveSpell(h, 'fireball', foe, alive);
     }
-    if (key === 'magicMissile' && d.slots > 0
+    if (key === 'magicMissile' && hasSlotFor(d, 1)
         && (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)
         && this._worthSpending(h, foe, alive, 'normal')) {
       return this.resolveSpell(h, 'magicMissile', foe, alive);
@@ -1050,37 +1248,103 @@ export const combatMethods = {
   },
 
   /* dynamic in-combat positioning: hold a slot around the foe with a gentle
-     orbital sway so heroes read as fighting, not standing still. */
+     orbital sway so heroes read as fighting, not standing still.
+     Biases positions toward the room centre (open space) so fights don't
+     drift into walls. In corridors uses the open-axis direction instead of
+     a ring. */
   combatMove(h, foe, atk, dt) {
     if (h.combatFoe !== foe) {
       h.combatFoe = foe;
       const idx = this.heroes.indexOf(h);
-      h.anchorAngle = idx * (Math.PI * 2 / this.heroes.length) + (Math.random() - 0.5) * 0.4;
+      let centerAng = null;
+      const fc = this.cellOf(foe.x, foe.z);
+      const rid = fc >= 0 ? this.D.roomId[fc] : -1;
+      if (rid >= 0) {
+        const room = this.D.rooms[rid];
+        const cx = this.wx(room.cx), cz = this.wz(room.cy);
+        if (Math.hypot(cx - foe.x, cz - foe.z) > 0.8) {
+          centerAng = Math.atan2(cz - foe.z, cx - foe.x);
+        }
+      }
+      if (centerAng === null) {
+        /* corridor fight — detect the open axis instead of a full ring.
+           A cell is in a corridor if both cardinal neighbours in an axis
+           are walls; the open axis is the perpendicular. */
+        const { W, grid } = this.D;
+        const cfx = fc % W, cfy = Math.floor(fc / W);
+        const xBlocked = (cfx > 0 && grid[fc - 1] === WALL) && (cfx < W - 1 && grid[fc + 1] === WALL);
+        const zBlocked = (cfy > 0 && grid[fc - W] === WALL) && (cfy < this.D.H - 1 && grid[fc + W] === WALL);
+        if (xBlocked && !zBlocked) {
+          centerAng = 0; /* Z-axis is open */
+        } else if (zBlocked && !xBlocked) {
+          centerAng = Math.PI / 2; /* X-axis is open */
+        } else {
+          const n = Math.max(1, this.heroes.length - 1);
+          h.anchorAngle = idx * (Math.PI * 2 / this.heroes.length) + (Math.random() - 0.5) * 0.4;
+        }
+      }
+      if (centerAng !== null) {
+        const n = Math.max(1, this.heroes.length - 1);
+        h.anchorAngle = centerAng + (idx / n - 0.5) * 2.8 + (Math.random() - 0.5) * 0.25;
+      }
       h.swayPhase = Math.random() * 6.28;
       h.swayDir = Math.random() < 0.5 ? -1 : 1;
     }
     const desiredR = atk.melee ? 1.05 : Math.max(2.6, Math.min(atk.range - 0.8, atk.range * 0.6));
     const ang = h.anchorAngle + Math.sin(this.elapsed * 0.75 + h.swayPhase) * 0.55 * h.swayDir;
     const r = desiredR + Math.sin(this.elapsed * 1.15 + h.swayPhase) * 0.22;
-    const tx = foe.x + Math.cos(ang) * r;
-    const tz = foe.z + Math.sin(ang) * r;
-    h.moving = this.nudgeToward(h, tx, tz, HERO_SPEED * COMBAT_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+    let tx = foe.x + Math.cos(ang) * r;
+    let tz = foe.z + Math.sin(ang) * r;
+    let moved = false;
+    if (!this.blocked(tx, tz, 0.3)) {
+      moved = true;
+    } else {
+      /* slot landed in a wall — probe angle + radius variations */
+      const probeRadii = [desiredR, desiredR * 0.75, desiredR * 1.3, desiredR * 0.55];
+      const probeAngles = [0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4];
+      outer:
+      for (const pr of probeRadii) {
+        for (const dAng of probeAngles) {
+          const ax = foe.x + Math.cos(ang + dAng) * pr;
+          const az = foe.z + Math.sin(ang + dAng) * pr;
+          if (!this.blocked(ax, az, 0.3)) { tx = ax; tz = az; moved = true; break outer; }
+        }
+      }
+    }
+    if (!moved) {
+      /* last resort — nudge toward room centre or corridor open area */
+      let fallbackX = foe.x, fallbackZ = foe.z;
+      const fc = this.cellOf(foe.x, foe.z);
+      const rid2 = fc >= 0 ? this.D.roomId[fc] : -1;
+      if (rid2 >= 0) {
+        const room = this.D.rooms[rid2];
+        fallbackX = this.wx(room.cx); fallbackZ = this.wz(room.cy);
+        const fd = Math.hypot(fallbackX - foe.x, fallbackZ - foe.z);
+        if (fd < 0.5) { fallbackX = foe.x; fallbackZ = foe.z; }
+      }
+      if (!this.blocked(fallbackX, fallbackZ, 0.3)) { tx = fallbackX; tz = fallbackZ; moved = true; }
+    }
+    if (moved) {
+      h.moving = this.nudgeToward(h, tx, tz, HERO_SPEED * COMBAT_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+    } else {
+      h.moving = false;
+    }
   },
 
-  hasteMult(h) { return h.cunningUntil > this.elapsed ? 1.4 : 1; },
+  hasteMult(h) { const mods = getEffectMods(h); return mods.speedMul > 1 ? mods.speedMul : 1; },
   heroAC(h) {
     let ac = h.data.ac;
-    if (h.cunningUntil > this.elapsed) ac += 4;
-    if (h.shieldUntil > this.elapsed) ac += 5;
-    if (h.raging) ac += 2;
-    if (h.phaseStepUntil > this.elapsed) ac += 4;
+    const mods = getEffectMods(h);
+    ac += mods.acBonus;
+    if (hasEffect(h, 'raging')) ac += 2; // redundant with mods, kept for clarity
     return ac;
   },
 
   /** Incoming damage after rage / totem / uncanny dodge / temp HP. */
   applyIncomingDamage(h, dmg) {
     let d = dmg;
-    if (h.raging || (h.bearTotemUntil > this.elapsed)) d = Math.ceil(d / 2);
+    const mods = getEffectMods(h);
+    d = Math.round(d * mods.dmgTakenMul);
     if (hasFeature(h.data, 'uncannyDodge') && !h.uncannyUsed) {
       h.uncannyUsed = true;
       d = Math.ceil(d / 2);
@@ -1090,7 +1354,22 @@ export const combatMethods = {
       h.tempHp -= absorb;
       d -= absorb;
     }
+    /* Death Ward: if hit would be lethal, survive at 1 HP instead */
+    if (hasEffect(h, 'deathWarded') && d >= h.data.hp) {
+      clearEffect(h, 'deathWarded');
+      d = Math.max(0, h.data.hp - 1);
+      log(`🛡 ${h.data.name}'s Death Ward triggers — survives at 1 HP!`, 'heal');
+    }
     h.data.hp -= d;
+    /* Concentration check (5e): CON save DC max(10, half damage), or the spell drops */
+    if (h.conc) {
+      if (h.data.hp <= 0) {
+        this.breakConcentration(h, 'downed');
+      } else if (d > 0) {
+        const dc = Math.max(10, Math.floor(d / 2));
+        if (!rollSave(h, 'con', dc)) this.breakConcentration(h, `took ${d} damage — failed DC ${dc} CON save`);
+      }
+    }
     return d;
   },
 
@@ -1099,8 +1378,10 @@ export const combatMethods = {
     const party = alive || this.heroes.filter(x => x.data.hp > 0);
     if (a.melee) {
       this.triggerLunge(h, foe);
-      if (miss) { this.showMiss(foe); }
+      playSfx('swordAttack', { volume: 0.7 });
+      if (miss) { this.showMiss(foe); playSfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.6 }); }
       else {
+        playSfx('swordHit', { volume: 0.8 });
         this.damageMonster(foe, dmg, h, crit);
         this.applyOnHitPerks(h, foe, dmg, crit, party);
         spawnSlash(this.engine.scene, { x: foe.x, z: foe.z }, crit ? 0xffd34a : 0xdfe4ee, foe.data.scale);
@@ -1112,10 +1393,12 @@ export const combatMethods = {
       const kind = h.data.classKey === 'rogue' ? 'arrow' : 'bolt';
       const from = new THREE.Vector3(h.x, 0.55, h.z);
       const to = new THREE.Vector3(foe.x, 0.4 * foe.data.scale + 0.4, foe.z);
+      playSfx(kind === 'arrow' ? 'bowAttack' : 'spellBuff', { volume: kind === 'arrow' ? 0.7 : 0.4 });
       spawnProjectile(this.engine.scene, from, to, kind, color, () => {
         if (foe.dead) return;
-        if (miss) this.showMiss(foe);
+        if (miss) { this.showMiss(foe); playSfx('bowBlock', { volume: 0.55 }); }
         else {
+          playSfx(kind === 'arrow' ? 'bowHit' : 'spellImpact', { volume: 0.75 });
           this.damageMonster(foe, dmg, h, crit);
           this.applyOnHitPerks(h, foe, dmg, crit, party);
           if (kind === 'bolt') {
@@ -1147,8 +1430,16 @@ export const combatMethods = {
   damageMonster(m, dmg, h, crit = false, opts = {}) {
     if (m.dead) return;
     m.data.hp -= dmg;
-    m.active = true;
+    if (!m.active) {
+      m.active = true;
+      if (m.ent && m.ent.grp) m.ent.grp.visible = true;
+      this.activateRoomMonsters(m.roomId);
+    }
+    /* sleeping creatures wake when damaged (5e Sleep) */
+    if (dmg > 0 && hasEffect(m, 'unconscious')) clearEffect(m, 'unconscious');
     if (h?.data) h.data.dmgDealt += dmg;
+    /* accrue threat so damage pulls aggro off whoever's nearest */
+    if (!opts.skipThreat && dmg > 0 && this.creditThreat) this.creditThreat(m, h, dmg);
     hitFlash(m.ent);
     makeFloatText(this.engine.scene, String(dmg), _v.set(m.x, 0.9 * m.data.scale + 0.5, m.z), crit ? '#ffd34a' : '#ff8a5a');
     drawBar(m.ent.bar, Math.max(0, m.data.hp / m.data.maxHp), '#e0483a');
@@ -1177,24 +1468,47 @@ export const combatMethods = {
     m.dead = true;
     m.ent.grp.visible = false;
     m.burn = null;
+    /* bestiary: tally kills per monster id (unlocks the compendium entry at 10) */
+    if (m.data && m.data.id) {
+      if (!this.bestiary) this.bestiary = {};
+      this.bestiary[m.data.id] = (this.bestiary[m.data.id] || 0) + 1;
+    }
     if (h?.data) {
       h.data.kills++;
       this.applyOnKillPerks(h, m);
     }
+    /* Kill-streak tracking */
+    this._killStreak = (this._killStreak || 0) + 1;
+    this._killStreakTimer = 2.0;
+    if (this._killStreak === 3) makeFloatText(this.engine.scene, 'TRIPLE KILL!', _v.set(m.x, 1.5, m.z), '#ff9a3c');
+    else if (this._killStreak === 5) makeFloatText(this.engine.scene, 'MULTI KILL!', _v.set(m.x, 1.6, m.z), '#ff4030');
+    else if (this._killStreak >= 7) {
+      makeFloatText(this.engine.scene, 'MASSACRE!', _v.set(m.x, 1.7, m.z), '#ffd34a');
+      if (this.engine) this.engine.triggerShake(0.5, 0.3);
+    }
     this.gold += m.data.gold;
     const before = this.heroes.map(a => a.data.level);
     const share = Math.max(1, Math.round(m.data.xp * XP_SHARE));
-    for (const a of this.heroes) if (a.data.hp > 0) grantXp(a.data, share, log);
+    /* temp allies fight for free — no XP, no level-ups on a one-floor guest */
+    for (const a of this.heroes) if (a.data.hp > 0 && !a.temp) grantXp(a.data, share, log);
     const killer = h?.data?.name || 'The party';
-    log(`${killer} slays the ${m.data.name}. (+${m.data.gold}g, +${share} XP each)`, m.isBoss ? 'boss' : 'kill');
+    log(`${killer} slays the ${m.data.name}. (+${m.data.gold}g, +${share} XP each)`, m.data._ambushElite ? 'elite' : m.isBoss ? 'boss' : 'kill');
+    onKill(this, m, h);
     /* Random drops: common–epic only (legendaries are quest rewards). */
-    let dropChance = m.isBoss ? 1 : (m.data.name && this.monsterEliteRoom(m) ? 0.35 : 0.10);
+    let dropChance = m.isBoss ? 1 : ((m.data._ambushElite || this.monsterEliteRoom(m)) ? 0.35 : 0.10);
     if (Math.random() < dropChance) {
-      const it = rollItem(this.dungeonLevel);
+      const it = rollItem(this.activeQuest ? this.activeQuest.level : this.dungeonLevel);
       this.inventory.push(it);
       log(`  ↳ ${m.data.name} dropped ${it.name} (ilvl ${it.ilvl})!`, 'treasure');
     }
     if (m.isBoss) {
+      /* Boss death spectacle: slow-mo, shake, golden fountain */
+      if (this.engine) {
+        this.engine.triggerSlowMo(1.5);
+        this.engine.triggerShake(1.2, 0.6);
+      }
+      spawnDeathFountain(this.engine.scene, new THREE.Vector3(m.x, 0.1, m.z));
+      playSfx('gateOpen', { volume: 0.9 });
       log(`👑 ${m.data.name} falls! The floor is conquered!`, 'boss');
       this.gold += 50 * this.dungeonLevel;
 
@@ -1206,7 +1520,7 @@ export const combatMethods = {
         this.grantQuestRewardsAtDungeonEnd();
       } else {
         showBanner('FLOOR CLEARED!', `${m.data.name} defeated`);
-        const it = rollItem(this.dungeonLevel + 2, Math.random, null, { forceRarity: 'epic' });
+        const it = rollItem((this.activeQuest ? this.activeQuest.level : this.dungeonLevel) + 2, Math.random, null, { forceRarity: 'epic' });
         this.inventory.push(it);
         log(`  ↳ ${it.name} (ilvl ${it.ilvl}) claimed from the hoard!`, 'treasure');
       }

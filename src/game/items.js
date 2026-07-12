@@ -40,6 +40,10 @@ export function slotsFor(itemSlot){
 /* armor proficiency ranks */
 export const PROF_RANK = { none:0, light:1, medium:2, heavy:3 };
 
+/* D&D 5e weapon type ranks — simple (0) < martial (1) */
+export const WEAPON_TYPE = { simple:'simple', martial:'martial' };
+export const WEAPON_RANK = { simple:0, martial:1 };
+
 /* rarities: weight is the base drop weight; mult scales gold value;
    affixes = how many secondary stat rolls it gets on top of the base.
    Legendary is quest-only and never appears in weighted random rolls. */
@@ -145,52 +149,75 @@ const THEME_PERK_BIAS = {
    behind class armor training. */
 const BASES = {
   weapon: [
-    { name:'Club',        icon:'dcss/item/weapon/club.png', prim:{}, visualWeapon:'blunt/mace', visualColor:'#8d5524' },
-    { name:'Rusty Dagger',icon:'dcss/item/weapon/dagger_old.png', prim:{}, visualWeapon:'sword/dagger', visualColor:'#8f7777' },
-    { name:'Wooden Wand', icon:'dcss/item/wand/gem_wood.png', prim:{}, visualWeapon:'magic/wand', visualColor:'#a17043' },
-    { name:'Dagger',      icon:'dcss/item/weapon/dagger.png', prim:{atk:1, crit:1}, visualWeapon:'sword/dagger' },
-    { name:'Shortsword',  icon:'dcss/item/weapon/short_sword_1.png', prim:{atk:1, dmg:1}, visualWeapon:'sword/longsword' },
-    { name:'Longsword',   icon:'dcss/item/weapon/long_sword_1.png', prim:{atk:2, dmg:1}, prof:'martial', visualWeapon:'sword/longsword' },
-    { name:'Greatsword',  icon:'dcss/item/weapon/greatsword_1.png', prim:{atk:2, dmg:2}, prof:'martial', twoHanded:true, visualWeapon:'sword/longsword' },
-    { name:'Rapier',      icon:'dcss/item/weapon/rapier_1.png', prim:{atk:2, crit:1}, prof:'martial', visualWeapon:'sword/rapier' },
-    { name:'Mace',        icon:'dcss/item/weapon/mace_1.png', prim:{atk:1, dmg:2}, prof:'martial', visualWeapon:'blunt/mace' },
-    { name:'Warhammer',   icon:'dcss/item/weapon/war_hammer.png', prim:{dmg:2}, visualWeapon:'blunt/mace' },
-    { name:'Spear',       icon:'dcss/item/weapon/spear.png', prim:{atk:2, dmg:1}, prof:'martial', twoHanded:true, visualWeapon:'polearm/spear' },
-    { name:'Battleaxe',   icon:'dcss/item/weapon/axe.png', prim:{dmg:2, crit:1}, visualWeapon:'sword/longsword' },
-    { name:'Shortbow',    icon:'dcss/item/weapon/ranged/shortbow_1.png', prim:{atk:1, dmg:1}, range:5, twoHanded:true, visualWeapon:'ranged/bow' },
-    { name:'Longbow',     icon:'dcss/item/weapon/ranged/longbow.png', prim:{atk:2, dmg:2}, range:8, prof:'martial', twoHanded:true, visualWeapon:'ranged/bow' },
-    { name:'Wand',        icon:'dcss/item/wand/wand_silver.png', prim:{atk:1, int:1}, range:6, visualWeapon:'magic/wand' },
-    { name:'Staff',       icon:'dcss/item/weapon/quarterstaff.png', prim:{dmg:1, wis:1}, twoHanded:true, visualWeapon:'magic/wand', visualColor:'#8d5524' }
+    { name:'Club',          weaponType:'simple', icon:'dcss/item/weapon/club.png', prim:{}, visualWeapon:'blunt/mace', visualColor:'#8d5524', light:true },
+    { name:'Rusty Dagger',  weaponType:'simple', icon:'dcss/item/weapon/dagger_old.png', prim:{}, visualWeapon:'sword/dagger', visualColor:'#8f7777', finesse:true, light:true, thrown:true },
+    { name:'Wooden Wand',   weaponType:'simple', icon:'dcss/item/wand/gem_wood.png', prim:{}, visualWeapon:'magic/wand', visualColor:'#a17043' },
+    { name:'Dagger',        weaponType:'simple', icon:'dcss/item/weapon/dagger.png', prim:{atk:1, crit:1}, visualWeapon:'sword/dagger', finesse:true, light:true, thrown:true },
+    { name:'Shortsword',    weaponType:'martial', icon:'dcss/item/weapon/short_sword_1.png', prim:{atk:1, dmg:1}, visualWeapon:'sword/longsword', finesse:true, light:true },
+    { name:'Longsword',     weaponType:'martial', icon:'dcss/item/weapon/long_sword_1.png', prim:{atk:2, dmg:1}, visualWeapon:'sword/longsword', versatile:true },
+    { name:'Greatsword',    weaponType:'martial', icon:'dcss/item/weapon/greatsword_1.png', prim:{atk:2, dmg:2}, twoHanded:true, visualWeapon:'sword/longsword_alt', heavy:true },
+    { name:'Rapier',        weaponType:'martial', icon:'dcss/item/weapon/rapier_1.png', prim:{atk:2, crit:1}, visualWeapon:'sword/rapier', finesse:true },
+    { name:'Mace',          weaponType:'simple', icon:'dcss/item/weapon/mace_1.png', prim:{atk:1, dmg:2}, visualWeapon:'blunt/mace' },
+    { name:'Warhammer',     weaponType:'martial', icon:'dcss/item/weapon/war_hammer.png', prim:{dmg:2}, visualWeapon:'blunt/hammer', versatile:true },
+    { name:'Spear',         weaponType:'simple', icon:'dcss/item/weapon/spear.png', prim:{atk:2, dmg:1}, visualWeapon:'polearm/spear', versatile:true, thrown:true },
+    { name:'Battleaxe',     weaponType:'martial', icon:'dcss/item/weapon/axe.png', prim:{dmg:2, crit:1}, visualWeapon:'blunt/waraxe', versatile:true },
+    { name:'Shortbow',      weaponType:'simple', icon:'dcss/item/weapon/ranged/shortbow_1.png', prim:{atk:1, dmg:1}, range:5, twoHanded:true, visualWeapon:'ranged/bow' },
+    { name:'Longbow',       weaponType:'martial', icon:'dcss/item/weapon/ranged/longbow.png', prim:{atk:2, dmg:2}, range:8, twoHanded:true, visualWeapon:'ranged/bow', heavy:true },
+    { name:'Wand',          weaponType:'simple', icon:'dcss/item/wand/wand_silver.png', prim:{atk:1, int:1}, range:6, visualWeapon:'magic/wand' },
+    { name:'Staff',         weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{dmg:1, wis:1}, twoHanded:true, visualWeapon:'magic/wand', visualColor:'#8d5524', versatile:true },
+    { name:'Diamond Staff', weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, int:2, wis:1}, twoHanded:true, visualWeapon:'magic/diamond', visualColor:'#5c4033', versatile:true },
+    { name:'Gnarled Staff', weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, wis:2}, twoHanded:true, visualWeapon:'magic/gnarled', visualColor:'#8b5a2b', versatile:true },
+    { name:'Loop Staff',    weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, int:1, wis:2}, twoHanded:true, visualWeapon:'magic/loop', visualColor:'#7b4a1b', versatile:true },
+    { name:'S Staff',       weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, int:3}, twoHanded:true, visualWeapon:'magic/s', visualColor:'#4b2a0b', versatile:true },
+    { name:'Simple Staff',  weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, wis:1}, twoHanded:true, visualWeapon:'magic/simple', visualColor:'#8d5524', versatile:true },
+    { name:'Dragonspear',   weaponType:'martial', icon:'dcss/item/weapon/spear.png', prim:{atk:2, dmg:3}, twoHanded:true, visualWeapon:'polearm/dragonspear', heavy:true, reach:true },
+    { name:'Halberd',       weaponType:'martial', icon:'dcss/item/weapon/spear.png', prim:{atk:1, dmg:3, crit:1}, twoHanded:true, visualWeapon:'polearm/halberd', heavy:true, reach:true },
+    { name:'Longspear',     weaponType:'martial', icon:'dcss/item/weapon/spear.png', prim:{atk:3, dmg:2}, twoHanded:true, visualWeapon:'polearm/longspear', heavy:true, reach:true },
+    { name:'Flail',         weaponType:'martial', icon:'dcss/item/weapon/mace_1.png', prim:{atk:2, dmg:2}, visualWeapon:'blunt/flail' },
+    { name:'Katana',        weaponType:'martial', icon:'dcss/item/weapon/katana.png', prim:{atk:3, crit:1}, visualWeapon:'sword/katana', versatile:true },
+    { name:'Saber',         weaponType:'martial', icon:'dcss/item/weapon/scimitar.png', prim:{atk:2, speed:0.05}, visualWeapon:'sword/saber', finesse:true },
+    { name:'Scimitar',      weaponType:'martial', icon:'dcss/item/weapon/scimitar.png', prim:{atk:1, dmg:2, crit:1}, visualWeapon:'sword/scimitar', finesse:true, light:true },
+    { name:'Arming Sword',  weaponType:'martial', icon:'dcss/item/weapon/short_sword_1.png', prim:{atk:2, dmg:2}, visualWeapon:'sword/arming', versatile:true },
+    { name:'Crossbow',      weaponType:'martial', icon:'dcss/item/weapon/ranged/shortbow_1.png', prim:{atk:2, dmg:3}, range:6, twoHanded:true, visualWeapon:'ranged/crossbow', heavy:true, loading:true },
+    { name:'Hand Axe',      weaponType:'simple', icon:'dcss/item/weapon/axe.png', prim:{atk:1, dmg:2}, visualWeapon:'blunt/waraxe', light:true, thrown:true }
   ],
   shield: [
     { name:'Buckler',     icon:'dcss/item/armor/shields/buckler_1.png', prim:{ac:1}, visualShield:'round' },
     { name:'Kite Shield', icon:'dcss/item/armor/shields/shield_2_kite.png', prim:{ac:2}, visualShield:'kite' },
-    { name:'Tower Shield',icon:'dcss/item/armor/shields/large_shield_1.png', prim:{ac:2, hp:4}, prof:'medium', visualShield:'crusader/fg' }
+    { name:'Tower Shield',icon:'dcss/item/armor/shields/large_shield_1.png', prim:{ac:2, hp:4}, visualShield:'crusader/fg' }
   ],
   helm: [
     { name:'Cap',            icon:'dcss/item/armor/headgear/cap_1.png', prim:{ac:1}, visualHelm:'cloth/leather_cap', visualColor:'#8d5524' },
     { name:'Circlet',        icon:'dcss/item/armor/headgear/elven_leather_helm.png', prim:{int:1, wis:1}, visualHelm:'headband/thick' },
-    { name:'Wizard Hat',     icon:'dcss/item/armor/headgear/hat_2_magical.png', prim:{int:1, wis:1}, visualHelm:'magic/large' },
+    { name:'Wizard Hat',     icon:'dcss/item/armor/headgear/wizard_hat_1.png', prim:{int:1, wis:1}, visualHelm:'magic/large' },
     { name:'Tricorne Hat',   icon:'dcss/item/armor/headgear/hat_1.png', prim:{cha:1, dex:1}, visualHelm:'pirate/tricorne/basic' },
-    { name:'Barbuta',        icon:'dcss/item/armor/headgear/helmet_3.png', prim:{ac:1, hp:2}, prof:'light', visualHelm:'helmet/barbuta' },
-    { name:'Bascinet',       icon:'dcss/item/armor/headgear/helmet_4.png', prim:{ac:2}, prof:'medium', visualHelm:'helmet/bascinet' },
-    { name:'Kettle Helm',    icon:'dcss/item/armor/headgear/helmet_2.png', prim:{ac:2, dex:-1}, prof:'medium', visualHelm:'helmet/kettle' },
-    { name:'Horned Helm',    icon:'dcss/item/armor/headgear/crested_helmet.png', prim:{ac:2, str:1}, prof:'medium', visualHelm:'helmet/horned' },
-    { name:'Spangenhelm',    icon:'dcss/item/armor/headgear/helmet_2.png', prim:{ac:2, hp:5}, prof:'medium', visualHelm:'helmet/spangenhelm' },
-    { name:'Armet',          icon:'dcss/item/armor/headgear/helmet_5.png', prim:{ac:3}, prof:'heavy', visualHelm:'helmet/armet' },
-    { name:'Close Helm',     icon:'dcss/item/armor/headgear/helmet_5.png', prim:{ac:3, hp:3}, prof:'heavy', visualHelm:'helmet/close' },
-    { name:'Sugarloaf Helm', icon:'dcss/item/armor/headgear/plumed_helmet.png', prim:{ac:3, hp:6}, prof:'heavy', visualHelm:'helmet/sugarloaf' },
-    { name:'Great Helm',     icon:'dcss/item/armor/headgear/helmet_1.png', prim:{ac:3, hp:8}, prof:'heavy', visualHelm:'helmet/greathelm' }
+    { name:'Barbuta',        icon:'dcss/item/armor/headgear/helmet_3.png', prim:{ac:1, hp:2}, visualHelm:'helmet/barbuta' },
+    { name:'Bascinet',       icon:'dcss/item/armor/headgear/helmet_4.png', prim:{ac:2}, visualHelm:'helmet/bascinet' },
+    { name:'Kettle Helm',    icon:'dcss/item/armor/headgear/helmet_2.png', prim:{ac:2, dex:-1}, visualHelm:'helmet/kettle' },
+    { name:'Horned Helm',    icon:'dcss/item/armor/headgear/crested_helmet.png', prim:{ac:2, str:1}, visualHelm:'helmet/horned' },
+    { name:'Spangenhelm',    icon:'dcss/item/armor/headgear/helmet_2.png', prim:{ac:2, hp:5}, visualHelm:'helmet/spangenhelm' },
+    { name:'Armet',          icon:'dcss/item/armor/headgear/helmet_5.png', prim:{ac:3}, visualHelm:'helmet/armet' },
+    { name:'Close Helm',     icon:'dcss/item/armor/headgear/helmet_5.png', prim:{ac:3, hp:3}, visualHelm:'helmet/close' },
+    { name:'Sugarloaf Helm', icon:'dcss/item/armor/headgear/plumed_helmet.png', prim:{ac:3, hp:6}, visualHelm:'helmet/sugarloaf' },
+    { name:'Great Helm',     icon:'dcss/item/armor/headgear/helmet_1.png', prim:{ac:3, hp:8}, visualHelm:'helmet/greathelm' },
+    { name:'Cloth Hood',     icon:'dcss/item/armor/headgear/wizard_hat_2.png', prim:{ac:1, dex:1}, visualHelm:'cloth/hood', visualColor:'#333333' },
+    { name:'Mail Coif',      icon:'dcss/item/armor/headgear/helmet_coif.png', prim:{ac:2}, visualHelm:'helmet/mail', visualColor:'#a9a9a9' }
   ],
   armor: [
-    { name:'Torn Robe',    icon:'dcss/item/armor/torso/robe_1_old.png', prim:{}, prof:'none', visualTorso:'clothes/longsleeve/longsleeve' },
-    { name:'Peasant Shirt',icon:'dcss/item/armor/torso/animal_skin_1.png', prim:{}, prof:'none', visualTorso:'clothes/shortsleeve/shortsleeve' },
-    { name:'Tabard',       icon:'dcss/item/armor/torso/robe_2_red.png', prim:{ac:1, hp:2}, prof:'none', visualTorso:'jacket/tabard', visualLegs:'none' },
-    { name:'Robe',         icon:'dcss/item/armor/torso/robe_1.png', prim:{ac:1, int:1}, prof:'none', visualTorso:'clothes/longsleeve/longsleeve' },
-    { name:'Leather Armor',icon:'dcss/item/armor/torso/leather_armor_1.png', prim:{ac:2},        prof:'light', visualTorso:'armour/leather' },
-    { name:'Chain Shirt',  icon:'dcss/item/armor/torso/chain_mail_1.png', prim:{ac:3, hp:4},   prof:'medium', visualTorso:'chainmail' },
-    { name:'Legion Armor', icon:'dcss/item/armor/torso/chain_mail_2.png', prim:{ac:3, hp:6},   prof:'medium', visualTorso:'armour/legion', visualShoulders:'legion' },
-    { name:'Plate Armor',  icon:'dcss/item/armor/torso/plate_1.png', prim:{ac:4, hp:8},   prof:'heavy', visualTorso:'armour/plate', visualLegs:'armour/plate' }
+    /* 5e AC model: body armor SETS the AC base (armorBase) by category (prof).
+       Dex is applied per category in recalc (light=full, medium=max+2, heavy=0);
+       'none' torsos are cloth → unarmored (base 10 + Dex). Non-AC stats (hp/int/
+       dex) stay as item bonuses; AC no longer double-counts through prim.ac. */
+    { name:'Torn Robe',    icon:'dcss/item/armor/torso/robe_1_old.png', prim:{}, prof:'none', visualTorso:'clothes/robe', visualColor:'#7c6858' },
+    { name:'Peasant Shirt',icon:'dcss/item/armor/torso/animal_skin_1.png', prim:{}, prof:'none', visualTorso:'clothes/shortsleeve/shortsleeves', visualColor:'#d6cbb1' },
+    { name:'Tabard',       icon:'dcss/item/armor/torso/robe_2.png', prim:{hp:2}, prof:'none', visualTorso:'jacket/tabard', visualLegs:'none' },
+    { name:'Robe',         icon:'dcss/item/armor/torso/robe_1.png', prim:{int:1}, prof:'none', visualTorso:'clothes/robe', visualColor:'#3a66b2' },
+    { name:'Leather Armor',icon:'dcss/item/armor/torso/leather_armor_1.png', prim:{}, armorBase:11, prof:'light', visualTorso:'armour/leather' },
+    { name:'Chain Shirt',  icon:'dcss/item/armor/torso/chain_mail_1.png', prim:{hp:4}, armorBase:13, prof:'medium', visualTorso:'chainmail' },
+    { name:'Legion Armor', icon:'dcss/item/armor/torso/chain_mail_2.png', prim:{hp:6}, armorBase:14, prof:'medium', visualTorso:'armour/legion', visualShoulders:'legion' },
+    { name:'Plate Armor',  icon:'dcss/item/armor/torso/plate_1.png', prim:{hp:8}, armorBase:18, prof:'heavy', visualTorso:'armour/plate', visualLegs:'armour/plate' },
+    { name:'Sleeveless Tunic',icon:'dcss/item/armor/torso/robe_2.png', prim:{dex:1}, prof:'none', visualTorso:'clothes/sleeveless', visualColor:'#a0522d' },
+    { name:'Leather Vest', icon:'dcss/item/armor/torso/leather_armor_1.png', prim:{dex:1}, armorBase:11, prof:'light', visualTorso:'clothes/vest', visualColor:'#5c4033' }
   ],
   gloves: [
     { name:'Gloves',          icon:'dcss/item/armor/hands/glove_1.png', prim:{atk:1}, visualGloves:'arms/hands/gloves' },
@@ -199,14 +226,14 @@ const BASES = {
     { name:'Mage Gloves',     icon:'dcss/item/armor/hands/glove_3.png', prim:{int:1, wis:1}, visualGloves:'arms/hands/gloves' }
   ],
   boots: [
-    { name:'Sandals',       icon:'dcss/item/armor/feet/boots_4_shoes.png', prim:{speed:0.05}, visualShoes:'sandals' },
+    { name:'Sandals',       icon:'dcss/item/armor/feet/boots_4_green.png', prim:{speed:0.05}, visualShoes:'sandals' },
     { name:'Boots',         icon:'dcss/item/armor/feet/boots_1_brown_new.png', prim:{speed:0.1}, visualShoes:'shoes/basic' },
-    { name:'Rimmed Boots',  icon:'dcss/item/armor/feet/boots_1_brown.png', prim:{speed:0.08, hp:2}, visualShoes:'boots/rimmed' },
+    { name:'Rimmed Boots',  icon:'dcss/item/armor/feet/boots_1_brown_new.png', prim:{speed:0.08, hp:2}, visualShoes:'boots/rimmed' },
     { name:'Swift Boots',   icon:'dcss/item/armor/feet/boots_2_jackboots.png', prim:{speed:0.18, dex:1}, visualShoes:'shoes/basic' },
-    { name:'Ranger Boots',  icon:'dcss/item/armor/feet/boots_3_green.png', prim:{speed:0.12, dex:1}, visualShoes:'boots/fold' },
-    { name:'Ghillie Shoes', icon:'dcss/item/armor/feet/boots_5_boots.png', prim:{speed:0.15, dex:1}, visualShoes:'shoes/ghillies' },
+    { name:'Ranger Boots',  icon:'dcss/item/armor/feet/boots_3_stripe_new.png', prim:{speed:0.12, dex:1}, visualShoes:'boots/fold' },
+    { name:'Ghillie Shoes', icon:'dcss/item/armor/feet/boots_1_brown_new.png', prim:{speed:0.15, dex:1}, visualShoes:'shoes/ghillies' },
     { name:'Greaves',       icon:'dcss/item/armor/feet/boots_iron_2.png', prim:{ac:1, hp:2}, visualShoes:'armour/plate' },
-    { name:'Steel Greaves', icon:'dcss/item/armor/feet/boots_iron_1.png', prim:{ac:1, hp:4}, prof:'medium', visualShoes:'armour/plate' }
+    { name:'Steel Greaves', icon:'dcss/item/armor/feet/boots_iron_2.png', prim:{ac:1, hp:4}, visualShoes:'armour/plate' }
   ],
   ring: [
     { name:'Ring of Protection', icon:'dcss/item/ring/iron.png', prim:{ac:1} },
@@ -240,9 +267,12 @@ const BASE_MIN_FLOOR = {
   'Kite Shield':3, 'Chain Shirt':3, 'Swift Boots':3, 'Greaves':3,
   'Ring of the Adept':3, 'Amulet of Health':3, 'Bascinet':3, 'Kettle Helm':3,
   'Wizard Hat':3, 'Tricorne Hat':3, 'Ranger Boots':3,
+  'Simple Staff':3, 'Loop Staff':3, 'Arming Sword':3, 'Scimitar':3, 'Hand Axe':3, 'Mail Coif':3,
   'Great Helm':4, 'Horned Helm':4, 'Spangenhelm':4, 'Legion Armor':4, 'Ghillie Shoes':4, 'Steel Greaves':4,
+  'Gnarled Staff':4, 'Diamond Staff':4, 'Flail':4, 'Saber':4, 'Crossbow':4,
   'Greatsword':5, 'Spear':5, 'Longbow':5, 'Tower Shield':5, 'Plate Armor':5, 'Close Helm':5,
-  'Sugarloaf Helm':6
+  'S Staff':5, 'Longspear':5, 'Halberd':5, 'Katana':5,
+  'Sugarloaf Helm':6, 'Dragonspear':6
 };
 
 /* secondary affixes pulled for higher rarities */
@@ -306,9 +336,10 @@ function rollVisualColor(slot, rarityKey, rng) {
 
 /* Highest rarity random loot allows. Legendaries are quest-only. */
 function maxRarityIdx(floor){
-  if(floor>=5) return 3;   // epic
-  if(floor>=3) return 2;   // rare
-  return 1;                // floors 1—2: common / uncommon only
+  if(floor>=12) return 3;   // epic
+  if(floor>=7)  return 2;   // rare
+  if(floor>=3)  return 1;   // uncommon
+  return 0;                // floors 1—2: common only
 }
 function rollRarity(floor, rng, maxIdx = null){
   const cap = maxIdx != null ? Math.min(maxIdx, maxRarityIdx(floor)) : maxRarityIdx(floor);
@@ -396,7 +427,7 @@ export function recomputeItemBonuses(item){
     item.name = item.uniqueName;
   }
 
-  item.value = Math.round((5 + ilvl*3) * R.mult * (1 + Object.keys(bonuses).length*0.3) * (item.perk ? 1.5 : 1));
+  item.value = Math.round((5 + ilvl*7) * R.mult * (1 + Object.keys(bonuses).length*0.8) * (item.perk ? 1.9 : 1));
   return item;
 }
 
@@ -423,18 +454,28 @@ export function effectiveIlvl(item, heroLevel){
 
 function buildVisuals(slot, base, rarityKey, rng){
   const visualColor = base.visualColor || rollVisualColor(slot, rarityKey, rng);
-  const visualVisor = (slot === 'helm' && base.name !== 'Cap' && base.name !== 'Circlet' && rng() < 0.4)
+  const visualVisor = (slot === 'helm' && base.name !== 'Cap' && base.name !== 'Circlet' && base.name !== 'Cloth Hood' && base.name !== 'Mail Coif' && rng() < 0.4)
     ? pick(VISORS, rng) : null;
 
   let visualShoulders = base.visualShoulders || null;
+  let visualSleeves = null;
   if (slot === 'armor') {
     if (base.name === 'Plate Armor') {
-      visualShoulders = rng() < 0.8 ? pick(['pauldrons', 'bauldron'], rng) : null;
+      visualShoulders = rng() < 0.8 ? pick(['pauldrons', 'bauldron', 'mantal'], rng) : null;
     } else if (base.name === 'Legion Armor') {
       visualShoulders = 'legion';
     } else if (base.name === 'Chain Shirt' && rng() < 0.5) {
       visualShoulders = 'epaulets';
+    } else if ((base.name === 'Robe' || base.name === 'Torn Robe') && rng() < 0.6) {
+      visualSleeves = 'clothes/longsleeve/longsleeves';
     }
+  }
+
+  let visualCrystal = null;
+  let crystalColor = null;
+  if (slot === 'weapon' && base.visualWeapon && base.visualWeapon.startsWith('magic/')) {
+    visualCrystal = 'magic/crystal';
+    crystalColor = pick(['#ff3333', '#3333ff', '#33ff33', '#ffa500', '#ffff33', '#ff33ff', '#33ffff'], rng);
   }
 
   return {
@@ -446,6 +487,9 @@ function buildVisuals(slot, base, rarityKey, rng){
     visualColor,
     visualVisor,
     visualShoulders,
+    visualSleeves,
+    visualCrystal,
+    crystalColor,
     visualShoes: base.visualShoes || null,
     visualGloves: base.visualGloves || null
   };
@@ -482,6 +526,18 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixKeys, perk, rng){
     bonuses: {},
     ...visuals
   };
+  /* propagate D&D 5e gameplay properties from base -> item */
+  if(base.weaponType) item.weaponType = base.weaponType;
+  if(base.twoHanded) item.twoHanded = true;
+  if(base.range != null) item.range = base.range;
+  if(base.finesse) item.finesse = true;
+  if(base.light) item.light = true;
+  if(base.heavy) item.heavy = true;
+  if(base.reach) item.reach = true;
+  if(base.thrown) item.thrown = true;
+  if(base.versatile) item.versatile = true;
+  if(base.loading) item.loading = true;
+  if(base.armorBase) item.armorBase = base.armorBase;
   recomputeItemBonuses(item);
   return item;
 }
@@ -493,8 +549,7 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixKeys, perk, rng){
 export function rollItem(floor, rng=Math.random, forceSlot=null, opts={}){
   const ilvl = Math.max(1, (opts.ilvl != null ? opts.ilvl : floor)|0);
   const slot = forceSlot || pick(BASE_SLOTS, rng);
-  const avail = BASES[slot].filter(b => (BASE_MIN_FLOOR[b.name]||1) <= Math.max(floor, ilvl));
-  const base = pick(avail.length ? avail : BASES[slot], rng);
+  const base = pick(BASES[slot], rng);
 
   let rarityKey = opts.forceRarity || rollRarity(Math.max(floor, ilvl), rng, opts.maxRarityIdx);
   // Hard cap: random generation never yields legendary
@@ -530,9 +585,7 @@ export function rollPerk(slot, theme=null, rng=Math.random){
  */
 export function rollLegendary(ilvl, rng=Math.random, opts={}){
   const slot = opts.forceSlot || pick(BASE_SLOTS, rng);
-  const floorGate = Math.max(ilvl, 5);
-  const avail = BASES[slot].filter(b => (BASE_MIN_FLOOR[b.name]||1) <= floorGate);
-  const base = pick(avail.length ? avail : BASES[slot], rng);
+  const base = pick(BASES[slot], rng);
   const affixKeys = rollAffixKeys(RARITIES.legendary.affixes, Object.keys(base.prim||{}), rng);
   const perk = opts.perk || rollPerk(slot, opts.theme, rng);
   const item = makeItemRecord(slot, base, 'legendary', Math.max(1, ilvl|0), affixKeys, perk, rng);
@@ -574,14 +627,31 @@ export function makeStarterItem(slot, baseName) {
     visualShoes: base.visualShoes || null,
     visualGloves: base.visualGloves || null
   };
+  /* propagate D&D 5e weapon gameplay properties from base -> item */
+  if(base.weaponType) item.weaponType = base.weaponType;
+  if(base.twoHanded) item.twoHanded = true;
+  if(base.range != null) item.range = base.range;
+  if(base.finesse) item.finesse = true;
+  if(base.light) item.light = true;
+  if(base.heavy) item.heavy = true;
+  if(base.reach) item.reach = true;
+  if(base.thrown) item.thrown = true;
+  if(base.versatile) item.versatile = true;
+  if(base.loading) item.loading = true;
+  if(base.armorBase) item.armorBase = base.armorBase;
   return item;
 }
 
-/** Loot roll for a chest: 1—3 items, scaled to floor. Never legendary. */
+/** Loot roll for a chest: 1—3 items, scaled to floor.
+ *  Each item has a 50% chance to roll one tier higher than the floor normally allows. */
 export function rollChestLoot(floor, rng=Math.random){
   const n = 1 + (rng()<0.5?0:1) + (rng()<0.22?1:0);
   const items = [];
-  for(let i=0;i<n;i++) items.push(rollItem(floor, rng));
+  for(let i=0;i<n;i++){
+    const boosted = rng() < 0.5;
+    const tier = boosted ? Math.min(maxRarityIdx(floor) + 1, 3) : undefined;
+    items.push(rollItem(floor, rng, undefined, tier !== undefined ? { maxRarityIdx: tier } : {}));
+  }
   return items;
 }
 
@@ -605,6 +675,8 @@ export function bonusText(item, heroLevel=null){
     else if(k==='crit') parts.push(`+${v} Crit range`);
     else parts.push(`+${v} ${label[k]}`);
   }
+  /* Body armor advertises the AC base it sets (not an additive bonus). */
+  if(item.armorBase) parts.unshift(`AC ${item.armorBase} (${item.prof})`);
   return parts.join(' — ');
 }
 
@@ -673,6 +745,20 @@ export function migrateItem(it){
     const base = findBaseFromName(it.slot, it.name);
     it.baseKey = base?.name || it.name || 'Unknown';
     if(base && !it.icon) it.icon = base.icon;
+  }
+  /* Re-sync icon path from the base definition — repairs outdated/broken paths */
+  {
+    const base = getBase(it.slot, it.baseKey);
+    if (base && base.icon && it.icon !== base.icon) it.icon = base.icon;
+  }
+  /* backfill D&D 5e weaponType + gameplay properties for legacy items */
+  {
+    const base = getBase(it.slot, it.baseKey);
+    if (base) {
+      if (it.slot === 'weapon' && it.weaponType === undefined && base.weaponType) it.weaponType = base.weaponType;
+      if (it.twoHanded === undefined && base.twoHanded) it.twoHanded = true;
+      if (it.range === undefined && base.range != null) it.range = base.range;
+    }
   }
   if(it.ilvl == null) it.ilvl = Math.max(1, it.floor|0) || 1;
   if(!Array.isArray(it.affixKeys)){

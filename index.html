@@ -106,13 +106,45 @@
 
     <div id="floorbadge">Floor <b id="floorval">1</b></div>
 
-    <div id="resources">
-      <span class="res">🪙 <b id="goldval">0</b></span>
-      <button id="potheal" title="Heal the most wounded hero (2d4+2)">🧪 Potion ×<span id="potheal-n">0</span></button>
-      <button id="potgreater" title="Greater healing (4d4+4)">⚗️ Greater ×<span id="potgreater-n">0</span></button>
+    <!-- initiative / turn-order tracker (shown only during combat) -->
+    <div id="initiative"></div>
+
+    <!-- healing potions: primary player action, kept prominent up top -->
+    <div id="potionbar">
+      <button id="potheal" class="potion-btn potion-heal" title="Heal the most wounded hero (2d4+2) — press 1">
+        <span class="potion-ico">🧪</span>
+        <span class="potion-label">Potion</span>
+        <span class="potion-count" id="potheal-n">0</span>
+        <span class="potion-key">1</span>
+      </button>
+      <button id="potgreater" class="potion-btn potion-greater" title="Greater healing (4d4+4) — press 2">
+        <span class="potion-ico">⚗️</span>
+        <span class="potion-label">Greater</span>
+        <span class="potion-count" id="potgreater-n">0</span>
+        <span class="potion-key">2</span>
+      </button>
     </div>
 
-    <div id="gamelog"></div>
+    <div id="resources">
+      <span class="res">🪙 <b id="goldval">0</b></span>
+    </div>
+
+    <div id="logpanel">
+      <div id="log-resize-handle"></div>
+      <div class="log-header">
+        <span class="log-title">Combat Log</span>
+        <div class="log-header-right" style="display:flex; align-items:center; gap:6px;">
+          <div class="log-tabs">
+            <button class="log-tab on" data-filter="all">All</button>
+            <button class="log-tab" data-filter="combat">Combat</button>
+            <button class="log-tab" data-filter="other">Other</button>
+          </div>
+          <button id="log-min-btn" class="log-min-btn" title="Minimize log">➖</button>
+        </div>
+      </div>
+      <div id="gamelog"></div>
+    </div>
+    <button id="log-tray-btn" style="display:none;" title="Restore log">📜 Combat Log</button>
     <div id="banner"></div>
 
     <!-- ===== debug overlay (D key) ===== -->
@@ -145,12 +177,20 @@
     <div id="worldmapscreen">
       <div class="wm-frame">
         <div class="wm-header">
-          <h2>🗺️ World Map</h2>
-          <div class="wm-subtitle">Select a quest to explore the dungeons</div>
+          <div class="wm-header-top">
+            <div class="wm-tabs">
+              <button class="wm-tab active" data-tab="map">🗺️ Quests</button>
+              <button class="wm-tab" data-tab="shop">🛒 Shop</button>
+              <button class="wm-tab" data-tab="tavern">🍻 Tavern</button>
+            </div>
+            <div class="wm-header-gold">🪙 <b id="wm-header-gold-val">0</b></div>
+          </div>
         </div>
-        <div class="wm-content">
+
+        <!-- Panel: Map -->
+        <div class="wm-content wm-panel active" id="wm-panel-map">
           <div class="wm-map-container" id="wm-map-container">
-            <img id="wm-map-bg" src="./world_map.png" alt="World Map" />
+            <img id="wm-map-bg" src="./world_map.jpg" alt="World Map" />
             <div id="wm-quest-nodes"></div>
           </div>
           <div class="wm-sidebar" id="wm-sidebar">
@@ -173,8 +213,46 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
+        <!-- Panel: Shop -->
+        <div class="wm-content wm-panel" id="wm-panel-shop" style="display: none;">
+          <div class="wm-shop-layout">
+            <div class="wm-shop-column wm-shop-buy">
+              <h3>Buy Items</h3>
+              <div class="wm-shop-grid" id="wm-shop-buy-grid"></div>
+            </div>
+            <div class="wm-shop-column wm-shop-sell">
+              <h3>Sell Items</h3>
+              <div class="wm-shop-grid" id="wm-shop-sell-grid"></div>
+            </div>
+            <div class="wm-shop-column wm-shop-detail">
+              <h3>Item Details</h3>
+              <div id="wm-shop-detail-content"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel: Tavern -->
+        <div class="wm-content wm-panel" id="wm-panel-tavern" style="display: none;">
+          <div class="wm-tavern-layout">
+            <div class="wm-tavern-column wm-tavern-active">
+              <h3>Active Party (<span id="wm-tavern-active-count">0</span>/4)</h3>
+              <div class="wm-tavern-list" id="wm-tavern-active-list"></div>
+            </div>
+            <div class="wm-tavern-column wm-tavern-stored">
+              <h3>Stored Heroes</h3>
+              <div class="wm-tavern-list" id="wm-tavern-stored-list"></div>
+            </div>
+            <div class="wm-tavern-column wm-tavern-hire">
+              <h3>Available for Hire</h3>
+              <div class="wm-tavern-list" id="wm-tavern-hire-list"></div>
+            </div>
+            <div class="wm-tavern-column wm-tavern-detail">
+              <h3>Hero Details</h3>
+              <div id="wm-tavern-detail-content"></div>
+            </div>
+          </div>
+        </div>
 
     <script type="module" src="./src/main.js"></script>
   </body>

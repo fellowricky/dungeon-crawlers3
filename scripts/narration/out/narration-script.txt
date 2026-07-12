@@ -1,0 +1,3659 @@
+Dungeon Crawlers — skill-challenge narration script (desc + approach act/win/lose)
+914 lines. Save each as a .wav (or .mp3) named exactly as shown, into public/sounds/Narration/
+========================================================================
+
+  1. [Collapsed Passage]
+     save as:  public/sounds/Narration/collapsed_passage.wav
+     narrate:  A pile of rubble blocks the corridor ahead.
+
+  2. [Collapsed Passage — Scout a way around]
+     save as:  public/sounds/Narration/collapsed_passage_a0_act.wav
+     narrate:  Scout a way around
+
+  3. [Collapsed Passage — Scout a way around (success)]
+     save as:  public/sounds/Narration/collapsed_passage_a0_win.wav
+     narrate:  You find a crawlspace skirting the rubble — a modest shortcut.
+
+  4. [Collapsed Passage — Scout a way around (failure)]
+     save as:  public/sounds/Narration/collapsed_passage_a0_lose.wav
+     narrate:  Every side passage dead-ends. The long way it is.
+
+  5. [Collapsed Passage — Clear the rubble]
+     save as:  public/sounds/Narration/collapsed_passage_a1_act.wav
+     narrate:  Clear the rubble
+
+  6. [Collapsed Passage — Clear the rubble (success)]
+     save as:  public/sounds/Narration/collapsed_passage_a1_win.wav
+     narrate:  You heave the debris aside, revealing a shortcut deeper into the dungeon.
+
+  7. [Collapsed Passage — Clear the rubble (failure)]
+     save as:  public/sounds/Narration/collapsed_passage_a1_lose.wav
+     narrate:  The rubble is too dense. The party takes the long way around.
+
+  8. [Collapsed Passage — Smash straight through]
+     save as:  public/sounds/Narration/collapsed_passage_a2_act.wav
+     narrate:  Smash straight through
+
+  9. [Collapsed Passage — Smash straight through (success)]
+     save as:  public/sounds/Narration/collapsed_passage_a2_win.wav
+     narrate:  Stone explodes outward — a clean tunnel, and loose valuables in the fill!
+
+ 10. [Collapsed Passage — Smash straight through (failure)]
+     save as:  public/sounds/Narration/collapsed_passage_a2_lose.wav
+     narrate:  The heap shifts and half-buries you.
+
+ 11. [Heave the Gate]
+     save as:  public/sounds/Narration/heave_the_gate.wav
+     narrate:  A rusted portcullis bars the way to a side chamber. A chest gleams beyond.
+
+ 12. [Heave the Gate — Look for a winch]
+     save as:  public/sounds/Narration/heave_the_gate_a0_act.wav
+     narrate:  Look for a winch
+
+ 13. [Heave the Gate — Look for a winch (success)]
+     save as:  public/sounds/Narration/heave_the_gate_a0_win.wav
+     narrate:  You find the rusted winch and crank the gate open enough to reach through.
+
+ 14. [Heave the Gate — Look for a winch (failure)]
+     save as:  public/sounds/Narration/heave_the_gate_a0_lose.wav
+     narrate:  The winch mechanism is destroyed. No easy way in.
+
+ 15. [Heave the Gate — Lift the portcullis]
+     save as:  public/sounds/Narration/heave_the_gate_a1_act.wav
+     narrate:  Lift the portcullis
+
+ 16. [Heave the Gate — Lift the portcullis (success)]
+     save as:  public/sounds/Narration/heave_the_gate_a1_win.wav
+     narrate:  With a groan of straining metal, the gate rises. The chest is yours.
+
+ 17. [Heave the Gate — Lift the portcullis (failure)]
+     save as:  public/sounds/Narration/heave_the_gate_a1_lose.wav
+     narrate:  The gate won't budge. You'll need another way in.
+
+ 18. [Heave the Gate — Wrench it off its rails]
+     save as:  public/sounds/Narration/heave_the_gate_a2_act.wav
+     narrate:  Wrench it off its rails
+
+ 19. [Heave the Gate — Wrench it off its rails (success)]
+     save as:  public/sounds/Narration/heave_the_gate_a2_win.wav
+     narrate:  The whole gate tears free! Nothing stands between you and the loot.
+
+ 20. [Heave the Gate — Wrench it off its rails (failure)]
+     save as:  public/sounds/Narration/heave_the_gate_a2_lose.wav
+     narrate:  The gate snaps back down, catching your arm.
+
+ 21. [Crack the Wall]
+     save as:  public/sounds/Narration/crack_the_wall.wav
+     narrate:  This section of wall sounds hollow.
+
+ 22. [Crack the Wall — Tap for weak spots]
+     save as:  public/sounds/Narration/crack_the_wall_a0_act.wav
+     narrate:  Tap for weak spots
+
+ 23. [Crack the Wall — Tap for weak spots (success)]
+     save as:  public/sounds/Narration/crack_the_wall_a0_win.wav
+     narrate:  You find a loose block and slide it out — coins glint in the cavity.
+
+ 24. [Crack the Wall — Tap for weak spots (failure)]
+     save as:  public/sounds/Narration/crack_the_wall_a0_lose.wav
+     narrate:  Solid rock everywhere you tap.
+
+ 25. [Crack the Wall — Shoulder the wall]
+     save as:  public/sounds/Narration/crack_the_wall_a1_act.wav
+     narrate:  Shoulder the wall
+
+ 26. [Crack the Wall — Shoulder the wall (success)]
+     save as:  public/sounds/Narration/crack_the_wall_a1_win.wav
+     narrate:  Stone crumbles away, revealing a hidden cache of gold!
+
+ 27. [Crack the Wall — Shoulder the wall (failure)]
+     save as:  public/sounds/Narration/crack_the_wall_a1_lose.wav
+     narrate:  Just solid rock. The effort leaves you winded and empty-handed.
+
+ 28. [Crack the Wall — Bring the whole wall down]
+     save as:  public/sounds/Narration/crack_the_wall_a2_act.wav
+     narrate:  Bring the whole wall down
+
+ 29. [Crack the Wall — Bring the whole wall down (success)]
+     save as:  public/sounds/Narration/crack_the_wall_a2_win.wav
+     narrate:  The wall collapses — behind it, a forgotten strongbox!
+
+ 30. [Crack the Wall — Bring the whole wall down (failure)]
+     save as:  public/sounds/Narration/crack_the_wall_a2_lose.wav
+     narrate:  The ceiling sheds rubble on your head.
+
+ 31. [Rope Bridge]
+     save as:  public/sounds/Narration/rope_bridge.wav
+     narrate:  A frayed rope bridge spans a deep chasm. A chest is tied at its midpoint.
+
+ 32. [Rope Bridge — Test each plank first]
+     save as:  public/sounds/Narration/rope_bridge_a0_act.wav
+     narrate:  Test each plank first
+
+ 33. [Rope Bridge — Test each plank first (success)]
+     save as:  public/sounds/Narration/rope_bridge_a0_win.wav
+     narrate:  Slow and steady — you reach the chest and haul it back.
+
+ 34. [Rope Bridge — Test each plank first (failure)]
+     save as:  public/sounds/Narration/rope_bridge_a0_lose.wav
+     narrate:  Too many planks are rotten through. Not worth the fall.
+
+ 35. [Rope Bridge — Cross with grace]
+     save as:  public/sounds/Narration/rope_bridge_a1_act.wav
+     narrate:  Cross with grace
+
+ 36. [Rope Bridge — Cross with grace (success)]
+     save as:  public/sounds/Narration/rope_bridge_a1_win.wav
+     narrate:  You cross with fluid grace, claiming the isolated chest.
+
+ 37. [Rope Bridge — Cross with grace (failure)]
+     save as:  public/sounds/Narration/rope_bridge_a1_lose.wav
+     narrate:  The bridge sways violently. You retreat to solid ground.
+
+ 38. [Rope Bridge — Everyone rushes across]
+     save as:  public/sounds/Narration/rope_bridge_a2_act.wav
+     narrate:  Everyone rushes across
+
+ 39. [Rope Bridge — Everyone rushes across (success)]
+     save as:  public/sounds/Narration/rope_bridge_a2_win.wav
+     narrate:  The whole party thunders across before the ropes can complain — and strips the bridge of everything!
+
+ 40. [Rope Bridge — Everyone rushes across (failure)]
+     save as:  public/sounds/Narration/rope_bridge_a2_lose.wav
+     narrate:  Planks snap under the weight. Bruised bodies dangle from the ropes.
+
+ 41. [Shattered Floor]
+     save as:  public/sounds/Narration/shattered_floor.wav
+     narrate:  Crumbling tiles span a gap. A potion sits on a pedestal on the far side.
+
+ 42. [Shattered Floor — Chart the solid tiles]
+     save as:  public/sounds/Narration/shattered_floor_a0_act.wav
+     narrate:  Chart the solid tiles
+
+ 43. [Shattered Floor — Chart the solid tiles (success)]
+     save as:  public/sounds/Narration/shattered_floor_a0_win.wav
+     narrate:  You map a safe route tile by tile and retrieve the prize.
+
+ 44. [Shattered Floor — Chart the solid tiles (failure)]
+     save as:  public/sounds/Narration/shattered_floor_a0_lose.wav
+     narrate:  Cracks run through every tile. No safe path exists.
+
+ 45. [Shattered Floor — Spring across]
+     save as:  public/sounds/Narration/shattered_floor_a1_act.wav
+     narrate:  Spring across
+
+ 46. [Shattered Floor — Spring across (success)]
+     save as:  public/sounds/Narration/shattered_floor_a1_win.wav
+     narrate:  Light on your feet, you spring across the broken tiles and grab the prize!
+
+ 47. [Shattered Floor — Spring across (failure)]
+     save as:  public/sounds/Narration/shattered_floor_a1_lose.wav
+     narrate:  A tile gives way beneath you! You take a nasty tumble.
+
+ 48. [Shattered Floor — Leap the whole gap]
+     save as:  public/sounds/Narration/shattered_floor_a2_act.wav
+     narrate:  Leap the whole gap
+
+ 49. [Shattered Floor — Leap the whole gap (success)]
+     save as:  public/sounds/Narration/shattered_floor_a2_win.wav
+     narrate:  One impossible leap — you stick the landing and sweep the pedestal clean!
+
+ 50. [Shattered Floor — Leap the whole gap (failure)]
+     save as:  public/sounds/Narration/shattered_floor_a2_lose.wav
+     narrate:  You come up short and crash into the pit.
+
+ 51. [Narrow Ledge]
+     save as:  public/sounds/Narration/narrow_ledge.wav
+     narrate:  A crumbling ledge hugs the wall, barely a foot wide. Something glints in an alcove ahead.
+
+ 52. [Narrow Ledge — Rope up and anchor]
+     save as:  public/sounds/Narration/narrow_ledge_a0_act.wav
+     narrate:  Rope up and anchor
+
+ 53. [Narrow Ledge — Rope up and anchor (success)]
+     save as:  public/sounds/Narration/narrow_ledge_a0_win.wav
+     narrate:  Anchored and careful, you retrieve the stash without a scare.
+
+ 54. [Narrow Ledge — Rope up and anchor (failure)]
+     save as:  public/sounds/Narration/narrow_ledge_a0_lose.wav
+     narrate:  No solid anchor point holds. You abandon the attempt.
+
+ 55. [Narrow Ledge — Edge along the ledge]
+     save as:  public/sounds/Narration/narrow_ledge_a1_act.wav
+     narrate:  Edge along the ledge
+
+ 56. [Narrow Ledge — Edge along the ledge (success)]
+     save as:  public/sounds/Narration/narrow_ledge_a1_win.wav
+     narrate:  You edge along with perfect balance and claim the hidden stash.
+
+ 57. [Narrow Ledge — Edge along the ledge (failure)]
+     save as:  public/sounds/Narration/narrow_ledge_a1_lose.wav
+     narrate:  A pebble skitters into the void. Too risky — you turn back.
+
+ 58. [Narrow Ledge — Sprint the ledge]
+     save as:  public/sounds/Narration/narrow_ledge_a2_act.wav
+     narrate:  Sprint the ledge
+
+ 59. [Narrow Ledge — Sprint the ledge (success)]
+     save as:  public/sounds/Narration/narrow_ledge_a2_win.wav
+     narrate:  You dash the ledge like a mountain goat and scoop up everything in the alcove!
+
+ 60. [Narrow Ledge — Sprint the ledge (failure)]
+     save as:  public/sounds/Narration/narrow_ledge_a2_lose.wav
+     narrate:  The ledge crumbles mid-stride. You catch yourself hard on the lip.
+
+ 61. [Locked Chest]
+     save as:  public/sounds/Narration/locked_chest.wav
+     narrate:  An ornate chest with a complex locking mechanism sits against the wall.
+
+ 62. [Locked Chest — Study the mechanism]
+     save as:  public/sounds/Narration/locked_chest_a0_act.wav
+     narrate:  Study the mechanism
+
+ 63. [Locked Chest — Study the mechanism (success)]
+     save as:  public/sounds/Narration/locked_chest_a0_win.wav
+     narrate:  You find the maker's release catch hidden under the lid. Click.
+
+ 64. [Locked Chest — Study the mechanism (failure)]
+     save as:  public/sounds/Narration/locked_chest_a0_lose.wav
+     narrate:  The mechanism is beyond you. The chest stays shut.
+
+ 65. [Locked Chest — Pick the lock]
+     save as:  public/sounds/Narration/locked_chest_a1_act.wav
+     narrate:  Pick the lock
+
+ 66. [Locked Chest — Pick the lock (success)]
+     save as:  public/sounds/Narration/locked_chest_a1_win.wav
+     narrate:  The lock clicks open! Inside you find treasure.
+
+ 67. [Locked Chest — Pick the lock (failure)]
+     save as:  public/sounds/Narration/locked_chest_a1_lose.wav
+     narrate:  The lock jams. The chest won't budge.
+
+ 68. [Locked Chest — Pry it open]
+     save as:  public/sounds/Narration/locked_chest_a2_act.wav
+     narrate:  Pry it open
+
+ 69. [Locked Chest — Pry it open (success)]
+     save as:  public/sounds/Narration/locked_chest_a2_win.wav
+     narrate:  The lid tears off its hinges — everything inside is yours!
+
+ 70. [Locked Chest — Pry it open (failure)]
+     save as:  public/sounds/Narration/locked_chest_a2_lose.wav
+     narrate:  A needle trap fires from the strained lock.
+
+ 71. [Trapped Reliquary]
+     save as:  public/sounds/Narration/trapped_reliquary.wav
+     narrate:  A gem rests on a pressure-plate pedestal. One wrong move could trigger a trap.
+
+ 72. [Trapped Reliquary — Map the trigger plates]
+     save as:  public/sounds/Narration/trapped_reliquary_a0_act.wav
+     narrate:  Map the trigger plates
+
+ 73. [Trapped Reliquary — Map the trigger plates (success)]
+     save as:  public/sounds/Narration/trapped_reliquary_a0_win.wav
+     narrate:  You chart every plate and lift the gem from the one blind angle.
+
+ 74. [Trapped Reliquary — Map the trigger plates (failure)]
+     save as:  public/sounds/Narration/trapped_reliquary_a0_lose.wav
+     narrate:  The trigger pattern defeats you. Better left alone.
+
+ 75. [Trapped Reliquary — Lift the gem gently]
+     save as:  public/sounds/Narration/trapped_reliquary_a1_act.wav
+     narrate:  Lift the gem gently
+
+ 76. [Trapped Reliquary — Lift the gem gently (success)]
+     save as:  public/sounds/Narration/trapped_reliquary_a1_win.wav
+     narrate:  With nerves of steel, you lift the gem without triggering the mechanism.
+
+ 77. [Trapped Reliquary — Lift the gem gently (failure)]
+     save as:  public/sounds/Narration/trapped_reliquary_a1_lose.wav
+     narrate:  The mechanism clicks ominously. You retreat empty-handed.
+
+ 78. [Trapped Reliquary — Snatch and run]
+     save as:  public/sounds/Narration/trapped_reliquary_a2_act.wav
+     narrate:  Snatch and run
+
+ 79. [Trapped Reliquary — Snatch and run (success)]
+     save as:  public/sounds/Narration/trapped_reliquary_a2_win.wav
+     narrate:  Grab, sprint, slide — the darts hit nothing but wall. What a haul!
+
+ 80. [Trapped Reliquary — Snatch and run (failure)]
+     save as:  public/sounds/Narration/trapped_reliquary_a2_lose.wav
+     narrate:  A volley of darts finds you mid-sprint.
+
+ 81. [Disarm the Contraption]
+     save as:  public/sounds/Narration/disarm_the_contraption.wav
+     narrate:  A tripwire stretches across the passage, connected to something deadly.
+
+ 82. [Disarm the Contraption — Trace the tripwire]
+     save as:  public/sounds/Narration/disarm_the_contraption_a0_act.wav
+     narrate:  Trace the tripwire
+
+ 83. [Disarm the Contraption — Trace the tripwire (success)]
+     save as:  public/sounds/Narration/disarm_the_contraption_a0_win.wav
+     narrate:  You follow the wire to its housing and simply step around the whole rig — pocketing the trapper's stash.
+
+ 84. [Disarm the Contraption — Trace the tripwire (failure)]
+     save as:  public/sounds/Narration/disarm_the_contraption_a0_lose.wav
+     narrate:  The wire vanishes into the wall. You give it a wide berth.
+
+ 85. [Disarm the Contraption — Disarm the mechanism]
+     save as:  public/sounds/Narration/disarm_the_contraption_a1_act.wav
+     narrate:  Disarm the mechanism
+
+ 86. [Disarm the Contraption — Disarm the mechanism (success)]
+     save as:  public/sounds/Narration/disarm_the_contraption_a1_win.wav
+     narrate:  You carefully dismantle the trap, revealing a cache of gold behind it.
+
+ 87. [Disarm the Contraption — Disarm the mechanism (failure)]
+     save as:  public/sounds/Narration/disarm_the_contraption_a1_lose.wav
+     narrate:  A dart fires from the wall! You flinch back empty-handed.
+
+ 88. [Disarm the Contraption — Smash through and grab everything]
+     save as:  public/sounds/Narration/disarm_the_contraption_a2_act.wav
+     narrate:  Smash through and grab everything
+
+ 89. [Disarm the Contraption — Smash through and grab everything (success)]
+     save as:  public/sounds/Narration/disarm_the_contraption_a2_win.wav
+     narrate:  You barrel through before the trap can cycle — and rip its gilded housing off the wall!
+
+ 90. [Disarm the Contraption — Smash through and grab everything (failure)]
+     save as:  public/sounds/Narration/disarm_the_contraption_a2_lose.wav
+     narrate:  The trap fires true. That one hurt.
+
+ 91. [Sleeping Guardian]
+     save as:  public/sounds/Narration/sleeping_guardian.wav
+     narrate:  A hibernating beast blocks the passage to a glittering hoard.
+
+ 92. [Sleeping Guardian — Find a wide berth]
+     save as:  public/sounds/Narration/sleeping_guardian_a0_act.wav
+     narrate:  Find a wide berth
+
+ 93. [Sleeping Guardian — Find a wide berth (success)]
+     save as:  public/sounds/Narration/sleeping_guardian_a0_win.wav
+     narrate:  You spot a drainage crawl that loops behind the beast. Slow, filthy, effective.
+
+ 94. [Sleeping Guardian — Find a wide berth (failure)]
+     save as:  public/sounds/Narration/sleeping_guardian_a0_lose.wav
+     narrate:  No way around. The beast guards the only path.
+
+ 95. [Sleeping Guardian — Slip past silently]
+     save as:  public/sounds/Narration/sleeping_guardian_a1_act.wav
+     narrate:  Slip past silently
+
+ 96. [Sleeping Guardian — Slip past silently (success)]
+     save as:  public/sounds/Narration/sleeping_guardian_a1_win.wav
+     narrate:  You slip past without a sound, claiming the treasure behind it.
+
+ 97. [Sleeping Guardian — Slip past silently (failure)]
+     save as:  public/sounds/Narration/sleeping_guardian_a1_lose.wav
+     narrate:  The beast stirs! The party flees the room.
+
+ 98. [Sleeping Guardian — The whole party sneaks the hoard]
+     save as:  public/sounds/Narration/sleeping_guardian_a2_act.wav
+     narrate:  The whole party sneaks the hoard
+
+ 99. [Sleeping Guardian — The whole party sneaks the hoard (success)]
+     save as:  public/sounds/Narration/sleeping_guardian_a2_win.wav
+     narrate:  Impossibly, five sets of boots make no sound. You strip the hoard bare!
+
+100. [Sleeping Guardian — The whole party sneaks the hoard (failure)]
+     save as:  public/sounds/Narration/sleeping_guardian_a2_lose.wav
+     narrate:  Someone kicks a coin. The beast's roar echoes through the dungeon.
+
+101. [Hidden Stash]
+     save as:  public/sounds/Narration/hidden_stash.wav
+     narrate:  The monsters must have hidden something in this room.
+
+102. [Hidden Stash — Scan for loose stones]
+     save as:  public/sounds/Narration/hidden_stash_a0_act.wav
+     narrate:  Scan for loose stones
+
+103. [Hidden Stash — Scan for loose stones (success)]
+     save as:  public/sounds/Narration/hidden_stash_a0_win.wav
+     narrate:  A scuffed flagstone gives it away — a small pouch of gold underneath.
+
+104. [Hidden Stash — Scan for loose stones (failure)]
+     save as:  public/sounds/Narration/hidden_stash_a0_lose.wav
+     narrate:  If there's a stash here, it's hidden too well.
+
+105. [Hidden Stash — Ease it out without springing the bell]
+     save as:  public/sounds/Narration/hidden_stash_a1_act.wav
+     narrate:  Ease it out without springing the bell
+
+106. [Hidden Stash — Ease it out without springing the bell (success)]
+     save as:  public/sounds/Narration/hidden_stash_a1_win.wav
+     narrate:  Tucked behind a loose stone — and rigged to a bell — you find a pouch of gold. The bell never rings.
+
+107. [Hidden Stash — Ease it out without springing the bell (failure)]
+     save as:  public/sounds/Narration/hidden_stash_a1_lose.wav
+     narrate:  The bell clangs. The prize drops into a chute and is gone.
+
+108. [Hidden Stash — Grab it fast]
+     save as:  public/sounds/Narration/hidden_stash_a2_act.wav
+     narrate:  Grab it fast
+
+109. [Hidden Stash — Grab it fast (success)]
+     save as:  public/sounds/Narration/hidden_stash_a2_win.wav
+     narrate:  Faster than the trap can trigger — you rip the whole stash free!
+
+110. [Hidden Stash — Grab it fast (failure)]
+     save as:  public/sounds/Narration/hidden_stash_a2_lose.wav
+     narrate:  The alarm bell rings through the halls. Something answers.
+
+111. [Rune-Sealed Door]
+     save as:  public/sounds/Narration/rune_sealed_door.wav
+     narrate:  Glowing runes pulse on a sealed stone door.
+
+112. [Rune-Sealed Door — Recall the sigil lore]
+     save as:  public/sounds/Narration/rune_sealed_door_a0_act.wav
+     narrate:  Recall the sigil lore
+
+113. [Rune-Sealed Door — Recall the sigil lore (success)]
+     save as:  public/sounds/Narration/rune_sealed_door_a0_win.wav
+     narrate:  You remember this school of warding — and its standard master phrase. The seal fades.
+
+114. [Rune-Sealed Door — Recall the sigil lore (failure)]
+     save as:  public/sounds/Narration/rune_sealed_door_a0_lose.wav
+     narrate:  The sigils match nothing you've read.
+
+115. [Rune-Sealed Door — Trace counter-runes]
+     save as:  public/sounds/Narration/rune_sealed_door_a1_act.wav
+     narrate:  Trace counter-runes
+
+116. [Rune-Sealed Door — Trace counter-runes (success)]
+     save as:  public/sounds/Narration/rune_sealed_door_a1_win.wav
+     narrate:  You trace the counter-runes — the seal dissolves, opening the way to a bonus chamber.
+
+117. [Rune-Sealed Door — Trace counter-runes (failure)]
+     save as:  public/sounds/Narration/rune_sealed_door_a1_lose.wav
+     narrate:  The runes flare but hold. The door stays sealed.
+
+118. [Rune-Sealed Door — Overload the seal]
+     save as:  public/sounds/Narration/rune_sealed_door_a2_act.wav
+     narrate:  Overload the seal
+
+119. [Rune-Sealed Door — Overload the seal (success)]
+     save as:  public/sounds/Narration/rune_sealed_door_a2_win.wav
+     narrate:  You pour raw magic into the ward until it bursts — the chamber and its riches lie open!
+
+120. [Rune-Sealed Door — Overload the seal (failure)]
+     save as:  public/sounds/Narration/rune_sealed_door_a2_lose.wav
+     narrate:  The ward discharges into you with a crack.
+
+121. [Crystal Conduit]
+     save as:  public/sounds/Narration/crystal_conduit.wav
+     narrate:  Floating crystals hum with untapped energy, begging for alignment.
+
+122. [Crystal Conduit — Study the resonance]
+     save as:  public/sounds/Narration/crystal_conduit_a0_act.wav
+     narrate:  Study the resonance
+
+123. [Crystal Conduit — Study the resonance (success)]
+     save as:  public/sounds/Narration/crystal_conduit_a0_win.wav
+     narrate:  You deduce the alignment sequence and nudge one crystal — the rest follow.
+
+124. [Crystal Conduit — Study the resonance (failure)]
+     save as:  public/sounds/Narration/crystal_conduit_a0_lose.wav
+     narrate:  The pattern shifts faster than you can chart it.
+
+125. [Crystal Conduit — Align the crystals]
+     save as:  public/sounds/Narration/crystal_conduit_a1_act.wav
+     narrate:  Align the crystals
+
+126. [Crystal Conduit — Align the crystals (success)]
+     save as:  public/sounds/Narration/crystal_conduit_a1_win.wav
+     narrate:  The crystals lock into alignment, creating a teleport nexus for this floor.
+
+127. [Crystal Conduit — Align the crystals (failure)]
+     save as:  public/sounds/Narration/crystal_conduit_a1_lose.wav
+     narrate:  The crystals dim. The resonance eludes you.
+
+128. [Crystal Conduit — Force the resonance]
+     save as:  public/sounds/Narration/crystal_conduit_a2_act.wav
+     narrate:  Force the resonance
+
+129. [Crystal Conduit — Force the resonance (success)]
+     save as:  public/sounds/Narration/crystal_conduit_a2_win.wav
+     narrate:  You slam the frequencies together — the nexus roars to life, shedding crystal shards worth a fortune!
+
+130. [Crystal Conduit — Force the resonance (failure)]
+     save as:  public/sounds/Narration/crystal_conduit_a2_lose.wav
+     narrate:  A crystal shatters, spraying you with shards.
+
+131. [Identify Enchantment]
+     save as:  public/sounds/Narration/identify_enchantment.wav
+     narrate:  Magical residue lingers from the defeated caster.
+
+132. [Identify Enchantment — Sift the residue]
+     save as:  public/sounds/Narration/identify_enchantment_a0_act.wav
+     narrate:  Sift the residue
+
+133. [Identify Enchantment — Sift the residue (success)]
+     save as:  public/sounds/Narration/identify_enchantment_a0_win.wav
+     narrate:  Scorch marks point the way — you sketch a partial route toward the boss lair.
+
+134. [Identify Enchantment — Sift the residue (failure)]
+     save as:  public/sounds/Narration/identify_enchantment_a0_lose.wav
+     narrate:  The residue is too scattered to read.
+
+135. [Identify Enchantment — Read the residue]
+     save as:  public/sounds/Narration/identify_enchantment_a1_act.wav
+     narrate:  Read the residue
+
+136. [Identify Enchantment — Read the residue (success)]
+     save as:  public/sounds/Narration/identify_enchantment_a1_win.wav
+     narrate:  The residue reveals a vision of the boss chamber and its location on your map.
+
+137. [Identify Enchantment — Read the residue (failure)]
+     save as:  public/sounds/Narration/identify_enchantment_a1_lose.wav
+     narrate:  The residue fades too quickly to read.
+
+138. [Annal Tablet]
+     save as:  public/sounds/Narration/annal_tablet.wav
+     narrate:  An ancient stone tablet is carved with intricate script.
+
+139. [Annal Tablet — Copy the carvings]
+     save as:  public/sounds/Narration/annal_tablet_a0_act.wav
+     narrate:  Copy the carvings
+
+140. [Annal Tablet — Copy the carvings (success)]
+     save as:  public/sounds/Narration/annal_tablet_a0_win.wav
+     narrate:  Your careful rubbing captures a floor plan etched into the border.
+
+141. [Annal Tablet — Copy the carvings (failure)]
+     save as:  public/sounds/Narration/annal_tablet_a0_lose.wav
+     narrate:  The rubbing smears. Nothing legible survives.
+
+142. [Annal Tablet — Translate the script]
+     save as:  public/sounds/Narration/annal_tablet_a1_act.wav
+     narrate:  Translate the script
+
+143. [Annal Tablet — Translate the script (success)]
+     save as:  public/sounds/Narration/annal_tablet_a1_win.wav
+     narrate:  You decipher the annals — the floor layout is revealed on your minimap.
+
+144. [Annal Tablet — Translate the script (failure)]
+     save as:  public/sounds/Narration/annal_tablet_a1_lose.wav
+     narrate:  The script is too eroded to read.
+
+145. [Annal Tablet — Divine the meaning]
+     save as:  public/sounds/Narration/annal_tablet_a2_act.wav
+     narrate:  Divine the meaning
+
+146. [Annal Tablet — Divine the meaning (success)]
+     save as:  public/sounds/Narration/annal_tablet_a2_win.wav
+     narrate:  You let the tablet speak through you — the whole floor unfolds in your mind, and the vision points to buried coin!
+
+147. [Annal Tablet — Divine the meaning (failure)]
+     save as:  public/sounds/Narration/annal_tablet_a2_lose.wav
+     narrate:  The divination collapses into noise and a splitting headache.
+
+148. [Tomb Rite]
+     save as:  public/sounds/Narration/tomb_rite.wav
+     narrate:  A sarcophagus bears funerary inscriptions.
+
+149. [Tomb Rite — Offer a simple blessing]
+     save as:  public/sounds/Narration/tomb_rite_a0_act.wav
+     narrate:  Offer a simple blessing
+
+150. [Tomb Rite — Offer a simple blessing (success)]
+     save as:  public/sounds/Narration/tomb_rite_a0_win.wav
+     narrate:  The spirit accepts your respect. The lid slides open an inch — enough.
+
+151. [Tomb Rite — Offer a simple blessing (failure)]
+     save as:  public/sounds/Narration/tomb_rite_a0_lose.wav
+     narrate:  The blessing goes unanswered. The lid stays sealed.
+
+152. [Tomb Rite — Recite the burial rites]
+     save as:  public/sounds/Narration/tomb_rite_a1_act.wav
+     narrate:  Recite the burial rites
+
+153. [Tomb Rite — Recite the burial rites (success)]
+     save as:  public/sounds/Narration/tomb_rite_a1_win.wav
+     narrate:  You recite the ancient rites. The sarcophagus opens, yielding fine grave goods.
+
+154. [Tomb Rite — Recite the burial rites (failure)]
+     save as:  public/sounds/Narration/tomb_rite_a1_lose.wav
+     narrate:  A spectral wail echoes through the chamber, but the lid holds.
+
+155. [Tomb Rite — Force the lid]
+     save as:  public/sounds/Narration/tomb_rite_a2_act.wav
+     narrate:  Force the lid
+
+156. [Tomb Rite — Force the lid (success)]
+     save as:  public/sounds/Narration/tomb_rite_a2_win.wav
+     narrate:  Stone grinds aside — the occupant was buried with everything they owned!
+
+157. [Tomb Rite — Force the lid (failure)]
+     save as:  public/sounds/Narration/tomb_rite_a2_lose.wav
+     narrate:  The lid slams back down on your fingers, and a chill saps your strength.
+
+158. [Architect Insight]
+     save as:  public/sounds/Narration/architect_insight.wav
+     narrate:  The room's architectural style is distinctive.
+
+159. [Architect Insight — Pace the walls]
+     save as:  public/sounds/Narration/architect_insight_a0_act.wav
+     narrate:  Pace the walls
+
+160. [Architect Insight — Pace the walls (success)]
+     save as:  public/sounds/Narration/architect_insight_a0_win.wav
+     narrate:  One wall is two feet thicker than it should be. A secret door!
+
+161. [Architect Insight — Pace the walls (failure)]
+     save as:  public/sounds/Narration/architect_insight_a0_lose.wav
+     narrate:  The walls measure true. Nothing hidden.
+
+162. [Architect Insight — Read the builder's style]
+     save as:  public/sounds/Narration/architect_insight_a1_act.wav
+     narrate:  Read the builder's style
+
+163. [Architect Insight — Read the builder's style (success)]
+     save as:  public/sounds/Narration/architect_insight_a1_win.wav
+     narrate:  You recognize the builder's mark — a secret door is nearby!
+
+164. [Architect Insight — Read the builder's style (failure)]
+     save as:  public/sounds/Narration/architect_insight_a1_lose.wav
+     narrate:  The room looks ordinary. No secrets here.
+
+165. [Hidden Armory]
+     save as:  public/sounds/Narration/hidden_armory.wav
+     narrate:  This room feels like it might have a concealed storage area.
+
+166. [Hidden Armory — Check for scuff marks]
+     save as:  public/sounds/Narration/hidden_armory_a0_act.wav
+     narrate:  Check for scuff marks
+
+167. [Hidden Armory — Check for scuff marks (success)]
+     save as:  public/sounds/Narration/hidden_armory_a0_win.wav
+     narrate:  Drag marks lead to a false panel — a piece of gear inside!
+
+168. [Hidden Armory — Check for scuff marks (failure)]
+     save as:  public/sounds/Narration/hidden_armory_a0_lose.wav
+     narrate:  The floor tells you nothing.
+
+169. [Hidden Armory — Search methodically]
+     save as:  public/sounds/Narration/hidden_armory_a1_act.wav
+     narrate:  Search methodically
+
+170. [Hidden Armory — Search methodically (success)]
+     save as:  public/sounds/Narration/hidden_armory_a1_win.wav
+     narrate:  Behind a false wall panel, you discover a piece of gear!
+
+171. [Hidden Armory — Search methodically (failure)]
+     save as:  public/sounds/Narration/hidden_armory_a1_lose.wav
+     narrate:  You find nothing of value.
+
+172. [Hidden Armory — Tear out the panels]
+     save as:  public/sounds/Narration/hidden_armory_a2_act.wav
+     narrate:  Tear out the panels
+
+173. [Hidden Armory — Tear out the panels (success)]
+     save as:  public/sounds/Narration/hidden_armory_a2_win.wav
+     narrate:  You rip every panel off the walls — an entire hidden rack of equipment!
+
+174. [Hidden Armory — Tear out the panels (failure)]
+     save as:  public/sounds/Narration/hidden_armory_a2_lose.wav
+     narrate:  A panel splinters, driving spikes into your hand.
+
+175. [Pressure Plate Puzzle]
+     save as:  public/sounds/Narration/pressure_plate_puzzle.wav
+     narrate:  A patterned floor stretches ahead. One wrong step and darts fly.
+
+176. [Pressure Plate Puzzle — Watch the dust patterns]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a0_act.wav
+     narrate:  Watch the dust patterns
+
+177. [Pressure Plate Puzzle — Watch the dust patterns (success)]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a0_win.wav
+     narrate:  Undisturbed dust marks the safe tiles. You cross to the pedestal at a stroll.
+
+178. [Pressure Plate Puzzle — Watch the dust patterns (failure)]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a0_lose.wav
+     narrate:  The dust lies evenly everywhere. No hints.
+
+179. [Pressure Plate Puzzle — Deduce the safe path]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a1_act.wav
+     narrate:  Deduce the safe path
+
+180. [Pressure Plate Puzzle — Deduce the safe path (success)]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a1_win.wav
+     narrate:  You map the safe path and reach the reward pedestal at the center.
+
+181. [Pressure Plate Puzzle — Deduce the safe path (failure)]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a1_lose.wav
+     narrate:  A wrong step triggers a dart trap! The party takes some scratches.
+
+182. [Pressure Plate Puzzle — Dance across the plates]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a2_act.wav
+     narrate:  Dance across the plates
+
+183. [Pressure Plate Puzzle — Dance across the plates (success)]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a2_win.wav
+     narrate:  You cartwheel through the dart volleys untouched and empty the pedestal — twice over!
+
+184. [Pressure Plate Puzzle — Dance across the plates (failure)]
+     save as:  public/sounds/Narration/pressure_plate_puzzle_a2_lose.wav
+     narrate:  Darts fill the air, and you catch several.
+
+185. [Search for Clues]
+     save as:  public/sounds/Narration/search_for_clues.wav
+     narrate:  A discarded journal lies in the corner.
+
+186. [Search for Clues — Skim the journal]
+     save as:  public/sounds/Narration/search_for_clues_a0_act.wav
+     narrate:  Skim the journal
+
+187. [Search for Clues — Skim the journal (success)]
+     save as:  public/sounds/Narration/search_for_clues_a0_win.wav
+     narrate:  A few legible pages hold useful notes about this dungeon.
+
+188. [Search for Clues — Skim the journal (failure)]
+     save as:  public/sounds/Narration/search_for_clues_a0_lose.wav
+     narrate:  The journal is mostly illegible.
+
+189. [Search for Clues — Cross-reference the entries]
+     save as:  public/sounds/Narration/search_for_clues_a1_act.wav
+     narrate:  Cross-reference the entries
+
+190. [Search for Clues — Cross-reference the entries (success)]
+     save as:  public/sounds/Narration/search_for_clues_a1_win.wav
+     narrate:  Dates and names line up — the journal yields real tactical insight.
+
+191. [Search for Clues — Cross-reference the entries (failure)]
+     save as:  public/sounds/Narration/search_for_clues_a1_lose.wav
+     narrate:  The references lead nowhere.
+
+192. [Overgrown Grove]
+     save as:  public/sounds/Narration/overgrown_grove.wav
+     narrate:  Rare alchemical herbs grow among the ancient roots.
+
+193. [Overgrown Grove — Gather the obvious herbs]
+     save as:  public/sounds/Narration/overgrown_grove_a0_act.wav
+     narrate:  Gather the obvious herbs
+
+194. [Overgrown Grove — Gather the obvious herbs (success)]
+     save as:  public/sounds/Narration/overgrown_grove_a0_win.wav
+     narrate:  You collect the common healing herbs you recognize on sight.
+
+195. [Overgrown Grove — Gather the obvious herbs (failure)]
+     save as:  public/sounds/Narration/overgrown_grove_a0_lose.wav
+     narrate:  The plants are common weeds. Nothing useful.
+
+196. [Overgrown Grove — Harvest the rare specimens]
+     save as:  public/sounds/Narration/overgrown_grove_a1_act.wav
+     narrate:  Harvest the rare specimens
+
+197. [Overgrown Grove — Harvest the rare specimens (success)]
+     save as:  public/sounds/Narration/overgrown_grove_a1_win.wav
+     narrate:  You gather several prime specimens — enough for healing potions!
+
+198. [Overgrown Grove — Harvest the rare specimens (failure)]
+     save as:  public/sounds/Narration/overgrown_grove_a1_lose.wav
+     narrate:  The rare herbs crumble at your touch. Wrong season.
+
+199. [Overgrown Grove — Strip the whole grove]
+     save as:  public/sounds/Narration/overgrown_grove_a2_act.wav
+     narrate:  Strip the whole grove
+
+200. [Overgrown Grove — Strip the whole grove (success)]
+     save as:  public/sounds/Narration/overgrown_grove_a2_win.wav
+     narrate:  You harvest everything — a full satchel of alchemical treasure!
+
+201. [Overgrown Grove — Strip the whole grove (failure)]
+     save as:  public/sounds/Narration/overgrown_grove_a2_lose.wav
+     narrate:  A defensive bloom bursts, searing your skin with sap.
+
+202. [Mushroom Chamber]
+     save as:  public/sounds/Narration/mushroom_chamber.wav
+     narrate:  A dazzling array of fungi covers the walls. Some heal — some kill.
+
+203. [Mushroom Chamber — Pick only what you know]
+     save as:  public/sounds/Narration/mushroom_chamber_a0_act.wav
+     narrate:  Pick only what you know
+
+204. [Mushroom Chamber — Pick only what you know (success)]
+     save as:  public/sounds/Narration/mushroom_chamber_a0_win.wav
+     narrate:  A modest handful of trusted caps — the party shares a small meal.
+
+205. [Mushroom Chamber — Pick only what you know (failure)]
+     save as:  public/sounds/Narration/mushroom_chamber_a0_lose.wav
+     narrate:  Nothing here you can vouch for. Better hungry than dead.
+
+206. [Mushroom Chamber — Sort edible from deadly]
+     save as:  public/sounds/Narration/mushroom_chamber_a1_act.wav
+     narrate:  Sort edible from deadly
+
+207. [Mushroom Chamber — Sort edible from deadly (success)]
+     save as:  public/sounds/Narration/mushroom_chamber_a1_win.wav
+     narrate:  You sort the edible from the poisonous. The party shares the safe ones.
+
+208. [Mushroom Chamber — Sort edible from deadly (failure)]
+     save as:  public/sounds/Narration/mushroom_chamber_a1_lose.wav
+     narrate:  Sleep spores trigger! The party coughs in the haze.
+
+209. [Mushroom Chamber — Trust your gut and feast]
+     save as:  public/sounds/Narration/mushroom_chamber_a2_act.wav
+     narrate:  Trust your gut and feast
+
+210. [Mushroom Chamber — Trust your gut and feast (success)]
+     save as:  public/sounds/Narration/mushroom_chamber_a2_win.wav
+     narrate:  Every cap you pick is a restorative rarity — the party feasts!
+
+211. [Mushroom Chamber — Trust your gut and feast (failure)]
+     save as:  public/sounds/Narration/mushroom_chamber_a2_lose.wav
+     narrate:  That one was definitely poison.
+
+212. [Toxic Pool]
+     save as:  public/sounds/Narration/toxic_pool.wav
+     narrate:  A pool of bubbling gas fills a low section of the room. A stash glints on the far side.
+
+213. [Toxic Pool — Wait and watch the fumes]
+     save as:  public/sounds/Narration/toxic_pool_a0_act.wav
+     narrate:  Wait and watch the fumes
+
+214. [Toxic Pool — Wait and watch the fumes (success)]
+     save as:  public/sounds/Narration/toxic_pool_a0_win.wav
+     narrate:  The gas ebbs on a cycle. You time your crossing and back with room to spare.
+
+215. [Toxic Pool — Wait and watch the fumes (failure)]
+     save as:  public/sounds/Narration/toxic_pool_a0_lose.wav
+     narrate:  The fumes never thin. Not worth the lungs.
+
+216. [Toxic Pool — Read the gas currents]
+     save as:  public/sounds/Narration/toxic_pool_a1_act.wav
+     narrate:  Read the gas currents
+
+217. [Toxic Pool — Read the gas currents (success)]
+     save as:  public/sounds/Narration/toxic_pool_a1_win.wav
+     narrate:  You identify the clear route through the gas and reach the stash.
+
+218. [Toxic Pool — Read the gas currents (failure)]
+     save as:  public/sounds/Narration/toxic_pool_a1_lose.wav
+     narrate:  The gas stings your eyes. You retreat.
+
+219. [Toxic Pool — Hold breath and dash]
+     save as:  public/sounds/Narration/toxic_pool_a2_act.wav
+     narrate:  Hold breath and dash
+
+220. [Toxic Pool — Hold breath and dash (success)]
+     save as:  public/sounds/Narration/toxic_pool_a2_win.wav
+     narrate:  Thirty seconds of sprinting through poison — and you carry back everything!
+
+221. [Toxic Pool — Hold breath and dash (failure)]
+     save as:  public/sounds/Narration/toxic_pool_a2_lose.wav
+     narrate:  You gasp halfway. The gas burns going down.
+
+222. [Desecrated Shrine]
+     save as:  public/sounds/Narration/desecrated_shrine.wav
+     narrate:  A once-holy shrine has been corrupted by dark energy.
+
+223. [Desecrated Shrine — Cleanse the outer icons]
+     save as:  public/sounds/Narration/desecrated_shrine_a0_act.wav
+     narrate:  Cleanse the outer icons
+
+224. [Desecrated Shrine — Cleanse the outer icons (success)]
+     save as:  public/sounds/Narration/desecrated_shrine_a0_win.wav
+     narrate:  The icons brighten. A gentle warmth settles over the party as it rests.
+
+225. [Desecrated Shrine — Cleanse the outer icons (failure)]
+     save as:  public/sounds/Narration/desecrated_shrine_a0_lose.wav
+     narrate:  The grime won't lift. The corruption runs deeper than the surface.
+
+226. [Desecrated Shrine — Perform the purification]
+     save as:  public/sounds/Narration/desecrated_shrine_a1_act.wav
+     narrate:  Perform the purification
+
+227. [Desecrated Shrine — Perform the purification (success)]
+     save as:  public/sounds/Narration/desecrated_shrine_a1_win.wav
+     narrate:  The shrine glows with restored light — the party rests, fully healed!
+
+228. [Desecrated Shrine — Perform the purification (failure)]
+     save as:  public/sounds/Narration/desecrated_shrine_a1_lose.wav
+     narrate:  The corruption holds. The shrine remains defiled.
+
+229. [Desecrated Shrine — Burn out the corruption]
+     save as:  public/sounds/Narration/desecrated_shrine_a2_act.wav
+     narrate:  Burn out the corruption
+
+230. [Desecrated Shrine — Burn out the corruption (success)]
+     save as:  public/sounds/Narration/desecrated_shrine_a2_win.wav
+     narrate:  Dark energy screams out of the stone — the shrine blazes, and its offering bowl fills with old tithes!
+
+231. [Desecrated Shrine — Burn out the corruption (failure)]
+     save as:  public/sounds/Narration/desecrated_shrine_a2_lose.wav
+     narrate:  The corruption lashes back before the ritual completes.
+
+232. [Heretic Ward]
+     save as:  public/sounds/Narration/heretic_ward.wav
+     narrate:  Profane symbols seal this door.
+
+233. [Heretic Ward — Find the anchor glyph]
+     save as:  public/sounds/Narration/heretic_ward_a0_act.wav
+     narrate:  Find the anchor glyph
+
+234. [Heretic Ward — Find the anchor glyph (success)]
+     save as:  public/sounds/Narration/heretic_ward_a0_win.wav
+     narrate:  Every ward has a keystone. You scratch through it and the seal unravels.
+
+235. [Heretic Ward — Find the anchor glyph (failure)]
+     save as:  public/sounds/Narration/heretic_ward_a0_lose.wav
+     narrate:  The glyphs loop into themselves. No anchor found.
+
+236. [Heretic Ward — Recite the counter-litany]
+     save as:  public/sounds/Narration/heretic_ward_a1_act.wav
+     narrate:  Recite the counter-litany
+
+237. [Heretic Ward — Recite the counter-litany (success)]
+     save as:  public/sounds/Narration/heretic_ward_a1_win.wav
+     narrate:  Your recitation breaks the ward! The door swings open to a bonus chamber.
+
+238. [Heretic Ward — Recite the counter-litany (failure)]
+     save as:  public/sounds/Narration/heretic_ward_a1_lose.wav
+     narrate:  The symbols flash red. The door stays sealed.
+
+239. [Heretic Ward — Break the door down]
+     save as:  public/sounds/Narration/heretic_ward_a2_act.wav
+     narrate:  Break the door down
+
+240. [Heretic Ward — Break the door down (success)]
+     save as:  public/sounds/Narration/heretic_ward_a2_win.wav
+     narrate:  Ward or no ward, hinges are hinges. The chamber and everything in it is yours!
+
+241. [Heretic Ward — Break the door down (failure)]
+     save as:  public/sounds/Narration/heretic_ward_a2_lose.wav
+     narrate:  The ward detonates with a thunderclap heard through the whole floor.
+
+242. [Holy Symbol]
+     save as:  public/sounds/Narration/holy_symbol.wav
+     narrate:  A buried relic peeks from the rubble.
+
+243. [Holy Symbol — Dig it out carefully]
+     save as:  public/sounds/Narration/holy_symbol_a0_act.wav
+     narrate:  Dig it out carefully
+
+244. [Holy Symbol — Dig it out carefully (success)]
+     save as:  public/sounds/Narration/holy_symbol_a0_win.wav
+     narrate:  You free the relic intact — a collector will pay well.
+
+245. [Holy Symbol — Dig it out carefully (failure)]
+     save as:  public/sounds/Narration/holy_symbol_a0_lose.wav
+     narrate:  It crumbles as you pull. Just corroded tin.
+
+246. [Holy Symbol — Identify the relic]
+     save as:  public/sounds/Narration/holy_symbol_a1_act.wav
+     narrate:  Identify the relic
+
+247. [Holy Symbol — Identify the relic (success)]
+     save as:  public/sounds/Narration/holy_symbol_a1_win.wav
+     narrate:  You recognize the holy symbol and recover it properly — a valuable find!
+
+248. [Holy Symbol — Identify the relic (failure)]
+     save as:  public/sounds/Narration/holy_symbol_a1_lose.wav
+     narrate:  Just a rock. Nothing special.
+
+249. [Caged Beast]
+     save as:  public/sounds/Narration/caged_beast.wav
+     narrate:  A magical creature is trapped in a cage. It looks scared but not hostile.
+
+250. [Caged Beast — Read its body language]
+     save as:  public/sounds/Narration/caged_beast_a0_act.wav
+     narrate:  Read its body language
+
+251. [Caged Beast — Read its body language (success)]
+     save as:  public/sounds/Narration/caged_beast_a0_win.wav
+     narrate:  You understand what it needs and it warms to you, sniffing out hidden things nearby.
+
+252. [Caged Beast — Read its body language (failure)]
+     save as:  public/sounds/Narration/caged_beast_a0_lose.wav
+     narrate:  The creature stays pressed to the far bars.
+
+253. [Caged Beast — Befriend the creature]
+     save as:  public/sounds/Narration/caged_beast_a1_act.wav
+     narrate:  Befriend the creature
+
+254. [Caged Beast — Befriend the creature (success)]
+     save as:  public/sounds/Narration/caged_beast_a1_win.wav
+     narrate:  You befriend the creature! It follows the party, sniffing out hidden items.
+
+255. [Caged Beast — Befriend the creature (failure)]
+     save as:  public/sounds/Narration/caged_beast_a1_lose.wav
+     narrate:  The creature cowers in the back of its cage, unreachable.
+
+256. [Caged Beast — Open the cage]
+     save as:  public/sounds/Narration/caged_beast_a2_act.wav
+     narrate:  Open the cage
+
+257. [Caged Beast — Open the cage (success)]
+     save as:  public/sounds/Narration/caged_beast_a2_win.wav
+     narrate:  It bounds out — and adopts the whole party, dragging over a buried keepsake as tribute!
+
+258. [Caged Beast — Open the cage (failure)]
+     save as:  public/sounds/Narration/caged_beast_a2_lose.wav
+     narrate:  It panics and rakes you on the way out.
+
+259. [Pack Beast]
+     save as:  public/sounds/Narration/pack_beast.wav
+     narrate:  A spooked pack mule carries valuable goods. It's about to bolt.
+
+260. [Pack Beast — Calm it with fodder]
+     save as:  public/sounds/Narration/pack_beast_a0_act.wav
+     narrate:  Calm it with fodder
+
+261. [Pack Beast — Calm it with fodder (success)]
+     save as:  public/sounds/Narration/pack_beast_a0_win.wav
+     narrate:  It settles over a handful of feed and lets you unstrap a saddlebag.
+
+262. [Pack Beast — Calm it with fodder (failure)]
+     save as:  public/sounds/Narration/pack_beast_a0_lose.wav
+     narrate:  It shies from your hand and trots away.
+
+263. [Pack Beast — Soothe the mule]
+     save as:  public/sounds/Narration/pack_beast_a1_act.wav
+     narrate:  Soothe the mule
+
+264. [Pack Beast — Soothe the mule (success)]
+     save as:  public/sounds/Narration/pack_beast_a1_win.wav
+     narrate:  You soothe the mule. It drops its cargo before trotting off.
+
+265. [Pack Beast — Soothe the mule (failure)]
+     save as:  public/sounds/Narration/pack_beast_a1_lose.wav
+     narrate:  The mule bolts with the goods.
+
+266. [Pack Beast — Grab the harness]
+     save as:  public/sounds/Narration/pack_beast_a2_act.wav
+     narrate:  Grab the harness
+
+267. [Pack Beast — Grab the harness (success)]
+     save as:  public/sounds/Narration/pack_beast_a2_win.wav
+     narrate:  You wrestle the mule still — every saddlebag is yours!
+
+268. [Pack Beast — Grab the harness (failure)]
+     save as:  public/sounds/Narration/pack_beast_a2_lose.wav
+     narrate:  A hoof catches you square in the ribs.
+
+269. [Lost Pet]
+     save as:  public/sounds/Narration/lost_pet.wav
+     narrate:  A lost drake pup sniffs at your pack.
+
+270. [Lost Pet — Leave a scent trail]
+     save as:  public/sounds/Narration/lost_pet_a0_act.wav
+     narrate:  Leave a scent trail
+
+271. [Lost Pet — Leave a scent trail (success)]
+     save as:  public/sounds/Narration/lost_pet_a0_win.wav
+     narrate:  It follows the trail of jerky right to you — then leads you to its owner's pack.
+
+272. [Lost Pet — Leave a scent trail (failure)]
+     save as:  public/sounds/Narration/lost_pet_a0_lose.wav
+     narrate:  It loses interest and skitters off.
+
+273. [Lost Pet — Win its trust]
+     save as:  public/sounds/Narration/lost_pet_a1_act.wav
+     narrate:  Win its trust
+
+274. [Lost Pet — Win its trust (success)]
+     save as:  public/sounds/Narration/lost_pet_a1_win.wav
+     narrate:  The drake wags its tail and leads you to its former owner's stash!
+
+275. [Lost Pet — Win its trust (failure)]
+     save as:  public/sounds/Narration/lost_pet_a1_lose.wav
+     narrate:  It runs away before you can approach.
+
+276. [Mimic Sense]
+     save as:  public/sounds/Narration/mimic_sense.wav
+     narrate:  Something feels wrong about that chest in the corner.
+
+277. [Mimic Sense — Watch from a distance]
+     save as:  public/sounds/Narration/mimic_sense_a0_act.wav
+     narrate:  Watch from a distance
+
+278. [Mimic Sense — Watch from a distance (success)]
+     save as:  public/sounds/Narration/mimic_sense_a0_win.wav
+     narrate:  You catch it breathing. Mimic confirmed — the party won't be surprised.
+
+279. [Mimic Sense — Watch from a distance (failure)]
+     save as:  public/sounds/Narration/mimic_sense_a0_lose.wav
+     narrate:  It looks like a chest. Probably. You keep your distance anyway.
+
+280. [Mimic Sense — Study its tells]
+     save as:  public/sounds/Narration/mimic_sense_a1_act.wav
+     narrate:  Study its tells
+
+281. [Mimic Sense — Study its tells (success)]
+     save as:  public/sounds/Narration/mimic_sense_a1_win.wav
+     narrate:  You spot the telltale signs — it's a mimic! The party strikes first.
+
+282. [Mimic Sense — Study its tells (failure)]
+     save as:  public/sounds/Narration/mimic_sense_a1_lose.wav
+     narrate:  Seems normal enough. You proceed cautiously.
+
+283. [Mimic Sense — Poke it with a sword]
+     save as:  public/sounds/Narration/mimic_sense_a2_act.wav
+     narrate:  Poke it with a sword
+
+284. [Mimic Sense — Poke it with a sword (success)]
+     save as:  public/sounds/Narration/mimic_sense_a2_win.wav
+     narrate:  It shrieks and spits out its swallowed hoard before fleeing into the dark!
+
+285. [Mimic Sense — Poke it with a sword (failure)]
+     save as:  public/sounds/Narration/mimic_sense_a2_lose.wav
+     narrate:  It bites the sword — and your arm with it.
+
+286. [Merchant Riddle]
+     save as:  public/sounds/Narration/merchant_riddle.wav
+     narrate:  The camp merchant smiles slyly. "Answer my riddle, and the discount is steep."
+
+287. [Merchant Riddle — Recall old riddle-lore]
+     save as:  public/sounds/Narration/merchant_riddle_a0_act.wav
+     narrate:  Recall old riddle-lore
+
+288. [Merchant Riddle — Recall old riddle-lore (success)]
+     save as:  public/sounds/Narration/merchant_riddle_a0_win.wav
+     narrate:  An old chestnut — you've read this one. The merchant grumbles and pays out.
+
+289. [Merchant Riddle — Recall old riddle-lore (failure)]
+     save as:  public/sounds/Narration/merchant_riddle_a0_lose.wav
+     narrate:  None of your books covered this one.
+
+290. [Merchant Riddle — See through the trick]
+     save as:  public/sounds/Narration/merchant_riddle_a1_act.wav
+     narrate:  See through the trick
+
+291. [Merchant Riddle — See through the trick (success)]
+     save as:  public/sounds/Narration/merchant_riddle_a1_win.wav
+     narrate:  You see through the merchant's trick and claim the prize!
+
+292. [Merchant Riddle — See through the trick (failure)]
+     save as:  public/sounds/Narration/merchant_riddle_a1_lose.wav
+     narrate:  The riddle stumps you. You pay the normal price.
+
+293. [Fake Wall]
+     save as:  public/sounds/Narration/fake_wall.wav
+     narrate:  The room feels slightly too small for its outer dimensions.
+
+294. [Fake Wall — Listen for drafts]
+     save as:  public/sounds/Narration/fake_wall_a0_act.wav
+     narrate:  Listen for drafts
+
+295. [Fake Wall — Listen for drafts (success)]
+     save as:  public/sounds/Narration/fake_wall_a0_win.wav
+     narrate:  A whisper of moving air betrays the seam. The hidden room opens.
+
+296. [Fake Wall — Listen for drafts (failure)]
+     save as:  public/sounds/Narration/fake_wall_a0_lose.wav
+     narrate:  The air is dead still.
+
+297. [Fake Wall — Feel what's off about the room]
+     save as:  public/sounds/Narration/fake_wall_a1_act.wav
+     narrate:  Feel what's off about the room
+
+298. [Fake Wall — Feel what's off about the room (success)]
+     save as:  public/sounds/Narration/fake_wall_a1_win.wav
+     narrate:  A section of wall sounds hollow! You break through to a secret room with loot.
+
+299. [Fake Wall — Feel what's off about the room (failure)]
+     save as:  public/sounds/Narration/fake_wall_a1_lose.wav
+     narrate:  Nothing unusual about these walls.
+
+300. [Fake Wall — Knock the wall in]
+     save as:  public/sounds/Narration/fake_wall_a2_act.wav
+     narrate:  Knock the wall in
+
+301. [Fake Wall — Knock the wall in (success)]
+     save as:  public/sounds/Narration/fake_wall_a2_win.wav
+     narrate:  The false wall caves — the smugglers' whole cache spills out!
+
+302. [Fake Wall — Knock the wall in (failure)]
+     save as:  public/sounds/Narration/fake_wall_a2_lose.wav
+     narrate:  That wall was real. Your shoulder disagrees with it.
+
+303. [Sick Wanderer]
+     save as:  public/sounds/Narration/sick_wanderer.wav
+     narrate:  A wounded NPC lies against the wall, feverish and weak.
+
+304. [Sick Wanderer — Brew a folk remedy]
+     save as:  public/sounds/Narration/sick_wanderer_a0_act.wav
+     narrate:  Brew a folk remedy
+
+305. [Sick Wanderer — Brew a folk remedy (success)]
+     save as:  public/sounds/Narration/sick_wanderer_a0_win.wav
+     narrate:  The tea breaks the fever. Grateful, they tell you of a hidden room.
+
+306. [Sick Wanderer — Brew a folk remedy (failure)]
+     save as:  public/sounds/Narration/sick_wanderer_a0_lose.wav
+     narrate:  The remedy soothes but doesn't cure. They sleep restlessly.
+
+307. [Sick Wanderer — Diagnose and treat]
+     save as:  public/sounds/Narration/sick_wanderer_a1_act.wav
+     narrate:  Diagnose and treat
+
+308. [Sick Wanderer — Diagnose and treat (success)]
+     save as:  public/sounds/Narration/sick_wanderer_a1_win.wav
+     narrate:  You treat the ailment. Grateful, they hand you a key to a locked door on this floor.
+
+309. [Sick Wanderer — Diagnose and treat (failure)]
+     save as:  public/sounds/Narration/sick_wanderer_a1_lose.wav
+     narrate:  The ailment is beyond your skill.
+
+310. [Sick Wanderer — Attempt the risky surgery]
+     save as:  public/sounds/Narration/sick_wanderer_a2_act.wav
+     narrate:  Attempt the risky surgery
+
+311. [Sick Wanderer — Attempt the risky surgery (success)]
+     save as:  public/sounds/Narration/sick_wanderer_a2_win.wav
+     narrate:  The surgery succeeds beyond hope! They press their entire map and coin purse on you.
+
+312. [Sick Wanderer — Attempt the risky surgery (failure)]
+     save as:  public/sounds/Narration/sick_wanderer_a2_lose.wav
+     narrate:  You do more harm than good. They wave you away, wincing.
+
+313. [Triage Aftermath]
+     save as:  public/sounds/Narration/triage_aftermath.wav
+     narrate:  After the fight, the party's wounds need tending.
+
+314. [Triage Aftermath — Apply salves and rest]
+     save as:  public/sounds/Narration/triage_aftermath_a0_act.wav
+     narrate:  Apply salves and rest
+
+315. [Triage Aftermath — Apply salves and rest (success)]
+     save as:  public/sounds/Narration/triage_aftermath_a0_win.wav
+     narrate:  Field salves take the edge off — everyone feels a little better.
+
+316. [Triage Aftermath — Apply salves and rest (failure)]
+     save as:  public/sounds/Narration/triage_aftermath_a0_lose.wav
+     narrate:  The salves have gone rancid. No help there.
+
+317. [Triage Aftermath — Proper triage]
+     save as:  public/sounds/Narration/triage_aftermath_a1_act.wav
+     narrate:  Proper triage
+
+318. [Triage Aftermath — Proper triage (success)]
+     save as:  public/sounds/Narration/triage_aftermath_a1_win.wav
+     narrate:  You bandage wounds and set minor fractures — everyone regains vitality.
+
+319. [Triage Aftermath — Proper triage (failure)]
+     save as:  public/sounds/Narration/triage_aftermath_a1_lose.wav
+     narrate:  The injuries are too fresh for field medicine to help much.
+
+320. [Triage Aftermath — Aggressive field surgery]
+     save as:  public/sounds/Narration/triage_aftermath_a2_act.wav
+     narrate:  Aggressive field surgery
+
+321. [Triage Aftermath — Aggressive field surgery (success)]
+     save as:  public/sounds/Narration/triage_aftermath_a2_win.wav
+     narrate:  Stitches, splints, and one very brave incision — the party feels remade!
+
+322. [Triage Aftermath — Aggressive field surgery (failure)]
+     save as:  public/sounds/Narration/triage_aftermath_a2_lose.wav
+     narrate:  The scalpel slips. Now there's one more wound to bind.
+
+323. [Plague Source]
+     save as:  public/sounds/Narration/plague_source.wav
+     narrate:  A foul contamination seeps from a crack in the floor.
+
+324. [Plague Source — Read the flora die-off]
+     save as:  public/sounds/Narration/plague_source_a0_act.wav
+     narrate:  Read the flora die-off
+
+325. [Plague Source — Read the flora die-off (success)]
+     save as:  public/sounds/Narration/plague_source_a0_win.wav
+     narrate:  The withered moss maps the seepage. You chart the safe ground for the party.
+
+326. [Plague Source — Read the flora die-off (failure)]
+     save as:  public/sounds/Narration/plague_source_a0_lose.wav
+     narrate:  The die-off pattern makes no sense.
+
+327. [Plague Source — Neutralize the source]
+     save as:  public/sounds/Narration/plague_source_a1_act.wav
+     narrate:  Neutralize the source
+
+328. [Plague Source — Neutralize the source (success)]
+     save as:  public/sounds/Narration/plague_source_a1_win.wav
+     narrate:  You identify the contamination and neutralize it. The area is safe now.
+
+329. [Plague Source — Neutralize the source (failure)]
+     save as:  public/sounds/Narration/plague_source_a1_lose.wav
+     narrate:  The contamination remains, too hazardous to approach.
+
+330. [Plague Source — Purge it with raw magic]
+     save as:  public/sounds/Narration/plague_source_a2_act.wav
+     narrate:  Purge it with raw magic
+
+331. [Plague Source — Purge it with raw magic (success)]
+     save as:  public/sounds/Narration/plague_source_a2_win.wav
+     narrate:  Your purge sterilizes the crack — and crystallizes the residue into something sellable!
+
+332. [Plague Source — Purge it with raw magic (failure)]
+     save as:  public/sounds/Narration/plague_source_a2_lose.wav
+     narrate:  The purge backfires, splashing you with the stuff.
+
+333. [Secret Junction]
+     save as:  public/sounds/Narration/secret_junction.wav
+     narrate:  Something about this room feels off, like there's more here than meets the eye.
+
+334. [Secret Junction — Measure the room]
+     save as:  public/sounds/Narration/secret_junction_a0_act.wav
+     narrate:  Measure the room
+
+335. [Secret Junction — Measure the room (success)]
+     save as:  public/sounds/Narration/secret_junction_a0_win.wav
+     narrate:  The math doesn't add up — and the missing space holds a cache.
+
+336. [Secret Junction — Measure the room (failure)]
+     save as:  public/sounds/Narration/secret_junction_a0_lose.wav
+     narrate:  The dimensions check out. Just a room.
+
+337. [Secret Junction — Spot the hairline crack]
+     save as:  public/sounds/Narration/secret_junction_a1_act.wav
+     narrate:  Spot the hairline crack
+
+338. [Secret Junction — Spot the hairline crack (success)]
+     save as:  public/sounds/Narration/secret_junction_a1_win.wav
+     narrate:  You notice a hairline crack in the masonry — a secret door! It leads to a bonus room.
+
+339. [Secret Junction — Spot the hairline crack (failure)]
+     save as:  public/sounds/Narration/secret_junction_a1_lose.wav
+     narrate:  The walls are blank. Nothing hidden here.
+
+340. [Secret Junction — Sound the walls with a hammer]
+     save as:  public/sounds/Narration/secret_junction_a2_act.wav
+     narrate:  Sound the walls with a hammer
+
+341. [Secret Junction — Sound the walls with a hammer (success)]
+     save as:  public/sounds/Narration/secret_junction_a2_win.wav
+     narrate:  CLANG — hollow! You smash straight into the hidden vault!
+
+342. [Secret Junction — Sound the walls with a hammer (failure)]
+     save as:  public/sounds/Narration/secret_junction_a2_lose.wav
+     narrate:  The hammering echoes down every corridor on the floor.
+
+343. [Hidden Switch]
+     save as:  public/sounds/Narration/hidden_switch.wav
+     narrate:  The floor has a subtle pattern. One stone might be a pressure switch.
+
+344. [Hidden Switch — Map the floor pattern]
+     save as:  public/sounds/Narration/hidden_switch_a0_act.wav
+     narrate:  Map the floor pattern
+
+345. [Hidden Switch — Map the floor pattern (success)]
+     save as:  public/sounds/Narration/hidden_switch_a0_win.wav
+     narrate:  The pattern resolves into a sequence. The last stone sinks with a click.
+
+346. [Hidden Switch — Map the floor pattern (failure)]
+     save as:  public/sounds/Narration/hidden_switch_a0_lose.wav
+     narrate:  The pattern repeats endlessly. No anomaly.
+
+347. [Hidden Switch — Spot the depression]
+     save as:  public/sounds/Narration/hidden_switch_a1_act.wav
+     narrate:  Spot the depression
+
+348. [Hidden Switch — Spot the depression (success)]
+     save as:  public/sounds/Narration/hidden_switch_a1_win.wav
+     narrate:  You spot the worn depression. Stepping on it opens a treasure alcove!
+
+349. [Hidden Switch — Spot the depression (failure)]
+     save as:  public/sounds/Narration/hidden_switch_a1_lose.wav
+     narrate:  Nothing stands out. Just another room.
+
+350. [Hidden Switch — Stomp every stone]
+     save as:  public/sounds/Narration/hidden_switch_a2_act.wav
+     narrate:  Stomp every stone
+
+351. [Hidden Switch — Stomp every stone (success)]
+     save as:  public/sounds/Narration/hidden_switch_a2_win.wav
+     narrate:  Stomp seventeen finds it — the alcove opens wide, twice the cache you hoped for!
+
+352. [Hidden Switch — Stomp every stone (failure)]
+     save as:  public/sounds/Narration/hidden_switch_a2_lose.wav
+     narrate:  Stomp nine was a spike trigger.
+
+353. [Ambush Warning]
+     save as:  public/sounds/Narration/ambush_warning.wav
+     narrate:  The signs are subtle — disturbed dust, a faint smell. You might not be alone.
+
+354. [Ambush Warning — Read the tracks]
+     save as:  public/sounds/Narration/ambush_warning_a0_act.wav
+     narrate:  Read the tracks
+
+355. [Ambush Warning — Read the tracks (success)]
+     save as:  public/sounds/Narration/ambush_warning_a0_win.wav
+     narrate:  Fresh tracks, headed east. The party won't be caught off guard.
+
+356. [Ambush Warning — Read the tracks (failure)]
+     save as:  public/sounds/Narration/ambush_warning_a0_lose.wav
+     narrate:  The tracks are old. Or you're reading them wrong.
+
+357. [Ambush Warning — Notice the disturbed dust]
+     save as:  public/sounds/Narration/ambush_warning_a1_act.wav
+     narrate:  Notice the disturbed dust
+
+358. [Ambush Warning — Notice the disturbed dust (success)]
+     save as:  public/sounds/Narration/ambush_warning_a1_win.wav
+     narrate:  You notice tracks! A lurking monster group is nearby — the party prepares.
+
+359. [Ambush Warning — Notice the disturbed dust (failure)]
+     save as:  public/sounds/Narration/ambush_warning_a1_lose.wav
+     narrate:  No sign of anything lurking nearby.
+
+360. [Treasure Glint]
+     save as:  public/sounds/Narration/treasure_glint.wav
+     narrate:  Torchlight catches something shiny in the rubble.
+
+361. [Treasure Glint — Follow the glint]
+     save as:  public/sounds/Narration/treasure_glint_a0_act.wav
+     narrate:  Follow the glint
+
+362. [Treasure Glint — Follow the glint (success)]
+     save as:  public/sounds/Narration/treasure_glint_a0_win.wav
+     narrate:  A coin — and a thin trail of them leading to a spilled purse.
+
+363. [Treasure Glint — Follow the glint (failure)]
+     save as:  public/sounds/Narration/treasure_glint_a0_lose.wav
+     narrate:  Just a shadow playing tricks on you.
+
+364. [Treasure Glint — Dig through the rubble]
+     save as:  public/sounds/Narration/treasure_glint_a1_act.wav
+     narrate:  Dig through the rubble
+
+365. [Treasure Glint — Dig through the rubble (success)]
+     save as:  public/sounds/Narration/treasure_glint_a1_win.wav
+     narrate:  You pry up a loose stone and find a small cache of gold!
+
+366. [Treasure Glint — Dig through the rubble (failure)]
+     save as:  public/sounds/Narration/treasure_glint_a1_lose.wav
+     narrate:  Nothing under the rubble but more rubble.
+
+367. [Treasure Glint — Heave the slab aside]
+     save as:  public/sounds/Narration/treasure_glint_a2_act.wav
+     narrate:  Heave the slab aside
+
+368. [Treasure Glint — Heave the slab aside (success)]
+     save as:  public/sounds/Narration/treasure_glint_a2_win.wav
+     narrate:  Under the slab: an entire strongbox, untouched for a century!
+
+369. [Treasure Glint — Heave the slab aside (failure)]
+     save as:  public/sounds/Narration/treasure_glint_a2_lose.wav
+     narrate:  The slab slips and pins your foot.
+
+370. [Lost Trail]
+     save as:  public/sounds/Narration/lost_trail.wav
+     narrate:  The path ahead forks. One way winds — the other might be a shortcut.
+
+371. [Lost Trail — Follow the worn path]
+     save as:  public/sounds/Narration/lost_trail_a0_act.wav
+     narrate:  Follow the worn path
+
+372. [Lost Trail — Follow the worn path (success)]
+     save as:  public/sounds/Narration/lost_trail_a0_win.wav
+     narrate:  Boot-worn stone marks the traveled route — a modest shortcut.
+
+373. [Lost Trail — Follow the worn path (failure)]
+     save as:  public/sounds/Narration/lost_trail_a0_lose.wav
+     narrate:  The trail leads in circles.
+
+374. [Lost Trail — Read the moss and airflow]
+     save as:  public/sounds/Narration/lost_trail_a1_act.wav
+     narrate:  Read the moss and airflow
+
+375. [Lost Trail — Read the moss and airflow (success)]
+     save as:  public/sounds/Narration/lost_trail_a1_win.wav
+     narrate:  The draft and moss growth point true — a shortcut straight toward the boss.
+
+376. [Lost Trail — Read the moss and airflow (failure)]
+     save as:  public/sounds/Narration/lost_trail_a1_lose.wav
+     narrate:  The signs contradict each other.
+
+377. [Lost Trail — Take the vertical shortcut]
+     save as:  public/sounds/Narration/lost_trail_a2_act.wav
+     narrate:  Take the vertical shortcut
+
+378. [Lost Trail — Take the vertical shortcut (success)]
+     save as:  public/sounds/Narration/lost_trail_a2_win.wav
+     narrate:  Up the wall, along a beam, down a shaft — you cut past half the floor and land beside someone's dropped purse!
+
+379. [Lost Trail — Take the vertical shortcut (failure)]
+     save as:  public/sounds/Narration/lost_trail_a2_lose.wav
+     narrate:  The beam snaps. It's a long way down.
+
+380. [Forage Supplies]
+     save as:  public/sounds/Narration/forage_supplies.wav
+     narrate:  The area has edible plants and hidden caches if you know where to look.
+
+381. [Forage Supplies — Gather the basics]
+     save as:  public/sounds/Narration/forage_supplies_a0_act.wav
+     narrate:  Gather the basics
+
+382. [Forage Supplies — Gather the basics (success)]
+     save as:  public/sounds/Narration/forage_supplies_a0_win.wav
+     narrate:  You scavenge successfully, finding useful supplies.
+
+383. [Forage Supplies — Gather the basics (failure)]
+     save as:  public/sounds/Narration/forage_supplies_a0_lose.wav
+     narrate:  Nothing useful here.
+
+384. [Forage Supplies — Harvest medicinal plants]
+     save as:  public/sounds/Narration/forage_supplies_a1_act.wav
+     narrate:  Harvest medicinal plants
+
+385. [Forage Supplies — Harvest medicinal plants (success)]
+     save as:  public/sounds/Narration/forage_supplies_a1_win.wav
+     narrate:  Proper herbs, properly cut — the makings of good medicine.
+
+386. [Forage Supplies — Harvest medicinal plants (failure)]
+     save as:  public/sounds/Narration/forage_supplies_a1_lose.wav
+     narrate:  The medicinal plants are all blighted.
+
+387. [Safe Camp]
+     save as:  public/sounds/Narration/safe_camp.wav
+     narrate:  This nook could serve as a safe resting spot — if it's as sheltered as it looks.
+
+388. [Safe Camp — Fortify the nook]
+     save as:  public/sounds/Narration/safe_camp_a0_act.wav
+     narrate:  Fortify the nook
+
+389. [Safe Camp — Fortify the nook (success)]
+     save as:  public/sounds/Narration/safe_camp_a0_win.wav
+     narrate:  Barricaded and quiet — the party takes a short rest.
+
+390. [Safe Camp — Fortify the nook (failure)]
+     save as:  public/sounds/Narration/safe_camp_a0_lose.wav
+     narrate:  Too exposed even with barricades. No rest here.
+
+391. [Safe Camp — Verify it's truly hidden]
+     save as:  public/sounds/Narration/safe_camp_a1_act.wav
+     narrate:  Verify it's truly hidden
+
+392. [Safe Camp — Verify it's truly hidden (success)]
+     save as:  public/sounds/Narration/safe_camp_a1_win.wav
+     narrate:  Sightlines checked, approaches watched — the party rests easy.
+
+393. [Safe Camp — Verify it's truly hidden (failure)]
+     save as:  public/sounds/Narration/safe_camp_a1_lose.wav
+     narrate:  You spot three ways a monster could stumble in. Not safe.
+
+394. [Safe Camp — Rest right here, quietly]
+     save as:  public/sounds/Narration/safe_camp_a2_act.wav
+     narrate:  Rest right here, quietly
+
+395. [Safe Camp — Rest right here, quietly (success)]
+     save as:  public/sounds/Narration/safe_camp_a2_win.wav
+     narrate:  The whole party rests in perfect silence — deeply, wonderfully. And someone finds coins in the bedding!
+
+396. [Safe Camp — Rest right here, quietly (failure)]
+     save as:  public/sounds/Narration/safe_camp_a2_lose.wav
+     narrate:  A snore. A loud one. Things are coming.
+
+397. [Environment Hazard]
+     save as:  public/sounds/Narration/environment_hazard.wav
+     narrate:  The ceiling groans under shifting weight. Treasure lies beyond the unstable stretch.
+
+398. [Environment Hazard — Chart the stable ground]
+     save as:  public/sounds/Narration/environment_hazard_a0_act.wav
+     narrate:  Chart the stable ground
+
+399. [Environment Hazard — Chart the stable ground (success)]
+     save as:  public/sounds/Narration/environment_hazard_a0_win.wav
+     narrate:  You guide the party through the unstable area safely, reaching the treasure.
+
+400. [Environment Hazard — Chart the stable ground (failure)]
+     save as:  public/sounds/Narration/environment_hazard_a0_lose.wav
+     narrate:  No stable line through. You turn back.
+
+401. [Environment Hazard — Pick through nimbly]
+     save as:  public/sounds/Narration/environment_hazard_a1_act.wav
+     narrate:  Pick through nimbly
+
+402. [Environment Hazard — Pick through nimbly (success)]
+     save as:  public/sounds/Narration/environment_hazard_a1_win.wav
+     narrate:  Quick feet on solid spots — you're across and back with the goods.
+
+403. [Environment Hazard — Pick through nimbly (failure)]
+     save as:  public/sounds/Narration/environment_hazard_a1_lose.wav
+     narrate:  A near-miss from falling rock ends the attempt.
+
+404. [Environment Hazard — Everyone sprints through]
+     save as:  public/sounds/Narration/environment_hazard_a2_act.wav
+     narrate:  Everyone sprints through
+
+405. [Environment Hazard — Everyone sprints through (success)]
+     save as:  public/sounds/Narration/environment_hazard_a2_win.wav
+     narrate:  The party sprints as the ceiling rains stone — everyone through, arms full of everything!
+
+406. [Environment Hazard — Everyone sprints through (failure)]
+     save as:  public/sounds/Narration/environment_hazard_a2_lose.wav
+     narrate:  The collapse catches the stragglers.
+
+407. [Bluff the Sentinel]
+     save as:  public/sounds/Narration/bluff_the_sentinel.wav
+     narrate:  A spectral sentinel bars the way. It might respond to authority — or a convincing lie.
+
+408. [Bluff the Sentinel — Cite the old passphrases]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a0_act.wav
+     narrate:  Cite the old passphrases
+
+409. [Bluff the Sentinel — Cite the old passphrases (success)]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a0_win.wav
+     narrate:  The archaic greeting you recall satisfies its ancient orders. It stands aside.
+
+410. [Bluff the Sentinel — Cite the old passphrases (failure)]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a0_lose.wav
+     narrate:  The passphrase has evidently changed in the last thousand years.
+
+411. [Bluff the Sentinel — Bluff with confidence]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a1_act.wav
+     narrate:  Bluff with confidence
+
+412. [Bluff the Sentinel — Bluff with confidence (success)]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a1_win.wav
+     narrate:  Your confident bluff convinces the sentinel you belong here. It reveals the room's treasure.
+
+413. [Bluff the Sentinel — Bluff with confidence (failure)]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a1_lose.wav
+     narrate:  The sentinel doesn't buy it.
+
+414. [Bluff the Sentinel — Command it to kneel]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a2_act.wav
+     narrate:  Command it to kneel
+
+415. [Bluff the Sentinel — Command it to kneel (success)]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a2_win.wav
+     narrate:  It KNEELS. And surrenders the vault inventory it was guarding!
+
+416. [Bluff the Sentinel — Command it to kneel (failure)]
+     save as:  public/sounds/Narration/bluff_the_sentinel_a2_lose.wav
+     narrate:  Its shriek of outrage rings through the dungeon.
+
+417. [Feign Authority]
+     save as:  public/sounds/Narration/feign_authority.wav
+     narrate:  An official-looking courier approaches with a heavy satchel.
+
+418. [Feign Authority — Size up the courier]
+     save as:  public/sounds/Narration/feign_authority_a0_act.wav
+     narrate:  Size up the courier
+
+419. [Feign Authority — Size up the courier (success)]
+     save as:  public/sounds/Narration/feign_authority_a0_win.wav
+     narrate:  You read them perfectly and talk your way into a "delivery fee".
+
+420. [Feign Authority — Size up the courier (failure)]
+     save as:  public/sounds/Narration/feign_authority_a0_lose.wav
+     narrate:  They're unreadable. Best not to risk it.
+
+421. [Feign Authority — Pose as an inspector]
+     save as:  public/sounds/Narration/feign_authority_a1_act.wav
+     narrate:  Pose as an inspector
+
+422. [Feign Authority — Pose as an inspector (success)]
+     save as:  public/sounds/Narration/feign_authority_a1_win.wav
+     narrate:  You pose as an inspector so convincingly the courier hands over a tribute of gold!
+
+423. [Feign Authority — Pose as an inspector (failure)]
+     save as:  public/sounds/Narration/feign_authority_a1_lose.wav
+     narrate:  You're ignored. The courier passes by.
+
+424. [Feign Authority — Shake them down]
+     save as:  public/sounds/Narration/feign_authority_a2_act.wav
+     narrate:  Shake them down
+
+425. [Feign Authority — Shake them down (success)]
+     save as:  public/sounds/Narration/feign_authority_a2_win.wav
+     narrate:  They empty the whole satchel and run!
+
+426. [Feign Authority — Shake them down (failure)]
+     save as:  public/sounds/Narration/feign_authority_a2_lose.wav
+     narrate:  They blow a warning whistle as they flee.
+
+427. [False Trail]
+     save as:  public/sounds/Narration/false_trail.wav
+     narrate:  A rival party's tracks cross yours.
+
+428. [False Trail — Study the rival tracks]
+     save as:  public/sounds/Narration/false_trail_a0_act.wav
+     narrate:  Study the rival tracks
+
+429. [False Trail — Study the rival tracks (success)]
+     save as:  public/sounds/Narration/false_trail_a0_win.wav
+     narrate:  You backtrack them to a stashed supply drop. Finders keepers.
+
+430. [False Trail — Study the rival tracks (failure)]
+     save as:  public/sounds/Narration/false_trail_a0_lose.wav
+     narrate:  The tracks scatter over stone and vanish.
+
+431. [False Trail — Plant misdirection]
+     save as:  public/sounds/Narration/false_trail_a1_act.wav
+     narrate:  Plant misdirection
+
+432. [False Trail — Plant misdirection (success)]
+     save as:  public/sounds/Narration/false_trail_a1_win.wav
+     narrate:  The rivals follow your false trail and abandon their supplies. You claim the spoils!
+
+433. [False Trail — Plant misdirection (failure)]
+     save as:  public/sounds/Narration/false_trail_a1_lose.wav
+     narrate:  No one takes the bait.
+
+434. [Cower the Scavengers]
+     save as:  public/sounds/Narration/cower_the_scavengers.wav
+     narrate:  A pack of scavengers has claimed a cache of treasure.
+
+435. [Cower the Scavengers — Shoo them off gently]
+     save as:  public/sounds/Narration/cower_the_scavengers_a0_act.wav
+     narrate:  Shoo them off gently
+
+436. [Cower the Scavengers — Shoo them off gently (success)]
+     save as:  public/sounds/Narration/cower_the_scavengers_a0_win.wav
+     narrate:  Calm, firm gestures move them along. Most of the cache remains.
+
+437. [Cower the Scavengers — Shoo them off gently (failure)]
+     save as:  public/sounds/Narration/cower_the_scavengers_a0_lose.wav
+     narrate:  They snap and hold their ground.
+
+438. [Cower the Scavengers — A fierce display]
+     save as:  public/sounds/Narration/cower_the_scavengers_a1_act.wav
+     narrate:  A fierce display
+
+439. [Cower the Scavengers — A fierce display (success)]
+     save as:  public/sounds/Narration/cower_the_scavengers_a1_win.wav
+     narrate:  Your fierce display sends them scurrying! You collect their hoard.
+
+440. [Cower the Scavengers — A fierce display (failure)]
+     save as:  public/sounds/Narration/cower_the_scavengers_a1_lose.wav
+     narrate:  They scatter, but take the goods with them.
+
+441. [Cower the Scavengers — Charge the pack]
+     save as:  public/sounds/Narration/cower_the_scavengers_a2_act.wav
+     narrate:  Charge the pack
+
+442. [Cower the Scavengers — Charge the pack (success)]
+     save as:  public/sounds/Narration/cower_the_scavengers_a2_win.wav
+     narrate:  You scatter them like leaves and claim everything they've ever hoarded!
+
+443. [Cower the Scavengers — Charge the pack (failure)]
+     save as:  public/sounds/Narration/cower_the_scavengers_a2_lose.wav
+     narrate:  The pack swarms you before fleeing.
+
+444. [Demand Passage]
+     save as:  public/sounds/Narration/demand_passage.wav
+     narrate:  A greedy gatekeeper demands tribute to pass.
+
+445. [Demand Passage — Haggle the toll down]
+     save as:  public/sounds/Narration/demand_passage_a0_act.wav
+     narrate:  Haggle the toll down
+
+446. [Demand Passage — Haggle the toll down (success)]
+     save as:  public/sounds/Narration/demand_passage_a0_win.wav
+     narrate:  You talk the toll down to nothing — and charm a "gift" out of them besides.
+
+447. [Demand Passage — Haggle the toll down (failure)]
+     save as:  public/sounds/Narration/demand_passage_a0_lose.wav
+     narrate:  The gatekeeper holds firm on the price.
+
+448. [Demand Passage — Bully your way through]
+     save as:  public/sounds/Narration/demand_passage_a1_act.wav
+     narrate:  Bully your way through
+
+449. [Demand Passage — Bully your way through (success)]
+     save as:  public/sounds/Narration/demand_passage_a1_win.wav
+     narrate:  Your threatening presence convinces the gatekeeper to let you pass — with an apology gift.
+
+450. [Demand Passage — Bully your way through (failure)]
+     save as:  public/sounds/Narration/demand_passage_a1_lose.wav
+     narrate:  The gatekeeper holds firm, unimpressed.
+
+451. [Demand Passage — Slip past while they argue]
+     save as:  public/sounds/Narration/demand_passage_a2_act.wav
+     narrate:  Slip past while they argue
+
+452. [Demand Passage — Slip past while they argue (success)]
+     save as:  public/sounds/Narration/demand_passage_a2_win.wav
+     narrate:  While the gatekeeper lectures your decoy, the rest of you clean out the toll box!
+
+453. [Demand Passage — Slip past while they argue (failure)]
+     save as:  public/sounds/Narration/demand_passage_a2_lose.wav
+     narrate:  Caught red-handed. The gatekeeper's bellow carries far.
+
+454. [Awe the Cultist]
+     save as:  public/sounds/Narration/awe_the_cultist.wav
+     narrate:  A lone cultist recognizes your reputation.
+
+455. [Awe the Cultist — Read their fears]
+     save as:  public/sounds/Narration/awe_the_cultist_a0_act.wav
+     narrate:  Read their fears
+
+456. [Awe the Cultist — Read their fears (success)]
+     save as:  public/sounds/Narration/awe_the_cultist_a0_win.wav
+     narrate:  You see exactly what they dread and let them imagine it. They talk.
+
+457. [Awe the Cultist — Read their fears (failure)]
+     save as:  public/sounds/Narration/awe_the_cultist_a0_lose.wav
+     narrate:  Their fanaticism is a closed book.
+
+458. [Awe the Cultist — Press your reputation]
+     save as:  public/sounds/Narration/awe_the_cultist_a1_act.wav
+     narrate:  Press your reputation
+
+459. [Awe the Cultist — Press your reputation (success)]
+     save as:  public/sounds/Narration/awe_the_cultist_a1_win.wav
+     narrate:  The cultist quakes and reveals the boss's weakness!
+
+460. [Awe the Cultist — Press your reputation (failure)]
+     save as:  public/sounds/Narration/awe_the_cultist_a1_lose.wav
+     narrate:  The cultist flees before you can question them.
+
+461. [Awe the Cultist — Claim to be their dark master]
+     save as:  public/sounds/Narration/awe_the_cultist_a2_act.wav
+     narrate:  Claim to be their dark master
+
+462. [Awe the Cultist — Claim to be their dark master (success)]
+     save as:  public/sounds/Narration/awe_the_cultist_a2_win.wav
+     narrate:  They prostrate themselves and confess EVERYTHING — weaknesses, patrols, and where the tithes are kept!
+
+463. [Awe the Cultist — Claim to be their dark master (failure)]
+     save as:  public/sounds/Narration/awe_the_cultist_a2_lose.wav
+     narrate:  The real dark master, it seems, has a secret handshake. The alarm goes up.
+
+464. [Riddle Court]
+     save as:  public/sounds/Narration/riddle_court.wav
+     narrate:  A fey creature blocks the path, demanding entertainment.
+
+465. [Riddle Court — Recite an old fey tale]
+     save as:  public/sounds/Narration/riddle_court_a0_act.wav
+     narrate:  Recite an old fey tale
+
+466. [Riddle Court — Recite an old fey tale (success)]
+     save as:  public/sounds/Narration/riddle_court_a0_win.wav
+     narrate:  It knows the tale — and adores your telling. A small boon is granted.
+
+467. [Riddle Court — Recite an old fey tale (failure)]
+     save as:  public/sounds/Narration/riddle_court_a0_lose.wav
+     narrate:  It has heard that one. Many times. It yawns.
+
+468. [Riddle Court — Sing for the fey]
+     save as:  public/sounds/Narration/riddle_court_a1_act.wav
+     narrate:  Sing for the fey
+
+469. [Riddle Court — Sing for the fey (success)]
+     save as:  public/sounds/Narration/riddle_court_a1_win.wav
+     narrate:  Your performance delights the fey! It grants a boon.
+
+470. [Riddle Court — Sing for the fey (failure)]
+     save as:  public/sounds/Narration/riddle_court_a1_lose.wav
+     narrate:  The fey is bored. You're dismissed with nothing.
+
+471. [Riddle Court — Flatter with an invented epic]
+     save as:  public/sounds/Narration/riddle_court_a2_act.wav
+     narrate:  Flatter with an invented epic
+
+472. [Riddle Court — Flatter with an invented epic (success)]
+     save as:  public/sounds/Narration/riddle_court_a2_win.wav
+     narrate:  Your shameless invented epic of its glory earns a mighty boon and a purse of fey gold!
+
+473. [Riddle Court — Flatter with an invented epic (failure)]
+     save as:  public/sounds/Narration/riddle_court_a2_lose.wav
+     narrate:  Fey take poorly to flattery they see through. The curse stings.
+
+474. [Echoing Alcove]
+     save as:  public/sounds/Narration/echoing_alcove.wav
+     narrate:  A magical instrument sits in an alcove with strange notation.
+
+475. [Echoing Alcove — Study the notation]
+     save as:  public/sounds/Narration/echoing_alcove_a0_act.wav
+     narrate:  Study the notation
+
+476. [Echoing Alcove — Study the notation (success)]
+     save as:  public/sounds/Narration/echoing_alcove_a0_win.wav
+     narrate:  You work out the sequence note by note. A compartment slides open.
+
+477. [Echoing Alcove — Study the notation (failure)]
+     save as:  public/sounds/Narration/echoing_alcove_a0_lose.wav
+     narrate:  The notation defies analysis.
+
+478. [Echoing Alcove — Play the melody]
+     save as:  public/sounds/Narration/echoing_alcove_a1_act.wav
+     narrate:  Play the melody
+
+479. [Echoing Alcove — Play the melody (success)]
+     save as:  public/sounds/Narration/echoing_alcove_a1_win.wav
+     narrate:  Your melody resonates with the room's magic. A hidden compartment slides open!
+
+480. [Echoing Alcove — Play the melody (failure)]
+     save as:  public/sounds/Narration/echoing_alcove_a1_lose.wav
+     narrate:  A discordant noise. Nothing happens.
+
+481. [Echoing Alcove — Amplify it with magic]
+     save as:  public/sounds/Narration/echoing_alcove_a2_act.wav
+     narrate:  Amplify it with magic
+
+482. [Echoing Alcove — Amplify it with magic (success)]
+     save as:  public/sounds/Narration/echoing_alcove_a2_win.wav
+     narrate:  The amplified chord opens every compartment in the alcove at once!
+
+483. [Echoing Alcove — Amplify it with magic (failure)]
+     save as:  public/sounds/Narration/echoing_alcove_a2_lose.wav
+     narrate:  The amplified discord howls through the entire floor.
+
+484. [Distract the Guard]
+     save as:  public/sounds/Narration/distract_the_guard.wav
+     narrate:  A roaming guard patrols near a treasure.
+
+485. [Distract the Guard — Wait for the patrol gap]
+     save as:  public/sounds/Narration/distract_the_guard_a0_act.wav
+     narrate:  Wait for the patrol gap
+
+486. [Distract the Guard — Wait for the patrol gap (success)]
+     save as:  public/sounds/Narration/distract_the_guard_a0_win.wav
+     narrate:  Patience pays. In the gap between rounds, the treasure walks off with you.
+
+487. [Distract the Guard — Wait for the patrol gap (failure)]
+     save as:  public/sounds/Narration/distract_the_guard_a0_lose.wav
+     narrate:  The patrol never leaves a gap wide enough.
+
+488. [Distract the Guard — Put on a show]
+     save as:  public/sounds/Narration/distract_the_guard_a1_act.wav
+     narrate:  Put on a show
+
+489. [Distract the Guard — Put on a show (success)]
+     save as:  public/sounds/Narration/distract_the_guard_a1_win.wav
+     narrate:  The guard is captivated! Someone else slips past to snag the treasure.
+
+490. [Distract the Guard — Put on a show (failure)]
+     save as:  public/sounds/Narration/distract_the_guard_a1_lose.wav
+     narrate:  The guard ignores your antics. No opening.
+
+491. [Distract the Guard — Pickpocket mid-patrol]
+     save as:  public/sounds/Narration/distract_the_guard_a2_act.wav
+     narrate:  Pickpocket mid-patrol
+
+492. [Distract the Guard — Pickpocket mid-patrol (success)]
+     save as:  public/sounds/Narration/distract_the_guard_a2_win.wav
+     narrate:  You lift the treasure AND the guard's own coin purse in one pass!
+
+493. [Distract the Guard — Pickpocket mid-patrol (failure)]
+     save as:  public/sounds/Narration/distract_the_guard_a2_lose.wav
+     narrate:  A hand on your wrist. A whistle. Running.
+
+494. [Merchant Discount]
+     save as:  public/sounds/Narration/merchant_discount.wav
+     narrate:  The merchant quotes a high price.
+
+495. [Merchant Discount — Spot what the merchant needs]
+     save as:  public/sounds/Narration/merchant_discount_a0_act.wav
+     narrate:  Spot what the merchant needs
+
+496. [Merchant Discount — Spot what the merchant needs (success)]
+     save as:  public/sounds/Narration/merchant_discount_a0_win.wav
+     narrate:  You notice their worn boots and trade dungeon gossip for a discount.
+
+497. [Merchant Discount — Spot what the merchant needs (failure)]
+     save as:  public/sounds/Narration/merchant_discount_a0_lose.wav
+     narrate:  The merchant's needs remain a mystery.
+
+498. [Merchant Discount — Charm the merchant]
+     save as:  public/sounds/Narration/merchant_discount_a1_act.wav
+     narrate:  Charm the merchant
+
+499. [Merchant Discount — Charm the merchant (success)]
+     save as:  public/sounds/Narration/merchant_discount_a1_win.wav
+     narrate:  Your silver tongue works wonders — prices reduced for this visit!
+
+500. [Merchant Discount — Charm the merchant (failure)]
+     save as:  public/sounds/Narration/merchant_discount_a1_lose.wav
+     narrate:  The merchant holds firm on prices.
+
+501. [Freed Captive]
+     save as:  public/sounds/Narration/freed_captive.wav
+     narrate:  A prisoner cowers in a cage.
+
+502. [Freed Captive — Earn trust slowly]
+     save as:  public/sounds/Narration/freed_captive_a0_act.wav
+     narrate:  Earn trust slowly
+
+503. [Freed Captive — Earn trust slowly (success)]
+     save as:  public/sounds/Narration/freed_captive_a0_win.wav
+     narrate:  Patience wins them over. They whisper of a hidden room.
+
+504. [Freed Captive — Earn trust slowly (failure)]
+     save as:  public/sounds/Narration/freed_captive_a0_lose.wav
+     narrate:  They stay silent, eyes down.
+
+505. [Freed Captive — Convince them quickly]
+     save as:  public/sounds/Narration/freed_captive_a1_act.wav
+     narrate:  Convince them quickly
+
+506. [Freed Captive — Convince them quickly (success)]
+     save as:  public/sounds/Narration/freed_captive_a1_win.wav
+     narrate:  You convince the prisoner you're trustworthy. They reveal a secret room!
+
+507. [Freed Captive — Convince them quickly (failure)]
+     save as:  public/sounds/Narration/freed_captive_a1_lose.wav
+     narrate:  The captive clams up and leaves without a word.
+
+508. [Freed Captive — Break the cage open]
+     save as:  public/sounds/Narration/freed_captive_a2_act.wav
+     narrate:  Break the cage open
+
+509. [Freed Captive — Break the cage open (success)]
+     save as:  public/sounds/Narration/freed_captive_a2_win.wav
+     narrate:  The cage bursts — the grateful captive maps every secret they overheard!
+
+510. [Freed Captive — Break the cage open (failure)]
+     save as:  public/sounds/Narration/freed_captive_a2_lose.wav
+     narrate:  The cage's alarm chain rattles through the halls.
+
+511. [Calm the Crowd]
+     save as:  public/sounds/Narration/calm_the_crowd.wav
+     narrate:  Hostile NPCs are on the verge of attacking.
+
+512. [Calm the Crowd — Find the ringleader]
+     save as:  public/sounds/Narration/calm_the_crowd_a0_act.wav
+     narrate:  Find the ringleader
+
+513. [Calm the Crowd — Find the ringleader (success)]
+     save as:  public/sounds/Narration/calm_the_crowd_a0_win.wav
+     narrate:  You pick out the instigator and quietly talk them down. The rest deflate.
+
+514. [Calm the Crowd — Find the ringleader (failure)]
+     save as:  public/sounds/Narration/calm_the_crowd_a0_lose.wav
+     narrate:  No clear leader. The mob is a hydra.
+
+515. [Calm the Crowd — Talk them down]
+     save as:  public/sounds/Narration/calm_the_crowd_a1_act.wav
+     narrate:  Talk them down
+
+516. [Calm the Crowd — Talk them down (success)]
+     save as:  public/sounds/Narration/calm_the_crowd_a1_win.wav
+     narrate:  Your measured words defuse the tension. The room resolves peacefully, with compensation.
+
+517. [Calm the Crowd — Talk them down (failure)]
+     save as:  public/sounds/Narration/calm_the_crowd_a1_lose.wav
+     narrate:  They mutter and disperse, giving nothing.
+
+518. [Calm the Crowd — The party stares them down]
+     save as:  public/sounds/Narration/calm_the_crowd_a2_act.wav
+     narrate:  The party stares them down
+
+519. [Calm the Crowd — The party stares them down (success)]
+     save as:  public/sounds/Narration/calm_the_crowd_a2_win.wav
+     narrate:  Five unblinking stares. The crowd drops their weapons AND their purses.
+
+520. [Calm the Crowd — The party stares them down (failure)]
+     save as:  public/sounds/Narration/calm_the_crowd_a2_lose.wav
+     narrate:  The staredown fails and the shouting draws every ear on the floor.
+
+521. [Collapsing Pillar]
+     save as:  public/sounds/Narration/collapsing_pillar.wav
+     narrate:  A cracked pillar groans over a narrow gap. Bracing it could let the whole party dash through before it falls.
+
+522. [Collapsing Pillar — Time the groans]
+     save as:  public/sounds/Narration/collapsing_pillar_a0_act.wav
+     narrate:  Time the groans
+
+523. [Collapsing Pillar — Time the groans (success)]
+     save as:  public/sounds/Narration/collapsing_pillar_a0_win.wav
+     narrate:  You read the rhythm and pick a safe moment.
+
+524. [Collapsing Pillar — Time the groans (failure)]
+     save as:  public/sounds/Narration/collapsing_pillar_a0_lose.wav
+     narrate:  The groans are erratic — you wait it out.
+
+525. [Collapsing Pillar — Brace and sprint]
+     save as:  public/sounds/Narration/collapsing_pillar_a1_act.wav
+     narrate:  Brace and sprint
+
+526. [Collapsing Pillar — Brace and sprint (success)]
+     save as:  public/sounds/Narration/collapsing_pillar_a1_win.wav
+     narrate:  You shoulder the pillar and the party bolts through, hearts pounding.
+
+527. [Collapsing Pillar — Brace and sprint (failure)]
+     save as:  public/sounds/Narration/collapsing_pillar_a1_lose.wav
+     narrate:  The pillar bucks you off — dust and stone rain down.
+
+528. [Collapsing Pillar — Hold it for everyone]
+     save as:  public/sounds/Narration/collapsing_pillar_a2_act.wav
+     narrate:  Hold it for everyone
+
+529. [Collapsing Pillar — Hold it for everyone (success)]
+     save as:  public/sounds/Narration/collapsing_pillar_a2_win.wav
+     narrate:  You hold the stone long enough for five pairs of boots — then leap clear as it crashes!
+
+530. [Collapsing Pillar — Hold it for everyone (failure)]
+     save as:  public/sounds/Narration/collapsing_pillar_a2_lose.wav
+     narrate:  It gives way mid-crossing. Debris hammers the rearmost.
+
+531. [Boulder Crush]
+     save as:  public/sounds/Narration/boulder_crush.wav
+     narrate:  A massive boulder blocks a side passage — and there's a glint of coin behind it.
+
+532. [Boulder Crush — Find the leverage point]
+     save as:  public/sounds/Narration/boulder_crush_a0_act.wav
+     narrate:  Find the leverage point
+
+533. [Boulder Crush — Find the leverage point (success)]
+     save as:  public/sounds/Narration/boulder_crush_a0_win.wav
+     narrate:  You locate a fulcrum and roll it aside with ease.
+
+534. [Boulder Crush — Find the leverage point (failure)]
+     save as:  public/sounds/Narration/boulder_crush_a0_lose.wav
+     narrate:  No good angle — it barely budges.
+
+535. [Boulder Crush — Heave together]
+     save as:  public/sounds/Narration/boulder_crush_a1_act.wav
+     narrate:  Heave together
+
+536. [Boulder Crush — Heave together (success)]
+     save as:  public/sounds/Narration/boulder_crush_a1_win.wav
+     narrate:  Muscle prevails. The hoard behind is yours.
+
+537. [Boulder Crush — Heave together (failure)]
+     save as:  public/sounds/Narration/boulder_crush_a1_lose.wav
+     narrate:  It rolls back, pinning your purse of coin in the dirt.
+
+538. [Boulder Crush — Crack it with a spike]
+     save as:  public/sounds/Narration/boulder_crush_a2_act.wav
+     narrate:  Crack it with a spike
+
+539. [Boulder Crush — Crack it with a spike (success)]
+     save as:  public/sounds/Narration/boulder_crush_a2_win.wav
+     narrate:  The boulder splits clean — the treasure spills out!
+
+540. [Boulder Crush — Crack it with a spike (failure)]
+     save as:  public/sounds/Narration/boulder_crush_a2_lose.wav
+     narrate:  Shrapnel bursts outward as it cracks.
+
+541. [Geyser Vault]
+     save as:  public/sounds/Narration/geyser_vault.wav
+     narrate:  Scalding geysers erupt in a slow, predictable rhythm across a treasure plaza. The spray itself is invigorating to brave.
+
+542. [Geyser Vault — Watch the cycle]
+     save as:  public/sounds/Narration/geyser_vault_a0_act.wav
+     narrate:  Watch the cycle
+
+543. [Geyser Vault — Watch the cycle (success)]
+     save as:  public/sounds/Narration/geyser_vault_a0_win.wav
+     narrate:  You map the cycle and pick the calm path.
+
+544. [Geyser Vault — Watch the cycle (failure)]
+     save as:  public/sounds/Narration/geyser_vault_a0_lose.wav
+     narrate:  The pattern is too erratic — you stay put.
+
+545. [Geyser Vault — Leap between plumes]
+     save as:  public/sounds/Narration/geyser_vault_a1_act.wav
+     narrate:  Leap between plumes
+
+546. [Geyser Vault — Leap between plumes (success)]
+     save as:  public/sounds/Narration/geyser_vault_a1_win.wav
+     narrate:  You weave the eruptions, skin flushed with heat — you feel invincible.
+
+547. [Geyser Vault — Leap between plumes (failure)]
+     save as:  public/sounds/Narration/geyser_vault_a1_lose.wav
+     narrate:  A plume catches you. Painful, but you retreat alive.
+
+548. [Geyser Vault — Bathe in the spray]
+     save as:  public/sounds/Narration/geyser_vault_a2_act.wav
+     narrate:  Bathe in the spray
+
+549. [Geyser Vault — Bathe in the spray (success)]
+     save as:  public/sounds/Narration/geyser_vault_a2_win.wav
+     narrate:  The whole party storms the plaza — the steam hardens you for the fights ahead!
+
+550. [Geyser Vault — Bathe in the spray (failure)]
+     save as:  public/sounds/Narration/geyser_vault_a2_lose.wav
+     narrate:  Scalding water hammers everyone down.
+
+551. [Collapsing Stair]
+     save as:  public/sounds/Narration/collapsing_stair.wav
+     narrate:  A grand stair is shedding steps as it falls. Sprinting it grants a rush of speed — if you don't fall.
+
+552. [Collapsing Stair — Find sound treads]
+     save as:  public/sounds/Narration/collapsing_stair_a0_act.wav
+     narrate:  Find sound treads
+
+553. [Collapsing Stair — Find sound treads (success)]
+     save as:  public/sounds/Narration/collapsing_stair_a0_win.wav
+     narrate:  You hop the intact stones carefully.
+
+554. [Collapsing Stair — Find sound treads (failure)]
+     save as:  public/sounds/Narration/collapsing_stair_a0_lose.wav
+     narrate:  Too risky — you find another way.
+
+555. [Collapsing Stair — Bound up the ruin]
+     save as:  public/sounds/Narration/collapsing_stair_a1_act.wav
+     narrate:  Bound up the ruin
+
+556. [Collapsing Stair — Bound up the ruin (success)]
+     save as:  public/sounds/Narration/collapsing_stair_a1_win.wav
+     narrate:  You vault the gaps, blood singing — the rush lingers.
+
+557. [Collapsing Stair — Bound up the ruin (failure)]
+     save as:  public/sounds/Narration/collapsing_stair_a1_lose.wav
+     narrate:  A step gives way; you barely catch the rail.
+
+558. [Collapsing Stair — Race the collapse]
+     save as:  public/sounds/Narration/collapsing_stair_a2_act.wav
+     narrate:  Race the collapse
+
+559. [Collapsing Stair — Race the collapse (success)]
+     save as:  public/sounds/Narration/collapsing_stair_a2_win.wav
+     narrate:  Five heroes outpace the avalanche of stone — adrenaline carries you onward!
+
+560. [Collapsing Stair — Race the collapse (failure)]
+     save as:  public/sounds/Narration/collapsing_stair_a2_lose.wav
+     narrate:  The stair drops away beneath the slowest.
+
+561. [Poison Needle]
+     save as:  public/sounds/Narration/poison_needle.wav
+     narrate:  A jewel sits on a poisoned pedestal. The needle is visible — disarming it cleanly pays double.
+
+562. [Poison Needle — Map the trigger]
+     save as:  public/sounds/Narration/poison_needle_a0_act.wav
+     narrate:  Map the trigger
+
+563. [Poison Needle — Map the trigger (success)]
+     save as:  public/sounds/Narration/poison_needle_a0_win.wav
+     narrate:  You see exactly where not to touch.
+
+564. [Poison Needle — Map the trigger (failure)]
+     save as:  public/sounds/Narration/poison_needle_a0_lose.wav
+     narrate:  The mechanism is too fine to read.
+
+565. [Poison Needle — Lift the jewel clean]
+     save as:  public/sounds/Narration/poison_needle_a1_act.wav
+     narrate:  Lift the jewel clean
+
+566. [Poison Needle — Lift the jewel clean (success)]
+     save as:  public/sounds/Narration/poison_needle_a1_win.wav
+     narrate:  Steady hands — the jewel slides free, needle never twitching.
+
+567. [Poison Needle — Lift the jewel clean (failure)]
+     save as:  public/sounds/Narration/poison_needle_a1_lose.wav
+     narrate:  The needle pricks before you pull clear!
+
+568. [Poison Needle — Strip the whole trap]
+     save as:  public/sounds/Narration/poison_needle_a2_act.wav
+     narrate:  Strip the whole trap
+
+569. [Poison Needle — Strip the whole trap (success)]
+     save as:  public/sounds/Narration/poison_needle_a2_win.wav
+     narrate:  You disarm it AND take the jewel — poison glands and all, worth a fortune.
+
+570. [Poison Needle — Strip the whole trap (failure)]
+     save as:  public/sounds/Narration/poison_needle_a2_lose.wav
+     narrate:  A spray of venom catches everyone working close.
+
+571. [Switch the Idol]
+     save as:  public/sounds/Narration/switch_the_idol.wav
+     narrate:  A gem-eyed idol sits on a weighted altar. A clever swap might let you walk away with the real prize.
+
+572. [Switch the Idol — Study the weight]
+     save as:  public/sounds/Narration/switch_the_idol_a0_act.wav
+     narrate:  Study the weight
+
+573. [Switch the Idol — Study the weight (success)]
+     save as:  public/sounds/Narration/switch_the_idol_a0_win.wav
+     narrate:  You gauge the idol's heft perfectly.
+
+574. [Switch the Idol — Study the weight (failure)]
+     save as:  public/sounds/Narration/switch_the_idol_a0_lose.wav
+     narrate:  The weight is unclear — too risky.
+
+575. [Switch the Idol — Swap in a fake]
+     save as:  public/sounds/Narration/switch_the_idol_a1_act.wav
+     narrate:  Swap in a fake
+
+576. [Switch the Idol — Swap in a fake (success)]
+     save as:  public/sounds/Narration/switch_the_idol_a1_win.wav
+     narrate:  A bag of sand trades places with the idol. Clean.
+
+577. [Switch the Idol — Swap in a fake (failure)]
+     save as:  public/sounds/Narration/switch_the_idol_a1_lose.wav
+     narrate:  The altar sinks — darts whistle out!
+
+578. [Switch the Idol — Loot the eyes too]
+     save as:  public/sounds/Narration/switch_the_idol_a2_act.wav
+     narrate:  Loot the eyes too
+
+579. [Switch the Idol — Loot the eyes too (success)]
+     save as:  public/sounds/Narration/switch_the_idol_a2_win.wav
+     narrate:  Idol, eyes, and all — you strip the altar bare!
+
+580. [Switch the Idol — Loot the eyes too (failure)]
+     save as:  public/sounds/Narration/switch_the_idol_a2_lose.wav
+     narrate:  A saw-blade swings across the dais.
+
+581. [Assassin's Perch]
+     save as:  public/sounds/Narration/assassin_s_perch.wav
+     narrate:  A bolted nest overlooks the chamber — an assassin's roost, still stocked. Climbing to it unseen is the trick.
+
+582. [Assassin's Perch — Climb the open column]
+     save as:  public/sounds/Narration/assassin_s_perch_a0_act.wav
+     narrate:  Climb the open column
+
+583. [Assassin's Perch — Climb the open column (success)]
+     save as:  public/sounds/Narration/assassin_s_perch_a0_win.wav
+     narrate:  You haul up the column in the open and claim the cache.
+
+584. [Assassin's Perch — Climb the open column (failure)]
+     save as:  public/sounds/Narration/assassin_s_perch_a0_lose.wav
+     narrate:  The handholds are slick — you slide back.
+
+585. [Assassin's Perch — Slip up the shadowed side]
+     save as:  public/sounds/Narration/assassin_s_perch_a1_act.wav
+     narrate:  Slip up the shadowed side
+
+586. [Assassin's Perch — Slip up the shadowed side (success)]
+     save as:  public/sounds/Narration/assassin_s_perch_a1_win.wav
+     narrate:  You reach the roost unheard and pocket the goods.
+
+587. [Assassin's Perch — Slip up the shadowed side (failure)]
+     save as:  public/sounds/Narration/assassin_s_perch_a1_lose.wav
+     narrate:  A loose tile clatters down — guards turn.
+
+588. [Assassin's Perch — Rig a rope for the party]
+     save as:  public/sounds/Narration/assassin_s_perch_a2_act.wav
+     narrate:  Rig a rope for the party
+
+589. [Assassin's Perch — Rig a rope for the party (success)]
+     save as:  public/sounds/Narration/assassin_s_perch_a2_win.wav
+     narrate:  A silent rope-line and everyone strips the roost together!
+
+590. [Assassin's Perch — Rig a rope for the party (failure)]
+     save as:  public/sounds/Narration/assassin_s_perch_a2_lose.wav
+     narrate:  The rope groans; the whole floor hears.
+
+591. [Thieves' Guild Cache]
+     save as:  public/sounds/Narration/thieves_guild_cache.wav
+     narrate:  Signs of the local guild are scratched on the wall — a hidden dead-drop may be near.
+
+592. [Thieves' Guild Cache — Read the scratches]
+     save as:  public/sounds/Narration/thieves_guild_cache_a0_act.wav
+     narrate:  Read the scratches
+
+593. [Thieves' Guild Cache — Read the scratches (success)]
+     save as:  public/sounds/Narration/thieves_guild_cache_a0_win.wav
+     narrate:  The code points to a loose stone — a small purse inside.
+
+594. [Thieves' Guild Cache — Read the scratches (failure)]
+     save as:  public/sounds/Narration/thieves_guild_cache_a0_lose.wav
+     narrate:  The markings mean nothing to you.
+
+595. [Thieves' Guild Cache — Shadow the drop point]
+     save as:  public/sounds/Narration/thieves_guild_cache_a1_act.wav
+     narrate:  Shadow the drop point
+
+596. [Thieves' Guild Cache — Shadow the drop point (success)]
+     save as:  public/sounds/Narration/thieves_guild_cache_a1_win.wav
+     narrate:  You wait motionless, spot the trick stone, and lift a fat pouch.
+
+597. [Thieves' Guild Cache — Shadow the drop point (failure)]
+     save as:  public/sounds/Narration/thieves_guild_cache_a1_lose.wav
+     narrate:  You fumble the catch — a bell jingles somewhere.
+
+598. [Mana Rift]
+     save as:  public/sounds/Narration/mana_rift.wav
+     narrate:  A raw tear in the weave crackles against the wall. Drawing from it could recharge your casters — or burn.
+
+599. [Mana Rift — Sip carefully]
+     save as:  public/sounds/Narration/mana_rift_a0_act.wav
+     narrate:  Sip carefully
+
+600. [Mana Rift — Sip carefully (success)]
+     save as:  public/sounds/Narration/mana_rift_a0_win.wav
+     narrate:  A trickle of power flows back into your spells.
+
+601. [Mana Rift — Sip carefully (failure)]
+     save as:  public/sounds/Narration/mana_rift_a0_lose.wav
+     narrate:  The rift spits sparks; you withdraw.
+
+602. [Mana Rift — Funnel the flow]
+     save as:  public/sounds/Narration/mana_rift_a1_act.wav
+     narrate:  Funnel the flow
+
+603. [Mana Rift — Funnel the flow (success)]
+     save as:  public/sounds/Narration/mana_rift_a1_win.wav
+     narrate:  You shape the rift into a clean current — slots and charges refill!
+
+604. [Mana Rift — Funnel the flow (failure)]
+     save as:  public/sounds/Narration/mana_rift_a1_lose.wav
+     narrate:  The weave snaps back, scrambling your thoughts.
+
+605. [Mana Rift — Bask in the tear]
+     save as:  public/sounds/Narration/mana_rift_a2_act.wav
+     narrate:  Bask in the tear
+
+606. [Mana Rift — Bask in the tear (success)]
+     save as:  public/sounds/Narration/mana_rift_a2_win.wav
+     narrate:  The party drinks deep — every spell and ability brims full!
+
+607. [Mana Rift — Bask in the tear (failure)]
+     save as:  public/sounds/Narration/mana_rift_a2_lose.wav
+     narrate:  Raw magic sears your minds.
+
+608. [Warding Seal]
+     save as:  public/sounds/Narration/warding_seal.wav
+     narrate:  A defensive ward-cluster glows on a door. Re-keying it to your side would shield the party — botching it curses.
+
+609. [Warding Seal — Recite the old litany]
+     save as:  public/sounds/Narration/warding_seal_a0_act.wav
+     narrate:  Recite the old litany
+
+610. [Warding Seal — Recite the old litany (success)]
+     save as:  public/sounds/Narration/warding_seal_a0_win.wav
+     narrate:  The ward recognizes the rite and hums to life around you.
+
+611. [Warding Seal — Recite the old litany (failure)]
+     save as:  public/sounds/Narration/warding_seal_a0_lose.wav
+     narrate:  The litany is half-forgotten — the ward stays cold.
+
+612. [Warding Seal — Re-key the runes]
+     save as:  public/sounds/Narration/warding_seal_a1_act.wav
+     narrate:  Re-key the runes
+
+613. [Warding Seal — Re-key the runes (success)]
+     save as:  public/sounds/Narration/warding_seal_a1_win.wav
+     narrate:  You retune the sigils — a shimmering shield wraps the party.
+
+614. [Warding Seal — Re-key the runes (failure)]
+     save as:  public/sounds/Narration/warding_seal_a1_lose.wav
+     narrate:  The runes invert — a curse bleeds out!
+
+615. [Warding Seal — Overload the ward]
+     save as:  public/sounds/Narration/warding_seal_a2_act.wav
+     narrate:  Overload the ward
+
+616. [Warding Seal — Overload the ward (success)]
+     save as:  public/sounds/Narration/warding_seal_a2_win.wav
+     narrate:  The ward flares brilliant and coats everyone in arcane armor!
+
+617. [Warding Seal — Overload the ward (failure)]
+     save as:  public/sounds/Narration/warding_seal_a2_lose.wav
+     narrate:  The ward detonates, cursing all who stand near.
+
+618. [Forbidden Tome]
+     save as:  public/sounds/Narration/forbidden_tome.wav
+     narrate:  A chained grimoire whispers from a lectern. The lore within is potent — and corrosive to the unprepared mind.
+
+619. [Forbidden Tome — Skim the margins]
+     save as:  public/sounds/Narration/forbidden_tome_a0_act.wav
+     narrate:  Skim the margins
+
+620. [Forbidden Tome — Skim the margins (success)]
+     save as:  public/sounds/Narration/forbidden_tome_a0_win.wav
+     narrate:  You glean a fragment of safe, useful lore.
+
+621. [Forbidden Tome — Skim the margins (failure)]
+     save as:  public/sounds/Narration/forbidden_tome_a0_lose.wav
+     narrate:  The margins are gibberish.
+
+622. [Forbidden Tome — Read a chapter aloud]
+     save as:  public/sounds/Narration/forbidden_tome_a1_act.wav
+     narrate:  Read a chapter aloud
+
+623. [Forbidden Tome — Read a chapter aloud (success)]
+     save as:  public/sounds/Narration/forbidden_tome_a1_win.wav
+     narrate:  Power thrums through you — experience burns itself into memory.
+
+624. [Forbidden Tome — Read a chapter aloud (failure)]
+     save as:  public/sounds/Narration/forbidden_tome_a1_lose.wav
+     narrate:  The words writhe — your stomach turns.
+
+625. [Forbidden Tome — Devour the book]
+     save as:  public/sounds/Narration/forbidden_tome_a2_act.wav
+     narrate:  Devour the book
+
+626. [Forbidden Tome — Devour the book (success)]
+     save as:  public/sounds/Narration/forbidden_tome_a2_win.wav
+     narrate:  The party absorbs the tome entire — a flood of hard-won insight!
+
+627. [Forbidden Tome — Devour the book (failure)]
+     save as:  public/sounds/Narration/forbidden_tome_a2_lose.wav
+     narrate:  Forbidden knowledge scourges your minds.
+
+628. [Tactician's Map]
+     save as:  public/sounds/Narration/tactician_s_map.wav
+     narrate:  A salt-rotted map shows the floor's battles. Reading the old deployments lends cunning to your own.
+
+629. [Tactician's Map — Note the chokepoints]
+     save as:  public/sounds/Narration/tactician_s_map_a0_act.wav
+     narrate:  Note the chokepoints
+
+630. [Tactician's Map — Note the chokepoints (success)]
+     save as:  public/sounds/Narration/tactician_s_map_a0_win.wav
+     narrate:  You mark the safest lanes — a useful edge.
+
+631. [Tactician's Map — Note the chokepoints (failure)]
+     save as:  public/sounds/Narration/tactician_s_map_a0_lose.wav
+     narrate:  The ink has bled beyond reading.
+
+632. [Tactician's Map — Reconstruct the campaign]
+     save as:  public/sounds/Narration/tactician_s_map_a1_act.wav
+     narrate:  Reconstruct the campaign
+
+633. [Tactician's Map — Reconstruct the campaign (success)]
+     save as:  public/sounds/Narration/tactician_s_map_a1_win.wav
+     narrate:  The old general's plan clicks into place — your abilities feel refreshed.
+
+634. [Tactician's Map — Reconstruct the campaign (failure)]
+     save as:  public/sounds/Narration/tactician_s_map_a1_lose.wav
+     narrate:  The map crumbles as you handle it.
+
+635. [Tactician's Map — Trace every battle]
+     save as:  public/sounds/Narration/tactician_s_map_a2_act.wav
+     narrate:  Trace every battle
+
+636. [Tactician's Map — Trace every battle (success)]
+     save as:  public/sounds/Narration/tactician_s_map_a2_win.wav
+     narrate:  The whole floor's history unfolds — your party fights like veterans!
+
+637. [Tactician's Map — Trace every battle (failure)]
+     save as:  public/sounds/Narration/tactician_s_map_a2_lose.wav
+     narrate:  You argue the tactics aloud — and loudly.
+
+638. [Battle Standard]
+     save as:  public/sounds/Narration/battle_standard.wav
+     narrate:  A tattered banner stands in a forgotten rallying point. Raising it might stir old battle-fury.
+
+639. [Battle Standard — Identify the legion]
+     save as:  public/sounds/Narration/battle_standard_a0_act.wav
+     narrate:  Identify the legion
+
+640. [Battle Standard — Identify the legion (success)]
+     save as:  public/sounds/Narration/battle_standard_a0_win.wav
+     narrate:  You name the company — a small, steady pride stirs.
+
+641. [Battle Standard — Identify the legion (failure)]
+     save as:  public/sounds/Narration/battle_standard_a0_lose.wav
+     narrate:  The standard is too faded to identify.
+
+642. [Battle Standard — Raise the pole]
+     save as:  public/sounds/Narration/battle_standard_a1_act.wav
+     narrate:  Raise the pole
+
+643. [Battle Standard — Raise the pole (success)]
+     save as:  public/sounds/Narration/battle_standard_a1_win.wav
+     narrate:  The banner snaps upright — fury kindles in every chest.
+
+644. [Battle Standard — Raise the pole (failure)]
+     save as:  public/sounds/Narration/battle_standard_a1_lose.wav
+     narrate:  The pole rots through; it falls.
+
+645. [Battle Standard — Swear the old oath]
+     save as:  public/sounds/Narration/battle_standard_a2_act.wav
+     narrate:  Swear the old oath
+
+646. [Battle Standard — Swear the old oath (success)]
+     save as:  public/sounds/Narration/battle_standard_a2_win.wav
+     narrate:  The oath thunders out — the party is ablaze with rage!
+
+647. [Battle Standard — Swear the old oath (failure)]
+     save as:  public/sounds/Narration/battle_standard_a2_lose.wav
+     narrate:  The oath sits wrong on modern tongues — unease spreads.
+
+648. [Murder Scene]
+     save as:  public/sounds/Narration/murder_scene.wav
+     narrate:  A grisly tableau — an adventurer, dead of something not quite physical. The scene has a story to tell.
+
+649. [Murder Scene — Note the wounds]
+     save as:  public/sounds/Narration/murder_scene_a0_act.wav
+     narrate:  Note the wounds
+
+650. [Murder Scene — Note the wounds (success)]
+     save as:  public/sounds/Narration/murder_scene_a0_win.wav
+     narrate:  The wound pattern reveals the killer — and its weakness.
+
+651. [Murder Scene — Note the wounds (failure)]
+     save as:  public/sounds/Narration/murder_scene_a0_lose.wav
+     narrate:  The body tells you nothing new.
+
+652. [Murder Scene — Reconstruct the death]
+     save as:  public/sounds/Narration/murder_scene_a1_act.wav
+     narrate:  Reconstruct the death
+
+653. [Murder Scene — Reconstruct the death (success)]
+     save as:  public/sounds/Narration/murder_scene_a1_win.wav
+     narrate:  You piece together the last moments — the boss's nature is laid bare.
+
+654. [Murder Scene — Reconstruct the death (failure)]
+     save as:  public/sounds/Narration/murder_scene_a1_lose.wav
+     narrate:  The scene was staged; you can't trust it.
+
+655. [Pressure Runes]
+     save as:  public/sounds/Narration/pressure_runes.wav
+     narrate:  Runes on the floor pulse in a weight-sensitive grid. The right path leads to a coffer; the wrong one, fire.
+
+656. [Pressure Runes — Read the safe sequence]
+     save as:  public/sounds/Narration/pressure_runes_a0_act.wav
+     narrate:  Read the safe sequence
+
+657. [Pressure Runes — Read the safe sequence (success)]
+     save as:  public/sounds/Narration/pressure_runes_a0_win.wav
+     narrate:  You decode the safe stones and step across.
+
+658. [Pressure Runes — Read the safe sequence (failure)]
+     save as:  public/sounds/Narration/pressure_runes_a0_lose.wav
+     narrate:  The pattern is too dense to parse.
+
+659. [Pressure Runes — Deduce the pattern]
+     save as:  public/sounds/Narration/pressure_runes_a1_act.wav
+     narrate:  Deduce the pattern
+
+660. [Pressure Runes — Deduce the pattern (success)]
+     save as:  public/sounds/Narration/pressure_runes_a1_win.wav
+     narrate:  Logic wins — you cross and claim the coffer.
+
+661. [Pressure Runes — Deduce the pattern (failure)]
+     save as:  public/sounds/Narration/pressure_runes_a1_lose.wav
+     narrate:  A wrong deduction — gouts of flame!
+
+662. [Pressure Runes — Sprint the grid]
+     save as:  public/sounds/Narration/pressure_runes_a2_act.wav
+     narrate:  Sprint the grid
+
+663. [Pressure Runes — Sprint the grid (success)]
+     save as:  public/sounds/Narration/pressure_runes_a2_win.wav
+     narrate:  You crack the code on the fly — everyone skates through unburned!
+
+664. [Pressure Runes — Sprint the grid (failure)]
+     save as:  public/sounds/Narration/pressure_runes_a2_lose.wav
+     narrate:  Half the party stands on the wrong stones.
+
+665. [Blood Moss]
+     save as:  public/sounds/Narration/blood_moss.wav
+     narrate:  A carpet of crimson moss bleeds a thick, healing nectar — but the spores are toxic if disturbed wrong.
+
+666. [Blood Moss — Press the fronds gently]
+     save as:  public/sounds/Narration/blood_moss_a0_act.wav
+     narrate:  Press the fronds gently
+
+667. [Blood Moss — Press the fronds gently (success)]
+     save as:  public/sounds/Narration/blood_moss_a0_win.wav
+     narrate:  You milk a steady draught of healing nectar.
+
+668. [Blood Moss — Press the fronds gently (failure)]
+     save as:  public/sounds/Narration/blood_moss_a0_lose.wav
+     narrate:  The moss is dry here.
+
+669. [Blood Moss — Harvest the right crop]
+     save as:  public/sounds/Narration/blood_moss_a1_act.wav
+     narrate:  Harvest the right crop
+
+670. [Blood Moss — Harvest the right crop (success)]
+     save as:  public/sounds/Narration/blood_moss_a1_win.wav
+     narrate:  You pick only the benign heads — a potent party salve.
+
+671. [Blood Moss — Harvest the right crop (failure)]
+     save as:  public/sounds/Narration/blood_moss_a1_lose.wav
+     narrate:  You bruise the wrong heads — spores puff out.
+
+672. [Blood Moss — Wring the whole carpet]
+     save as:  public/sounds/Narration/blood_moss_a2_act.wav
+     narrate:  Wring the whole carpet
+
+673. [Blood Moss — Wring the whole carpet (success)]
+     save as:  public/sounds/Narration/blood_moss_a2_win.wav
+     narrate:  You harvest it all — enough nectar to drench the party in healing!
+
+674. [Blood Moss — Wring the whole carpet (failure)]
+     save as:  public/sounds/Narration/blood_moss_a2_lose.wav
+     narrate:  A cloud of crimson spores chokes everyone.
+
+675. [Spirit Grove]
+     save as:  public/sounds/Narration/spirit_grove.wav
+     narrate:  A ring of pale trees hums with cleansing light. Resting in it purges affliction — and steadies the spirit.
+
+676. [Spirit Grove — Tend the wounded]
+     save as:  public/sounds/Narration/spirit_grove_a0_act.wav
+     narrate:  Tend the wounded
+
+677. [Spirit Grove — Tend the wounded (success)]
+     save as:  public/sounds/Narration/spirit_grove_a0_win.wav
+     narrate:  A soft mend passes over the party's hurts.
+
+678. [Spirit Grove — Tend the wounded (failure)]
+     save as:  public/sounds/Narration/spirit_grove_a0_lose.wav
+     narrate:  The grove stays quiet.
+
+679. [Spirit Grove — Breathe the pollen]
+     save as:  public/sounds/Narration/spirit_grove_a1_act.wav
+     narrate:  Breathe the pollen
+
+680. [Spirit Grove — Breathe the pollen (success)]
+     save as:  public/sounds/Narration/spirit_grove_a1_win.wav
+     narrate:  Light fills every chest — poisons and curses burn away.
+
+681. [Spirit Grove — Breathe the pollen (failure)]
+     save as:  public/sounds/Narration/spirit_grove_a1_lose.wav
+     narrate:  The pollen is too thin to matter.
+
+682. [Spirit Grove — Invoke the grove's spirit]
+     save as:  public/sounds/Narration/spirit_grove_a2_act.wav
+     narrate:  Invoke the grove's spirit
+
+683. [Spirit Grove — Invoke the grove's spirit (success)]
+     save as:  public/sounds/Narration/spirit_grove_a2_win.wav
+     narrate:  The grove blazes — every debuff scourged, the party inspired!
+
+684. [Spirit Grove — Invoke the grove's spirit (failure)]
+     save as:  public/sounds/Narration/spirit_grove_a2_lose.wav
+     narrate:  The spirit is offended — it saps your vigor.
+
+685. [Dedicated Offering]
+     save as:  public/sounds/Narration/dedicated_offering.wav
+     narrate:  An altar waits for an offering of blood or gold. A proper dedication could consecrate your blades.
+
+686. [Dedicated Offering — Leave a token]
+     save as:  public/sounds/Narration/dedicated_offering_a0_act.wav
+     narrate:  Leave a token
+
+687. [Dedicated Offering — Leave a token (success)]
+     save as:  public/sounds/Narration/dedicated_offering_a0_win.wav
+     narrate:  A faint blessing settles on your weapons.
+
+688. [Dedicated Offering — Leave a token (failure)]
+     save as:  public/sounds/Narration/dedicated_offering_a0_lose.wav
+     narrate:  The altar rejects the token.
+
+689. [Dedicated Offering — Speak the rite of edge]
+     save as:  public/sounds/Narration/dedicated_offering_a1_act.wav
+     narrate:  Speak the rite of edge
+
+690. [Dedicated Offering — Speak the rite of edge (success)]
+     save as:  public/sounds/Narration/dedicated_offering_a1_win.wav
+     narrate:  Your blades shimmer with sacred light.
+
+691. [Dedicated Offering — Speak the rite of edge (failure)]
+     save as:  public/sounds/Narration/dedicated_offering_a1_lose.wav
+     narrate:  The rite is mispronounced — the altar dims.
+
+692. [Dedicated Offering — Anoint every blade]
+     save as:  public/sounds/Narration/dedicated_offering_a2_act.wav
+     narrate:  Anoint every blade
+
+693. [Dedicated Offering — Anoint every blade (success)]
+     save as:  public/sounds/Narration/dedicated_offering_a2_win.wav
+     narrate:  The whole party's arms blaze with consecrated fire!
+
+694. [Dedicated Offering — Anoint every blade (failure)]
+     save as:  public/sounds/Narration/dedicated_offering_a2_lose.wav
+     narrate:  The altar finds your offering wanting — it curses you.
+
+695. [Corrupted Font]
+     save as:  public/sounds/Narration/corrupted_font.wav
+     narrate:  A once-holy font now wells with blackness. Cleansing it could purify the party — failing invites the corruption.
+
+696. [Corrupted Font — Test the water]
+     save as:  public/sounds/Narration/corrupted_font_a0_act.wav
+     narrate:  Test the water
+
+697. [Corrupted Font — Test the water (success)]
+     save as:  public/sounds/Narration/corrupted_font_a0_win.wav
+     narrate:  A careful dip reveals the cleansing was already done.
+
+698. [Corrupted Font — Test the water (failure)]
+     save as:  public/sounds/Narration/corrupted_font_a0_lose.wav
+     narrate:  The blackness recoils — you leave it.
+
+699. [Corrupted Font — Pronounce the exorcism]
+     save as:  public/sounds/Narration/corrupted_font_a1_act.wav
+     narrate:  Pronounce the exorcism
+
+700. [Corrupted Font — Pronounce the exorcism (success)]
+     save as:  public/sounds/Narration/corrupted_font_a1_win.wav
+     narrate:  The blackness boils away — clear water washes the party clean.
+
+701. [Corrupted Font — Pronounce the exorcism (failure)]
+     save as:  public/sounds/Narration/corrupted_font_a1_lose.wav
+     narrate:  The corruption surges — it stains you.
+
+702. [Corrupted Font — Bathe in the font]
+     save as:  public/sounds/Narration/corrupted_font_a2_act.wav
+     narrate:  Bathe in the font
+
+703. [Corrupted Font — Bathe in the font (success)]
+     save as:  public/sounds/Narration/corrupted_font_a2_win.wav
+     narrate:  You scour the font and yourselves in one rite — perfectly pure!
+
+704. [Corrupted Font — Bathe in the font (failure)]
+     save as:  public/sounds/Narration/corrupted_font_a2_lose.wav
+     narrate:  The corruption drenches everyone.
+
+705. [Alpha Wolf]
+     save as:  public/sounds/Narration/alpha_wolf.wav
+     narrate:  A wounded dire-wolf lord snarls from a pit. Dominating it could win a loyal companion for the floor.
+
+706. [Alpha Wolf — Toss it food]
+     save as:  public/sounds/Narration/alpha_wolf_a0_act.wav
+     narrate:  Toss it food
+
+707. [Alpha Wolf — Toss it food (success)]
+     save as:  public/sounds/Narration/alpha_wolf_a0_win.wav
+     narrate:  It eats, watches you warily, and trots along.
+
+708. [Alpha Wolf — Toss it food (failure)]
+     save as:  public/sounds/Narration/alpha_wolf_a0_lose.wav
+     narrate:  It turns its nose up and limps away.
+
+709. [Alpha Wolf — Hold out a hand]
+     save as:  public/sounds/Narration/alpha_wolf_a1_act.wav
+     narrate:  Hold out a hand
+
+710. [Alpha Wolf — Hold out a hand (success)]
+     save as:  public/sounds/Narration/alpha_wolf_a1_win.wav
+     narrate:  Yellow eyes meet yours — the alpha lowers its head and joins you.
+
+711. [Alpha Wolf — Hold out a hand (failure)]
+     save as:  public/sounds/Narration/alpha_wolf_a1_lose.wav
+     narrate:  It lunges; you barely pull your hand back.
+
+712. [Alpha Wolf — Stare it down]
+     save as:  public/sounds/Narration/alpha_wolf_a2_act.wav
+     narrate:  Stare it down
+
+713. [Alpha Wolf — Stare it down (success)]
+     save as:  public/sounds/Narration/alpha_wolf_a2_win.wav
+     narrate:  The whole party holds its gaze — the wolf submits, proud and loyal!
+
+714. [Alpha Wolf — Stare it down (failure)]
+     save as:  public/sounds/Narration/alpha_wolf_a2_lose.wav
+     narrate:  It reads your fear and leads the pack in.
+
+715. [Stag Mount]
+     save as:  public/sounds/Narration/stag_mount.wav
+     narrate:  A great stag of strange intelligence paws at a gate. Calming it could lend its vigor to the party's stride.
+
+716. [Stag Mount — Approach with grain]
+     save as:  public/sounds/Narration/stag_mount_a0_act.wav
+     narrate:  Approach with grain
+
+717. [Stag Mount — Approach with grain (success)]
+     save as:  public/sounds/Narration/stag_mount_a0_win.wav
+     narrate:  It takes the grain and bows its head — a small spring in your step.
+
+718. [Stag Mount — Approach with grain (failure)]
+     save as:  public/sounds/Narration/stag_mount_a0_lose.wav
+     narrate:  It shies away into the dark.
+
+719. [Stag Mount — Soothe the beast]
+     save as:  public/sounds/Narration/stag_mount_a1_act.wav
+     narrate:  Soothe the beast
+
+720. [Stag Mount — Soothe the beast (success)]
+     save as:  public/sounds/Narration/stag_mount_a1_win.wav
+     narrate:  You lay hands on its flank — its vigor flows into the party.
+
+721. [Stag Mount — Soothe the beast (failure)]
+     save as:  public/sounds/Narration/stag_mount_a1_lose.wav
+     narrate:  It bolts, clipping you with an antler.
+
+722. [Stag Mount — Ride it as a mascot]
+     save as:  public/sounds/Narration/stag_mount_a2_act.wav
+     narrate:  Ride it as a mascot
+
+723. [Stag Mount — Ride it as a mascot (success)]
+     save as:  public/sounds/Narration/stag_mount_a2_win.wav
+     narrate:  The stag accepts you all — the party moves like the wind!
+
+724. [Stag Mount — Ride it as a mascot (failure)]
+     save as:  public/sounds/Narration/stag_mount_a2_lose.wav
+     narrate:  It panics, trampling everyone in its rush.
+
+725. [Read the Traitor]
+     save as:  public/sounds/Narration/read_the_traitor.wav
+     narrate:  A captive taken in the fight sweats and stammers. Reading him right could pry loose the boss's secret.
+
+726. [Read the Traitor — Offer a deal]
+     save as:  public/sounds/Narration/read_the_traitor_a0_act.wav
+     narrate:  Offer a deal
+
+727. [Read the Traitor — Offer a deal (success)]
+     save as:  public/sounds/Narration/read_the_traitor_a0_win.wav
+     narrate:  He cracks easily — a useful crumb of intel.
+
+728. [Read the Traitor — Offer a deal (failure)]
+     save as:  public/sounds/Narration/read_the_traitor_a0_lose.wav
+     narrate:  He clams up, suspicious of the deal.
+
+729. [Read the Traitor — Spot the lie he wants to tell]
+     save as:  public/sounds/Narration/read_the_traitor_a1_act.wav
+     narrate:  Spot the lie he wants to tell
+
+730. [Read the Traitor — Spot the lie he wants to tell (success)]
+     save as:  public/sounds/Narration/read_the_traitor_a1_win.wav
+     narrate:  You feed him the lie he's aching to tell — and learn the boss's weakness.
+
+731. [Read the Traitor — Spot the lie he wants to tell (failure)]
+     save as:  public/sounds/Narration/read_the_traitor_a1_lose.wav
+     narrate:  He reads YOU instead — and grins.
+
+732. [Gambling Den]
+     save as:  public/sounds/Narration/gambling_den.wav
+     narrate:  A back-room dice table, still felted. The crew here ran — but their pot and their marked dice remain.
+
+733. [Gambling Den — Pocket the pot]
+     save as:  public/sounds/Narration/gambling_den_a0_act.wav
+     narrate:  Pocket the pot
+
+734. [Gambling Den — Pocket the pot (success)]
+     save as:  public/sounds/Narration/gambling_den_a0_win.wav
+     narrate:  A quick palm — the house's loss is your gain.
+
+735. [Gambling Den — Pocket the pot (failure)]
+     save as:  public/sounds/Narration/gambling_den_a0_lose.wav
+     narrate:  The pot was already emptied.
+
+736. [Gambling Den — Read the marked dice]
+     save as:  public/sounds/Narration/gambling_den_a1_act.wav
+     narrate:  Read the marked dice
+
+737. [Gambling Den — Read the marked dice (success)]
+     save as:  public/sounds/Narration/gambling_den_a1_win.wav
+     narrate:  You spot the rig and clean out what they stashed.
+
+738. [Gambling Den — Read the marked dice (failure)]
+     save as:  public/sounds/Narration/gambling_den_a1_lose.wav
+     narrate:  You misread the rig — and pay the house back.
+
+739. [Field Hospital]
+     save as:  public/sounds/Narration/field_hospital.wav
+     narrate:  A field surgeon's kit lies abandoned, bandages and salves still good. Tending the party now pays double.
+
+740. [Field Hospital — Use the salves]
+     save as:  public/sounds/Narration/field_hospital_a0_act.wav
+     narrate:  Use the salves
+
+741. [Field Hospital — Use the salves (success)]
+     save as:  public/sounds/Narration/field_hospital_a0_win.wav
+     narrate:  A brisk mend passes over everyone.
+
+742. [Field Hospital — Use the salves (failure)]
+     save as:  public/sounds/Narration/field_hospital_a0_lose.wav
+     narrate:  The salves have gone rancid.
+
+743. [Field Hospital — Proper triage]
+     save as:  public/sounds/Narration/field_hospital_a1_act.wav
+     narrate:  Proper triage
+
+744. [Field Hospital — Proper triage (success)]
+     save as:  public/sounds/Narration/field_hospital_a1_win.wav
+     narrate:  You clean, stitch, and dose — the party is healed AND cleansed.
+
+745. [Field Hospital — Proper triage (failure)]
+     save as:  public/sounds/Narration/field_hospital_a1_lose.wav
+     narrate:  The kit's poultice was tainted.
+
+746. [Plague Corpse]
+     save as:  public/sounds/Narration/plague_corpse.wav
+     narrate:  A plague-riddled corpse slumps against a sealed door. Diagnosing it reveals what — and who — lies beyond.
+
+747. [Plague Corpse — Last rites and retreat]
+     save as:  public/sounds/Narration/plague_corpse_a0_act.wav
+     narrate:  Last rites and retreat
+
+748. [Plague Corpse — Last rites and retreat (success)]
+     save as:  public/sounds/Narration/plague_corpse_a0_win.wav
+     narrate:  You note the sores' pattern as you pray — useful.
+
+749. [Plague Corpse — Last rites and retreat (failure)]
+     save as:  public/sounds/Narration/plague_corpse_a0_lose.wav
+     narrate:  The rites done, you learn nothing new.
+
+750. [Plague Corpse — Open the corpse]
+     save as:  public/sounds/Narration/plague_corpse_a1_act.wav
+     narrate:  Open the corpse
+
+751. [Plague Corpse — Open the corpse (success)]
+     save as:  public/sounds/Narration/plague_corpse_a1_win.wav
+     narrate:  The plague's signature is unmistakable — the boss's nature is clear.
+
+752. [Plague Corpse — Open the corpse (failure)]
+     save as:  public/sounds/Narration/plague_corpse_a1_lose.wav
+     narrate:  A spray of infected blood catches you.
+
+753. [Sniper's Nest]
+     save as:  public/sounds/Narration/sniper_s_nest.wav
+     narrate:  An old sniper's roost overlooks the next hall. The vantage hardens you to what's coming.
+
+754. [Sniper's Nest — Check the roost]
+     save as:  public/sounds/Narration/sniper_s_nest_a0_act.wav
+     narrate:  Check the roost
+
+755. [Sniper's Nest — Check the roost (success)]
+     save as:  public/sounds/Narration/sniper_s_nest_a0_win.wav
+     narrate:  You find a serviceable vantage — a small edge.
+
+756. [Sniper's Nest — Check the roost (failure)]
+     save as:  public/sounds/Narration/sniper_s_nest_a0_lose.wav
+     narrate:  The roost has collapsed.
+
+757. [Sniper's Nest — Read the kill-zone]
+     save as:  public/sounds/Narration/sniper_s_nest_a1_act.wav
+     narrate:  Read the kill-zone
+
+758. [Sniper's Nest — Read the kill-zone (success)]
+     save as:  public/sounds/Narration/sniper_s_nest_a1_win.wav
+     narrate:  You map every angle — the party steels itself, damage halved ahead.
+
+759. [Sniper's Nest — Read the kill-zone (failure)]
+     save as:  public/sounds/Narration/sniper_s_nest_a1_lose.wav
+     narrate:  You misread a creak — a crossbow fires!
+
+760. [Sniper's Nest — Spot every trap on the floor]
+     save as:  public/sounds/Narration/sniper_s_nest_a2_act.wav
+     narrate:  Spot every trap on the floor
+
+761. [Sniper's Nest — Spot every trap on the floor (success)]
+     save as:  public/sounds/Narration/sniper_s_nest_a2_win.wav
+     narrate:  The whole floor's ambushes lay bare — the party becomes iron!
+
+762. [Sniper's Nest — Spot every trap on the floor (failure)]
+     save as:  public/sounds/Narration/sniper_s_nest_a2_lose.wav
+     narrate:  You lean out too far — the old trap still works.
+
+763. [Lost Map Cache]
+     save as:  public/sounds/Narration/lost_map_cache.wav
+     narrate:  A rolled chart peeks from a dead scout's pack. The boss's location could be yours — if you read it before the ink flees.
+
+764. [Lost Map Cache — Note the landmarks]
+     save as:  public/sounds/Narration/lost_map_cache_a0_act.wav
+     narrate:  Note the landmarks
+
+765. [Lost Map Cache — Note the landmarks (success)]
+     save as:  public/sounds/Narration/lost_map_cache_a0_win.wav
+     narrate:  You get a rough sense of the floor — useful.
+
+766. [Lost Map Cache — Note the landmarks (failure)]
+     save as:  public/sounds/Narration/lost_map_cache_a0_lose.wav
+     narrate:  The landmarks have shifted.
+
+767. [Lost Map Cache — Read the marching lines]
+     save as:  public/sounds/Narration/lost_map_cache_a1_act.wav
+     narrate:  Read the marching lines
+
+768. [Lost Map Cache — Read the marching lines (success)]
+     save as:  public/sounds/Narration/lost_map_cache_a1_win.wav
+     narrate:  The chart is plain — the boss's chamber stands revealed.
+
+769. [Lost Map Cache — Read the marching lines (failure)]
+     save as:  public/sounds/Narration/lost_map_cache_a1_lose.wav
+     narrate:  You fumble and tear the chart — and pay for a new copy.
+
+770. [Hunter's Trophies]
+     save as:  public/sounds/Narration/hunter_s_trophies.wav
+     narrate:  A rack of beast-trophies radiates a faint vigor. Donning a tooth or claw hardens the body.
+
+771. [Hunter's Trophies — Take a token]
+     save as:  public/sounds/Narration/hunter_s_trophies_a0_act.wav
+     narrate:  Take a token
+
+772. [Hunter's Trophies — Take a token (success)]
+     save as:  public/sounds/Narration/hunter_s_trophies_a0_win.wav
+     narrate:  A small,steady fortitude settles in.
+
+773. [Hunter's Trophies — Take a token (failure)]
+     save as:  public/sounds/Narration/hunter_s_trophies_a0_lose.wav
+     narrate:  The trophies are all rotted.
+
+774. [Hunter's Trophies — Choose the right charm]
+     save as:  public/sounds/Narration/hunter_s_trophies_a1_act.wav
+     narrate:  Choose the right charm
+
+775. [Hunter's Trophies — Choose the right charm (success)]
+     save as:  public/sounds/Narration/hunter_s_trophies_a1_win.wav
+     narrate:  You pick a potent trophy — the party feels fortified.
+
+776. [Hunter's Trophies — Choose the right charm (failure)]
+     save as:  public/sounds/Narration/hunter_s_trophies_a1_lose.wav
+     narrate:  The beast's spirit objects — a spectral bite.
+
+777. [Wyrm Track]
+     save as:  public/sounds/Narration/wyrm_track.wav
+     narrate:  A scorched, claw-marked trail leads deeper. Reading it tells you exactly what waits at the bottom.
+
+778. [Wyrm Track — Note the claw count]
+     save as:  public/sounds/Narration/wyrm_track_a0_act.wav
+     narrate:  Note the claw count
+
+779. [Wyrm Track — Note the claw count (success)]
+     save as:  public/sounds/Narration/wyrm_track_a0_win.wav
+     narrate:  The track is unmistakably draconic — useful.
+
+780. [Wyrm Track — Note the claw count (failure)]
+     save as:  public/sounds/Narration/wyrm_track_a0_lose.wav
+     narrate:  The track is too cold to read.
+
+781. [Wyrm Track — Follow the scorch]
+     save as:  public/sounds/Narration/wyrm_track_a1_act.wav
+     narrate:  Follow the scorch
+
+782. [Wyrm Track — Follow the scorch (success)]
+     save as:  public/sounds/Narration/wyrm_track_a1_win.wav
+     narrate:  You trace the beast — the boss's identity and weakness are clear.
+
+783. [Wyrm Track — Follow the scorch (failure)]
+     save as:  public/sounds/Narration/wyrm_track_a1_lose.wav
+     narrate:  You blunder down a side tunnel, kicking rubble.
+
+784. [Wild Camp]
+     save as:  public/sounds/Narration/wild_camp.wav
+     narrate:  A hidden dell offers a brief, safe rest. Setting watch properly is the difference between rest and ambush.
+
+785. [Wild Camp — Quick scout]
+     save as:  public/sounds/Narration/wild_camp_a0_act.wav
+     narrate:  Quick scout
+
+786. [Wild Camp — Quick scout (success)]
+     save as:  public/sounds/Narration/wild_camp_a0_win.wav
+     narrate:  You confirm the dell is safe — a brief breather.
+
+787. [Wild Camp — Quick scout (failure)]
+     save as:  public/sounds/Narration/wild_camp_a0_lose.wav
+     narrate:  You can't be sure — you push on.
+
+788. [Wild Camp — Set proper watch]
+     save as:  public/sounds/Narration/wild_camp_a1_act.wav
+     narrate:  Set proper watch
+
+789. [Wild Camp — Set proper watch (success)]
+     save as:  public/sounds/Narration/wild_camp_a1_win.wav
+     narrate:  A clean, short rest — abilities restored.
+
+790. [Wild Camp — Set proper watch (failure)]
+     save as:  public/sounds/Narration/wild_camp_a1_lose.wav
+     narrate:  Your watch fires at shadows — and wakes the wild.
+
+791. [Wild Camp — Long rest in the wild]
+     save as:  public/sounds/Narration/wild_camp_a2_act.wav
+     narrate:  Long rest in the wild
+
+792. [Wild Camp — Long rest in the wild (success)]
+     save as:  public/sounds/Narration/wild_camp_a2_win.wav
+     narrate:  A full, safe recovery in the enemy's blind spot!
+
+793. [Wild Camp — Long rest in the wild (failure)]
+     save as:  public/sounds/Narration/wild_camp_a2_lose.wav
+     narrate:  Smoke and snoring carry — the whole floor stirs.
+
+794. [Smuggler's Toll]
+     save as:  public/sounds/Narration/smuggler_s_toll.wav
+     narrate:  A smuggler's post guards a bridge. Flashing the right sign and confidence could wave you through rich.
+
+795. [Smuggler's Toll — Read what they want]
+     save as:  public/sounds/Narration/smuggler_s_toll_a0_act.wav
+     narrate:  Read what they want
+
+796. [Smuggler's Toll — Read what they want (success)]
+     save as:  public/sounds/Narration/smuggler_s_toll_a0_win.wav
+     narrate:  You catch their tells and play along.
+
+797. [Smuggler's Toll — Read what they want (failure)]
+     save as:  public/sounds/Narration/smuggler_s_toll_a0_lose.wav
+     narrate:  Their game is too opaque.
+
+798. [Smuggler's Toll — Fake the password]
+     save as:  public/sounds/Narration/smuggler_s_toll_a1_act.wav
+     narrate:  Fake the password
+
+799. [Smuggler's Toll — Fake the password (success)]
+     save as:  public/sounds/Narration/smuggler_s_toll_a1_win.wav
+     narrate:  You bluff the countersign — they wave you through with a "gift".
+
+800. [Smuggler's Toll — Fake the password (failure)]
+     save as:  public/sounds/Narration/smuggler_s_toll_a1_lose.wav
+     narrate:  The bluff fails — they shout the alarm.
+
+801. [Smuggler's Toll — Rob them blind]
+     save as:  public/sounds/Narration/smuggler_s_toll_a2_act.wav
+     narrate:  Rob them blind
+
+802. [Smuggler's Toll — Rob them blind (success)]
+     save as:  public/sounds/Narration/smuggler_s_toll_a2_win.wav
+     narrate:  You play them so well they hand over the whole stash!
+
+803. [Smuggler's Toll — Rob them blind (failure)]
+     save as:  public/sounds/Narration/smuggler_s_toll_a2_lose.wav
+     narrate:  The con collapses — every post on the floor hears.
+
+804. [False Priest]
+     save as:  public/sounds/Narration/false_priest.wav
+     narrate:  A naive cult tends a shrine. Donning their vestments and leading a rite could inspire your party — or draw a curse.
+
+805. [False Priest — Mutter along]
+     save as:  public/sounds/Narration/false_priest_a0_act.wav
+     narrate:  Mutter along
+
+806. [False Priest — Mutter along (success)]
+     save as:  public/sounds/Narration/false_priest_a0_win.wav
+     narrate:  A faint, steady resolve settles on the party.
+
+807. [False Priest — Mutter along (failure)]
+     save as:  public/sounds/Narration/false_priest_a0_lose.wav
+     narrate:  The rite feels wrong — you stop.
+
+808. [False Priest — Lead the rite]
+     save as:  public/sounds/Narration/false_priest_a1_act.wav
+     narrate:  Lead the rite
+
+809. [False Priest — Lead the rite (success)]
+     save as:  public/sounds/Narration/false_priest_a1_win.wav
+     narrate:  You play the priest flawlessly — the party leaves inspired.
+
+810. [False Priest — Lead the rite (failure)]
+     save as:  public/sounds/Narration/false_priest_a1_lose.wav
+     narrate:  The cult senses the fraud — the rite inverts.
+
+811. [False Priest — Bless the whole party]
+     save as:  public/sounds/Narration/false_priest_a2_act.wav
+     narrate:  Bless the whole party
+
+812. [False Priest — Bless the whole party (success)]
+     save as:  public/sounds/Narration/false_priest_a2_win.wav
+     narrate:  A flawless sermon — the party walks out aflame with confidence!
+
+813. [False Priest — Bless the whole party (failure)]
+     save as:  public/sounds/Narration/false_priest_a2_lose.wav
+     narrate:  The heresy is plain — the cult curses you all.
+
+814. [Warlord's Tribute]
+     save as:  public/sounds/Narration/warlord_s_tribute.wav
+     narrate:  A warlord's old strongbox sits under a glaring guard-statue. Taking it by presence, not force, is the trick.
+
+815. [Warlord's Tribute — Claim a small share]
+     save as:  public/sounds/Narration/warlord_s_tribute_a0_act.wav
+     narrate:  Claim a small share
+
+816. [Warlord's Tribute — Claim a small share (success)]
+     save as:  public/sounds/Narration/warlord_s_tribute_a0_win.wav
+     narrate:  You talk your way to a token.
+
+817. [Warlord's Tribute — Claim a small share (failure)]
+     save as:  public/sounds/Narration/warlord_s_tribute_a0_lose.wav
+     narrate:  The statue is unmoved.
+
+818. [Warlord's Tribute — Demand the box]
+     save as:  public/sounds/Narration/warlord_s_tribute_a1_act.wav
+     narrate:  Demand the box
+
+819. [Warlord's Tribute — Demand the box (success)]
+     save as:  public/sounds/Narration/warlord_s_tribute_a1_win.wav
+     narrate:  You shout the old warlord's name — the tribute is yours.
+
+820. [Warlord's Tribute — Demand the box (failure)]
+     save as:  public/sounds/Narration/warlord_s_tribute_a1_lose.wav
+     narrate:  Your voice cracks — the statue's gaze frightens you.
+
+821. [Warlord's Tribute — Claim the warlord's name]
+     save as:  public/sounds/Narration/warlord_s_tribute_a2_act.wav
+     narrate:  Claim the warlord's name
+
+822. [Warlord's Tribute — Claim the warlord's name (success)]
+     save as:  public/sounds/Narration/warlord_s_tribute_a2_win.wav
+     narrate:  Five voices bellow the name — the strongbox and more are yours!
+
+823. [Warlord's Tribute — Claim the warlord's name (failure)]
+     save as:  public/sounds/Narration/warlord_s_tribute_a2_lose.wav
+     narrate:  The name does not take — dread fills the chamber.
+
+824. [Break the Line]
+     save as:  public/sounds/Narration/break_the_line.wav
+     narrate:  A shield-wall of old constructs blocks the way. A roaring charge could shatter their nerve before a blade is drawn.
+
+825. [Break the Line — Find the weak file]
+     save as:  public/sounds/Narration/break_the_line_a0_act.wav
+     narrate:  Find the weak file
+
+826. [Break the Line — Find the weak file (success)]
+     save as:  public/sounds/Narration/break_the_line_a0_win.wav
+     narrate:  You spot the gap — a small advantage.
+
+827. [Break the Line — Find the weak file (failure)]
+     save as:  public/sounds/Narration/break_the_line_a0_lose.wav
+     narrate:  The line is solid everywhere.
+
+828. [Break the Line — Roar the charge]
+     save as:  public/sounds/Narration/break_the_line_a1_act.wav
+     narrate:  Roar the charge
+
+829. [Break the Line — Roar the charge (success)]
+     save as:  public/sounds/Narration/break_the_line_a1_win.wav
+     narrate:  Your roar cracks the line — fury carries the party through.
+
+830. [Break the Line — Roar the charge (failure)]
+     save as:  public/sounds/Narration/break_the_line_a1_lose.wav
+     narrate:  They hold — and the noise echoes on.
+
+831. [Break the Line — Bellow as one]
+     save as:  public/sounds/Narration/break_the_line_a2_act.wav
+     narrate:  Bellow as one
+
+832. [Break the Line — Bellow as one (success)]
+     save as:  public/sounds/Narration/break_the_line_a2_win.wav
+     narrate:  A unified roar shatters the constructs AND every nerve on the floor — the party is berserk!
+
+833. [Break the Line — Bellow as one (failure)]
+     save as:  public/sounds/Narration/break_the_line_a2_lose.wav
+     narrate:  The constructs reform — and now the floor is awake.
+
+834. [Bardic Contest]
+     save as:  public/sounds/Narration/bardic_contest.wav
+     narrate:  A spectral bard demands a contest before you pass. Winning earns the lore of old masters; losing costs pride.
+
+835. [Bardic Contest — Cite the classics]
+     save as:  public/sounds/Narration/bardic_contest_a0_act.wav
+     narrate:  Cite the classics
+
+836. [Bardic Contest — Cite the classics (success)]
+     save as:  public/sounds/Narration/bardic_contest_a0_win.wav
+     narrate:  Your scholarship impresses — a small share of lore.
+
+837. [Bardic Contest — Cite the classics (failure)]
+     save as:  public/sounds/Narration/bardic_contest_a0_lose.wav
+     narrate:  The bard finds you dull.
+
+838. [Bardic Contest — Play a piece]
+     save as:  public/sounds/Narration/bardic_contest_a1_act.wav
+     narrate:  Play a piece
+
+839. [Bardic Contest — Play a piece (success)]
+     save as:  public/sounds/Narration/bardic_contest_a1_win.wav
+     narrate:  Your tune wins — the bard gifts you a verse of hard-won experience.
+
+840. [Bardic Contest — Play a piece (failure)]
+     save as:  public/sounds/Narration/bardic_contest_a1_lose.wav
+     narrate:  You fumble a phrase — the bard jeers.
+
+841. [Bardic Contest — A full ensemble]
+     save as:  public/sounds/Narration/bardic_contest_a2_act.wav
+     narrate:  A full ensemble
+
+842. [Bardic Contest — A full ensemble (success)]
+     save as:  public/sounds/Narration/bardic_contest_a2_win.wav
+     narrate:  The party plays as one — the bard is moved to teach you everything!
+
+843. [Bardic Contest — A full ensemble (failure)]
+     save as:  public/sounds/Narration/bardic_contest_a2_lose.wav
+     narrate:  A cacophony — the bard's criticism cuts deep.
+
+844. [Lullaby]
+     save as:  public/sounds/Narration/lullaby.wav
+     narrate:  A music box plays an endless, drowsy tune. Harmonizing could soothe the party's hurts — or lull you senseless.
+
+845. [Lullaby — Rest to the tune]
+     save as:  public/sounds/Narration/lullaby_a0_act.wav
+     narrate:  Rest to the tune
+
+846. [Lullaby — Rest to the tune (success)]
+     save as:  public/sounds/Narration/lullaby_a0_win.wav
+     narrate:  A refreshing pause — minor hurts mend.
+
+847. [Lullaby — Rest to the tune (failure)]
+     save as:  public/sounds/Narration/lullaby_a0_lose.wav
+     narrate:  The tune is just noise.
+
+848. [Lullaby — Harmonize]
+     save as:  public/sounds/Narration/lullaby_a1_act.wav
+     narrate:  Harmonize
+
+849. [Lullaby — Harmonize (success)]
+     save as:  public/sounds/Narration/lullaby_a1_win.wav
+     narrate:  You weave the melody into a balm — the party heals.
+
+850. [Lullaby — Harmonize (failure)]
+     save as:  public/sounds/Narration/lullaby_a1_lose.wav
+     narrate:  You nod off mid-phrase; everyone wakes groggy.
+
+851. [Recruit the Guard]
+     save as:  public/sounds/Narration/recruit_the_guard.wav
+     narrate:  A lone, weary guard eyes your coin and your cause. The right words could turn his coat — and arm.
+
+852. [Recruit the Guard — Feel out his price]
+     save as:  public/sounds/Narration/recruit_the_guard_a0_act.wav
+     narrate:  Feel out his price
+
+853. [Recruit the Guard — Feel out his price (success)]
+     save as:  public/sounds/Narration/recruit_the_guard_a0_win.wav
+     narrate:  You learn he's almost ready — a nudge later, he's yours.
+
+854. [Recruit the Guard — Feel out his price (failure)]
+     save as:  public/sounds/Narration/recruit_the_guard_a0_lose.wav
+     narrate:  He stays cagey.
+
+855. [Recruit the Guard — Appeal to his fatigue]
+     save as:  public/sounds/Narration/recruit_the_guard_a1_act.wav
+     narrate:  Appeal to his fatigue
+
+856. [Recruit the Guard — Appeal to his fatigue (success)]
+     save as:  public/sounds/Narration/recruit_the_guard_a1_win.wav
+     narrate:  He sighs, drops his pike, and joins the column.
+
+857. [Recruit the Guard — Appeal to his fatigue (failure)]
+     save as:  public/sounds/Narration/recruit_the_guard_a1_lose.wav
+     narrate:  He balks — and demands a bribe you can't refuse.
+
+858. [Recruit the Guard — Turn the whole watch]
+     save as:  public/sounds/Narration/recruit_the_guard_a2_act.wav
+     narrate:  Turn the whole watch
+
+859. [Recruit the Guard — Turn the whole watch (success)]
+     save as:  public/sounds/Narration/recruit_the_guard_a2_win.wav
+     narrate:  Your words sweep the watch — a squad of turncoats joins you!
+
+860. [Recruit the Guard — Turn the whole watch (failure)]
+     save as:  public/sounds/Narration/recruit_the_guard_a2_lose.wav
+     narrate:  The captain overhears — and fines you for the trouble.
+
+861. [Royal Pardon]
+     save as:  public/sounds/Narration/royal_pardon.wav
+     narrate:  A wax-sealed pardon lies on a clerk's desk. Flashing it could open the sealed vault nearby — or raise the alarm.
+
+862. [Royal Pardon — Verify the seal]
+     save as:  public/sounds/Narration/royal_pardon_a0_act.wav
+     narrate:  Verify the seal
+
+863. [Royal Pardon — Verify the seal (success)]
+     save as:  public/sounds/Narration/royal_pardon_a0_win.wav
+     narrate:  The seal is genuine — you note which vault it opens.
+
+864. [Royal Pardon — Verify the seal (failure)]
+     save as:  public/sounds/Narration/royal_pardon_a0_lose.wav
+     narrate:  The seal is too smudged to read.
+
+865. [Royal Pardon — Present the pardon]
+     save as:  public/sounds/Narration/royal_pardon_a1_act.wav
+     narrate:  Present the pardon
+
+866. [Royal Pardon — Present the pardon (success)]
+     save as:  public/sounds/Narration/royal_pardon_a1_win.wav
+     narrate:  The vault's ward accepts the seal — and swings wide.
+
+867. [Royal Pardon — Present the pardon (failure)]
+     save as:  public/sounds/Narration/royal_pardon_a1_lose.wav
+     narrate:  The clerk screams fraud before the ward drops.
+
+868. [Royal Pardon — Claim a ducal errand]
+     save as:  public/sounds/Narration/royal_pardon_a2_act.wav
+     narrate:  Claim a ducal errand
+
+869. [Royal Pardon — Claim a ducal errand (success)]
+     save as:  public/sounds/Narration/royal_pardon_a2_win.wav
+     narrate:  You bluff the whole sealed wing open — secret rooms galore!
+
+870. [Royal Pardon — Claim a ducal errand (failure)]
+     save as:  public/sounds/Narration/royal_pardon_a2_lose.wav
+     narrate:  The bluff collapses; every ward in the wing shrieks.
+
+871. [Tavern Tales]
+     save as:  public/sounds/Narration/tavern_tales.wav
+     narrate:  Around the merchant's fire, a traveling bard offers a tale for a tale. A good story could lift spirits before you descend.
+
+872. [Tavern Tales — Recall an old legend]
+     save as:  public/sounds/Narration/tavern_tales_a0_act.wav
+     narrate:  Recall an old legend
+
+873. [Tavern Tales — Recall an old legend (success)]
+     save as:  public/sounds/Narration/tavern_tales_a0_win.wav
+     narrate:  The bard nods — the party feels a familiar, steady resolve.
+
+874. [Tavern Tales — Recall an old legend (failure)]
+     save as:  public/sounds/Narration/tavern_tales_a0_lose.wav
+     narrate:  The bard has heard it before.
+
+875. [Tavern Tales — Tell your own exploits]
+     save as:  public/sounds/Narration/tavern_tales_a1_act.wav
+     narrate:  Tell your own exploits
+
+876. [Tavern Tales — Tell your own exploits (success)]
+     save as:  public/sounds/Narration/tavern_tales_a1_win.wav
+     narrate:  Your tale rouses the camp — the party sets out inspired.
+
+877. [Tavern Tales — Tell your own exploits (failure)]
+     save as:  public/sounds/Narration/tavern_tales_a1_lose.wav
+     narrate:  The tale falls flat — polite silence.
+
+878. [Mark the Mark]
+     save as:  public/sounds/Narration/mark_the_mark.wav
+     narrate:  A sharper-eyed merchant's guard is running a side hustle. Reading him could win a tidy purse.
+
+879. [Mark the Mark — Watch his hands]
+     save as:  public/sounds/Narration/mark_the_mark_a0_act.wav
+     narrate:  Watch his hands
+
+880. [Mark the Mark — Watch his hands (success)]
+     save as:  public/sounds/Narration/mark_the_mark_a0_win.wav
+     narrate:  You spot the loaded game — a small, easy profit.
+
+881. [Mark the Mark — Watch his hands (failure)]
+     save as:  public/sounds/Narration/mark_the_mark_a0_lose.wav
+     narrate:  His hands are too quick.
+
+882. [Mark the Mark — Read his hustle]
+     save as:  public/sounds/Narration/mark_the_mark_a1_act.wav
+     narrate:  Read his hustle
+
+883. [Mark the Mark — Read his hustle (success)]
+     save as:  public/sounds/Narration/mark_the_mark_a1_win.wav
+     narrate:  You play along just enough to clean him out.
+
+884. [Mark the Mark — Read his hustle (failure)]
+     save as:  public/sounds/Narration/mark_the_mark_a1_lose.wav
+     narrate:  He reads you back — and lightens your purse.
+
+885. [Locked Chest]
+     save as:  public/sounds/Narration/locked_chest_trapped.wav
+     narrate:  An iron-bound chest sits unopened, its lock tarnished but cunning. A trap mechanism glints in the keyhole.
+
+886. [Locked Chest — Inspect for traps first]
+     save as:  public/sounds/Narration/locked_chest_trapped_a0_act.wav
+     narrate:  Inspect for traps first
+
+887. [Locked Chest — Inspect for traps first (success)]
+     save as:  public/sounds/Narration/locked_chest_trapped_a0_win.wav
+     narrate:  You find and ease the trigger. The lock yields meekly.
+
+888. [Locked Chest — Inspect for traps first (failure)]
+     save as:  public/sounds/Narration/locked_chest_trapped_a0_lose.wav
+     narrate:  The mechanism is too well hidden — you resort to brute force.
+
+889. [Locked Chest — Pick the lock]
+     save as:  public/sounds/Narration/locked_chest_trapped_a1_act.wav
+     narrate:  Pick the lock
+
+890. [Locked Chest — Pick the lock (success)]
+     save as:  public/sounds/Narration/locked_chest_trapped_a1_win.wav
+     narrate:  Tumblers fall one by one — the lid swings open.
+
+891. [Locked Chest — Pick the lock (failure)]
+     save as:  public/sounds/Narration/locked_chest_trapped_a1_lose.wav
+     narrate:  A pin snaps with a sharp click! A dart fires.
+
+892. [Locked Chest — Everyone pry it open]
+     save as:  public/sounds/Narration/locked_chest_trapped_a2_act.wav
+     narrate:  Everyone pry it open
+
+893. [Locked Chest — Everyone pry it open (success)]
+     save as:  public/sounds/Narration/locked_chest_trapped_a2_win.wav
+     narrate:  Crowbars bite, the hinge screams — and the chest yields its hoard!
+
+894. [Locked Chest — Everyone pry it open (failure)]
+     save as:  public/sounds/Narration/locked_chest_trapped_a2_lose.wav
+     narrate:  Springs and darts! Everyone ducks a heartbeat too late.
+
+895. [Ancient Shrine]
+     save as:  public/sounds/Narration/ancient_shrine.wav
+     narrate:  A weathered shrine hums with old power. The correct rites might amplify its blessing before you rest.
+
+896. [Ancient Shrine — Offer a quiet prayer]
+     save as:  public/sounds/Narration/ancient_shrine_a0_act.wav
+     narrate:  Offer a quiet prayer
+
+897. [Ancient Shrine — Offer a quiet prayer (success)]
+     save as:  public/sounds/Narration/ancient_shrine_a0_win.wav
+     narrate:  The shrine warms — a ward settles over the party.
+
+898. [Ancient Shrine — Offer a quiet prayer (failure)]
+     save as:  public/sounds/Narration/ancient_shrine_a0_lose.wav
+     narrate:  The shrine stays cold. No heed.
+
+899. [Ancient Shrine — Channel the resonance]
+     save as:  public/sounds/Narration/ancient_shrine_a1_act.wav
+     narrate:  Channel the resonance
+
+900. [Ancient Shrine — Channel the resonance (success)]
+     save as:  public/sounds/Narration/ancient_shrine_a1_win.wav
+     narrate:  Arcane energy flows — the party is shielded.
+
+901. [Ancient Shrine — Channel the resonance (failure)]
+     save as:  public/sounds/Narration/ancient_shrine_a1_lose.wav
+     narrate:  The energy disperses into the stone.
+
+902. [Ancient Shrine — Invoke the old name aloud]
+     save as:  public/sounds/Narration/ancient_shrine_a2_act.wav
+     narrate:  Invoke the old name aloud
+
+903. [Ancient Shrine — Invoke the old name aloud (success)]
+     save as:  public/sounds/Narration/ancient_shrine_a2_win.wav
+     narrate:  The shrine blazes! A powerful ward shields everyone.
+
+904. [Ancient Shrine — Invoke the old name aloud (failure)]
+     save as:  public/sounds/Narration/ancient_shrine_a2_lose.wav
+     narrate:  Blasphemy — the shrine recoils with a frightful roar.
+
+905. [Whispers at the Threshold]
+     save as:  public/sounds/Narration/whispers_at_the_threshold.wav
+     narrate:  Before the final door, old carvings murmur of what waits beyond. A clever reading could reveal its weakness.
+
+906. [Whispers at the Threshold — Recall what the carvings depict]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a0_act.wav
+     narrate:  Recall what the carvings depict
+
+907. [Whispers at the Threshold — Recall what the carvings depict (success)]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a0_win.wav
+     narrate:  The tale names the foe — and where it falters.
+
+908. [Whispers at the Threshold — Recall what the carvings depict (failure)]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a0_lose.wav
+     narrate:  The script is too weathered to parse.
+
+909. [Whispers at the Threshold — Read the binding runes]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a1_act.wav
+     narrate:  Read the binding runes
+
+910. [Whispers at the Threshold — Read the binding runes (success)]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a1_win.wav
+     narrate:  The runes lay the boss's nature bare. It is marked.
+
+911. [Whispers at the Threshold — Read the binding runes (failure)]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a1_lose.wav
+     narrate:  The runes are cold and uninformative.
+
+912. [Whispers at the Threshold — Demand the truth]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a2_act.wav
+     narrate:  Demand the truth
+
+913. [Whispers at the Threshold — Demand the truth (success)]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a2_win.wav
+     narrate:  The carvings blaze — the boss's weakness is laid open for all to see!
+
+914. [Whispers at the Threshold — Demand the truth (failure)]
+     save as:  public/sounds/Narration/whispers_at_the_threshold_a2_lose.wav
+     narrate:  The carvings screech. Something stirs beyond the door.

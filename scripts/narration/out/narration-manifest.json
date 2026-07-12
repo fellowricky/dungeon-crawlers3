@@ -1,0 +1,3658 @@
+[
+  {
+    "id": "collapsed_passage",
+    "text": "A pile of rubble blocks the corridor ahead."
+  },
+  {
+    "id": "collapsed_passage_a0_act",
+    "text": "Scout a way around"
+  },
+  {
+    "id": "collapsed_passage_a0_win",
+    "text": "You find a crawlspace skirting the rubble — a modest shortcut."
+  },
+  {
+    "id": "collapsed_passage_a0_lose",
+    "text": "Every side passage dead-ends. The long way it is."
+  },
+  {
+    "id": "collapsed_passage_a1_act",
+    "text": "Clear the rubble"
+  },
+  {
+    "id": "collapsed_passage_a1_win",
+    "text": "You heave the debris aside, revealing a shortcut deeper into the dungeon."
+  },
+  {
+    "id": "collapsed_passage_a1_lose",
+    "text": "The rubble is too dense. The party takes the long way around."
+  },
+  {
+    "id": "collapsed_passage_a2_act",
+    "text": "Smash straight through"
+  },
+  {
+    "id": "collapsed_passage_a2_win",
+    "text": "Stone explodes outward — a clean tunnel, and loose valuables in the fill!"
+  },
+  {
+    "id": "collapsed_passage_a2_lose",
+    "text": "The heap shifts and half-buries you."
+  },
+  {
+    "id": "heave_the_gate",
+    "text": "A rusted portcullis bars the way to a side chamber. A chest gleams beyond."
+  },
+  {
+    "id": "heave_the_gate_a0_act",
+    "text": "Look for a winch"
+  },
+  {
+    "id": "heave_the_gate_a0_win",
+    "text": "You find the rusted winch and crank the gate open enough to reach through."
+  },
+  {
+    "id": "heave_the_gate_a0_lose",
+    "text": "The winch mechanism is destroyed. No easy way in."
+  },
+  {
+    "id": "heave_the_gate_a1_act",
+    "text": "Lift the portcullis"
+  },
+  {
+    "id": "heave_the_gate_a1_win",
+    "text": "With a groan of straining metal, the gate rises. The chest is yours."
+  },
+  {
+    "id": "heave_the_gate_a1_lose",
+    "text": "The gate won't budge. You'll need another way in."
+  },
+  {
+    "id": "heave_the_gate_a2_act",
+    "text": "Wrench it off its rails"
+  },
+  {
+    "id": "heave_the_gate_a2_win",
+    "text": "The whole gate tears free! Nothing stands between you and the loot."
+  },
+  {
+    "id": "heave_the_gate_a2_lose",
+    "text": "The gate snaps back down, catching your arm."
+  },
+  {
+    "id": "crack_the_wall",
+    "text": "This section of wall sounds hollow."
+  },
+  {
+    "id": "crack_the_wall_a0_act",
+    "text": "Tap for weak spots"
+  },
+  {
+    "id": "crack_the_wall_a0_win",
+    "text": "You find a loose block and slide it out — coins glint in the cavity."
+  },
+  {
+    "id": "crack_the_wall_a0_lose",
+    "text": "Solid rock everywhere you tap."
+  },
+  {
+    "id": "crack_the_wall_a1_act",
+    "text": "Shoulder the wall"
+  },
+  {
+    "id": "crack_the_wall_a1_win",
+    "text": "Stone crumbles away, revealing a hidden cache of gold!"
+  },
+  {
+    "id": "crack_the_wall_a1_lose",
+    "text": "Just solid rock. The effort leaves you winded and empty-handed."
+  },
+  {
+    "id": "crack_the_wall_a2_act",
+    "text": "Bring the whole wall down"
+  },
+  {
+    "id": "crack_the_wall_a2_win",
+    "text": "The wall collapses — behind it, a forgotten strongbox!"
+  },
+  {
+    "id": "crack_the_wall_a2_lose",
+    "text": "The ceiling sheds rubble on your head."
+  },
+  {
+    "id": "rope_bridge",
+    "text": "A frayed rope bridge spans a deep chasm. A chest is tied at its midpoint."
+  },
+  {
+    "id": "rope_bridge_a0_act",
+    "text": "Test each plank first"
+  },
+  {
+    "id": "rope_bridge_a0_win",
+    "text": "Slow and steady — you reach the chest and haul it back."
+  },
+  {
+    "id": "rope_bridge_a0_lose",
+    "text": "Too many planks are rotten through. Not worth the fall."
+  },
+  {
+    "id": "rope_bridge_a1_act",
+    "text": "Cross with grace"
+  },
+  {
+    "id": "rope_bridge_a1_win",
+    "text": "You cross with fluid grace, claiming the isolated chest."
+  },
+  {
+    "id": "rope_bridge_a1_lose",
+    "text": "The bridge sways violently. You retreat to solid ground."
+  },
+  {
+    "id": "rope_bridge_a2_act",
+    "text": "Everyone rushes across"
+  },
+  {
+    "id": "rope_bridge_a2_win",
+    "text": "The whole party thunders across before the ropes can complain — and strips the bridge of everything!"
+  },
+  {
+    "id": "rope_bridge_a2_lose",
+    "text": "Planks snap under the weight. Bruised bodies dangle from the ropes."
+  },
+  {
+    "id": "shattered_floor",
+    "text": "Crumbling tiles span a gap. A potion sits on a pedestal on the far side."
+  },
+  {
+    "id": "shattered_floor_a0_act",
+    "text": "Chart the solid tiles"
+  },
+  {
+    "id": "shattered_floor_a0_win",
+    "text": "You map a safe route tile by tile and retrieve the prize."
+  },
+  {
+    "id": "shattered_floor_a0_lose",
+    "text": "Cracks run through every tile. No safe path exists."
+  },
+  {
+    "id": "shattered_floor_a1_act",
+    "text": "Spring across"
+  },
+  {
+    "id": "shattered_floor_a1_win",
+    "text": "Light on your feet, you spring across the broken tiles and grab the prize!"
+  },
+  {
+    "id": "shattered_floor_a1_lose",
+    "text": "A tile gives way beneath you! You take a nasty tumble."
+  },
+  {
+    "id": "shattered_floor_a2_act",
+    "text": "Leap the whole gap"
+  },
+  {
+    "id": "shattered_floor_a2_win",
+    "text": "One impossible leap — you stick the landing and sweep the pedestal clean!"
+  },
+  {
+    "id": "shattered_floor_a2_lose",
+    "text": "You come up short and crash into the pit."
+  },
+  {
+    "id": "narrow_ledge",
+    "text": "A crumbling ledge hugs the wall, barely a foot wide. Something glints in an alcove ahead."
+  },
+  {
+    "id": "narrow_ledge_a0_act",
+    "text": "Rope up and anchor"
+  },
+  {
+    "id": "narrow_ledge_a0_win",
+    "text": "Anchored and careful, you retrieve the stash without a scare."
+  },
+  {
+    "id": "narrow_ledge_a0_lose",
+    "text": "No solid anchor point holds. You abandon the attempt."
+  },
+  {
+    "id": "narrow_ledge_a1_act",
+    "text": "Edge along the ledge"
+  },
+  {
+    "id": "narrow_ledge_a1_win",
+    "text": "You edge along with perfect balance and claim the hidden stash."
+  },
+  {
+    "id": "narrow_ledge_a1_lose",
+    "text": "A pebble skitters into the void. Too risky — you turn back."
+  },
+  {
+    "id": "narrow_ledge_a2_act",
+    "text": "Sprint the ledge"
+  },
+  {
+    "id": "narrow_ledge_a2_win",
+    "text": "You dash the ledge like a mountain goat and scoop up everything in the alcove!"
+  },
+  {
+    "id": "narrow_ledge_a2_lose",
+    "text": "The ledge crumbles mid-stride. You catch yourself hard on the lip."
+  },
+  {
+    "id": "locked_chest",
+    "text": "An ornate chest with a complex locking mechanism sits against the wall."
+  },
+  {
+    "id": "locked_chest_a0_act",
+    "text": "Study the mechanism"
+  },
+  {
+    "id": "locked_chest_a0_win",
+    "text": "You find the maker's release catch hidden under the lid. Click."
+  },
+  {
+    "id": "locked_chest_a0_lose",
+    "text": "The mechanism is beyond you. The chest stays shut."
+  },
+  {
+    "id": "locked_chest_a1_act",
+    "text": "Pick the lock"
+  },
+  {
+    "id": "locked_chest_a1_win",
+    "text": "The lock clicks open! Inside you find treasure."
+  },
+  {
+    "id": "locked_chest_a1_lose",
+    "text": "The lock jams. The chest won't budge."
+  },
+  {
+    "id": "locked_chest_a2_act",
+    "text": "Pry it open"
+  },
+  {
+    "id": "locked_chest_a2_win",
+    "text": "The lid tears off its hinges — everything inside is yours!"
+  },
+  {
+    "id": "locked_chest_a2_lose",
+    "text": "A needle trap fires from the strained lock."
+  },
+  {
+    "id": "trapped_reliquary",
+    "text": "A gem rests on a pressure-plate pedestal. One wrong move could trigger a trap."
+  },
+  {
+    "id": "trapped_reliquary_a0_act",
+    "text": "Map the trigger plates"
+  },
+  {
+    "id": "trapped_reliquary_a0_win",
+    "text": "You chart every plate and lift the gem from the one blind angle."
+  },
+  {
+    "id": "trapped_reliquary_a0_lose",
+    "text": "The trigger pattern defeats you. Better left alone."
+  },
+  {
+    "id": "trapped_reliquary_a1_act",
+    "text": "Lift the gem gently"
+  },
+  {
+    "id": "trapped_reliquary_a1_win",
+    "text": "With nerves of steel, you lift the gem without triggering the mechanism."
+  },
+  {
+    "id": "trapped_reliquary_a1_lose",
+    "text": "The mechanism clicks ominously. You retreat empty-handed."
+  },
+  {
+    "id": "trapped_reliquary_a2_act",
+    "text": "Snatch and run"
+  },
+  {
+    "id": "trapped_reliquary_a2_win",
+    "text": "Grab, sprint, slide — the darts hit nothing but wall. What a haul!"
+  },
+  {
+    "id": "trapped_reliquary_a2_lose",
+    "text": "A volley of darts finds you mid-sprint."
+  },
+  {
+    "id": "disarm_the_contraption",
+    "text": "A tripwire stretches across the passage, connected to something deadly."
+  },
+  {
+    "id": "disarm_the_contraption_a0_act",
+    "text": "Trace the tripwire"
+  },
+  {
+    "id": "disarm_the_contraption_a0_win",
+    "text": "You follow the wire to its housing and simply step around the whole rig — pocketing the trapper's stash."
+  },
+  {
+    "id": "disarm_the_contraption_a0_lose",
+    "text": "The wire vanishes into the wall. You give it a wide berth."
+  },
+  {
+    "id": "disarm_the_contraption_a1_act",
+    "text": "Disarm the mechanism"
+  },
+  {
+    "id": "disarm_the_contraption_a1_win",
+    "text": "You carefully dismantle the trap, revealing a cache of gold behind it."
+  },
+  {
+    "id": "disarm_the_contraption_a1_lose",
+    "text": "A dart fires from the wall! You flinch back empty-handed."
+  },
+  {
+    "id": "disarm_the_contraption_a2_act",
+    "text": "Smash through and grab everything"
+  },
+  {
+    "id": "disarm_the_contraption_a2_win",
+    "text": "You barrel through before the trap can cycle — and rip its gilded housing off the wall!"
+  },
+  {
+    "id": "disarm_the_contraption_a2_lose",
+    "text": "The trap fires true. That one hurt."
+  },
+  {
+    "id": "sleeping_guardian",
+    "text": "A hibernating beast blocks the passage to a glittering hoard."
+  },
+  {
+    "id": "sleeping_guardian_a0_act",
+    "text": "Find a wide berth"
+  },
+  {
+    "id": "sleeping_guardian_a0_win",
+    "text": "You spot a drainage crawl that loops behind the beast. Slow, filthy, effective."
+  },
+  {
+    "id": "sleeping_guardian_a0_lose",
+    "text": "No way around. The beast guards the only path."
+  },
+  {
+    "id": "sleeping_guardian_a1_act",
+    "text": "Slip past silently"
+  },
+  {
+    "id": "sleeping_guardian_a1_win",
+    "text": "You slip past without a sound, claiming the treasure behind it."
+  },
+  {
+    "id": "sleeping_guardian_a1_lose",
+    "text": "The beast stirs! The party flees the room."
+  },
+  {
+    "id": "sleeping_guardian_a2_act",
+    "text": "The whole party sneaks the hoard"
+  },
+  {
+    "id": "sleeping_guardian_a2_win",
+    "text": "Impossibly, five sets of boots make no sound. You strip the hoard bare!"
+  },
+  {
+    "id": "sleeping_guardian_a2_lose",
+    "text": "Someone kicks a coin. The beast's roar echoes through the dungeon."
+  },
+  {
+    "id": "hidden_stash",
+    "text": "The monsters must have hidden something in this room."
+  },
+  {
+    "id": "hidden_stash_a0_act",
+    "text": "Scan for loose stones"
+  },
+  {
+    "id": "hidden_stash_a0_win",
+    "text": "A scuffed flagstone gives it away — a small pouch of gold underneath."
+  },
+  {
+    "id": "hidden_stash_a0_lose",
+    "text": "If there's a stash here, it's hidden too well."
+  },
+  {
+    "id": "hidden_stash_a1_act",
+    "text": "Ease it out without springing the bell"
+  },
+  {
+    "id": "hidden_stash_a1_win",
+    "text": "Tucked behind a loose stone — and rigged to a bell — you find a pouch of gold. The bell never rings."
+  },
+  {
+    "id": "hidden_stash_a1_lose",
+    "text": "The bell clangs. The prize drops into a chute and is gone."
+  },
+  {
+    "id": "hidden_stash_a2_act",
+    "text": "Grab it fast"
+  },
+  {
+    "id": "hidden_stash_a2_win",
+    "text": "Faster than the trap can trigger — you rip the whole stash free!"
+  },
+  {
+    "id": "hidden_stash_a2_lose",
+    "text": "The alarm bell rings through the halls. Something answers."
+  },
+  {
+    "id": "rune_sealed_door",
+    "text": "Glowing runes pulse on a sealed stone door."
+  },
+  {
+    "id": "rune_sealed_door_a0_act",
+    "text": "Recall the sigil lore"
+  },
+  {
+    "id": "rune_sealed_door_a0_win",
+    "text": "You remember this school of warding — and its standard master phrase. The seal fades."
+  },
+  {
+    "id": "rune_sealed_door_a0_lose",
+    "text": "The sigils match nothing you've read."
+  },
+  {
+    "id": "rune_sealed_door_a1_act",
+    "text": "Trace counter-runes"
+  },
+  {
+    "id": "rune_sealed_door_a1_win",
+    "text": "You trace the counter-runes — the seal dissolves, opening the way to a bonus chamber."
+  },
+  {
+    "id": "rune_sealed_door_a1_lose",
+    "text": "The runes flare but hold. The door stays sealed."
+  },
+  {
+    "id": "rune_sealed_door_a2_act",
+    "text": "Overload the seal"
+  },
+  {
+    "id": "rune_sealed_door_a2_win",
+    "text": "You pour raw magic into the ward until it bursts — the chamber and its riches lie open!"
+  },
+  {
+    "id": "rune_sealed_door_a2_lose",
+    "text": "The ward discharges into you with a crack."
+  },
+  {
+    "id": "crystal_conduit",
+    "text": "Floating crystals hum with untapped energy, begging for alignment."
+  },
+  {
+    "id": "crystal_conduit_a0_act",
+    "text": "Study the resonance"
+  },
+  {
+    "id": "crystal_conduit_a0_win",
+    "text": "You deduce the alignment sequence and nudge one crystal — the rest follow."
+  },
+  {
+    "id": "crystal_conduit_a0_lose",
+    "text": "The pattern shifts faster than you can chart it."
+  },
+  {
+    "id": "crystal_conduit_a1_act",
+    "text": "Align the crystals"
+  },
+  {
+    "id": "crystal_conduit_a1_win",
+    "text": "The crystals lock into alignment, creating a teleport nexus for this floor."
+  },
+  {
+    "id": "crystal_conduit_a1_lose",
+    "text": "The crystals dim. The resonance eludes you."
+  },
+  {
+    "id": "crystal_conduit_a2_act",
+    "text": "Force the resonance"
+  },
+  {
+    "id": "crystal_conduit_a2_win",
+    "text": "You slam the frequencies together — the nexus roars to life, shedding crystal shards worth a fortune!"
+  },
+  {
+    "id": "crystal_conduit_a2_lose",
+    "text": "A crystal shatters, spraying you with shards."
+  },
+  {
+    "id": "identify_enchantment",
+    "text": "Magical residue lingers from the defeated caster."
+  },
+  {
+    "id": "identify_enchantment_a0_act",
+    "text": "Sift the residue"
+  },
+  {
+    "id": "identify_enchantment_a0_win",
+    "text": "Scorch marks point the way — you sketch a partial route toward the boss lair."
+  },
+  {
+    "id": "identify_enchantment_a0_lose",
+    "text": "The residue is too scattered to read."
+  },
+  {
+    "id": "identify_enchantment_a1_act",
+    "text": "Read the residue"
+  },
+  {
+    "id": "identify_enchantment_a1_win",
+    "text": "The residue reveals a vision of the boss chamber and its location on your map."
+  },
+  {
+    "id": "identify_enchantment_a1_lose",
+    "text": "The residue fades too quickly to read."
+  },
+  {
+    "id": "annal_tablet",
+    "text": "An ancient stone tablet is carved with intricate script."
+  },
+  {
+    "id": "annal_tablet_a0_act",
+    "text": "Copy the carvings"
+  },
+  {
+    "id": "annal_tablet_a0_win",
+    "text": "Your careful rubbing captures a floor plan etched into the border."
+  },
+  {
+    "id": "annal_tablet_a0_lose",
+    "text": "The rubbing smears. Nothing legible survives."
+  },
+  {
+    "id": "annal_tablet_a1_act",
+    "text": "Translate the script"
+  },
+  {
+    "id": "annal_tablet_a1_win",
+    "text": "You decipher the annals — the floor layout is revealed on your minimap."
+  },
+  {
+    "id": "annal_tablet_a1_lose",
+    "text": "The script is too eroded to read."
+  },
+  {
+    "id": "annal_tablet_a2_act",
+    "text": "Divine the meaning"
+  },
+  {
+    "id": "annal_tablet_a2_win",
+    "text": "You let the tablet speak through you — the whole floor unfolds in your mind, and the vision points to buried coin!"
+  },
+  {
+    "id": "annal_tablet_a2_lose",
+    "text": "The divination collapses into noise and a splitting headache."
+  },
+  {
+    "id": "tomb_rite",
+    "text": "A sarcophagus bears funerary inscriptions."
+  },
+  {
+    "id": "tomb_rite_a0_act",
+    "text": "Offer a simple blessing"
+  },
+  {
+    "id": "tomb_rite_a0_win",
+    "text": "The spirit accepts your respect. The lid slides open an inch — enough."
+  },
+  {
+    "id": "tomb_rite_a0_lose",
+    "text": "The blessing goes unanswered. The lid stays sealed."
+  },
+  {
+    "id": "tomb_rite_a1_act",
+    "text": "Recite the burial rites"
+  },
+  {
+    "id": "tomb_rite_a1_win",
+    "text": "You recite the ancient rites. The sarcophagus opens, yielding fine grave goods."
+  },
+  {
+    "id": "tomb_rite_a1_lose",
+    "text": "A spectral wail echoes through the chamber, but the lid holds."
+  },
+  {
+    "id": "tomb_rite_a2_act",
+    "text": "Force the lid"
+  },
+  {
+    "id": "tomb_rite_a2_win",
+    "text": "Stone grinds aside — the occupant was buried with everything they owned!"
+  },
+  {
+    "id": "tomb_rite_a2_lose",
+    "text": "The lid slams back down on your fingers, and a chill saps your strength."
+  },
+  {
+    "id": "architect_insight",
+    "text": "The room's architectural style is distinctive."
+  },
+  {
+    "id": "architect_insight_a0_act",
+    "text": "Pace the walls"
+  },
+  {
+    "id": "architect_insight_a0_win",
+    "text": "One wall is two feet thicker than it should be. A secret door!"
+  },
+  {
+    "id": "architect_insight_a0_lose",
+    "text": "The walls measure true. Nothing hidden."
+  },
+  {
+    "id": "architect_insight_a1_act",
+    "text": "Read the builder's style"
+  },
+  {
+    "id": "architect_insight_a1_win",
+    "text": "You recognize the builder's mark — a secret door is nearby!"
+  },
+  {
+    "id": "architect_insight_a1_lose",
+    "text": "The room looks ordinary. No secrets here."
+  },
+  {
+    "id": "hidden_armory",
+    "text": "This room feels like it might have a concealed storage area."
+  },
+  {
+    "id": "hidden_armory_a0_act",
+    "text": "Check for scuff marks"
+  },
+  {
+    "id": "hidden_armory_a0_win",
+    "text": "Drag marks lead to a false panel — a piece of gear inside!"
+  },
+  {
+    "id": "hidden_armory_a0_lose",
+    "text": "The floor tells you nothing."
+  },
+  {
+    "id": "hidden_armory_a1_act",
+    "text": "Search methodically"
+  },
+  {
+    "id": "hidden_armory_a1_win",
+    "text": "Behind a false wall panel, you discover a piece of gear!"
+  },
+  {
+    "id": "hidden_armory_a1_lose",
+    "text": "You find nothing of value."
+  },
+  {
+    "id": "hidden_armory_a2_act",
+    "text": "Tear out the panels"
+  },
+  {
+    "id": "hidden_armory_a2_win",
+    "text": "You rip every panel off the walls — an entire hidden rack of equipment!"
+  },
+  {
+    "id": "hidden_armory_a2_lose",
+    "text": "A panel splinters, driving spikes into your hand."
+  },
+  {
+    "id": "pressure_plate_puzzle",
+    "text": "A patterned floor stretches ahead. One wrong step and darts fly."
+  },
+  {
+    "id": "pressure_plate_puzzle_a0_act",
+    "text": "Watch the dust patterns"
+  },
+  {
+    "id": "pressure_plate_puzzle_a0_win",
+    "text": "Undisturbed dust marks the safe tiles. You cross to the pedestal at a stroll."
+  },
+  {
+    "id": "pressure_plate_puzzle_a0_lose",
+    "text": "The dust lies evenly everywhere. No hints."
+  },
+  {
+    "id": "pressure_plate_puzzle_a1_act",
+    "text": "Deduce the safe path"
+  },
+  {
+    "id": "pressure_plate_puzzle_a1_win",
+    "text": "You map the safe path and reach the reward pedestal at the center."
+  },
+  {
+    "id": "pressure_plate_puzzle_a1_lose",
+    "text": "A wrong step triggers a dart trap! The party takes some scratches."
+  },
+  {
+    "id": "pressure_plate_puzzle_a2_act",
+    "text": "Dance across the plates"
+  },
+  {
+    "id": "pressure_plate_puzzle_a2_win",
+    "text": "You cartwheel through the dart volleys untouched and empty the pedestal — twice over!"
+  },
+  {
+    "id": "pressure_plate_puzzle_a2_lose",
+    "text": "Darts fill the air, and you catch several."
+  },
+  {
+    "id": "search_for_clues",
+    "text": "A discarded journal lies in the corner."
+  },
+  {
+    "id": "search_for_clues_a0_act",
+    "text": "Skim the journal"
+  },
+  {
+    "id": "search_for_clues_a0_win",
+    "text": "A few legible pages hold useful notes about this dungeon."
+  },
+  {
+    "id": "search_for_clues_a0_lose",
+    "text": "The journal is mostly illegible."
+  },
+  {
+    "id": "search_for_clues_a1_act",
+    "text": "Cross-reference the entries"
+  },
+  {
+    "id": "search_for_clues_a1_win",
+    "text": "Dates and names line up — the journal yields real tactical insight."
+  },
+  {
+    "id": "search_for_clues_a1_lose",
+    "text": "The references lead nowhere."
+  },
+  {
+    "id": "overgrown_grove",
+    "text": "Rare alchemical herbs grow among the ancient roots."
+  },
+  {
+    "id": "overgrown_grove_a0_act",
+    "text": "Gather the obvious herbs"
+  },
+  {
+    "id": "overgrown_grove_a0_win",
+    "text": "You collect the common healing herbs you recognize on sight."
+  },
+  {
+    "id": "overgrown_grove_a0_lose",
+    "text": "The plants are common weeds. Nothing useful."
+  },
+  {
+    "id": "overgrown_grove_a1_act",
+    "text": "Harvest the rare specimens"
+  },
+  {
+    "id": "overgrown_grove_a1_win",
+    "text": "You gather several prime specimens — enough for healing potions!"
+  },
+  {
+    "id": "overgrown_grove_a1_lose",
+    "text": "The rare herbs crumble at your touch. Wrong season."
+  },
+  {
+    "id": "overgrown_grove_a2_act",
+    "text": "Strip the whole grove"
+  },
+  {
+    "id": "overgrown_grove_a2_win",
+    "text": "You harvest everything — a full satchel of alchemical treasure!"
+  },
+  {
+    "id": "overgrown_grove_a2_lose",
+    "text": "A defensive bloom bursts, searing your skin with sap."
+  },
+  {
+    "id": "mushroom_chamber",
+    "text": "A dazzling array of fungi covers the walls. Some heal — some kill."
+  },
+  {
+    "id": "mushroom_chamber_a0_act",
+    "text": "Pick only what you know"
+  },
+  {
+    "id": "mushroom_chamber_a0_win",
+    "text": "A modest handful of trusted caps — the party shares a small meal."
+  },
+  {
+    "id": "mushroom_chamber_a0_lose",
+    "text": "Nothing here you can vouch for. Better hungry than dead."
+  },
+  {
+    "id": "mushroom_chamber_a1_act",
+    "text": "Sort edible from deadly"
+  },
+  {
+    "id": "mushroom_chamber_a1_win",
+    "text": "You sort the edible from the poisonous. The party shares the safe ones."
+  },
+  {
+    "id": "mushroom_chamber_a1_lose",
+    "text": "Sleep spores trigger! The party coughs in the haze."
+  },
+  {
+    "id": "mushroom_chamber_a2_act",
+    "text": "Trust your gut and feast"
+  },
+  {
+    "id": "mushroom_chamber_a2_win",
+    "text": "Every cap you pick is a restorative rarity — the party feasts!"
+  },
+  {
+    "id": "mushroom_chamber_a2_lose",
+    "text": "That one was definitely poison."
+  },
+  {
+    "id": "toxic_pool",
+    "text": "A pool of bubbling gas fills a low section of the room. A stash glints on the far side."
+  },
+  {
+    "id": "toxic_pool_a0_act",
+    "text": "Wait and watch the fumes"
+  },
+  {
+    "id": "toxic_pool_a0_win",
+    "text": "The gas ebbs on a cycle. You time your crossing and back with room to spare."
+  },
+  {
+    "id": "toxic_pool_a0_lose",
+    "text": "The fumes never thin. Not worth the lungs."
+  },
+  {
+    "id": "toxic_pool_a1_act",
+    "text": "Read the gas currents"
+  },
+  {
+    "id": "toxic_pool_a1_win",
+    "text": "You identify the clear route through the gas and reach the stash."
+  },
+  {
+    "id": "toxic_pool_a1_lose",
+    "text": "The gas stings your eyes. You retreat."
+  },
+  {
+    "id": "toxic_pool_a2_act",
+    "text": "Hold breath and dash"
+  },
+  {
+    "id": "toxic_pool_a2_win",
+    "text": "Thirty seconds of sprinting through poison — and you carry back everything!"
+  },
+  {
+    "id": "toxic_pool_a2_lose",
+    "text": "You gasp halfway. The gas burns going down."
+  },
+  {
+    "id": "desecrated_shrine",
+    "text": "A once-holy shrine has been corrupted by dark energy."
+  },
+  {
+    "id": "desecrated_shrine_a0_act",
+    "text": "Cleanse the outer icons"
+  },
+  {
+    "id": "desecrated_shrine_a0_win",
+    "text": "The icons brighten. A gentle warmth settles over the party as it rests."
+  },
+  {
+    "id": "desecrated_shrine_a0_lose",
+    "text": "The grime won't lift. The corruption runs deeper than the surface."
+  },
+  {
+    "id": "desecrated_shrine_a1_act",
+    "text": "Perform the purification"
+  },
+  {
+    "id": "desecrated_shrine_a1_win",
+    "text": "The shrine glows with restored light — the party rests, fully healed!"
+  },
+  {
+    "id": "desecrated_shrine_a1_lose",
+    "text": "The corruption holds. The shrine remains defiled."
+  },
+  {
+    "id": "desecrated_shrine_a2_act",
+    "text": "Burn out the corruption"
+  },
+  {
+    "id": "desecrated_shrine_a2_win",
+    "text": "Dark energy screams out of the stone — the shrine blazes, and its offering bowl fills with old tithes!"
+  },
+  {
+    "id": "desecrated_shrine_a2_lose",
+    "text": "The corruption lashes back before the ritual completes."
+  },
+  {
+    "id": "heretic_ward",
+    "text": "Profane symbols seal this door."
+  },
+  {
+    "id": "heretic_ward_a0_act",
+    "text": "Find the anchor glyph"
+  },
+  {
+    "id": "heretic_ward_a0_win",
+    "text": "Every ward has a keystone. You scratch through it and the seal unravels."
+  },
+  {
+    "id": "heretic_ward_a0_lose",
+    "text": "The glyphs loop into themselves. No anchor found."
+  },
+  {
+    "id": "heretic_ward_a1_act",
+    "text": "Recite the counter-litany"
+  },
+  {
+    "id": "heretic_ward_a1_win",
+    "text": "Your recitation breaks the ward! The door swings open to a bonus chamber."
+  },
+  {
+    "id": "heretic_ward_a1_lose",
+    "text": "The symbols flash red. The door stays sealed."
+  },
+  {
+    "id": "heretic_ward_a2_act",
+    "text": "Break the door down"
+  },
+  {
+    "id": "heretic_ward_a2_win",
+    "text": "Ward or no ward, hinges are hinges. The chamber and everything in it is yours!"
+  },
+  {
+    "id": "heretic_ward_a2_lose",
+    "text": "The ward detonates with a thunderclap heard through the whole floor."
+  },
+  {
+    "id": "holy_symbol",
+    "text": "A buried relic peeks from the rubble."
+  },
+  {
+    "id": "holy_symbol_a0_act",
+    "text": "Dig it out carefully"
+  },
+  {
+    "id": "holy_symbol_a0_win",
+    "text": "You free the relic intact — a collector will pay well."
+  },
+  {
+    "id": "holy_symbol_a0_lose",
+    "text": "It crumbles as you pull. Just corroded tin."
+  },
+  {
+    "id": "holy_symbol_a1_act",
+    "text": "Identify the relic"
+  },
+  {
+    "id": "holy_symbol_a1_win",
+    "text": "You recognize the holy symbol and recover it properly — a valuable find!"
+  },
+  {
+    "id": "holy_symbol_a1_lose",
+    "text": "Just a rock. Nothing special."
+  },
+  {
+    "id": "caged_beast",
+    "text": "A magical creature is trapped in a cage. It looks scared but not hostile."
+  },
+  {
+    "id": "caged_beast_a0_act",
+    "text": "Read its body language"
+  },
+  {
+    "id": "caged_beast_a0_win",
+    "text": "You understand what it needs and it warms to you, sniffing out hidden things nearby."
+  },
+  {
+    "id": "caged_beast_a0_lose",
+    "text": "The creature stays pressed to the far bars."
+  },
+  {
+    "id": "caged_beast_a1_act",
+    "text": "Befriend the creature"
+  },
+  {
+    "id": "caged_beast_a1_win",
+    "text": "You befriend the creature! It follows the party, sniffing out hidden items."
+  },
+  {
+    "id": "caged_beast_a1_lose",
+    "text": "The creature cowers in the back of its cage, unreachable."
+  },
+  {
+    "id": "caged_beast_a2_act",
+    "text": "Open the cage"
+  },
+  {
+    "id": "caged_beast_a2_win",
+    "text": "It bounds out — and adopts the whole party, dragging over a buried keepsake as tribute!"
+  },
+  {
+    "id": "caged_beast_a2_lose",
+    "text": "It panics and rakes you on the way out."
+  },
+  {
+    "id": "pack_beast",
+    "text": "A spooked pack mule carries valuable goods. It's about to bolt."
+  },
+  {
+    "id": "pack_beast_a0_act",
+    "text": "Calm it with fodder"
+  },
+  {
+    "id": "pack_beast_a0_win",
+    "text": "It settles over a handful of feed and lets you unstrap a saddlebag."
+  },
+  {
+    "id": "pack_beast_a0_lose",
+    "text": "It shies from your hand and trots away."
+  },
+  {
+    "id": "pack_beast_a1_act",
+    "text": "Soothe the mule"
+  },
+  {
+    "id": "pack_beast_a1_win",
+    "text": "You soothe the mule. It drops its cargo before trotting off."
+  },
+  {
+    "id": "pack_beast_a1_lose",
+    "text": "The mule bolts with the goods."
+  },
+  {
+    "id": "pack_beast_a2_act",
+    "text": "Grab the harness"
+  },
+  {
+    "id": "pack_beast_a2_win",
+    "text": "You wrestle the mule still — every saddlebag is yours!"
+  },
+  {
+    "id": "pack_beast_a2_lose",
+    "text": "A hoof catches you square in the ribs."
+  },
+  {
+    "id": "lost_pet",
+    "text": "A lost drake pup sniffs at your pack."
+  },
+  {
+    "id": "lost_pet_a0_act",
+    "text": "Leave a scent trail"
+  },
+  {
+    "id": "lost_pet_a0_win",
+    "text": "It follows the trail of jerky right to you — then leads you to its owner's pack."
+  },
+  {
+    "id": "lost_pet_a0_lose",
+    "text": "It loses interest and skitters off."
+  },
+  {
+    "id": "lost_pet_a1_act",
+    "text": "Win its trust"
+  },
+  {
+    "id": "lost_pet_a1_win",
+    "text": "The drake wags its tail and leads you to its former owner's stash!"
+  },
+  {
+    "id": "lost_pet_a1_lose",
+    "text": "It runs away before you can approach."
+  },
+  {
+    "id": "mimic_sense",
+    "text": "Something feels wrong about that chest in the corner."
+  },
+  {
+    "id": "mimic_sense_a0_act",
+    "text": "Watch from a distance"
+  },
+  {
+    "id": "mimic_sense_a0_win",
+    "text": "You catch it breathing. Mimic confirmed — the party won't be surprised."
+  },
+  {
+    "id": "mimic_sense_a0_lose",
+    "text": "It looks like a chest. Probably. You keep your distance anyway."
+  },
+  {
+    "id": "mimic_sense_a1_act",
+    "text": "Study its tells"
+  },
+  {
+    "id": "mimic_sense_a1_win",
+    "text": "You spot the telltale signs — it's a mimic! The party strikes first."
+  },
+  {
+    "id": "mimic_sense_a1_lose",
+    "text": "Seems normal enough. You proceed cautiously."
+  },
+  {
+    "id": "mimic_sense_a2_act",
+    "text": "Poke it with a sword"
+  },
+  {
+    "id": "mimic_sense_a2_win",
+    "text": "It shrieks and spits out its swallowed hoard before fleeing into the dark!"
+  },
+  {
+    "id": "mimic_sense_a2_lose",
+    "text": "It bites the sword — and your arm with it."
+  },
+  {
+    "id": "merchant_riddle",
+    "text": "The camp merchant smiles slyly. \"Answer my riddle, and the discount is steep.\""
+  },
+  {
+    "id": "merchant_riddle_a0_act",
+    "text": "Recall old riddle-lore"
+  },
+  {
+    "id": "merchant_riddle_a0_win",
+    "text": "An old chestnut — you've read this one. The merchant grumbles and pays out."
+  },
+  {
+    "id": "merchant_riddle_a0_lose",
+    "text": "None of your books covered this one."
+  },
+  {
+    "id": "merchant_riddle_a1_act",
+    "text": "See through the trick"
+  },
+  {
+    "id": "merchant_riddle_a1_win",
+    "text": "You see through the merchant's trick and claim the prize!"
+  },
+  {
+    "id": "merchant_riddle_a1_lose",
+    "text": "The riddle stumps you. You pay the normal price."
+  },
+  {
+    "id": "fake_wall",
+    "text": "The room feels slightly too small for its outer dimensions."
+  },
+  {
+    "id": "fake_wall_a0_act",
+    "text": "Listen for drafts"
+  },
+  {
+    "id": "fake_wall_a0_win",
+    "text": "A whisper of moving air betrays the seam. The hidden room opens."
+  },
+  {
+    "id": "fake_wall_a0_lose",
+    "text": "The air is dead still."
+  },
+  {
+    "id": "fake_wall_a1_act",
+    "text": "Feel what's off about the room"
+  },
+  {
+    "id": "fake_wall_a1_win",
+    "text": "A section of wall sounds hollow! You break through to a secret room with loot."
+  },
+  {
+    "id": "fake_wall_a1_lose",
+    "text": "Nothing unusual about these walls."
+  },
+  {
+    "id": "fake_wall_a2_act",
+    "text": "Knock the wall in"
+  },
+  {
+    "id": "fake_wall_a2_win",
+    "text": "The false wall caves — the smugglers' whole cache spills out!"
+  },
+  {
+    "id": "fake_wall_a2_lose",
+    "text": "That wall was real. Your shoulder disagrees with it."
+  },
+  {
+    "id": "sick_wanderer",
+    "text": "A wounded NPC lies against the wall, feverish and weak."
+  },
+  {
+    "id": "sick_wanderer_a0_act",
+    "text": "Brew a folk remedy"
+  },
+  {
+    "id": "sick_wanderer_a0_win",
+    "text": "The tea breaks the fever. Grateful, they tell you of a hidden room."
+  },
+  {
+    "id": "sick_wanderer_a0_lose",
+    "text": "The remedy soothes but doesn't cure. They sleep restlessly."
+  },
+  {
+    "id": "sick_wanderer_a1_act",
+    "text": "Diagnose and treat"
+  },
+  {
+    "id": "sick_wanderer_a1_win",
+    "text": "You treat the ailment. Grateful, they hand you a key to a locked door on this floor."
+  },
+  {
+    "id": "sick_wanderer_a1_lose",
+    "text": "The ailment is beyond your skill."
+  },
+  {
+    "id": "sick_wanderer_a2_act",
+    "text": "Attempt the risky surgery"
+  },
+  {
+    "id": "sick_wanderer_a2_win",
+    "text": "The surgery succeeds beyond hope! They press their entire map and coin purse on you."
+  },
+  {
+    "id": "sick_wanderer_a2_lose",
+    "text": "You do more harm than good. They wave you away, wincing."
+  },
+  {
+    "id": "triage_aftermath",
+    "text": "After the fight, the party's wounds need tending."
+  },
+  {
+    "id": "triage_aftermath_a0_act",
+    "text": "Apply salves and rest"
+  },
+  {
+    "id": "triage_aftermath_a0_win",
+    "text": "Field salves take the edge off — everyone feels a little better."
+  },
+  {
+    "id": "triage_aftermath_a0_lose",
+    "text": "The salves have gone rancid. No help there."
+  },
+  {
+    "id": "triage_aftermath_a1_act",
+    "text": "Proper triage"
+  },
+  {
+    "id": "triage_aftermath_a1_win",
+    "text": "You bandage wounds and set minor fractures — everyone regains vitality."
+  },
+  {
+    "id": "triage_aftermath_a1_lose",
+    "text": "The injuries are too fresh for field medicine to help much."
+  },
+  {
+    "id": "triage_aftermath_a2_act",
+    "text": "Aggressive field surgery"
+  },
+  {
+    "id": "triage_aftermath_a2_win",
+    "text": "Stitches, splints, and one very brave incision — the party feels remade!"
+  },
+  {
+    "id": "triage_aftermath_a2_lose",
+    "text": "The scalpel slips. Now there's one more wound to bind."
+  },
+  {
+    "id": "plague_source",
+    "text": "A foul contamination seeps from a crack in the floor."
+  },
+  {
+    "id": "plague_source_a0_act",
+    "text": "Read the flora die-off"
+  },
+  {
+    "id": "plague_source_a0_win",
+    "text": "The withered moss maps the seepage. You chart the safe ground for the party."
+  },
+  {
+    "id": "plague_source_a0_lose",
+    "text": "The die-off pattern makes no sense."
+  },
+  {
+    "id": "plague_source_a1_act",
+    "text": "Neutralize the source"
+  },
+  {
+    "id": "plague_source_a1_win",
+    "text": "You identify the contamination and neutralize it. The area is safe now."
+  },
+  {
+    "id": "plague_source_a1_lose",
+    "text": "The contamination remains, too hazardous to approach."
+  },
+  {
+    "id": "plague_source_a2_act",
+    "text": "Purge it with raw magic"
+  },
+  {
+    "id": "plague_source_a2_win",
+    "text": "Your purge sterilizes the crack — and crystallizes the residue into something sellable!"
+  },
+  {
+    "id": "plague_source_a2_lose",
+    "text": "The purge backfires, splashing you with the stuff."
+  },
+  {
+    "id": "secret_junction",
+    "text": "Something about this room feels off, like there's more here than meets the eye."
+  },
+  {
+    "id": "secret_junction_a0_act",
+    "text": "Measure the room"
+  },
+  {
+    "id": "secret_junction_a0_win",
+    "text": "The math doesn't add up — and the missing space holds a cache."
+  },
+  {
+    "id": "secret_junction_a0_lose",
+    "text": "The dimensions check out. Just a room."
+  },
+  {
+    "id": "secret_junction_a1_act",
+    "text": "Spot the hairline crack"
+  },
+  {
+    "id": "secret_junction_a1_win",
+    "text": "You notice a hairline crack in the masonry — a secret door! It leads to a bonus room."
+  },
+  {
+    "id": "secret_junction_a1_lose",
+    "text": "The walls are blank. Nothing hidden here."
+  },
+  {
+    "id": "secret_junction_a2_act",
+    "text": "Sound the walls with a hammer"
+  },
+  {
+    "id": "secret_junction_a2_win",
+    "text": "CLANG — hollow! You smash straight into the hidden vault!"
+  },
+  {
+    "id": "secret_junction_a2_lose",
+    "text": "The hammering echoes down every corridor on the floor."
+  },
+  {
+    "id": "hidden_switch",
+    "text": "The floor has a subtle pattern. One stone might be a pressure switch."
+  },
+  {
+    "id": "hidden_switch_a0_act",
+    "text": "Map the floor pattern"
+  },
+  {
+    "id": "hidden_switch_a0_win",
+    "text": "The pattern resolves into a sequence. The last stone sinks with a click."
+  },
+  {
+    "id": "hidden_switch_a0_lose",
+    "text": "The pattern repeats endlessly. No anomaly."
+  },
+  {
+    "id": "hidden_switch_a1_act",
+    "text": "Spot the depression"
+  },
+  {
+    "id": "hidden_switch_a1_win",
+    "text": "You spot the worn depression. Stepping on it opens a treasure alcove!"
+  },
+  {
+    "id": "hidden_switch_a1_lose",
+    "text": "Nothing stands out. Just another room."
+  },
+  {
+    "id": "hidden_switch_a2_act",
+    "text": "Stomp every stone"
+  },
+  {
+    "id": "hidden_switch_a2_win",
+    "text": "Stomp seventeen finds it — the alcove opens wide, twice the cache you hoped for!"
+  },
+  {
+    "id": "hidden_switch_a2_lose",
+    "text": "Stomp nine was a spike trigger."
+  },
+  {
+    "id": "ambush_warning",
+    "text": "The signs are subtle — disturbed dust, a faint smell. You might not be alone."
+  },
+  {
+    "id": "ambush_warning_a0_act",
+    "text": "Read the tracks"
+  },
+  {
+    "id": "ambush_warning_a0_win",
+    "text": "Fresh tracks, headed east. The party won't be caught off guard."
+  },
+  {
+    "id": "ambush_warning_a0_lose",
+    "text": "The tracks are old. Or you're reading them wrong."
+  },
+  {
+    "id": "ambush_warning_a1_act",
+    "text": "Notice the disturbed dust"
+  },
+  {
+    "id": "ambush_warning_a1_win",
+    "text": "You notice tracks! A lurking monster group is nearby — the party prepares."
+  },
+  {
+    "id": "ambush_warning_a1_lose",
+    "text": "No sign of anything lurking nearby."
+  },
+  {
+    "id": "treasure_glint",
+    "text": "Torchlight catches something shiny in the rubble."
+  },
+  {
+    "id": "treasure_glint_a0_act",
+    "text": "Follow the glint"
+  },
+  {
+    "id": "treasure_glint_a0_win",
+    "text": "A coin — and a thin trail of them leading to a spilled purse."
+  },
+  {
+    "id": "treasure_glint_a0_lose",
+    "text": "Just a shadow playing tricks on you."
+  },
+  {
+    "id": "treasure_glint_a1_act",
+    "text": "Dig through the rubble"
+  },
+  {
+    "id": "treasure_glint_a1_win",
+    "text": "You pry up a loose stone and find a small cache of gold!"
+  },
+  {
+    "id": "treasure_glint_a1_lose",
+    "text": "Nothing under the rubble but more rubble."
+  },
+  {
+    "id": "treasure_glint_a2_act",
+    "text": "Heave the slab aside"
+  },
+  {
+    "id": "treasure_glint_a2_win",
+    "text": "Under the slab: an entire strongbox, untouched for a century!"
+  },
+  {
+    "id": "treasure_glint_a2_lose",
+    "text": "The slab slips and pins your foot."
+  },
+  {
+    "id": "lost_trail",
+    "text": "The path ahead forks. One way winds — the other might be a shortcut."
+  },
+  {
+    "id": "lost_trail_a0_act",
+    "text": "Follow the worn path"
+  },
+  {
+    "id": "lost_trail_a0_win",
+    "text": "Boot-worn stone marks the traveled route — a modest shortcut."
+  },
+  {
+    "id": "lost_trail_a0_lose",
+    "text": "The trail leads in circles."
+  },
+  {
+    "id": "lost_trail_a1_act",
+    "text": "Read the moss and airflow"
+  },
+  {
+    "id": "lost_trail_a1_win",
+    "text": "The draft and moss growth point true — a shortcut straight toward the boss."
+  },
+  {
+    "id": "lost_trail_a1_lose",
+    "text": "The signs contradict each other."
+  },
+  {
+    "id": "lost_trail_a2_act",
+    "text": "Take the vertical shortcut"
+  },
+  {
+    "id": "lost_trail_a2_win",
+    "text": "Up the wall, along a beam, down a shaft — you cut past half the floor and land beside someone's dropped purse!"
+  },
+  {
+    "id": "lost_trail_a2_lose",
+    "text": "The beam snaps. It's a long way down."
+  },
+  {
+    "id": "forage_supplies",
+    "text": "The area has edible plants and hidden caches if you know where to look."
+  },
+  {
+    "id": "forage_supplies_a0_act",
+    "text": "Gather the basics"
+  },
+  {
+    "id": "forage_supplies_a0_win",
+    "text": "You scavenge successfully, finding useful supplies."
+  },
+  {
+    "id": "forage_supplies_a0_lose",
+    "text": "Nothing useful here."
+  },
+  {
+    "id": "forage_supplies_a1_act",
+    "text": "Harvest medicinal plants"
+  },
+  {
+    "id": "forage_supplies_a1_win",
+    "text": "Proper herbs, properly cut — the makings of good medicine."
+  },
+  {
+    "id": "forage_supplies_a1_lose",
+    "text": "The medicinal plants are all blighted."
+  },
+  {
+    "id": "safe_camp",
+    "text": "This nook could serve as a safe resting spot — if it's as sheltered as it looks."
+  },
+  {
+    "id": "safe_camp_a0_act",
+    "text": "Fortify the nook"
+  },
+  {
+    "id": "safe_camp_a0_win",
+    "text": "Barricaded and quiet — the party takes a short rest."
+  },
+  {
+    "id": "safe_camp_a0_lose",
+    "text": "Too exposed even with barricades. No rest here."
+  },
+  {
+    "id": "safe_camp_a1_act",
+    "text": "Verify it's truly hidden"
+  },
+  {
+    "id": "safe_camp_a1_win",
+    "text": "Sightlines checked, approaches watched — the party rests easy."
+  },
+  {
+    "id": "safe_camp_a1_lose",
+    "text": "You spot three ways a monster could stumble in. Not safe."
+  },
+  {
+    "id": "safe_camp_a2_act",
+    "text": "Rest right here, quietly"
+  },
+  {
+    "id": "safe_camp_a2_win",
+    "text": "The whole party rests in perfect silence — deeply, wonderfully. And someone finds coins in the bedding!"
+  },
+  {
+    "id": "safe_camp_a2_lose",
+    "text": "A snore. A loud one. Things are coming."
+  },
+  {
+    "id": "environment_hazard",
+    "text": "The ceiling groans under shifting weight. Treasure lies beyond the unstable stretch."
+  },
+  {
+    "id": "environment_hazard_a0_act",
+    "text": "Chart the stable ground"
+  },
+  {
+    "id": "environment_hazard_a0_win",
+    "text": "You guide the party through the unstable area safely, reaching the treasure."
+  },
+  {
+    "id": "environment_hazard_a0_lose",
+    "text": "No stable line through. You turn back."
+  },
+  {
+    "id": "environment_hazard_a1_act",
+    "text": "Pick through nimbly"
+  },
+  {
+    "id": "environment_hazard_a1_win",
+    "text": "Quick feet on solid spots — you're across and back with the goods."
+  },
+  {
+    "id": "environment_hazard_a1_lose",
+    "text": "A near-miss from falling rock ends the attempt."
+  },
+  {
+    "id": "environment_hazard_a2_act",
+    "text": "Everyone sprints through"
+  },
+  {
+    "id": "environment_hazard_a2_win",
+    "text": "The party sprints as the ceiling rains stone — everyone through, arms full of everything!"
+  },
+  {
+    "id": "environment_hazard_a2_lose",
+    "text": "The collapse catches the stragglers."
+  },
+  {
+    "id": "bluff_the_sentinel",
+    "text": "A spectral sentinel bars the way. It might respond to authority — or a convincing lie."
+  },
+  {
+    "id": "bluff_the_sentinel_a0_act",
+    "text": "Cite the old passphrases"
+  },
+  {
+    "id": "bluff_the_sentinel_a0_win",
+    "text": "The archaic greeting you recall satisfies its ancient orders. It stands aside."
+  },
+  {
+    "id": "bluff_the_sentinel_a0_lose",
+    "text": "The passphrase has evidently changed in the last thousand years."
+  },
+  {
+    "id": "bluff_the_sentinel_a1_act",
+    "text": "Bluff with confidence"
+  },
+  {
+    "id": "bluff_the_sentinel_a1_win",
+    "text": "Your confident bluff convinces the sentinel you belong here. It reveals the room's treasure."
+  },
+  {
+    "id": "bluff_the_sentinel_a1_lose",
+    "text": "The sentinel doesn't buy it."
+  },
+  {
+    "id": "bluff_the_sentinel_a2_act",
+    "text": "Command it to kneel"
+  },
+  {
+    "id": "bluff_the_sentinel_a2_win",
+    "text": "It KNEELS. And surrenders the vault inventory it was guarding!"
+  },
+  {
+    "id": "bluff_the_sentinel_a2_lose",
+    "text": "Its shriek of outrage rings through the dungeon."
+  },
+  {
+    "id": "feign_authority",
+    "text": "An official-looking courier approaches with a heavy satchel."
+  },
+  {
+    "id": "feign_authority_a0_act",
+    "text": "Size up the courier"
+  },
+  {
+    "id": "feign_authority_a0_win",
+    "text": "You read them perfectly and talk your way into a \"delivery fee\"."
+  },
+  {
+    "id": "feign_authority_a0_lose",
+    "text": "They're unreadable. Best not to risk it."
+  },
+  {
+    "id": "feign_authority_a1_act",
+    "text": "Pose as an inspector"
+  },
+  {
+    "id": "feign_authority_a1_win",
+    "text": "You pose as an inspector so convincingly the courier hands over a tribute of gold!"
+  },
+  {
+    "id": "feign_authority_a1_lose",
+    "text": "You're ignored. The courier passes by."
+  },
+  {
+    "id": "feign_authority_a2_act",
+    "text": "Shake them down"
+  },
+  {
+    "id": "feign_authority_a2_win",
+    "text": "They empty the whole satchel and run!"
+  },
+  {
+    "id": "feign_authority_a2_lose",
+    "text": "They blow a warning whistle as they flee."
+  },
+  {
+    "id": "false_trail",
+    "text": "A rival party's tracks cross yours."
+  },
+  {
+    "id": "false_trail_a0_act",
+    "text": "Study the rival tracks"
+  },
+  {
+    "id": "false_trail_a0_win",
+    "text": "You backtrack them to a stashed supply drop. Finders keepers."
+  },
+  {
+    "id": "false_trail_a0_lose",
+    "text": "The tracks scatter over stone and vanish."
+  },
+  {
+    "id": "false_trail_a1_act",
+    "text": "Plant misdirection"
+  },
+  {
+    "id": "false_trail_a1_win",
+    "text": "The rivals follow your false trail and abandon their supplies. You claim the spoils!"
+  },
+  {
+    "id": "false_trail_a1_lose",
+    "text": "No one takes the bait."
+  },
+  {
+    "id": "cower_the_scavengers",
+    "text": "A pack of scavengers has claimed a cache of treasure."
+  },
+  {
+    "id": "cower_the_scavengers_a0_act",
+    "text": "Shoo them off gently"
+  },
+  {
+    "id": "cower_the_scavengers_a0_win",
+    "text": "Calm, firm gestures move them along. Most of the cache remains."
+  },
+  {
+    "id": "cower_the_scavengers_a0_lose",
+    "text": "They snap and hold their ground."
+  },
+  {
+    "id": "cower_the_scavengers_a1_act",
+    "text": "A fierce display"
+  },
+  {
+    "id": "cower_the_scavengers_a1_win",
+    "text": "Your fierce display sends them scurrying! You collect their hoard."
+  },
+  {
+    "id": "cower_the_scavengers_a1_lose",
+    "text": "They scatter, but take the goods with them."
+  },
+  {
+    "id": "cower_the_scavengers_a2_act",
+    "text": "Charge the pack"
+  },
+  {
+    "id": "cower_the_scavengers_a2_win",
+    "text": "You scatter them like leaves and claim everything they've ever hoarded!"
+  },
+  {
+    "id": "cower_the_scavengers_a2_lose",
+    "text": "The pack swarms you before fleeing."
+  },
+  {
+    "id": "demand_passage",
+    "text": "A greedy gatekeeper demands tribute to pass."
+  },
+  {
+    "id": "demand_passage_a0_act",
+    "text": "Haggle the toll down"
+  },
+  {
+    "id": "demand_passage_a0_win",
+    "text": "You talk the toll down to nothing — and charm a \"gift\" out of them besides."
+  },
+  {
+    "id": "demand_passage_a0_lose",
+    "text": "The gatekeeper holds firm on the price."
+  },
+  {
+    "id": "demand_passage_a1_act",
+    "text": "Bully your way through"
+  },
+  {
+    "id": "demand_passage_a1_win",
+    "text": "Your threatening presence convinces the gatekeeper to let you pass — with an apology gift."
+  },
+  {
+    "id": "demand_passage_a1_lose",
+    "text": "The gatekeeper holds firm, unimpressed."
+  },
+  {
+    "id": "demand_passage_a2_act",
+    "text": "Slip past while they argue"
+  },
+  {
+    "id": "demand_passage_a2_win",
+    "text": "While the gatekeeper lectures your decoy, the rest of you clean out the toll box!"
+  },
+  {
+    "id": "demand_passage_a2_lose",
+    "text": "Caught red-handed. The gatekeeper's bellow carries far."
+  },
+  {
+    "id": "awe_the_cultist",
+    "text": "A lone cultist recognizes your reputation."
+  },
+  {
+    "id": "awe_the_cultist_a0_act",
+    "text": "Read their fears"
+  },
+  {
+    "id": "awe_the_cultist_a0_win",
+    "text": "You see exactly what they dread and let them imagine it. They talk."
+  },
+  {
+    "id": "awe_the_cultist_a0_lose",
+    "text": "Their fanaticism is a closed book."
+  },
+  {
+    "id": "awe_the_cultist_a1_act",
+    "text": "Press your reputation"
+  },
+  {
+    "id": "awe_the_cultist_a1_win",
+    "text": "The cultist quakes and reveals the boss's weakness!"
+  },
+  {
+    "id": "awe_the_cultist_a1_lose",
+    "text": "The cultist flees before you can question them."
+  },
+  {
+    "id": "awe_the_cultist_a2_act",
+    "text": "Claim to be their dark master"
+  },
+  {
+    "id": "awe_the_cultist_a2_win",
+    "text": "They prostrate themselves and confess EVERYTHING — weaknesses, patrols, and where the tithes are kept!"
+  },
+  {
+    "id": "awe_the_cultist_a2_lose",
+    "text": "The real dark master, it seems, has a secret handshake. The alarm goes up."
+  },
+  {
+    "id": "riddle_court",
+    "text": "A fey creature blocks the path, demanding entertainment."
+  },
+  {
+    "id": "riddle_court_a0_act",
+    "text": "Recite an old fey tale"
+  },
+  {
+    "id": "riddle_court_a0_win",
+    "text": "It knows the tale — and adores your telling. A small boon is granted."
+  },
+  {
+    "id": "riddle_court_a0_lose",
+    "text": "It has heard that one. Many times. It yawns."
+  },
+  {
+    "id": "riddle_court_a1_act",
+    "text": "Sing for the fey"
+  },
+  {
+    "id": "riddle_court_a1_win",
+    "text": "Your performance delights the fey! It grants a boon."
+  },
+  {
+    "id": "riddle_court_a1_lose",
+    "text": "The fey is bored. You're dismissed with nothing."
+  },
+  {
+    "id": "riddle_court_a2_act",
+    "text": "Flatter with an invented epic"
+  },
+  {
+    "id": "riddle_court_a2_win",
+    "text": "Your shameless invented epic of its glory earns a mighty boon and a purse of fey gold!"
+  },
+  {
+    "id": "riddle_court_a2_lose",
+    "text": "Fey take poorly to flattery they see through. The curse stings."
+  },
+  {
+    "id": "echoing_alcove",
+    "text": "A magical instrument sits in an alcove with strange notation."
+  },
+  {
+    "id": "echoing_alcove_a0_act",
+    "text": "Study the notation"
+  },
+  {
+    "id": "echoing_alcove_a0_win",
+    "text": "You work out the sequence note by note. A compartment slides open."
+  },
+  {
+    "id": "echoing_alcove_a0_lose",
+    "text": "The notation defies analysis."
+  },
+  {
+    "id": "echoing_alcove_a1_act",
+    "text": "Play the melody"
+  },
+  {
+    "id": "echoing_alcove_a1_win",
+    "text": "Your melody resonates with the room's magic. A hidden compartment slides open!"
+  },
+  {
+    "id": "echoing_alcove_a1_lose",
+    "text": "A discordant noise. Nothing happens."
+  },
+  {
+    "id": "echoing_alcove_a2_act",
+    "text": "Amplify it with magic"
+  },
+  {
+    "id": "echoing_alcove_a2_win",
+    "text": "The amplified chord opens every compartment in the alcove at once!"
+  },
+  {
+    "id": "echoing_alcove_a2_lose",
+    "text": "The amplified discord howls through the entire floor."
+  },
+  {
+    "id": "distract_the_guard",
+    "text": "A roaming guard patrols near a treasure."
+  },
+  {
+    "id": "distract_the_guard_a0_act",
+    "text": "Wait for the patrol gap"
+  },
+  {
+    "id": "distract_the_guard_a0_win",
+    "text": "Patience pays. In the gap between rounds, the treasure walks off with you."
+  },
+  {
+    "id": "distract_the_guard_a0_lose",
+    "text": "The patrol never leaves a gap wide enough."
+  },
+  {
+    "id": "distract_the_guard_a1_act",
+    "text": "Put on a show"
+  },
+  {
+    "id": "distract_the_guard_a1_win",
+    "text": "The guard is captivated! Someone else slips past to snag the treasure."
+  },
+  {
+    "id": "distract_the_guard_a1_lose",
+    "text": "The guard ignores your antics. No opening."
+  },
+  {
+    "id": "distract_the_guard_a2_act",
+    "text": "Pickpocket mid-patrol"
+  },
+  {
+    "id": "distract_the_guard_a2_win",
+    "text": "You lift the treasure AND the guard's own coin purse in one pass!"
+  },
+  {
+    "id": "distract_the_guard_a2_lose",
+    "text": "A hand on your wrist. A whistle. Running."
+  },
+  {
+    "id": "merchant_discount",
+    "text": "The merchant quotes a high price."
+  },
+  {
+    "id": "merchant_discount_a0_act",
+    "text": "Spot what the merchant needs"
+  },
+  {
+    "id": "merchant_discount_a0_win",
+    "text": "You notice their worn boots and trade dungeon gossip for a discount."
+  },
+  {
+    "id": "merchant_discount_a0_lose",
+    "text": "The merchant's needs remain a mystery."
+  },
+  {
+    "id": "merchant_discount_a1_act",
+    "text": "Charm the merchant"
+  },
+  {
+    "id": "merchant_discount_a1_win",
+    "text": "Your silver tongue works wonders — prices reduced for this visit!"
+  },
+  {
+    "id": "merchant_discount_a1_lose",
+    "text": "The merchant holds firm on prices."
+  },
+  {
+    "id": "freed_captive",
+    "text": "A prisoner cowers in a cage."
+  },
+  {
+    "id": "freed_captive_a0_act",
+    "text": "Earn trust slowly"
+  },
+  {
+    "id": "freed_captive_a0_win",
+    "text": "Patience wins them over. They whisper of a hidden room."
+  },
+  {
+    "id": "freed_captive_a0_lose",
+    "text": "They stay silent, eyes down."
+  },
+  {
+    "id": "freed_captive_a1_act",
+    "text": "Convince them quickly"
+  },
+  {
+    "id": "freed_captive_a1_win",
+    "text": "You convince the prisoner you're trustworthy. They reveal a secret room!"
+  },
+  {
+    "id": "freed_captive_a1_lose",
+    "text": "The captive clams up and leaves without a word."
+  },
+  {
+    "id": "freed_captive_a2_act",
+    "text": "Break the cage open"
+  },
+  {
+    "id": "freed_captive_a2_win",
+    "text": "The cage bursts — the grateful captive maps every secret they overheard!"
+  },
+  {
+    "id": "freed_captive_a2_lose",
+    "text": "The cage's alarm chain rattles through the halls."
+  },
+  {
+    "id": "calm_the_crowd",
+    "text": "Hostile NPCs are on the verge of attacking."
+  },
+  {
+    "id": "calm_the_crowd_a0_act",
+    "text": "Find the ringleader"
+  },
+  {
+    "id": "calm_the_crowd_a0_win",
+    "text": "You pick out the instigator and quietly talk them down. The rest deflate."
+  },
+  {
+    "id": "calm_the_crowd_a0_lose",
+    "text": "No clear leader. The mob is a hydra."
+  },
+  {
+    "id": "calm_the_crowd_a1_act",
+    "text": "Talk them down"
+  },
+  {
+    "id": "calm_the_crowd_a1_win",
+    "text": "Your measured words defuse the tension. The room resolves peacefully, with compensation."
+  },
+  {
+    "id": "calm_the_crowd_a1_lose",
+    "text": "They mutter and disperse, giving nothing."
+  },
+  {
+    "id": "calm_the_crowd_a2_act",
+    "text": "The party stares them down"
+  },
+  {
+    "id": "calm_the_crowd_a2_win",
+    "text": "Five unblinking stares. The crowd drops their weapons AND their purses."
+  },
+  {
+    "id": "calm_the_crowd_a2_lose",
+    "text": "The staredown fails and the shouting draws every ear on the floor."
+  },
+  {
+    "id": "collapsing_pillar",
+    "text": "A cracked pillar groans over a narrow gap. Bracing it could let the whole party dash through before it falls."
+  },
+  {
+    "id": "collapsing_pillar_a0_act",
+    "text": "Time the groans"
+  },
+  {
+    "id": "collapsing_pillar_a0_win",
+    "text": "You read the rhythm and pick a safe moment."
+  },
+  {
+    "id": "collapsing_pillar_a0_lose",
+    "text": "The groans are erratic — you wait it out."
+  },
+  {
+    "id": "collapsing_pillar_a1_act",
+    "text": "Brace and sprint"
+  },
+  {
+    "id": "collapsing_pillar_a1_win",
+    "text": "You shoulder the pillar and the party bolts through, hearts pounding."
+  },
+  {
+    "id": "collapsing_pillar_a1_lose",
+    "text": "The pillar bucks you off — dust and stone rain down."
+  },
+  {
+    "id": "collapsing_pillar_a2_act",
+    "text": "Hold it for everyone"
+  },
+  {
+    "id": "collapsing_pillar_a2_win",
+    "text": "You hold the stone long enough for five pairs of boots — then leap clear as it crashes!"
+  },
+  {
+    "id": "collapsing_pillar_a2_lose",
+    "text": "It gives way mid-crossing. Debris hammers the rearmost."
+  },
+  {
+    "id": "boulder_crush",
+    "text": "A massive boulder blocks a side passage — and there's a glint of coin behind it."
+  },
+  {
+    "id": "boulder_crush_a0_act",
+    "text": "Find the leverage point"
+  },
+  {
+    "id": "boulder_crush_a0_win",
+    "text": "You locate a fulcrum and roll it aside with ease."
+  },
+  {
+    "id": "boulder_crush_a0_lose",
+    "text": "No good angle — it barely budges."
+  },
+  {
+    "id": "boulder_crush_a1_act",
+    "text": "Heave together"
+  },
+  {
+    "id": "boulder_crush_a1_win",
+    "text": "Muscle prevails. The hoard behind is yours."
+  },
+  {
+    "id": "boulder_crush_a1_lose",
+    "text": "It rolls back, pinning your purse of coin in the dirt."
+  },
+  {
+    "id": "boulder_crush_a2_act",
+    "text": "Crack it with a spike"
+  },
+  {
+    "id": "boulder_crush_a2_win",
+    "text": "The boulder splits clean — the treasure spills out!"
+  },
+  {
+    "id": "boulder_crush_a2_lose",
+    "text": "Shrapnel bursts outward as it cracks."
+  },
+  {
+    "id": "geyser_vault",
+    "text": "Scalding geysers erupt in a slow, predictable rhythm across a treasure plaza. The spray itself is invigorating to brave."
+  },
+  {
+    "id": "geyser_vault_a0_act",
+    "text": "Watch the cycle"
+  },
+  {
+    "id": "geyser_vault_a0_win",
+    "text": "You map the cycle and pick the calm path."
+  },
+  {
+    "id": "geyser_vault_a0_lose",
+    "text": "The pattern is too erratic — you stay put."
+  },
+  {
+    "id": "geyser_vault_a1_act",
+    "text": "Leap between plumes"
+  },
+  {
+    "id": "geyser_vault_a1_win",
+    "text": "You weave the eruptions, skin flushed with heat — you feel invincible."
+  },
+  {
+    "id": "geyser_vault_a1_lose",
+    "text": "A plume catches you. Painful, but you retreat alive."
+  },
+  {
+    "id": "geyser_vault_a2_act",
+    "text": "Bathe in the spray"
+  },
+  {
+    "id": "geyser_vault_a2_win",
+    "text": "The whole party storms the plaza — the steam hardens you for the fights ahead!"
+  },
+  {
+    "id": "geyser_vault_a2_lose",
+    "text": "Scalding water hammers everyone down."
+  },
+  {
+    "id": "collapsing_stair",
+    "text": "A grand stair is shedding steps as it falls. Sprinting it grants a rush of speed — if you don't fall."
+  },
+  {
+    "id": "collapsing_stair_a0_act",
+    "text": "Find sound treads"
+  },
+  {
+    "id": "collapsing_stair_a0_win",
+    "text": "You hop the intact stones carefully."
+  },
+  {
+    "id": "collapsing_stair_a0_lose",
+    "text": "Too risky — you find another way."
+  },
+  {
+    "id": "collapsing_stair_a1_act",
+    "text": "Bound up the ruin"
+  },
+  {
+    "id": "collapsing_stair_a1_win",
+    "text": "You vault the gaps, blood singing — the rush lingers."
+  },
+  {
+    "id": "collapsing_stair_a1_lose",
+    "text": "A step gives way; you barely catch the rail."
+  },
+  {
+    "id": "collapsing_stair_a2_act",
+    "text": "Race the collapse"
+  },
+  {
+    "id": "collapsing_stair_a2_win",
+    "text": "Five heroes outpace the avalanche of stone — adrenaline carries you onward!"
+  },
+  {
+    "id": "collapsing_stair_a2_lose",
+    "text": "The stair drops away beneath the slowest."
+  },
+  {
+    "id": "poison_needle",
+    "text": "A jewel sits on a poisoned pedestal. The needle is visible — disarming it cleanly pays double."
+  },
+  {
+    "id": "poison_needle_a0_act",
+    "text": "Map the trigger"
+  },
+  {
+    "id": "poison_needle_a0_win",
+    "text": "You see exactly where not to touch."
+  },
+  {
+    "id": "poison_needle_a0_lose",
+    "text": "The mechanism is too fine to read."
+  },
+  {
+    "id": "poison_needle_a1_act",
+    "text": "Lift the jewel clean"
+  },
+  {
+    "id": "poison_needle_a1_win",
+    "text": "Steady hands — the jewel slides free, needle never twitching."
+  },
+  {
+    "id": "poison_needle_a1_lose",
+    "text": "The needle pricks before you pull clear!"
+  },
+  {
+    "id": "poison_needle_a2_act",
+    "text": "Strip the whole trap"
+  },
+  {
+    "id": "poison_needle_a2_win",
+    "text": "You disarm it AND take the jewel — poison glands and all, worth a fortune."
+  },
+  {
+    "id": "poison_needle_a2_lose",
+    "text": "A spray of venom catches everyone working close."
+  },
+  {
+    "id": "switch_the_idol",
+    "text": "A gem-eyed idol sits on a weighted altar. A clever swap might let you walk away with the real prize."
+  },
+  {
+    "id": "switch_the_idol_a0_act",
+    "text": "Study the weight"
+  },
+  {
+    "id": "switch_the_idol_a0_win",
+    "text": "You gauge the idol's heft perfectly."
+  },
+  {
+    "id": "switch_the_idol_a0_lose",
+    "text": "The weight is unclear — too risky."
+  },
+  {
+    "id": "switch_the_idol_a1_act",
+    "text": "Swap in a fake"
+  },
+  {
+    "id": "switch_the_idol_a1_win",
+    "text": "A bag of sand trades places with the idol. Clean."
+  },
+  {
+    "id": "switch_the_idol_a1_lose",
+    "text": "The altar sinks — darts whistle out!"
+  },
+  {
+    "id": "switch_the_idol_a2_act",
+    "text": "Loot the eyes too"
+  },
+  {
+    "id": "switch_the_idol_a2_win",
+    "text": "Idol, eyes, and all — you strip the altar bare!"
+  },
+  {
+    "id": "switch_the_idol_a2_lose",
+    "text": "A saw-blade swings across the dais."
+  },
+  {
+    "id": "assassin_s_perch",
+    "text": "A bolted nest overlooks the chamber — an assassin's roost, still stocked. Climbing to it unseen is the trick."
+  },
+  {
+    "id": "assassin_s_perch_a0_act",
+    "text": "Climb the open column"
+  },
+  {
+    "id": "assassin_s_perch_a0_win",
+    "text": "You haul up the column in the open and claim the cache."
+  },
+  {
+    "id": "assassin_s_perch_a0_lose",
+    "text": "The handholds are slick — you slide back."
+  },
+  {
+    "id": "assassin_s_perch_a1_act",
+    "text": "Slip up the shadowed side"
+  },
+  {
+    "id": "assassin_s_perch_a1_win",
+    "text": "You reach the roost unheard and pocket the goods."
+  },
+  {
+    "id": "assassin_s_perch_a1_lose",
+    "text": "A loose tile clatters down — guards turn."
+  },
+  {
+    "id": "assassin_s_perch_a2_act",
+    "text": "Rig a rope for the party"
+  },
+  {
+    "id": "assassin_s_perch_a2_win",
+    "text": "A silent rope-line and everyone strips the roost together!"
+  },
+  {
+    "id": "assassin_s_perch_a2_lose",
+    "text": "The rope groans; the whole floor hears."
+  },
+  {
+    "id": "thieves_guild_cache",
+    "text": "Signs of the local guild are scratched on the wall — a hidden dead-drop may be near."
+  },
+  {
+    "id": "thieves_guild_cache_a0_act",
+    "text": "Read the scratches"
+  },
+  {
+    "id": "thieves_guild_cache_a0_win",
+    "text": "The code points to a loose stone — a small purse inside."
+  },
+  {
+    "id": "thieves_guild_cache_a0_lose",
+    "text": "The markings mean nothing to you."
+  },
+  {
+    "id": "thieves_guild_cache_a1_act",
+    "text": "Shadow the drop point"
+  },
+  {
+    "id": "thieves_guild_cache_a1_win",
+    "text": "You wait motionless, spot the trick stone, and lift a fat pouch."
+  },
+  {
+    "id": "thieves_guild_cache_a1_lose",
+    "text": "You fumble the catch — a bell jingles somewhere."
+  },
+  {
+    "id": "mana_rift",
+    "text": "A raw tear in the weave crackles against the wall. Drawing from it could recharge your casters — or burn."
+  },
+  {
+    "id": "mana_rift_a0_act",
+    "text": "Sip carefully"
+  },
+  {
+    "id": "mana_rift_a0_win",
+    "text": "A trickle of power flows back into your spells."
+  },
+  {
+    "id": "mana_rift_a0_lose",
+    "text": "The rift spits sparks; you withdraw."
+  },
+  {
+    "id": "mana_rift_a1_act",
+    "text": "Funnel the flow"
+  },
+  {
+    "id": "mana_rift_a1_win",
+    "text": "You shape the rift into a clean current — slots and charges refill!"
+  },
+  {
+    "id": "mana_rift_a1_lose",
+    "text": "The weave snaps back, scrambling your thoughts."
+  },
+  {
+    "id": "mana_rift_a2_act",
+    "text": "Bask in the tear"
+  },
+  {
+    "id": "mana_rift_a2_win",
+    "text": "The party drinks deep — every spell and ability brims full!"
+  },
+  {
+    "id": "mana_rift_a2_lose",
+    "text": "Raw magic sears your minds."
+  },
+  {
+    "id": "warding_seal",
+    "text": "A defensive ward-cluster glows on a door. Re-keying it to your side would shield the party — botching it curses."
+  },
+  {
+    "id": "warding_seal_a0_act",
+    "text": "Recite the old litany"
+  },
+  {
+    "id": "warding_seal_a0_win",
+    "text": "The ward recognizes the rite and hums to life around you."
+  },
+  {
+    "id": "warding_seal_a0_lose",
+    "text": "The litany is half-forgotten — the ward stays cold."
+  },
+  {
+    "id": "warding_seal_a1_act",
+    "text": "Re-key the runes"
+  },
+  {
+    "id": "warding_seal_a1_win",
+    "text": "You retune the sigils — a shimmering shield wraps the party."
+  },
+  {
+    "id": "warding_seal_a1_lose",
+    "text": "The runes invert — a curse bleeds out!"
+  },
+  {
+    "id": "warding_seal_a2_act",
+    "text": "Overload the ward"
+  },
+  {
+    "id": "warding_seal_a2_win",
+    "text": "The ward flares brilliant and coats everyone in arcane armor!"
+  },
+  {
+    "id": "warding_seal_a2_lose",
+    "text": "The ward detonates, cursing all who stand near."
+  },
+  {
+    "id": "forbidden_tome",
+    "text": "A chained grimoire whispers from a lectern. The lore within is potent — and corrosive to the unprepared mind."
+  },
+  {
+    "id": "forbidden_tome_a0_act",
+    "text": "Skim the margins"
+  },
+  {
+    "id": "forbidden_tome_a0_win",
+    "text": "You glean a fragment of safe, useful lore."
+  },
+  {
+    "id": "forbidden_tome_a0_lose",
+    "text": "The margins are gibberish."
+  },
+  {
+    "id": "forbidden_tome_a1_act",
+    "text": "Read a chapter aloud"
+  },
+  {
+    "id": "forbidden_tome_a1_win",
+    "text": "Power thrums through you — experience burns itself into memory."
+  },
+  {
+    "id": "forbidden_tome_a1_lose",
+    "text": "The words writhe — your stomach turns."
+  },
+  {
+    "id": "forbidden_tome_a2_act",
+    "text": "Devour the book"
+  },
+  {
+    "id": "forbidden_tome_a2_win",
+    "text": "The party absorbs the tome entire — a flood of hard-won insight!"
+  },
+  {
+    "id": "forbidden_tome_a2_lose",
+    "text": "Forbidden knowledge scourges your minds."
+  },
+  {
+    "id": "tactician_s_map",
+    "text": "A salt-rotted map shows the floor's battles. Reading the old deployments lends cunning to your own."
+  },
+  {
+    "id": "tactician_s_map_a0_act",
+    "text": "Note the chokepoints"
+  },
+  {
+    "id": "tactician_s_map_a0_win",
+    "text": "You mark the safest lanes — a useful edge."
+  },
+  {
+    "id": "tactician_s_map_a0_lose",
+    "text": "The ink has bled beyond reading."
+  },
+  {
+    "id": "tactician_s_map_a1_act",
+    "text": "Reconstruct the campaign"
+  },
+  {
+    "id": "tactician_s_map_a1_win",
+    "text": "The old general's plan clicks into place — your abilities feel refreshed."
+  },
+  {
+    "id": "tactician_s_map_a1_lose",
+    "text": "The map crumbles as you handle it."
+  },
+  {
+    "id": "tactician_s_map_a2_act",
+    "text": "Trace every battle"
+  },
+  {
+    "id": "tactician_s_map_a2_win",
+    "text": "The whole floor's history unfolds — your party fights like veterans!"
+  },
+  {
+    "id": "tactician_s_map_a2_lose",
+    "text": "You argue the tactics aloud — and loudly."
+  },
+  {
+    "id": "battle_standard",
+    "text": "A tattered banner stands in a forgotten rallying point. Raising it might stir old battle-fury."
+  },
+  {
+    "id": "battle_standard_a0_act",
+    "text": "Identify the legion"
+  },
+  {
+    "id": "battle_standard_a0_win",
+    "text": "You name the company — a small, steady pride stirs."
+  },
+  {
+    "id": "battle_standard_a0_lose",
+    "text": "The standard is too faded to identify."
+  },
+  {
+    "id": "battle_standard_a1_act",
+    "text": "Raise the pole"
+  },
+  {
+    "id": "battle_standard_a1_win",
+    "text": "The banner snaps upright — fury kindles in every chest."
+  },
+  {
+    "id": "battle_standard_a1_lose",
+    "text": "The pole rots through; it falls."
+  },
+  {
+    "id": "battle_standard_a2_act",
+    "text": "Swear the old oath"
+  },
+  {
+    "id": "battle_standard_a2_win",
+    "text": "The oath thunders out — the party is ablaze with rage!"
+  },
+  {
+    "id": "battle_standard_a2_lose",
+    "text": "The oath sits wrong on modern tongues — unease spreads."
+  },
+  {
+    "id": "murder_scene",
+    "text": "A grisly tableau — an adventurer, dead of something not quite physical. The scene has a story to tell."
+  },
+  {
+    "id": "murder_scene_a0_act",
+    "text": "Note the wounds"
+  },
+  {
+    "id": "murder_scene_a0_win",
+    "text": "The wound pattern reveals the killer — and its weakness."
+  },
+  {
+    "id": "murder_scene_a0_lose",
+    "text": "The body tells you nothing new."
+  },
+  {
+    "id": "murder_scene_a1_act",
+    "text": "Reconstruct the death"
+  },
+  {
+    "id": "murder_scene_a1_win",
+    "text": "You piece together the last moments — the boss's nature is laid bare."
+  },
+  {
+    "id": "murder_scene_a1_lose",
+    "text": "The scene was staged; you can't trust it."
+  },
+  {
+    "id": "pressure_runes",
+    "text": "Runes on the floor pulse in a weight-sensitive grid. The right path leads to a coffer; the wrong one, fire."
+  },
+  {
+    "id": "pressure_runes_a0_act",
+    "text": "Read the safe sequence"
+  },
+  {
+    "id": "pressure_runes_a0_win",
+    "text": "You decode the safe stones and step across."
+  },
+  {
+    "id": "pressure_runes_a0_lose",
+    "text": "The pattern is too dense to parse."
+  },
+  {
+    "id": "pressure_runes_a1_act",
+    "text": "Deduce the pattern"
+  },
+  {
+    "id": "pressure_runes_a1_win",
+    "text": "Logic wins — you cross and claim the coffer."
+  },
+  {
+    "id": "pressure_runes_a1_lose",
+    "text": "A wrong deduction — gouts of flame!"
+  },
+  {
+    "id": "pressure_runes_a2_act",
+    "text": "Sprint the grid"
+  },
+  {
+    "id": "pressure_runes_a2_win",
+    "text": "You crack the code on the fly — everyone skates through unburned!"
+  },
+  {
+    "id": "pressure_runes_a2_lose",
+    "text": "Half the party stands on the wrong stones."
+  },
+  {
+    "id": "blood_moss",
+    "text": "A carpet of crimson moss bleeds a thick, healing nectar — but the spores are toxic if disturbed wrong."
+  },
+  {
+    "id": "blood_moss_a0_act",
+    "text": "Press the fronds gently"
+  },
+  {
+    "id": "blood_moss_a0_win",
+    "text": "You milk a steady draught of healing nectar."
+  },
+  {
+    "id": "blood_moss_a0_lose",
+    "text": "The moss is dry here."
+  },
+  {
+    "id": "blood_moss_a1_act",
+    "text": "Harvest the right crop"
+  },
+  {
+    "id": "blood_moss_a1_win",
+    "text": "You pick only the benign heads — a potent party salve."
+  },
+  {
+    "id": "blood_moss_a1_lose",
+    "text": "You bruise the wrong heads — spores puff out."
+  },
+  {
+    "id": "blood_moss_a2_act",
+    "text": "Wring the whole carpet"
+  },
+  {
+    "id": "blood_moss_a2_win",
+    "text": "You harvest it all — enough nectar to drench the party in healing!"
+  },
+  {
+    "id": "blood_moss_a2_lose",
+    "text": "A cloud of crimson spores chokes everyone."
+  },
+  {
+    "id": "spirit_grove",
+    "text": "A ring of pale trees hums with cleansing light. Resting in it purges affliction — and steadies the spirit."
+  },
+  {
+    "id": "spirit_grove_a0_act",
+    "text": "Tend the wounded"
+  },
+  {
+    "id": "spirit_grove_a0_win",
+    "text": "A soft mend passes over the party's hurts."
+  },
+  {
+    "id": "spirit_grove_a0_lose",
+    "text": "The grove stays quiet."
+  },
+  {
+    "id": "spirit_grove_a1_act",
+    "text": "Breathe the pollen"
+  },
+  {
+    "id": "spirit_grove_a1_win",
+    "text": "Light fills every chest — poisons and curses burn away."
+  },
+  {
+    "id": "spirit_grove_a1_lose",
+    "text": "The pollen is too thin to matter."
+  },
+  {
+    "id": "spirit_grove_a2_act",
+    "text": "Invoke the grove's spirit"
+  },
+  {
+    "id": "spirit_grove_a2_win",
+    "text": "The grove blazes — every debuff scourged, the party inspired!"
+  },
+  {
+    "id": "spirit_grove_a2_lose",
+    "text": "The spirit is offended — it saps your vigor."
+  },
+  {
+    "id": "dedicated_offering",
+    "text": "An altar waits for an offering of blood or gold. A proper dedication could consecrate your blades."
+  },
+  {
+    "id": "dedicated_offering_a0_act",
+    "text": "Leave a token"
+  },
+  {
+    "id": "dedicated_offering_a0_win",
+    "text": "A faint blessing settles on your weapons."
+  },
+  {
+    "id": "dedicated_offering_a0_lose",
+    "text": "The altar rejects the token."
+  },
+  {
+    "id": "dedicated_offering_a1_act",
+    "text": "Speak the rite of edge"
+  },
+  {
+    "id": "dedicated_offering_a1_win",
+    "text": "Your blades shimmer with sacred light."
+  },
+  {
+    "id": "dedicated_offering_a1_lose",
+    "text": "The rite is mispronounced — the altar dims."
+  },
+  {
+    "id": "dedicated_offering_a2_act",
+    "text": "Anoint every blade"
+  },
+  {
+    "id": "dedicated_offering_a2_win",
+    "text": "The whole party's arms blaze with consecrated fire!"
+  },
+  {
+    "id": "dedicated_offering_a2_lose",
+    "text": "The altar finds your offering wanting — it curses you."
+  },
+  {
+    "id": "corrupted_font",
+    "text": "A once-holy font now wells with blackness. Cleansing it could purify the party — failing invites the corruption."
+  },
+  {
+    "id": "corrupted_font_a0_act",
+    "text": "Test the water"
+  },
+  {
+    "id": "corrupted_font_a0_win",
+    "text": "A careful dip reveals the cleansing was already done."
+  },
+  {
+    "id": "corrupted_font_a0_lose",
+    "text": "The blackness recoils — you leave it."
+  },
+  {
+    "id": "corrupted_font_a1_act",
+    "text": "Pronounce the exorcism"
+  },
+  {
+    "id": "corrupted_font_a1_win",
+    "text": "The blackness boils away — clear water washes the party clean."
+  },
+  {
+    "id": "corrupted_font_a1_lose",
+    "text": "The corruption surges — it stains you."
+  },
+  {
+    "id": "corrupted_font_a2_act",
+    "text": "Bathe in the font"
+  },
+  {
+    "id": "corrupted_font_a2_win",
+    "text": "You scour the font and yourselves in one rite — perfectly pure!"
+  },
+  {
+    "id": "corrupted_font_a2_lose",
+    "text": "The corruption drenches everyone."
+  },
+  {
+    "id": "alpha_wolf",
+    "text": "A wounded dire-wolf lord snarls from a pit. Dominating it could win a loyal companion for the floor."
+  },
+  {
+    "id": "alpha_wolf_a0_act",
+    "text": "Toss it food"
+  },
+  {
+    "id": "alpha_wolf_a0_win",
+    "text": "It eats, watches you warily, and trots along."
+  },
+  {
+    "id": "alpha_wolf_a0_lose",
+    "text": "It turns its nose up and limps away."
+  },
+  {
+    "id": "alpha_wolf_a1_act",
+    "text": "Hold out a hand"
+  },
+  {
+    "id": "alpha_wolf_a1_win",
+    "text": "Yellow eyes meet yours — the alpha lowers its head and joins you."
+  },
+  {
+    "id": "alpha_wolf_a1_lose",
+    "text": "It lunges; you barely pull your hand back."
+  },
+  {
+    "id": "alpha_wolf_a2_act",
+    "text": "Stare it down"
+  },
+  {
+    "id": "alpha_wolf_a2_win",
+    "text": "The whole party holds its gaze — the wolf submits, proud and loyal!"
+  },
+  {
+    "id": "alpha_wolf_a2_lose",
+    "text": "It reads your fear and leads the pack in."
+  },
+  {
+    "id": "stag_mount",
+    "text": "A great stag of strange intelligence paws at a gate. Calming it could lend its vigor to the party's stride."
+  },
+  {
+    "id": "stag_mount_a0_act",
+    "text": "Approach with grain"
+  },
+  {
+    "id": "stag_mount_a0_win",
+    "text": "It takes the grain and bows its head — a small spring in your step."
+  },
+  {
+    "id": "stag_mount_a0_lose",
+    "text": "It shies away into the dark."
+  },
+  {
+    "id": "stag_mount_a1_act",
+    "text": "Soothe the beast"
+  },
+  {
+    "id": "stag_mount_a1_win",
+    "text": "You lay hands on its flank — its vigor flows into the party."
+  },
+  {
+    "id": "stag_mount_a1_lose",
+    "text": "It bolts, clipping you with an antler."
+  },
+  {
+    "id": "stag_mount_a2_act",
+    "text": "Ride it as a mascot"
+  },
+  {
+    "id": "stag_mount_a2_win",
+    "text": "The stag accepts you all — the party moves like the wind!"
+  },
+  {
+    "id": "stag_mount_a2_lose",
+    "text": "It panics, trampling everyone in its rush."
+  },
+  {
+    "id": "read_the_traitor",
+    "text": "A captive taken in the fight sweats and stammers. Reading him right could pry loose the boss's secret."
+  },
+  {
+    "id": "read_the_traitor_a0_act",
+    "text": "Offer a deal"
+  },
+  {
+    "id": "read_the_traitor_a0_win",
+    "text": "He cracks easily — a useful crumb of intel."
+  },
+  {
+    "id": "read_the_traitor_a0_lose",
+    "text": "He clams up, suspicious of the deal."
+  },
+  {
+    "id": "read_the_traitor_a1_act",
+    "text": "Spot the lie he wants to tell"
+  },
+  {
+    "id": "read_the_traitor_a1_win",
+    "text": "You feed him the lie he's aching to tell — and learn the boss's weakness."
+  },
+  {
+    "id": "read_the_traitor_a1_lose",
+    "text": "He reads YOU instead — and grins."
+  },
+  {
+    "id": "gambling_den",
+    "text": "A back-room dice table, still felted. The crew here ran — but their pot and their marked dice remain."
+  },
+  {
+    "id": "gambling_den_a0_act",
+    "text": "Pocket the pot"
+  },
+  {
+    "id": "gambling_den_a0_win",
+    "text": "A quick palm — the house's loss is your gain."
+  },
+  {
+    "id": "gambling_den_a0_lose",
+    "text": "The pot was already emptied."
+  },
+  {
+    "id": "gambling_den_a1_act",
+    "text": "Read the marked dice"
+  },
+  {
+    "id": "gambling_den_a1_win",
+    "text": "You spot the rig and clean out what they stashed."
+  },
+  {
+    "id": "gambling_den_a1_lose",
+    "text": "You misread the rig — and pay the house back."
+  },
+  {
+    "id": "field_hospital",
+    "text": "A field surgeon's kit lies abandoned, bandages and salves still good. Tending the party now pays double."
+  },
+  {
+    "id": "field_hospital_a0_act",
+    "text": "Use the salves"
+  },
+  {
+    "id": "field_hospital_a0_win",
+    "text": "A brisk mend passes over everyone."
+  },
+  {
+    "id": "field_hospital_a0_lose",
+    "text": "The salves have gone rancid."
+  },
+  {
+    "id": "field_hospital_a1_act",
+    "text": "Proper triage"
+  },
+  {
+    "id": "field_hospital_a1_win",
+    "text": "You clean, stitch, and dose — the party is healed AND cleansed."
+  },
+  {
+    "id": "field_hospital_a1_lose",
+    "text": "The kit's poultice was tainted."
+  },
+  {
+    "id": "plague_corpse",
+    "text": "A plague-riddled corpse slumps against a sealed door. Diagnosing it reveals what — and who — lies beyond."
+  },
+  {
+    "id": "plague_corpse_a0_act",
+    "text": "Last rites and retreat"
+  },
+  {
+    "id": "plague_corpse_a0_win",
+    "text": "You note the sores' pattern as you pray — useful."
+  },
+  {
+    "id": "plague_corpse_a0_lose",
+    "text": "The rites done, you learn nothing new."
+  },
+  {
+    "id": "plague_corpse_a1_act",
+    "text": "Open the corpse"
+  },
+  {
+    "id": "plague_corpse_a1_win",
+    "text": "The plague's signature is unmistakable — the boss's nature is clear."
+  },
+  {
+    "id": "plague_corpse_a1_lose",
+    "text": "A spray of infected blood catches you."
+  },
+  {
+    "id": "sniper_s_nest",
+    "text": "An old sniper's roost overlooks the next hall. The vantage hardens you to what's coming."
+  },
+  {
+    "id": "sniper_s_nest_a0_act",
+    "text": "Check the roost"
+  },
+  {
+    "id": "sniper_s_nest_a0_win",
+    "text": "You find a serviceable vantage — a small edge."
+  },
+  {
+    "id": "sniper_s_nest_a0_lose",
+    "text": "The roost has collapsed."
+  },
+  {
+    "id": "sniper_s_nest_a1_act",
+    "text": "Read the kill-zone"
+  },
+  {
+    "id": "sniper_s_nest_a1_win",
+    "text": "You map every angle — the party steels itself, damage halved ahead."
+  },
+  {
+    "id": "sniper_s_nest_a1_lose",
+    "text": "You misread a creak — a crossbow fires!"
+  },
+  {
+    "id": "sniper_s_nest_a2_act",
+    "text": "Spot every trap on the floor"
+  },
+  {
+    "id": "sniper_s_nest_a2_win",
+    "text": "The whole floor's ambushes lay bare — the party becomes iron!"
+  },
+  {
+    "id": "sniper_s_nest_a2_lose",
+    "text": "You lean out too far — the old trap still works."
+  },
+  {
+    "id": "lost_map_cache",
+    "text": "A rolled chart peeks from a dead scout's pack. The boss's location could be yours — if you read it before the ink flees."
+  },
+  {
+    "id": "lost_map_cache_a0_act",
+    "text": "Note the landmarks"
+  },
+  {
+    "id": "lost_map_cache_a0_win",
+    "text": "You get a rough sense of the floor — useful."
+  },
+  {
+    "id": "lost_map_cache_a0_lose",
+    "text": "The landmarks have shifted."
+  },
+  {
+    "id": "lost_map_cache_a1_act",
+    "text": "Read the marching lines"
+  },
+  {
+    "id": "lost_map_cache_a1_win",
+    "text": "The chart is plain — the boss's chamber stands revealed."
+  },
+  {
+    "id": "lost_map_cache_a1_lose",
+    "text": "You fumble and tear the chart — and pay for a new copy."
+  },
+  {
+    "id": "hunter_s_trophies",
+    "text": "A rack of beast-trophies radiates a faint vigor. Donning a tooth or claw hardens the body."
+  },
+  {
+    "id": "hunter_s_trophies_a0_act",
+    "text": "Take a token"
+  },
+  {
+    "id": "hunter_s_trophies_a0_win",
+    "text": "A small,steady fortitude settles in."
+  },
+  {
+    "id": "hunter_s_trophies_a0_lose",
+    "text": "The trophies are all rotted."
+  },
+  {
+    "id": "hunter_s_trophies_a1_act",
+    "text": "Choose the right charm"
+  },
+  {
+    "id": "hunter_s_trophies_a1_win",
+    "text": "You pick a potent trophy — the party feels fortified."
+  },
+  {
+    "id": "hunter_s_trophies_a1_lose",
+    "text": "The beast's spirit objects — a spectral bite."
+  },
+  {
+    "id": "wyrm_track",
+    "text": "A scorched, claw-marked trail leads deeper. Reading it tells you exactly what waits at the bottom."
+  },
+  {
+    "id": "wyrm_track_a0_act",
+    "text": "Note the claw count"
+  },
+  {
+    "id": "wyrm_track_a0_win",
+    "text": "The track is unmistakably draconic — useful."
+  },
+  {
+    "id": "wyrm_track_a0_lose",
+    "text": "The track is too cold to read."
+  },
+  {
+    "id": "wyrm_track_a1_act",
+    "text": "Follow the scorch"
+  },
+  {
+    "id": "wyrm_track_a1_win",
+    "text": "You trace the beast — the boss's identity and weakness are clear."
+  },
+  {
+    "id": "wyrm_track_a1_lose",
+    "text": "You blunder down a side tunnel, kicking rubble."
+  },
+  {
+    "id": "wild_camp",
+    "text": "A hidden dell offers a brief, safe rest. Setting watch properly is the difference between rest and ambush."
+  },
+  {
+    "id": "wild_camp_a0_act",
+    "text": "Quick scout"
+  },
+  {
+    "id": "wild_camp_a0_win",
+    "text": "You confirm the dell is safe — a brief breather."
+  },
+  {
+    "id": "wild_camp_a0_lose",
+    "text": "You can't be sure — you push on."
+  },
+  {
+    "id": "wild_camp_a1_act",
+    "text": "Set proper watch"
+  },
+  {
+    "id": "wild_camp_a1_win",
+    "text": "A clean, short rest — abilities restored."
+  },
+  {
+    "id": "wild_camp_a1_lose",
+    "text": "Your watch fires at shadows — and wakes the wild."
+  },
+  {
+    "id": "wild_camp_a2_act",
+    "text": "Long rest in the wild"
+  },
+  {
+    "id": "wild_camp_a2_win",
+    "text": "A full, safe recovery in the enemy's blind spot!"
+  },
+  {
+    "id": "wild_camp_a2_lose",
+    "text": "Smoke and snoring carry — the whole floor stirs."
+  },
+  {
+    "id": "smuggler_s_toll",
+    "text": "A smuggler's post guards a bridge. Flashing the right sign and confidence could wave you through rich."
+  },
+  {
+    "id": "smuggler_s_toll_a0_act",
+    "text": "Read what they want"
+  },
+  {
+    "id": "smuggler_s_toll_a0_win",
+    "text": "You catch their tells and play along."
+  },
+  {
+    "id": "smuggler_s_toll_a0_lose",
+    "text": "Their game is too opaque."
+  },
+  {
+    "id": "smuggler_s_toll_a1_act",
+    "text": "Fake the password"
+  },
+  {
+    "id": "smuggler_s_toll_a1_win",
+    "text": "You bluff the countersign — they wave you through with a \"gift\"."
+  },
+  {
+    "id": "smuggler_s_toll_a1_lose",
+    "text": "The bluff fails — they shout the alarm."
+  },
+  {
+    "id": "smuggler_s_toll_a2_act",
+    "text": "Rob them blind"
+  },
+  {
+    "id": "smuggler_s_toll_a2_win",
+    "text": "You play them so well they hand over the whole stash!"
+  },
+  {
+    "id": "smuggler_s_toll_a2_lose",
+    "text": "The con collapses — every post on the floor hears."
+  },
+  {
+    "id": "false_priest",
+    "text": "A naive cult tends a shrine. Donning their vestments and leading a rite could inspire your party — or draw a curse."
+  },
+  {
+    "id": "false_priest_a0_act",
+    "text": "Mutter along"
+  },
+  {
+    "id": "false_priest_a0_win",
+    "text": "A faint, steady resolve settles on the party."
+  },
+  {
+    "id": "false_priest_a0_lose",
+    "text": "The rite feels wrong — you stop."
+  },
+  {
+    "id": "false_priest_a1_act",
+    "text": "Lead the rite"
+  },
+  {
+    "id": "false_priest_a1_win",
+    "text": "You play the priest flawlessly — the party leaves inspired."
+  },
+  {
+    "id": "false_priest_a1_lose",
+    "text": "The cult senses the fraud — the rite inverts."
+  },
+  {
+    "id": "false_priest_a2_act",
+    "text": "Bless the whole party"
+  },
+  {
+    "id": "false_priest_a2_win",
+    "text": "A flawless sermon — the party walks out aflame with confidence!"
+  },
+  {
+    "id": "false_priest_a2_lose",
+    "text": "The heresy is plain — the cult curses you all."
+  },
+  {
+    "id": "warlord_s_tribute",
+    "text": "A warlord's old strongbox sits under a glaring guard-statue. Taking it by presence, not force, is the trick."
+  },
+  {
+    "id": "warlord_s_tribute_a0_act",
+    "text": "Claim a small share"
+  },
+  {
+    "id": "warlord_s_tribute_a0_win",
+    "text": "You talk your way to a token."
+  },
+  {
+    "id": "warlord_s_tribute_a0_lose",
+    "text": "The statue is unmoved."
+  },
+  {
+    "id": "warlord_s_tribute_a1_act",
+    "text": "Demand the box"
+  },
+  {
+    "id": "warlord_s_tribute_a1_win",
+    "text": "You shout the old warlord's name — the tribute is yours."
+  },
+  {
+    "id": "warlord_s_tribute_a1_lose",
+    "text": "Your voice cracks — the statue's gaze frightens you."
+  },
+  {
+    "id": "warlord_s_tribute_a2_act",
+    "text": "Claim the warlord's name"
+  },
+  {
+    "id": "warlord_s_tribute_a2_win",
+    "text": "Five voices bellow the name — the strongbox and more are yours!"
+  },
+  {
+    "id": "warlord_s_tribute_a2_lose",
+    "text": "The name does not take — dread fills the chamber."
+  },
+  {
+    "id": "break_the_line",
+    "text": "A shield-wall of old constructs blocks the way. A roaring charge could shatter their nerve before a blade is drawn."
+  },
+  {
+    "id": "break_the_line_a0_act",
+    "text": "Find the weak file"
+  },
+  {
+    "id": "break_the_line_a0_win",
+    "text": "You spot the gap — a small advantage."
+  },
+  {
+    "id": "break_the_line_a0_lose",
+    "text": "The line is solid everywhere."
+  },
+  {
+    "id": "break_the_line_a1_act",
+    "text": "Roar the charge"
+  },
+  {
+    "id": "break_the_line_a1_win",
+    "text": "Your roar cracks the line — fury carries the party through."
+  },
+  {
+    "id": "break_the_line_a1_lose",
+    "text": "They hold — and the noise echoes on."
+  },
+  {
+    "id": "break_the_line_a2_act",
+    "text": "Bellow as one"
+  },
+  {
+    "id": "break_the_line_a2_win",
+    "text": "A unified roar shatters the constructs AND every nerve on the floor — the party is berserk!"
+  },
+  {
+    "id": "break_the_line_a2_lose",
+    "text": "The constructs reform — and now the floor is awake."
+  },
+  {
+    "id": "bardic_contest",
+    "text": "A spectral bard demands a contest before you pass. Winning earns the lore of old masters; losing costs pride."
+  },
+  {
+    "id": "bardic_contest_a0_act",
+    "text": "Cite the classics"
+  },
+  {
+    "id": "bardic_contest_a0_win",
+    "text": "Your scholarship impresses — a small share of lore."
+  },
+  {
+    "id": "bardic_contest_a0_lose",
+    "text": "The bard finds you dull."
+  },
+  {
+    "id": "bardic_contest_a1_act",
+    "text": "Play a piece"
+  },
+  {
+    "id": "bardic_contest_a1_win",
+    "text": "Your tune wins — the bard gifts you a verse of hard-won experience."
+  },
+  {
+    "id": "bardic_contest_a1_lose",
+    "text": "You fumble a phrase — the bard jeers."
+  },
+  {
+    "id": "bardic_contest_a2_act",
+    "text": "A full ensemble"
+  },
+  {
+    "id": "bardic_contest_a2_win",
+    "text": "The party plays as one — the bard is moved to teach you everything!"
+  },
+  {
+    "id": "bardic_contest_a2_lose",
+    "text": "A cacophony — the bard's criticism cuts deep."
+  },
+  {
+    "id": "lullaby",
+    "text": "A music box plays an endless, drowsy tune. Harmonizing could soothe the party's hurts — or lull you senseless."
+  },
+  {
+    "id": "lullaby_a0_act",
+    "text": "Rest to the tune"
+  },
+  {
+    "id": "lullaby_a0_win",
+    "text": "A refreshing pause — minor hurts mend."
+  },
+  {
+    "id": "lullaby_a0_lose",
+    "text": "The tune is just noise."
+  },
+  {
+    "id": "lullaby_a1_act",
+    "text": "Harmonize"
+  },
+  {
+    "id": "lullaby_a1_win",
+    "text": "You weave the melody into a balm — the party heals."
+  },
+  {
+    "id": "lullaby_a1_lose",
+    "text": "You nod off mid-phrase; everyone wakes groggy."
+  },
+  {
+    "id": "recruit_the_guard",
+    "text": "A lone, weary guard eyes your coin and your cause. The right words could turn his coat — and arm."
+  },
+  {
+    "id": "recruit_the_guard_a0_act",
+    "text": "Feel out his price"
+  },
+  {
+    "id": "recruit_the_guard_a0_win",
+    "text": "You learn he's almost ready — a nudge later, he's yours."
+  },
+  {
+    "id": "recruit_the_guard_a0_lose",
+    "text": "He stays cagey."
+  },
+  {
+    "id": "recruit_the_guard_a1_act",
+    "text": "Appeal to his fatigue"
+  },
+  {
+    "id": "recruit_the_guard_a1_win",
+    "text": "He sighs, drops his pike, and joins the column."
+  },
+  {
+    "id": "recruit_the_guard_a1_lose",
+    "text": "He balks — and demands a bribe you can't refuse."
+  },
+  {
+    "id": "recruit_the_guard_a2_act",
+    "text": "Turn the whole watch"
+  },
+  {
+    "id": "recruit_the_guard_a2_win",
+    "text": "Your words sweep the watch — a squad of turncoats joins you!"
+  },
+  {
+    "id": "recruit_the_guard_a2_lose",
+    "text": "The captain overhears — and fines you for the trouble."
+  },
+  {
+    "id": "royal_pardon",
+    "text": "A wax-sealed pardon lies on a clerk's desk. Flashing it could open the sealed vault nearby — or raise the alarm."
+  },
+  {
+    "id": "royal_pardon_a0_act",
+    "text": "Verify the seal"
+  },
+  {
+    "id": "royal_pardon_a0_win",
+    "text": "The seal is genuine — you note which vault it opens."
+  },
+  {
+    "id": "royal_pardon_a0_lose",
+    "text": "The seal is too smudged to read."
+  },
+  {
+    "id": "royal_pardon_a1_act",
+    "text": "Present the pardon"
+  },
+  {
+    "id": "royal_pardon_a1_win",
+    "text": "The vault's ward accepts the seal — and swings wide."
+  },
+  {
+    "id": "royal_pardon_a1_lose",
+    "text": "The clerk screams fraud before the ward drops."
+  },
+  {
+    "id": "royal_pardon_a2_act",
+    "text": "Claim a ducal errand"
+  },
+  {
+    "id": "royal_pardon_a2_win",
+    "text": "You bluff the whole sealed wing open — secret rooms galore!"
+  },
+  {
+    "id": "royal_pardon_a2_lose",
+    "text": "The bluff collapses; every ward in the wing shrieks."
+  },
+  {
+    "id": "tavern_tales",
+    "text": "Around the merchant's fire, a traveling bard offers a tale for a tale. A good story could lift spirits before you descend."
+  },
+  {
+    "id": "tavern_tales_a0_act",
+    "text": "Recall an old legend"
+  },
+  {
+    "id": "tavern_tales_a0_win",
+    "text": "The bard nods — the party feels a familiar, steady resolve."
+  },
+  {
+    "id": "tavern_tales_a0_lose",
+    "text": "The bard has heard it before."
+  },
+  {
+    "id": "tavern_tales_a1_act",
+    "text": "Tell your own exploits"
+  },
+  {
+    "id": "tavern_tales_a1_win",
+    "text": "Your tale rouses the camp — the party sets out inspired."
+  },
+  {
+    "id": "tavern_tales_a1_lose",
+    "text": "The tale falls flat — polite silence."
+  },
+  {
+    "id": "mark_the_mark",
+    "text": "A sharper-eyed merchant's guard is running a side hustle. Reading him could win a tidy purse."
+  },
+  {
+    "id": "mark_the_mark_a0_act",
+    "text": "Watch his hands"
+  },
+  {
+    "id": "mark_the_mark_a0_win",
+    "text": "You spot the loaded game — a small, easy profit."
+  },
+  {
+    "id": "mark_the_mark_a0_lose",
+    "text": "His hands are too quick."
+  },
+  {
+    "id": "mark_the_mark_a1_act",
+    "text": "Read his hustle"
+  },
+  {
+    "id": "mark_the_mark_a1_win",
+    "text": "You play along just enough to clean him out."
+  },
+  {
+    "id": "mark_the_mark_a1_lose",
+    "text": "He reads you back — and lightens your purse."
+  },
+  {
+    "id": "locked_chest_trapped",
+    "text": "An iron-bound chest sits unopened, its lock tarnished but cunning. A trap mechanism glints in the keyhole."
+  },
+  {
+    "id": "locked_chest_trapped_a0_act",
+    "text": "Inspect for traps first"
+  },
+  {
+    "id": "locked_chest_trapped_a0_win",
+    "text": "You find and ease the trigger. The lock yields meekly."
+  },
+  {
+    "id": "locked_chest_trapped_a0_lose",
+    "text": "The mechanism is too well hidden — you resort to brute force."
+  },
+  {
+    "id": "locked_chest_trapped_a1_act",
+    "text": "Pick the lock"
+  },
+  {
+    "id": "locked_chest_trapped_a1_win",
+    "text": "Tumblers fall one by one — the lid swings open."
+  },
+  {
+    "id": "locked_chest_trapped_a1_lose",
+    "text": "A pin snaps with a sharp click! A dart fires."
+  },
+  {
+    "id": "locked_chest_trapped_a2_act",
+    "text": "Everyone pry it open"
+  },
+  {
+    "id": "locked_chest_trapped_a2_win",
+    "text": "Crowbars bite, the hinge screams — and the chest yields its hoard!"
+  },
+  {
+    "id": "locked_chest_trapped_a2_lose",
+    "text": "Springs and darts! Everyone ducks a heartbeat too late."
+  },
+  {
+    "id": "ancient_shrine",
+    "text": "A weathered shrine hums with old power. The correct rites might amplify its blessing before you rest."
+  },
+  {
+    "id": "ancient_shrine_a0_act",
+    "text": "Offer a quiet prayer"
+  },
+  {
+    "id": "ancient_shrine_a0_win",
+    "text": "The shrine warms — a ward settles over the party."
+  },
+  {
+    "id": "ancient_shrine_a0_lose",
+    "text": "The shrine stays cold. No heed."
+  },
+  {
+    "id": "ancient_shrine_a1_act",
+    "text": "Channel the resonance"
+  },
+  {
+    "id": "ancient_shrine_a1_win",
+    "text": "Arcane energy flows — the party is shielded."
+  },
+  {
+    "id": "ancient_shrine_a1_lose",
+    "text": "The energy disperses into the stone."
+  },
+  {
+    "id": "ancient_shrine_a2_act",
+    "text": "Invoke the old name aloud"
+  },
+  {
+    "id": "ancient_shrine_a2_win",
+    "text": "The shrine blazes! A powerful ward shields everyone."
+  },
+  {
+    "id": "ancient_shrine_a2_lose",
+    "text": "Blasphemy — the shrine recoils with a frightful roar."
+  },
+  {
+    "id": "whispers_at_the_threshold",
+    "text": "Before the final door, old carvings murmur of what waits beyond. A clever reading could reveal its weakness."
+  },
+  {
+    "id": "whispers_at_the_threshold_a0_act",
+    "text": "Recall what the carvings depict"
+  },
+  {
+    "id": "whispers_at_the_threshold_a0_win",
+    "text": "The tale names the foe — and where it falters."
+  },
+  {
+    "id": "whispers_at_the_threshold_a0_lose",
+    "text": "The script is too weathered to parse."
+  },
+  {
+    "id": "whispers_at_the_threshold_a1_act",
+    "text": "Read the binding runes"
+  },
+  {
+    "id": "whispers_at_the_threshold_a1_win",
+    "text": "The runes lay the boss's nature bare. It is marked."
+  },
+  {
+    "id": "whispers_at_the_threshold_a1_lose",
+    "text": "The runes are cold and uninformative."
+  },
+  {
+    "id": "whispers_at_the_threshold_a2_act",
+    "text": "Demand the truth"
+  },
+  {
+    "id": "whispers_at_the_threshold_a2_win",
+    "text": "The carvings blaze — the boss's weakness is laid open for all to see!"
+  },
+  {
+    "id": "whispers_at_the_threshold_a2_lose",
+    "text": "The carvings screech. Something stirs beyond the door."
+  }
+]

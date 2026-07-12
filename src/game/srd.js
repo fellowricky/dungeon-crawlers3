@@ -4,16 +4,28 @@
  * by Wizards of the Coast LLC, licensed under CC-BY-4.0.
  */
 import {
-  aggregateEquipment, PROF_RANK, makeStarterItem, attuneHeroGear,
+  aggregateEquipment, PROF_RANK, WEAPON_RANK, makeStarterItem, attuneHeroGear,
   migrateItem, bondLegendaryOnEquip
 } from './items.js';
 import {
   featureBonuses, spellSlotsFor, seedNewHeroProgression, migrateProgression,
-  applyLevelGrants, initProgressionFields, pendingChoiceCount, hasFeature
+  applyLevelGrants, initProgressionFields, pendingChoiceCount, hasFeature,
+  totalSlots
 } from './features.js';
 
 /* ---------------- dice ---------------- */
 export function d(n){ return 1 + Math.floor(Math.random()*n); }
+/**
+ * Advantage-aware d20: adv > 0 rolls twice take highest, adv < 0 twice take
+ * lowest, 0 rolls once. Callers sum +1/-1 sources — 5e advantage and
+ * disadvantage cancel to a single straight roll.
+ */
+export function d20Roll(adv = 0){
+  const a = d(20);
+  if (!adv) return a;
+  const b = d(20);
+  return adv > 0 ? Math.max(a, b) : Math.min(a, b);
+}
 export function roll(count, sides, bonus=0){
   let t = bonus;
   for(let i=0;i<count;i++) t += d(sides);
@@ -54,9 +66,9 @@ export const SKILLS = {
 /* proficiency bonus by level (SRD table) */
 export const profBonus = lvl => 2 + Math.floor((lvl-1)/4);
 
-/* XP needed to REACH each level (index = level) */
-export const XP_TABLE = [0, 0, 300, 1000, 3000, 7000, 15000, 25000, 38000, 54000, 75000];
-export const MAX_LEVEL = 10;
+/* XP needed to REACH each level (index = level) — tripled after level 2 */
+export const XP_TABLE = [0, 0, 300, 3000, 9000, 21000, 45000, 75000, 114000, 162000, 225000, 255000, 300000, 360000, 420000, 495000, 585000, 675000, 795000, 915000, 1065000];
+export const MAX_LEVEL = 20;
 
 /* ---------------- races (SRD) ---------------- */
 export const RACES = {
@@ -76,7 +88,7 @@ export const RACES = {
    attack: the weapon/cantrip profile used by the auto-battler. */
 export const CLASSES = {
   fighter: {
-    label:'Fighter', color:0xd9a441, hitDie:10, armorProf:'heavy', shieldProf:true,
+    label:'Fighter', color:0xd9a441, hitDie:10, armorProf:'heavy', shieldProf:true, weaponProf:'martial',
     statPriority:['str','con','dex','wis','cha','int'],
     baseAC:16, acDesc:'Chain mail',
     attack:{ name:'Longsword', ability:'str', dmg:[1,8], range:1.5, melee:true },
@@ -94,7 +106,7 @@ export const CLASSES = {
     }
   },
   rogue: {
-    label:'Rogue', color:0x8f95a3, hitDie:8, armorProf:'light', shieldProf:false,
+    label:'Rogue', color:0x8f95a3, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple', weaponSpecific:['Rapier','Shortsword','Longsword'],
     statPriority:['dex','con','wis','int','cha','str'],
     baseAC:11, acPlusDex:true, acDesc:'Leather armor + Dex',
     attack:{ name:'Shortbow', ability:'dex', dmg:[1,6], range:7, melee:false },
@@ -112,7 +124,7 @@ export const CLASSES = {
     }
   },
   cleric: {
-    label:'Cleric', color:0x5a8fe8, hitDie:8, armorProf:'medium', shieldProf:true,
+    label:'Cleric', color:0x5a8fe8, hitDie:8, armorProf:'medium', shieldProf:true, weaponProf:'simple',
     statPriority:['wis','con','str','cha','dex','int'],
     baseAC:16, acDesc:'Scale mail + shield',
     attack:{ name:'Sacred Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true },
@@ -130,7 +142,7 @@ export const CLASSES = {
     }
   },
   wizard: {
-    label:'Wizard', color:0x9b6cf0, hitDie:6, armorProf:'none', shieldProf:false,
+    label:'Wizard', color:0x9b6cf0, hitDie:6, armorProf:'none', shieldProf:false, weaponProf:'simple',
     statPriority:['int','con','dex','wis','cha','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
     attack:{ name:'Fire Bolt', ability:'int', dmg:[1,10], range:8, melee:false, cantripScale:true },
@@ -148,7 +160,7 @@ export const CLASSES = {
     }
   },
   barbarian: {
-    label:'Barbarian', color:0xe74c3c, hitDie:12, armorProf:'medium', shieldProf:true,
+    label:'Barbarian', color:0xe74c3c, hitDie:12, armorProf:'medium', shieldProf:true, weaponProf:'martial',
     statPriority:['str','con','dex','wis','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Unarmored Defense',
     attack:{ name:'Greatsword', ability:'str', dmg:[2,6], range:1.6, melee:true },
@@ -165,7 +177,7 @@ export const CLASSES = {
     }
   },
   bard: {
-    label:'Bard', color:0xe8a8ff, hitDie:8, armorProf:'light', shieldProf:false,
+    label:'Bard', color:0xe8a8ff, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple', weaponSpecific:['Rapier','Shortsword','Longsword'],
     statPriority:['cha','dex','con','wis','str','int'],
     baseAC:11, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Rapier', ability:'cha', dmg:[1,8], range:1.5, melee:true },
@@ -183,7 +195,7 @@ export const CLASSES = {
     }
   },
   druid: {
-    label:'Druid', color:0x2ecc71, hitDie:8, armorProf:'medium', shieldProf:true,
+    label:'Druid', color:0x2ecc71, hitDie:8, armorProf:'medium', shieldProf:true, weaponProf:'simple', weaponSpecific:['Scimitar'],
     statPriority:['wis','con','dex','int','cha','str'],
     baseAC:12, acPlusDex:true, acDesc:'Leather Shield + Hide',
     attack:{ name:'Produce Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true },
@@ -201,7 +213,7 @@ export const CLASSES = {
     }
   },
   monk: {
-    label:'Monk', color:0x3498db, hitDie:8, armorProf:'none', shieldProf:false,
+    label:'Monk', color:0x3498db, hitDie:8, armorProf:'none', shieldProf:false, weaponProf:'simple', weaponSpecific:['Shortsword'],
     statPriority:['dex','wis','con','str','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Unarmored Defense',
     attack:{ name:'Unarmed Strike', ability:'dex', dmg:[1,6], range:1.4, melee:true },
@@ -218,7 +230,7 @@ export const CLASSES = {
     }
   },
   paladin: {
-    label:'Paladin', color:0xf1c40f, hitDie:10, armorProf:'heavy', shieldProf:true,
+    label:'Paladin', color:0xf1c40f, hitDie:10, armorProf:'heavy', shieldProf:true, weaponProf:'martial',
     statPriority:['str','cha','con','wis','dex','int'],
     baseAC:16, acDesc:'Chain mail + shield',
     attack:{ name:'Longsword', ability:'str', dmg:[1,8], range:1.5, melee:true },
@@ -235,7 +247,7 @@ export const CLASSES = {
     }
   },
   ranger: {
-    label:'Ranger', color:0x1abc9c, hitDie:10, armorProf:'medium', shieldProf:true,
+    label:'Ranger', color:0x1abc9c, hitDie:10, armorProf:'medium', shieldProf:true, weaponProf:'martial',
     statPriority:['dex','wis','con','str','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Longbow', ability:'dex', dmg:[1,8], range:8, melee:false },
@@ -252,7 +264,7 @@ export const CLASSES = {
     }
   },
   sorcerer: {
-    label:'Sorcerer', color:0xe67e22, hitDie:6, armorProf:'none', shieldProf:false,
+    label:'Sorcerer', color:0xe67e22, hitDie:6, armorProf:'none', shieldProf:false, weaponProf:'simple',
     statPriority:['cha','con','dex','int','wis','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
     attack:{ name:'Fire Bolt', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
@@ -270,7 +282,7 @@ export const CLASSES = {
     }
   },
   warlock: {
-    label:'Warlock', color:0x9b59b6, hitDie:8, armorProf:'light', shieldProf:false,
+    label:'Warlock', color:0x9b59b6, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple',
     statPriority:['cha','con','dex','wis','int','str'],
     baseAC:11, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Eldritch Blast', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
@@ -306,8 +318,8 @@ export const SUBCLASSES = {
   fighter: {
     champion: { label:'Champion', srd:true,
       passive:'Improved Critical: crit on 19–20.', pb:{crit:1},
-      active:{ key:'actionSurge', name:'Action Surge', recharge:'short',
-        desc:'Push past your limits: immediately attack a second time.' } },
+      active:{ key:'remarkableAthlete', name:'Remarkable Athlete', recharge:'short',
+        desc:'Perform at peak physical capacity: +10% speed and +2 AC for 30 seconds.' } },
     guardian: { label:'Guardian',
       passive:'Shield Ward: +1 AC.', pb:{ac:1},
       active:{ key:'rallyingCry', name:'Rallying Cry', recharge:'long',
@@ -316,8 +328,8 @@ export const SUBCLASSES = {
   rogue: {
     thief: { label:'Thief', srd:true,
       passive:'Fast Hands: +10% move speed, +25% gold from chests.', pb:{speed:0.10}, chestGold:0.25,
-      active:{ key:'cunningAction', name:'Cunning Action', recharge:'short',
-        desc:'When badly hurt, dart clear of danger: +4 AC and +40% speed for 6 seconds.' } },
+      active:{ key:'fastHands', name:'Fast Hands', recharge:'short',
+        desc:'Use sleight of hand to throw a smoke bomb, blinding all nearby enemies for 6s.' } },
     nightblade: { label:'Nightblade',
       passive:'Grim Precision: +1 weapon damage.', pb:{dmg:1},
       active:{ key:'deathstrike', name:'Deathstrike', recharge:'short',
@@ -440,17 +452,17 @@ export function pickSubclass(h, key){
   if(h.level >= 6) applyLevelGrants(h, 6, null, { autosOnly: true });
   if(h.level >= 10) applyLevelGrants(h, 10, null, { autosOnly: true });
   recalc(h);
-  if(h.slotsMax) h.slots = h.slotsMax;
+  if(totalSlots(h.slotsMax) > 0) h.slots = { ...h.slotsMax };
   return true;
 }
 
-/* cantrips add a damage die at character levels 5 (SRD cantrip scaling) */
-export const cantripDice = lvl => lvl >= 5 ? 2 : 1;
+/* cantrips add a damage die at character levels 5, 11, 17 (SRD cantrip scaling) */
+export const cantripDice = lvl => lvl >= 17 ? 4 : lvl >= 11 ? 3 : lvl >= 5 ? 2 : 1;
 
 /* ---------------- monsters (external JSON with 244 SRD stat blocks) ----------------
    Loaded from monsters.json and indexed by tier for O(1) spawn-pool lookup.
    Tiers 1-5 plus boss. */
-import MONSTERS_RAW from './monsters.json';
+import MONSTERS_RAW from './monsters.json' with { type: 'json' };
 
 const _byTier = {};
 for (const m of MONSTERS_RAW) {
@@ -459,6 +471,19 @@ for (const m of MONSTERS_RAW) {
   _byTier[t].push(m);
 }
 export const MONSTERS = _byTier;
+
+/** All boss-tier monster ids — used by quests to pre-roll a final boss. */
+export const BOSS_IDS = (_byTier.boss || []).map(s => s.id);
+
+/** Display name for a monster id (any tier); falls back to a cleaned id. */
+export function monsterName(id) {
+  if (!id) return 'something ancient';
+  for (const t in _byTier) {
+    const f = _byTier[t].find(s => s.id === id);
+    if (f) return f.name;
+  }
+  return id.replace(/-/g, ' ');
+}
 
 /** Approximate threat cost per tier — used by the dungeon generator's budget
  *  system to decide spawn counts. These are the median threat values from the
@@ -478,129 +503,132 @@ export const DUNGEON_MONSTER_MAP = {
   verdant: [4, 7, 3],     // Orc + Fey + Beasts
 };
 
-export const MONSTER_THEMES = [
-  {
-    name: 'Goblinoid',
-    monsters: {
-      1: ['goblin', 'kobold'],
-      2: ['hobgoblin'],
-      3: ['bugbear'],
-      4: ['hobgoblin-iron-shadow'],
-      5: ['hobgoblin-iron-shadow']
-    }
-  },
-  {
-    name: 'Undead',
-    monsters: {
-      1: ['skeleton', 'zombie'],
-      2: ['ghoul', 'shadow', 'mummy'],
-      3: ['wight', 'ghast', 'vampire'],
-      4: ['wraith', 'ghost'],
-      5: ['wraith', 'vampire']
-    }
-  },
-  {
-    name: 'Vermin',
-    monsters: {
-      1: ['giant-rat', 'grey-rat', 'giant-centipede', 'giant-wolf-spider', 'stirge', 'giant-frog', 'giant-weasel'],
-      2: ['giant-spider', 'wolf-spider'],
-      3: ['giant-scorpion', 'phase-spider', 'ettercap', 'giant-constrictor-snake', 'ankheg'],
-      4: [],
-      5: ['drider']
-    }
-  },
-  {
-    name: 'Beasts',
-    monsters: {
-      1: ['wolf', 'giant-bat', 'giant-badger', 'giant-owl', 'poisonous-snake', 'giant-poisonous-snake'],
-      2: ['dire-wolf', 'crocodile', 'warg', 'harpy'],
-      3: ['owlbear', 'polar-bear', 'giant-constrictor-snake', 'basilisk'],
-      4: ['bulette', 'chimera', 'hydra'],
-      5: ['remorhaz', 'behir']
-    }
-  },
-  {
-    name: 'Orc Horde',
-    monsters: {
-      1: ['orc', 'kobold'],
-      2: ['gnoll', 'orc'],
-      3: ['ogre'],
-      4: ['hill-giant'],
-      5: ['fire-giant', 'frost-giant']
-    }
-  },
-  {
-    name: 'Draconic',
-    monsters: {
-      1: ['kobold'],
-      2: ['kobold'],
-      3: ['young-white-dragon'],
-      4: ['young-black-dragon', 'young-white-dragon', 'young-green-dragon', 'wyvern'],
-      5: ['young-red-dragon', 'adult-white-dragon']
-    }
-  },
-  {
-    name: 'Elemental',
-    monsters: {
-      1: ['magmin'],
-      2: ['magmin', 'gargoyle'],
-      3: ['gargoyle', 'hell-hound'],
-      4: ['air-elemental', 'earth-elemental', 'fire-elemental', 'water-elemental', 'salamander'],
-      5: ['fire-elemental']
-    }
-  },
-  {
-    name: 'Fiendish',
-    monsters: {
-      1: ['dretch', 'lemure', 'manes'],
-      2: ['imp', 'quasit'],
-      3: ['hell-hound', 'bearded-devil'],
-      4: ['vrock', 'barbed-devil'],
-      5: ['hezrou', 'glabrezu']
-    }
-  },
-  {
-    name: 'Fey',
-    monsters: {
-      1: [],
-      2: ['dryad', 'satyr', 'centaur'],
-      3: ['green-hag'],
-      4: ['green-hag'],
-      5: []
-    }
-  },
-  {
-    name: 'Giantkind',
-    monsters: {
-      1: [],
-      2: [],
-      3: ['ogre', 'minotaur', 'deep-troll'],
-      4: ['troll', 'hill-giant', 'stone-giant'],
-      5: ['fire-giant', 'frost-giant', 'cloud-giant']
-    }
-  },
-  {
-    name: 'Drow & Shadow',
-    monsters: {
-      1: [],
-      2: ['deep-gnome', 'darkmantle', 'shadow'],
-      3: ['doppelganger', 'wraith'],
-      4: ['medusa', 'ghost'],
-      5: ['drider']
-    }
-  }
+const themesList = [
+  { name: 'Goblinoid', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Undead', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Vermin', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Beasts', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Orc Horde', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Draconic', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Elemental', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Fiendish', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Fey', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Giantkind', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } },
+  { name: 'Drow & Shadow', monsters: { 1:[], 2:[], 3:[], 4:[], 5:[], boss:[] } }
 ];
+
+function getThemeForMonster(m) {
+  const id = m.id.toLowerCase();
+  const name = m.name.toLowerCase();
+  const type = (m.type || '').toLowerCase();
+  const tags = (m.tags || []).map(t => t.toLowerCase());
+
+  if (type === 'dragon' || id.includes('dragon') || id.includes('wyvern') || id.includes('drake') || id.includes('lindwurm') || id.includes('basilisk') || id.includes('cockatrice') || id.includes('chimera') || id.includes('hydra')) {
+    return 'Draconic';
+  }
+  if (type === 'undead' || id.includes('ghost') || id.includes('specter') || id.includes('ghoul') || id.includes('zombie') || id.includes('skeleton') || id.includes('mummy') || id.includes('vampire') || id.includes('lich') || id.includes('wraith') || id.includes('shadow') || id.includes('death-knight')) {
+    return 'Undead';
+  }
+  if (tags.includes('goblinoid') || tags.includes('kobold') || id.includes('goblin') || id.includes('kobold') || id.includes('bugbear') || id.includes('hobgoblin')) {
+    return 'Goblinoid';
+  }
+  if (tags.includes('orc') || id.includes('orc') || id.includes('gnoll')) {
+    return 'Orc Horde';
+  }
+  if (type === 'fiend' || id.includes('devil') || id.includes('demon') || id.includes('imp') || id.includes('quasit') || id.includes('succubus') || id.includes('hell-hound') || id.includes('dretch') || id.includes('lemure') || id.includes('manes') || id.includes('vrock') || id.includes('barbed-devil') || id.includes('hezrou') || id.includes('glabrezu') || id.includes('marilith') || id.includes('balor')) {
+    return 'Fiendish';
+  }
+  if (type === 'fey' || id.includes('dryad') || id.includes('satyr') || id.includes('centaur') || id.includes('hag') || id.includes('pixie') || id.includes('sprite') || id.includes('nymph') || id.includes('elf') || id.includes('elven') || id.includes('pegasus') || id.includes('unicorn')) {
+    return 'Fey';
+  }
+  if (type === 'elemental' || type === 'construct' || id.includes('gargoyle') || id.includes('elemental') || id.includes('salamander') || id.includes('efreet') || id.includes('magmin') || id.includes('magma') || id.includes('fire-beetle') || id.includes('mephit') || id.includes('golem')) {
+    return 'Elemental';
+  }
+  if (type === 'giant' || id.includes('giant') || id.includes('ogre') || id.includes('troll') || id.includes('ettin') || id.includes('cyclops') || id.includes('minotaur') || id.includes('firbolg') || id.includes('goliath')) {
+    return 'Giantkind';
+  }
+  if (id.includes('drow') || id.includes('shadow') || id.includes('dark') || id.includes('deep') || id.includes('duergar') || id.includes('underdark') || id.includes('drider') || id.includes('medusa') || id.includes('mind-flayer') || id.includes('beholder') || id.includes('spectator') || id.includes('grimlock') || id.includes('roper') || id.includes('choker') || id.includes('hook-horror') || id.includes('rust-monster') || id.includes('ooze') || id.includes('pudding') || id.includes('jelly') || id.includes('cube')) {
+    return 'Drow & Shadow';
+  }
+  if (tags.includes('vermin') || id.includes('spider') || id.includes('scorpion') || id.includes('centipede') || id.includes('rat') || id.includes('ant') || id.includes('beetle') || id.includes('cockroach') || id.includes('mite') || id.includes('slug') || id.includes('snail') || id.includes('fly') || id.includes('mosquito') || id.includes('leech') || id.includes('moth') || id.includes('carrion-crawler') || id.includes('wasp') || id.includes('bee')) {
+    return 'Vermin';
+  }
+  if (type === 'beast' || id.includes('wolf') || id.includes('bear') || id.includes('boar') || id.includes('badger') || id.includes('cat') || id.includes('dog') || id.includes('panther') || id.includes('lion') || id.includes('tiger') || id.includes('dinosaur') || id.includes('snake') || id.includes('viper') || id.includes('adder') || id.includes('weasel') || id.includes('frog') || id.includes('toad') || id.includes('bat') || id.includes('owl') || id.includes('hawk') || id.includes('eagle') || id.includes('vulture') || id.includes('crab') || id.includes('fish') || id.includes('slug') || id.includes('snail')) {
+    return 'Beasts';
+  }
+
+  if (type === 'beast') return 'Beasts';
+  if (type === 'monstrosity') return 'Beasts';
+  if (type === 'giant') return 'Giantkind';
+  return 'Beasts';
+}
+
+for (const m of MONSTERS_RAW) {
+  const tName = getThemeForMonster(m);
+  const theme = themesList.find(t => t.name === tName);
+  if (theme && theme.monsters[m.tier]) {
+    theme.monsters[m.tier].push(m.id);
+  }
+}
+
+export const MONSTER_THEMES = themesList;
 
 /* effectiveLevel = max(dungeonLevel, partyLevel) so over-levelled parties
    still face threatening monsters and under-levelled ones aren't crushed.
    Extra HP dice + attack/AC bump keep SRD blocks relevant as the party grows. */
-export function spawnMonster(tier, effectiveLevel, rngPick, allowedNames = null){
+export function spawnMonster(tier, effectiveLevel, rngPick, allowedNames = null, questInfo = null){
+  const qi = questInfo || { dungeonLevel: effectiveLevel, questFloor: 1, floors: 1 };
+  const dLevel = qi.dungeonLevel || 1;
+  const qFloor = qi.questFloor || 1;
+  const D = dLevel + Math.max(0, qFloor - 1) * 0.5;
+
+  let minCR = 0;
+  let maxCR = 0.25;
+
+  if (tier === 1) {
+    minCR = 0;
+    maxCR = Math.max(0.25, D / 4);
+  } else if (tier === 2) {
+    minCR = Math.max(0.125, D / 6);
+    maxCR = Math.max(0.5, D / 3);
+  } else if (tier === 3) {
+    minCR = Math.max(0.25, D / 4.5);
+    maxCR = Math.max(1.0, D / 2);
+  } else if (tier === 4) {
+    minCR = Math.max(0.5, D / 3);
+    maxCR = Math.max(2.0, D * 0.75);
+  } else if (tier === 5) {
+    minCR = Math.max(1.0, D / 2.2);
+    maxCR = Math.max(3.0, D * 0.9);
+  } else { // boss
+    minCR = Math.max(1.0, D * 0.75);
+    maxCR = Math.max(2.0, D * 1.25);
+  }
+
   let pool = MONSTERS[tier] || MONSTERS[1];
   if (allowedNames && allowedNames.length > 0) {
-    const filtered = pool.filter(spec => allowedNames.includes(spec.id));
-    if (filtered.length > 0) pool = filtered;
+    const themedPool = pool.filter(spec => allowedNames.includes(spec.id));
+    if (themedPool.length > 0) pool = themedPool;
   }
-  const spec = pool[Math.floor(rngPick()*pool.length)];
+
+  // Filter pool by CR range
+  let filtered = pool.filter(spec => spec.cr >= minCR && spec.cr <= maxCR);
+  if (filtered.length === 0) {
+    // Fallback: pick the monster whose CR is closest to the average of target range
+    const targetCR = (minCR + maxCR) / 2;
+    let closestSpec = pool[0];
+    let minDiff = Infinity;
+    for (const spec of pool) {
+      const diff = Math.abs(spec.cr - targetCR);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestSpec = spec;
+      }
+    }
+    filtered = [closestSpec];
+  }
+
+  const spec = filtered[Math.floor(rngPick()*filtered.length)];
   const lvlB = Math.max(0, effectiveLevel-1);
   /* gentle depth scaling — softer per-floor bumps so fights stay
      interesting longer without turning into meat grinders */
@@ -617,7 +645,12 @@ export function spawnMonster(tier, effectiveLevel, rngPick, allowedNames = null)
     dmg: spec.dmg, xp: Math.round(spec.xp * Math.min(1.5, 1 + lvlB*0.25)),
     color: spec.color, scale: spec.scale, speed: spec.speed,
     sprite: spec.sprite,          // per-monster DCSS art (mesh falls back to orc.png without it)
-    gold: Math.round((spec.xp/10) * Math.min(1.6, 1 + lvlB*0.3) * (0.6+Math.random()*0.8))
+    gold: Math.round((spec.xp/10) * Math.min(1.6, 1 + lvlB*0.3) * (0.6+Math.random()*0.8)),
+    ranged: spec.ranged || false,
+    rngRange: spec.rngRange || 6,
+    id: spec.id,
+    /* creature identity for condition immunities + CR-scaled saving throws */
+    type: spec.type, tags: spec.tags, cr: spec.cr,
   };
 }
 
@@ -660,7 +693,8 @@ export function makeHero(name, raceKey, classKey, baseStats, visual, chosenProfi
     proficiencies,
     features:[], feats:[], knownSpells:[], pendingChoices:[],
     subclassMilestones:[], fightingStyle:null, spellCd:{},
-    progressionVersion:0
+    progressionVersion:0,
+    aiPrefs:{ targetPref:0.5, abilityUse:0.5, potionThreshold:0.5, combatMovement:0.5 }
   };
   
   if (classKey === 'fighter') {
@@ -735,6 +769,13 @@ export function normalizeHero(h){
     h.proficiencies = getDefaultProficiencies(h.raceKey, h.classKey);
   }
 
+  /* AI priorities tab — per-hero behaviour knobs (added for the AI Priorities menu) */
+  if (!h.aiPrefs) h.aiPrefs = {};
+  if (h.aiPrefs.targetPref === undefined) h.aiPrefs.targetPref = 0.5;
+  if (h.aiPrefs.abilityUse === undefined) h.aiPrefs.abilityUse = 0.5;
+  if (h.aiPrefs.potionThreshold === undefined) h.aiPrefs.potionThreshold = 0.5;
+  if (h.aiPrefs.combatMovement === undefined) h.aiPrefs.combatMovement = 0.5;
+
   migrateProgression(h);
 
   /* migrate equipped gear to ilvl / perk schema; bond legendaries to level */
@@ -787,13 +828,29 @@ export function recalc(h){
   h.maxHp = Math.max(1, h.maxHp);
   if(h.hp !== undefined) h.hp = Math.min(h.hp, h.maxHp);
 
-  const dexAC = cls.acPlusDex ? Math.min(mod(eff.dex), h.classKey==='rogue'?99:2) : 0;
-  /* barbarian / monk unarmored: add CON or WIS if no medium/heavy armor — simplified: base already set */
-  h.ac = cls.baseAC + dexAC + sum('ac');
-  if(h.classKey === 'barbarian') h.ac = Math.max(h.ac, 10 + mod(eff.dex) + mod(eff.con) + sum('ac'));
-  if(h.classKey === 'monk') h.ac = Math.max(h.ac, 10 + mod(eff.dex) + mod(eff.wis) + sum('ac'));
+  /* Armor Class (5e model): worn body armor SETS the base by category; Dex is
+     applied per category (light = full, medium = max +2, heavy = none), and
+     unarmored is 10 + Dex. Shields, rings, helms and enchant affixes add on top
+     via sum('ac'). The old per-class baseAC/acPlusDex are no longer used —
+     starting armor now drives AC, so an unequipped hero is genuinely unarmored. */
+  const armor = h.equipment && h.equipment.armor;
+  const armorBase = (armor && armor.armorBase) || 0;
+  const dexM = mod(eff.dex);
+  let dexAC;
+  if(!armorBase) dexAC = dexM;                                  // unarmored: full Dex
+  else if(armor.prof === 'heavy') dexAC = 0;                    // heavy: no Dex
+  else if(armor.prof === 'medium') dexAC = Math.min(dexM, 2);   // medium: cap +2
+  else dexAC = dexM;                                            // light: full Dex
+  h.ac = (armorBase || 10) + dexAC + sum('ac');
+  /* Barbarian / Monk Unarmored Defense — only while wearing no body armor (5e). */
+  if(!armorBase){
+    if(h.classKey === 'barbarian') h.ac = Math.max(h.ac, 10 + dexM + mod(eff.con) + sum('ac'));
+    if(h.classKey === 'monk')      h.ac = Math.max(h.ac, 10 + dexM + mod(eff.wis) + sum('ac'));
+  }
 
   h.atkBonus = profBonus(h.level) + mod(eff[cls.attack.ability]) + sum('atk');
+  /* casting ability for spell DCs / spell mods (consumed by spells.js) */
+  h._classAtk = cls.attack.ability;
   h.dmgBonus = sum('dmg');
   h.healBonus = sum('heal');
   h.speedMult = race.speed * (1 + sum('speed'));
@@ -811,14 +868,21 @@ export function recalc(h){
     h.layOnHands = Math.min(h.layOnHands, h.layOnHandsMax);
   }
 
-  /* spell-slot pool: class caster progression, plus subclass slot actives */
-  let slots = spellSlotsFor(h.classKey, h.level);
-  if(sc && sc.active && sc.active.recharge === 'slot') {
-    slots = Math.max(slots, 1 + Math.floor(h.level / 3));
+  /* Leveled spell slots (SRD tables): { spellLevel: count }. Casting spends
+     the lowest slot ≥ the spell's level — no upcasting. */
+  const slotsMax = spellSlotsFor(h.classKey, h.level);
+  if(hasFeature(h, 'fontOfMagic')) slotsMax[1] = (slotsMax[1] || 0) + 1;
+  h.slotsMax = slotsMax;
+  if(h.slots == null || typeof h.slots === 'number') {
+    /* new hero or legacy numeric-pool save — start full */
+    h.slots = { ...h.slotsMax };
+  } else {
+    /* clamp per level; pick up newly gained slot levels at full */
+    for(const lv in h.slots) if(!(lv in h.slotsMax)) delete h.slots[lv];
+    for(const lv in h.slotsMax) {
+      if(h.slots[lv] === undefined || h.slots[lv] > h.slotsMax[lv]) h.slots[lv] = h.slotsMax[lv];
+    }
   }
-  if(hasFeature(h, 'fontOfMagic')) slots += 1;
-  h.slotsMax = slots;
-  if(h.slots === undefined || h.slots > h.slotsMax) h.slots = h.slotsMax;
 
   /* keep secondWind flag in sync with features */
   if(hasFeature(h, 'secondWind') || cls.secondWind) h.secondWind = true;
@@ -885,11 +949,29 @@ export function pendingPoints(h){
   return (h.pendingAbility||0) + (h.pendingSkill||0) + (needsSubclass(h)?1:0) + pendingChoiceCount(h);
 }
 
-/* whether a hero can equip an item given class armor & shield proficiency */
+/* D&D 5e equipment proficiency: separate paths for weapons, armor, and shields.
+   Helm/gloves/boots/rings/amulets have no proficiency gate (like 5e magic items). */
 export function canEquip(h, item){
   const cls = CLASSES[h.classKey];
-  // Shield proficiency is separate from armor proficiency per the SRD:
-  // Barbarian, Cleric, Druid, Fighter, Paladin, Ranger are proficient.
+
+  /* 1. Shield proficiency — separate from armor (SRD 5.1)
+        Barbarian, Cleric, Druid, Fighter, Paladin, Ranger are proficient. */
   if (item.slot === 'shield' && !cls.shieldProf) return false;
-  return PROF_RANK[item.prof||'none'] <= PROF_RANK[cls.armorProf||'none'];
+
+  /* 2. Weapon proficiency — simple / martial + optional specific weapon lists
+        e.g. Bard/Rogue get Rapier+Shortsword+Longsword even though they are martial weapons. */
+  if (item.slot === 'weapon') {
+    if (cls.weaponSpecific && cls.weaponSpecific.includes(item.baseKey)) return true;
+    const wType = item.weaponType || 'simple';
+    const prof = cls.weaponProf || 'simple';
+    return WEAPON_RANK[wType] <= WEAPON_RANK[prof];
+  }
+
+  /* 3. Body armor — light / medium / heavy proficiency gate */
+  if (item.slot === 'armor') {
+    return PROF_RANK[item.prof || 'none'] <= PROF_RANK[cls.armorProf || 'none'];
+  }
+
+  /* 4. Helm, gloves, boots, ring, amulet — always equippable (like 5e magic items) */
+  return true;
 }

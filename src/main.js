@@ -62,6 +62,7 @@ const THEMES = {
     pillar:0x6a707e, debris:[0x4c515e, 0x60584a],
     flame:0xffa640, flameCore:0xfff3c8, torchLight:[0xff8c3a, 1.5, 9.5],
     cloth:0x7d2c26,
+    tile:{runes:0.55},
     pools:null, particles:{kind:0, color:0xaab4cc, n:110},
     nameA:['Sunken','Forgotten','Silent','Hollow','Elder','Broken','Nameless','Fallen'],
     nameB:['Halls','Vaults','Catacombs','Depths','Sanctum','Undercroft','Barrows','Reliquary']
@@ -74,6 +75,7 @@ const THEMES = {
     pillar:0x5e4a3e, debris:[0x4a382e, 0x60462f],
     flame:0xff8c26, flameCore:0xffe9b0, torchLight:[0xff7326, 1.7, 10],
     cloth:0x7d2416,
+    tile:{embers:0.05},
     pools:{mode:0, colA:0x2b0d05, colB:0xff5a1f, glow:1.55, amount:0.16, pits:2},
     particles:{kind:1, color:0xffa050, n:240},
     nameA:['Molten','Ashen','Cindered','Smouldering','Charred','Burning','Ember','Scorched'],
@@ -87,6 +89,7 @@ const THEMES = {
     pillar:0x70809a, debris:[0x55617a, 0x6d7a90],
     flame:0x86d9ff, flameCore:0xe8f7ff, torchLight:[0x6fc4ff, 1.35, 9.5],
     cloth:0x2b4d70,
+    tile:{rime:0.5, rough:0.62},
     pools:{mode:1, colA:0x4a86c0, colB:0xbfe4ff, glow:0.55, amount:0},
     lakes:true, icicles:true, particles:{kind:2, color:0xdff0ff, n:260},
     nameA:['Frozen','Rimebound','Glacial','Howling','Pale','Shivering','Wintered','Whitelocked'],
@@ -100,6 +103,7 @@ const THEMES = {
     pillar:0x5c6254, debris:[0x4a4f44, 0x5e5c48],
     flame:0x8fe05a, flameCore:0xe9ffd0, torchLight:[0x77d94a, 1.35, 9],
     cloth:0x33461f,
+    tile:{stains:0.07},
     pools:{mode:3, colA:0x0a1207, colB:0x41602c, glow:0.6, amount:0.05, pits:1},
     graveyards:true, bones:true, particles:{kind:3, color:0x9fe66a, n:150},
     nameA:['Blighted','Weeping','Rotting','Cursed','Umbral','Plagued','Mournful','Grim'],
@@ -113,6 +117,7 @@ const THEMES = {
     pillar:0x606c5c, debris:[0x49543f, 0x5c644c],
     flame:0x62e0a8, flameCore:0xe6fff0, torchLight:[0x4ad98e, 1.3, 9],
     cloth:0x1f5038,
+    tile:{growth:0.45, sprout:0.04},
     pools:{mode:2, colA:0x0c3532, colB:0x2fa38a, glow:0.6, amount:0.05, pits:1},
     roots:true, shafts:true, particles:{kind:4, color:0x8fe6b8, n:200},
     nameA:['Verdant','Overgrown','Sporebound','Tangled','Mossgrown','Waking','Feral','Blooming'],
@@ -120,6 +125,55 @@ const THEMES = {
   }
 };
 const THEME_KEYS = Object.keys(THEMES);
+
+/* ---------------- spawn themes specs ---------------- */
+const SPAWN_THEMES = {
+  ancient: {
+    spawnMatName: 'stone',
+    spawn1GeoName: 'spawn1',
+    spawn2GeoName: 'spawn2',
+    spawn3GeoName: 'spawn3',
+    baseCol: 0x6a707e,
+    ringCol: 0x3fd0bb,
+    crystalCol: 0x8fbcff
+  },
+  molten: {
+    spawnMatName: 'stone',
+    spawn1GeoName: 'spawn1_molten',
+    spawn2GeoName: 'spawn2_molten',
+    spawn3GeoName: 'spawn3_molten',
+    baseCol: 0x201c1a,
+    ringCol: 0xff5a1f,
+    crystalCol: 0xff7a30
+  },
+  frost: {
+    spawnMatName: 'ice',
+    spawn1GeoName: 'spawn1_frost',
+    spawn2GeoName: 'spawn2_frost',
+    spawn3GeoName: 'spawn3_frost',
+    baseCol: 0xbfe2ff,
+    ringCol: 0x7fd4ff,
+    crystalCol: 0xffffff
+  },
+  grim: {
+    spawnMatName: 'stone',
+    spawn1GeoName: 'spawn1_grim',
+    spawn2GeoName: 'spawn2_grim',
+    spawn3GeoName: 'spawn3_grim',
+    baseCol: 0x3b4238,
+    ringCol: 0x9fe66a,
+    crystalCol: 0xe9ffd0
+  },
+  verdant: {
+    spawnMatName: 'bark',
+    spawn1GeoName: 'spawn1_verdant',
+    spawn2GeoName: 'spawn2_verdant',
+    spawn3GeoName: 'spawn3_verdant',
+    baseCol: 0x6b5a45,
+    ringCol: 0x59d68f,
+    crystalCol: 0x62e0a8
+  }
+};
 
 /* ---------------- name generator ---------------- */
 function dungeonName(rng, th){
@@ -600,7 +654,7 @@ function tryGenerate(seed, params){
 
          This replaces the old area-based count formula, which made large
          rooms disproportionately dangerous and small rooms too easy. */
-      const BASE_BUDGET = 55;
+      const BASE_BUDGET = 130;
       const typeMult = { combat:1.0, elite:1.6, boss:2.2 };
       const budget = Math.round(BASE_BUDGET * (0.35 + 0.65*r.difficulty) * (typeMult[r.type]||1.0));
       const tierCost = { 1:12, 2:21, 3:38, 4:55, 5:90 };
@@ -608,7 +662,7 @@ function tryGenerate(seed, params){
       const minTier = r.type===TYPE.BOSS ? 3 : 1;
       let remaining = budget;
       const tiers = [];
-      const MAX_SPAWNS = 6;
+      const MAX_SPAWNS = 10;
 
       while(remaining >= tierCost[minTier] && tiers.length < MAX_SPAWNS){
         const roll = rng.raw();
@@ -823,11 +877,21 @@ const BASE_HALF = 55;
 let aspect = innerWidth/innerHeight;
 const cam = new THREE.OrthographicCamera(-BASE_HALF*aspect, BASE_HALF*aspect, BASE_HALF, -BASE_HALF, -400, 800);
 let yaw = Math.PI/4, pitch = 0.64;
+/* Combat spectacle global state (declared before updateCam uses them) */
+let elapsed = 0;
+let gameTimeScale = 1.0;
+let shakeIntensity = 0;
 const camTarget = new THREE.Vector3(0,0,0);
 function updateCam(){
   const cp=Math.cos(pitch), sp=Math.sin(pitch);
   const f = new THREE.Vector3(cp*Math.sin(yaw), sp, cp*Math.cos(yaw));
   cam.position.copy(camTarget).addScaledVector(f, 220);
+  /* Screen shake offset */
+  if (shakeIntensity > 0.001) {
+    const t = elapsed * 60;
+    cam.position.x += Math.sin(t * 1.7) * Math.cos(t * 0.9) * shakeIntensity * 0.8;
+    cam.position.z += Math.cos(t * 1.3) * Math.sin(t * 1.1) * shakeIntensity * 0.8;
+  }
   cam.lookAt(camTarget);
 }
 updateCam();
@@ -1001,6 +1065,111 @@ function makeStoneTex(){
   t.anisotropy = Math.min(4, maxAniso);
   return t;
 }
+/* --- flagstone / masonry atlas textures --------------------------
+   2×2 atlases (4 variants each) with a matching height canvas used as
+   a bump map. A per-instance aUvO attribute picks the quadrant (see
+   atlasPatch / setAtlasAttr). Kept neutral grey so the per-instance
+   theme tint stays in charge of hue. */
+function valueNoise(size, cells){
+  const g = new Float32Array((cells+1)*(cells+1));
+  for(let i=0;i<g.length;i++) g[i]=texRand();
+  return (x,y)=>{
+    let fx=Math.min(Math.max(x/size*cells,0),cells-1e-4);
+    let fy=Math.min(Math.max(y/size*cells,0),cells-1e-4);
+    const ix=fx|0, iy=fy|0, tx=fx-ix, ty=fy-iy;
+    const sx=tx*tx*(3-2*tx), sy=ty*ty*(3-2*ty), row=cells+1;
+    const a=g[iy*row+ix], b=g[iy*row+ix+1], c=g[(iy+1)*row+ix], d=g[(iy+1)*row+ix+1];
+    return a+(b-a)*sx+(c-a)*sy+(a-b-c+d)*sx*sy;
+  };
+}
+function hash2(a,b,s){
+  let t=(a*374761393 + b*668265263 + s*974634571)|0;
+  t=Math.imul(t^(t>>>13),1274126177); t^=t>>>16;
+  return (t>>>0)/4294967296;
+}
+function strokePath(g,pts,style,w){
+  g.strokeStyle=style; g.lineWidth=w; g.lineCap='round'; g.beginPath();
+  g.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++) g.lineTo(pts[i][0],pts[i][1]);
+  g.stroke();
+}
+function dotAt(g,x,y,r,style){ g.fillStyle=style; g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill(); }
+function makeAtlasTex(kind){ /* kind 0 = flagstone, 1 = masonry blocks */
+  const Q=256, SZ=512;
+  const [cv,cg]=makeCanvas(SZ), [bv,bg]=makeCanvas(SZ);
+  const cid=cg.createImageData(SZ,SZ), bid=bg.createImageData(SZ,SZ);
+  const cD=cid.data, bD=bid.data;
+  for(let qy=0;qy<2;qy++) for(let qx=0;qx<2;qx++){
+    const nA=valueNoise(Q,7), nB=valueNoise(Q,7), grain=valueNoise(Q,41), qs=qy*2+qx+1;
+    const seeds=[];
+    if(kind===0){
+      const k=3+(texRand()*3|0);
+      for(let i=0;i<k;i++){
+        let x=0,y=0,tries=0;
+        do{ x=18+texRand()*(Q-36); y=18+texRand()*(Q-36); }
+        while(++tries<24 && seeds.some(s=>(s.x-x)*(s.x-x)+(s.y-y)*(s.y-y)<6400));
+        seeds.push({x,y, v:0.78+(texRand()-0.5)*0.14, w:(texRand()-0.5)*0.05});
+      }
+    }
+    const RIM = kind===0 ? 12 : 7, warp = kind===0 ? 30 : 7;
+    for(let y=0;y<Q;y++) for(let x=0;x<Q;x++){
+      const wxp=x+(nA(x,y)-0.5)*warp, wyp=y+(nB(x,y)-0.5)*warp;
+      let edge, sv, sw, dome=1;
+      if(kind===0){
+        let d1=1e9,d2=1e9,si=0;
+        for(let i=0;i<seeds.length;i++){
+          const dx=seeds[i].x-wxp, dy=seeds[i].y-wyp, d=dx*dx+dy*dy;
+          if(d<d1){ d2=d1; d1=d; si=i; } else if(d<d2) d2=d;
+        }
+        edge = seeds.length>1 ? Math.sqrt(d2)-Math.sqrt(d1) : RIM;
+        sv=seeds[si].v; sw=seeds[si].w;
+        dome=1-Math.min(1,Math.sqrt(d1)/150)*0.25;
+      } else {
+        const rowH=Q/4, colW=Q/2, row=Math.floor(wyp/rowH);
+        const xx=wxp+((row&1)?colW*0.5:0), col=Math.floor(xx/colW);
+        const dy=Math.min(wyp-row*rowH,(row+1)*rowH-wyp);
+        const dx=Math.min(xx-col*colW,(col+1)*colW-xx);
+        edge=Math.min(dx,dy);
+        sv=0.76+(hash2(row,col,qs)-0.5)*0.17;
+        sw=(hash2(col,row,qs)-0.5)*0.05;
+      }
+      let h=Math.min(1,Math.max(0,edge/RIM)); h=h*h*(3-2*h);
+      const gn=grain(x,y);
+      let v=(0.35+(sv-0.35)*h) * (0.94+0.12*gn) * (0.85+0.15*dome);
+      const o=((qy*Q+y)*SZ+(qx*Q+x))*4;
+      cD[o]  =Math.max(0,Math.min(255,(v+sw*h)*255));
+      cD[o+1]=Math.max(0,Math.min(255, v*255));
+      cD[o+2]=Math.max(0,Math.min(255,(v-sw*h)*255));
+      cD[o+3]=255;
+      const hb=Math.max(0,Math.min(255, 30+185*h*dome+25*gn));
+      bD[o]=bD[o+1]=bD[o+2]=hb; bD[o+3]=255;
+    }
+  }
+  cg.putImageData(cid,0,0); bg.putImageData(bid,0,0);
+  /* cracks + pits, clipped to their quadrant so variants stay independent */
+  for(let qy=0;qy<2;qy++) for(let qx=0;qx<2;qx++){
+    const ox=qx*Q, oy=qy*Q;
+    cg.save(); bg.save();
+    cg.beginPath(); cg.rect(ox,oy,Q,Q); cg.clip();
+    bg.beginPath(); bg.rect(ox,oy,Q,Q); bg.clip();
+    const nCr = kind===0 ? (texRand()*2.4|0) : (texRand()*1.7|0);
+    for(let i=0;i<nCr;i++){
+      const pts=[]; let x=ox+30+texRand()*(Q-60), y=oy+30+texRand()*(Q-60), a=texRand()*6.283;
+      for(let s=0;s<7;s++){ pts.push([x,y]); a+=(texRand()-0.5)*1.1; x+=Math.cos(a)*(8+texRand()*14); y+=Math.sin(a)*(8+texRand()*14); }
+      strokePath(cg,pts,'rgba(30,30,36,0.35)',1.6);
+      strokePath(bg,pts,'rgba(0,0,0,0.5)',2.2);
+    }
+    for(let i=0;i<10;i++){
+      const x=ox+12+texRand()*(Q-24), y=oy+12+texRand()*(Q-24), r=1+texRand()*2.6;
+      dotAt(cg,x,y,r,'rgba(35,35,42,0.30)');
+      dotAt(bg,x,y,r,'rgba(0,0,0,0.45)');
+    }
+    cg.restore(); bg.restore();
+  }
+  const mk=c=>{ const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=Math.min(4,maxAniso); return t; };
+  const map=mk(cv); map.colorSpace=THREE.SRGBColorSpace;
+  return { map, bump:mk(bv) };
+}
 function makeCrackTex(){
   const [cv,g] = makeCanvas(128);
   g.lineCap='round';
@@ -1053,6 +1222,25 @@ function makeShaftTex(){
   g.fillStyle=grd; g.fillRect(0,0,64,64);
   return new THREE.CanvasTexture(cv);
 }
+function makeBlotTex(){
+  /* irregular organic patch — accumulated soft circles along random walks.
+     White with alpha falloff; instance colour + material blending decide
+     whether it reads as rime, a stain, or moss. */
+  const [cv,g] = makeCanvas(128);
+  for(let k=0;k<3;k++){
+    let x=64+(texRand()-0.5)*30, y=64+(texRand()-0.5)*30;
+    for(let i=0;i<26;i++){
+      const r=7+texRand()*16;
+      const grd=g.createRadialGradient(x,y,0,x,y,r);
+      grd.addColorStop(0,'rgba(255,255,255,0.16)');
+      grd.addColorStop(1,'rgba(255,255,255,0)');
+      g.fillStyle=grd; g.beginPath(); g.arc(x,y,r,0,6.2832); g.fill();
+      x+=(texRand()-0.5)*22; y+=(texRand()-0.5)*22;
+      x=Math.max(18,Math.min(110,x)); y=Math.max(18,Math.min(110,y));
+    }
+  }
+  return new THREE.CanvasTexture(cv);
+}
 function makeGlowTex(){
   const [cv,g] = makeCanvas(128);
   const grd=g.createRadialGradient(64,64,3,64,64,62);
@@ -1062,13 +1250,33 @@ function makeGlowTex(){
   g.fillStyle=grd; g.beginPath(); g.arc(64,64,62,0,6.2832); g.fill();
   return new THREE.CanvasTexture(cv);
 }
-const TEX = { stone:makeStoneTex(), crack:makeCrackTex(), rune:makeRuneTex(), swirl:makeSwirlTex(), shaft:makeShaftTex(), glow:makeGlowTex() };
+const TEX = { stone:makeStoneTex(), crack:makeCrackTex(), rune:makeRuneTex(), swirl:makeSwirlTex(), shaft:makeShaftTex(), glow:makeGlowTex(), blot:makeBlotTex() };
 
 /* ================================================================
    MATERIAL KIT — named roles, shared across all instanced sets
    ================================================================ */
 const matStone = new THREE.MeshStandardMaterial({map:TEX.stone, roughness:0.92, metalness:0.02});
-const matTrim  = new THREE.MeshStandardMaterial({roughness:0.38, metalness:0.75});
+/* floor/wall atlas materials: aUvO (per-instance, set via setAtlasAttr)
+   shifts the map+bump UVs into one 2×2 atlas quadrant */
+const FLAGTEX = makeAtlasTex(0), MASONTEX = makeAtlasTex(1);
+function atlasPatch(mat){
+  mat.onBeforeCompile = sh=>{
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec2 aUvO;')
+      .replace('#include <uv_vertex>', `#include <uv_vertex>
+#ifdef USE_MAP
+  vMapUv = vMapUv*0.5 + aUvO;
+#endif
+#ifdef USE_BUMPMAP
+  vBumpMapUv = vBumpMapUv*0.5 + aUvO;
+#endif`);
+  };
+  mat.customProgramCacheKey = ()=>'atlas';
+  return mat;
+}
+const matFloor = atlasPatch(new THREE.MeshStandardMaterial({map:FLAGTEX.map, bumpMap:FLAGTEX.bump, bumpScale:0.9, roughness:0.93, metalness:0.02}));
+const matWall  = atlasPatch(new THREE.MeshStandardMaterial({map:MASONTEX.map, bumpMap:MASONTEX.bump, bumpScale:0.8, roughness:0.94, metalness:0.02, polygonOffset:true, polygonOffsetFactor:2, polygonOffsetUnits:5000}));
+const matTrim  = new THREE.MeshStandardMaterial({roughness:0.38, metalness:0.75, polygonOffset:true, polygonOffsetFactor:2, polygonOffsetUnits:5000});
 const matGlow  = new THREE.MeshBasicMaterial({color:0xffffff});
 matGlow.toneMapped = false;
 const matCloth = new THREE.MeshLambertMaterial({side:THREE.DoubleSide});
@@ -1085,6 +1293,14 @@ const matShaft = new THREE.MeshBasicMaterial({map:TEX.shaft, transparent:true, b
 matShaft.toneMapped = false;
 const matSkirt = new THREE.MeshBasicMaterial({map:TEX.glow, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.5});
 matSkirt.toneMapped = false;
+/* theme tile-flavor decals (see the decal pass in buildScene) */
+const matRuneSeal = new THREE.MeshBasicMaterial({map:TEX.rune, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.55});
+matRuneSeal.toneMapped = false;
+const matEmber = new THREE.MeshBasicMaterial({map:TEX.crack, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false});
+matEmber.toneMapped = false; /* opacity pulsed in liveUpdate */
+const matBlot    = new THREE.MeshBasicMaterial({map:TEX.blot, transparent:true, depthWrite:false, opacity:0.5});
+const matBlotAdd = new THREE.MeshBasicMaterial({map:TEX.blot, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.4});
+matBlotAdd.toneMapped = false;
 
 /* liquid surface shader: lava / ice / water / miasma via uMode */
 const liquidMat = new THREE.ShaderMaterial({
@@ -1295,10 +1511,30 @@ function mergeGeos(list){
 }
 const tube = (a,b,c)=> new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(a,b,c), 7, 0.055, 6, false);
 
+/* boxUV: replace bgFromTris' diagonal projection with a clean per-face
+   dominant-axis mapping, normalized to the geometry's bounds and inset
+   slightly so atlas quadrants never bleed into each other. Used only on
+   the tile geometries (floor/wall/cap) that carry the atlas materials. */
+function boxUV(g){
+  g.computeBoundingBox();
+  const mn=g.boundingBox.min, mx=g.boundingBox.max;
+  const sx=Math.max(1e-5,mx.x-mn.x), sy=Math.max(1e-5,mx.y-mn.y), sz=Math.max(1e-5,mx.z-mn.z);
+  const p=g.attributes.position, n=g.attributes.normal, uv=g.attributes.uv;
+  const f=t=>0.02+t*0.96;
+  for(let i=0;i<p.count;i++){
+    const ax=Math.abs(n.getX(i)), ay=Math.abs(n.getY(i)), az=Math.abs(n.getZ(i));
+    let u,v;
+    if(ay>=ax&&ay>=az){ u=(p.getX(i)-mn.x)/sx; v=(p.getZ(i)-mn.z)/sz; }
+    else if(ax>=az)   { u=(p.getZ(i)-mn.z)/sz; v=(p.getY(i)-mn.y)/sy; }
+    else              { u=(p.getX(i)-mn.x)/sx; v=(p.getY(i)-mn.y)/sy; }
+    uv.setXY(i, f(u), f(v));
+  }
+  return g;
+}
 const GEO = {};
-GEO.floor   = chamferBox(0.96,0.22,0.96,0.05).translate(0,-0.22,0);
-GEO.wall    = chamferBox(1,1,1,0.07);
-GEO.wallCap = chamferBox(1.09,0.13,1.09,0.035);
+GEO.floor   = boxUV(chamferBox(0.96,0.22,0.96,0.05).translate(0,-0.22,0));
+GEO.wall    = boxUV(chamferBox(1,1,1,0.07));
+GEO.wallCap = boxUV(chamferBox(1.09,0.13,1.09,0.035));
 GEO.basin   = new THREE.BoxGeometry(1,0.55,1).translate(0,-0.43,0);
 GEO.pillar  = mergeGeos([
   xg(chamferBox(0.68,0.15,0.68,0.035), 0,0,0, 0,0,0, 1),
@@ -1358,6 +1594,8 @@ GEO.roots = mergeGeos([
 ]);
 GEO.moss  = new THREE.CircleGeometry(0.42,9).rotateX(-Math.PI/2).translate(0,0.013,0);
 GEO.crack = new THREE.PlaneGeometry(1.2,1.2).rotateX(-Math.PI/2).translate(0,0.016,0);
+GEO.seal  = new THREE.PlaneGeometry(0.86,0.86).rotateX(-Math.PI/2).translate(0,0.02,0);
+GEO.blot  = new THREE.PlaneGeometry(1.15,1.15).rotateX(-Math.PI/2).translate(0,0.018,0);
 GEO.skirt = new THREE.PlaneGeometry(2.7,2.7).rotateX(-Math.PI/2).translate(0,0.02,0);
 GEO.bannerRod = new THREE.CylinderGeometry(0.028,0.028,0.74,6).rotateZ(Math.PI/2);
 GEO.bannerCloth = (()=>{
@@ -1375,6 +1613,89 @@ GEO.spawn2 = spireGeo(0.17,1.15,0.5);
 GEO.band2  = chamferBox(0.26,0.07,0.26,0.015);
 GEO.spawn3 = spireGeo(0.22,1.65,0.85);
 GEO.band3  = chamferBox(0.33,0.09,0.33,0.02);
+
+/* --- Themed Spawn Geometries & Helpers --- */
+const makeColGeo = (r1, r2, h) => xg(new THREE.CylinderGeometry(r1, r2, h, 6), 0, h/2, 0, 0, 0, 0, 1);
+const makeCrysGeo = (r, h) => xg(new THREE.OctahedronGeometry(r, 0), 0, h/2, 0, 0, 0, 0, 1, h/(r*2), 1);
+const makeGothicSpikeGeo = (r, h) => mergeGeos([
+  xg(new THREE.BoxGeometry(r*1.6, h*0.12, r*1.6), 0, h*0.06, 0, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(r*0.7, r, h*0.6, 4).rotateY(Math.PI/4), 0, h*0.48, 0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(r*0.7 * Math.sqrt(2), h*0.28, 4).rotateY(Math.PI/4), 0, h*0.86, 0, 0,0,0, 1)
+]);
+const makeShroomGeo = (rCap, h) => mergeGeos([
+  xg(new THREE.CylinderGeometry(rCap*0.28, rCap*0.36, h*0.75, 8), 0, h*0.375, 0, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(rCap, 8, 6, 0, Math.PI*2, 0, Math.PI/2), 0, h*0.75, 0, 0,0,0, 1, h*0.25/rCap, 1)
+]);
+
+// Molten Theme: Basalt Columns
+GEO.spawn1_molten = mergeGeos([
+  xg(makeColGeo(0.09, 0.11, 0.45), 0,0,0, 0,0,0.1, 1),
+  xg(makeColGeo(0.075, 0.09, 0.35), 0.12,0,-0.04, 0.1,0.2,-0.1, 1),
+  xg(makeColGeo(0.065, 0.08, 0.3), -0.1,0,0.08, -0.1,-0.15,0.12, 1)
+]);
+GEO.spawn2_molten = mergeGeos([
+  xg(makeColGeo(0.15, 0.17, 1.15), 0,0,0, 0,0,-0.05, 1),
+  xg(makeColGeo(0.1, 0.12, 0.8), 0.18,0,0.05, 0.08,0,0.12, 1),
+  xg(makeColGeo(0.08, 0.1, 0.65), -0.15,0,-0.1, -0.1,0,-0.08, 1)
+]);
+GEO.spawn3_molten = mergeGeos([
+  xg(makeColGeo(0.19, 0.22, 1.65), 0,0,0, 0,0,0.04, 1),
+  xg(makeColGeo(0.13, 0.15, 1.2), 0.22,0,-0.1, 0.06,0,-0.08, 1),
+  xg(makeColGeo(0.11, 0.13, 0.95), -0.22,0,0.12, -0.08,0,0.1, 1),
+  xg(makeColGeo(0.09, 0.11, 0.7), 0.05,0,0.22, -0.05,0,-0.12, 1)
+]);
+
+// Frost Theme: Ice Crystal Clusters
+GEO.spawn1_frost = mergeGeos([
+  xg(makeCrysGeo(0.1, 0.5), 0,0,0, 0.1,0,0.15, 1),
+  xg(makeCrysGeo(0.08, 0.38), 0.12,0,-0.05, 0.25,0.4,-0.2, 1),
+  xg(makeCrysGeo(0.07, 0.32), -0.1,0,0.08, -0.2,-0.3,0.15, 1)
+]);
+GEO.spawn2_frost = mergeGeos([
+  xg(makeCrysGeo(0.16, 1.15), 0,0,0, -0.05,0,0.08, 1),
+  xg(makeCrysGeo(0.12, 0.8), 0.18,0,-0.08, 0.15,0.3,-0.12, 1),
+  xg(makeCrysGeo(0.1, 0.65), -0.15,0,0.14, -0.18,-0.2,0.1, 1)
+]);
+GEO.spawn3_frost = mergeGeos([
+  xg(makeCrysGeo(0.2, 1.65), 0,0,0, 0.08,0,-0.05, 1),
+  xg(makeCrysGeo(0.14, 1.2), 0.22,0,0.1, 0.12,0.5,0.08, 1),
+  xg(makeCrysGeo(0.12, 0.95), -0.22,0,-0.12, -0.15,-0.4,-0.1, 1),
+  xg(makeCrysGeo(0.1, 0.7), -0.05,0,0.22, -0.1,0.2,0.18, 1)
+]);
+
+// Grim Theme: Gothic Obelisks / Spikes
+GEO.spawn1_grim = mergeGeos([
+  xg(makeGothicSpikeGeo(0.08, 0.5), 0,0,0, 0,0,0.05, 1),
+  xg(makeGothicSpikeGeo(0.065, 0.4), 0.12,0,-0.05, 0.1,0.2,-0.08, 1),
+  xg(makeGothicSpikeGeo(0.055, 0.32), -0.1,0,0.08, -0.08,-0.15,0.06, 1)
+]);
+GEO.spawn2_grim = mergeGeos([
+  xg(makeGothicSpikeGeo(0.15, 1.15), 0,0,0, 0,0,0, 1),
+  xg(makeGothicSpikeGeo(0.09, 0.7), 0.18,0,0.08, 0.08,0,-0.05, 1)
+]);
+GEO.spawn3_grim = mergeGeos([
+  xg(makeGothicSpikeGeo(0.2, 1.65), 0,0,0, 0,0,0, 1),
+  xg(makeGothicSpikeGeo(0.12, 1.15), -0.22,0,-0.08, -0.05,0,0.05, 1),
+  xg(makeGothicSpikeGeo(0.1, 0.9), 0.2,0,0.12, 0.06,0,-0.08, 1)
+]);
+
+// Verdant Theme: Giant Mushrooms
+GEO.spawn1_verdant = mergeGeos([
+  xg(makeShroomGeo(0.16, 0.45), 0,0,0, 0.08,0,-0.05, 1),
+  xg(makeShroomGeo(0.12, 0.35), 0.12,0,-0.06, 0.2,0.5,-0.15, 1),
+  xg(makeShroomGeo(0.1, 0.28), -0.1,0,0.08, -0.15,-0.3,0.12, 1)
+]);
+GEO.spawn2_verdant = mergeGeos([
+  xg(makeShroomGeo(0.32, 1.1), 0,0,0, 0.05,0,-0.05, 1),
+  xg(makeShroomGeo(0.18, 0.65), 0.2,0,0.08, 0.15,0.4,-0.12, 1),
+  xg(makeShroomGeo(0.14, 0.5), -0.18,0,-0.1, -0.12,-0.2,0.08, 1)
+]);
+GEO.spawn3_verdant = mergeGeos([
+  xg(makeShroomGeo(0.42, 1.55), 0,0,0, 0,0,0, 1),
+  xg(makeShroomGeo(0.24, 0.95), 0.24,0,-0.1, 0.1,0.2,-0.08, 1),
+  xg(makeShroomGeo(0.18, 0.75), -0.22,0,0.12, -0.08,-0.15,0.06, 1),
+  xg(makeShroomGeo(0.14, 0.55), 0.05,0,0.25, 0.05,0.3,0.12, 1)
+]);
 GEO.bossShard = spireGeo(0.34,2.3,0.7);
 GEO.plinth   = chamferBox(0.92,0.5,0.92,0.06);
 GEO.platform = chamferBox(2.35,0.14,2.35,0.06);
@@ -1406,18 +1727,22 @@ GEO.bone = mergeGeos([
 
 /* -------- instance set builder with reveal + tilt support -------- */
 function instSet(){
-  return { px:[],py:[],pz:[], sx:[],sy:[],sz:[], rx:[],ry:[],rz:[], col:[], delay:[], n:0,
-    add(x,y,z, sx,sy,sz, ry, color, delay){
+  return { px:[],py:[],pz:[], sx:[],sy:[],sz:[], rx:[],ry:[],rz:[], col:[], delay:[], roomIds:[], n:0,
+    add(x,y,z, sx,sy,sz, ry, color, delay, roomId){
       this.px.push(x); this.py.push(y); this.pz.push(z);
       this.sx.push(sx); this.sy.push(sy); this.sz.push(sz);
       this.rx.push(0); this.ry.push(ry); this.rz.push(0);
-      this.col.push(color); this.delay.push(delay); this.n++;
+      this.col.push(color); this.delay.push(delay);
+      this.roomIds.push(roomId !== undefined ? roomId : -1);
+      this.n++;
     },
-    addT(x,y,z, sx,sy,sz, rx,ry,rz, color, delay){
+    addT(x,y,z, sx,sy,sz, rx,ry,rz, color, delay, roomId){
       this.px.push(x); this.py.push(y); this.pz.push(z);
       this.sx.push(sx); this.sy.push(sy); this.sz.push(sz);
       this.rx.push(rx); this.ry.push(ry); this.rz.push(rz);
-      this.col.push(color); this.delay.push(delay); this.n++;
+      this.col.push(color); this.delay.push(delay);
+      this.roomIds.push(roomId !== undefined ? roomId : -1);
+      this.n++;
     }};
 }
 /* shadow: 0 = none, 1 = cast+receive, 2 = receive only */
@@ -1434,9 +1759,26 @@ function buildMesh(set, geo, mat, mode, dur, shadow){
   if(mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   if(shadow===1){ mesh.castShadow = true; mesh.receiveShadow = true; }
   else if(shadow===2) mesh.receiveShadow = true;
-  mesh.userData = { set, mode, dur, settled:false };
+  /* Never frustum-cull: the bounding sphere is computed at first render, when
+     fog may have sunk every instance to y=-999 — the cached sphere then sits
+     1000 units underground and the mesh is culled forever, even after
+     instances raise. These meshes span the whole dungeon, so whole-mesh
+     culling buys nothing anyway. */
+  mesh.frustumCulled = false;
+  mesh.userData = { set, mode, dur, settled:false, roomIds: set.roomIds };
   writeInstances(mesh, Infinity);
   return mesh;
+}
+/* per-instance atlas-quadrant offsets; the backing array is grown, never
+   shrunk, so re-forges reuse the same GPU buffer instead of leaking one */
+function setAtlasAttr(geo, arr, n){
+  let at = geo.getAttribute('aUvO');
+  const need = Math.max(n,1)*2;
+  if(!at || at.array.length < need){
+    at = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(need,4096)), 2);
+    geo.setAttribute('aUvO', at);
+  }
+  at.array.set(arr); at.needsUpdate = true;
 }
 const easeOutCubic = t => 1-Math.pow(1-t,3);
 const easeOutBack  = t => { const c=1.70158; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); };
@@ -1463,6 +1805,7 @@ let group = null;
 let meshes = {};
 let overlay = null;
 let lights = [];
+let standaloneRooms = [];  // {mesh, rid} for fog-controlled single meshes
 let floorColorsBase = null, floorColorsHeat = null;
 let animT = Infinity, animEnd = 0, animating = false;
 let fx = { liquids:[], shafts:[], spinners:[], parts:null };
@@ -1480,6 +1823,7 @@ function disposeLevel(){
   levelGeos = [];
   group = null; meshes = {}; overlay = null;
   lights = [];
+  standaloneRooms = [];
   fx = { liquids:[], shafts:[], spinners:[], parts:null };
 }
 
@@ -1529,6 +1873,18 @@ function buildScene(d){
   const idx=(x,y)=>y*W+x, wx=x=>x-W/2+0.5, wz=y=>y-H/2+0.5;
   const cellRng = makeRng(d.seed ^ 0x9e3779b9);
   const dStep = 0.016;
+  /* nearest FLOOR cell to a grid coord — fog anchor for things sitting on
+     walls/pools (torches, particles). Returns -1 if nothing walkable nearby. */
+  const floorAnchor = (gx, gy)=>{
+    gx = Math.max(0, Math.min(W-1, Math.round(gx)));
+    gy = Math.max(0, Math.min(H-1, Math.round(gy)));
+    if(grid[idx(gx,gy)]===FLOOR) return idx(gx,gy);
+    for(const o of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+      const nx=gx+o[0], ny=gy+o[1];
+      if(nx>=0&&ny>=0&&nx<W&&ny<H && grid[idx(nx,ny)]===FLOOR) return idx(nx,ny);
+    }
+    return -1;
+  };
 
   /* moss + pool adjacency masks for floor tinting */
   const mossMask = new Uint8Array(W*H);
@@ -1541,6 +1897,8 @@ function buildScene(d){
 
   /* floors */
   const fs = instSet(); floorColorsBase=[]; floorColorsHeat=[];
+  const fUv=[], pushVar=(arr,rng)=>{ const v=rng.i(0,3); arr.push((v&1)*0.5, (v>>1)*0.5); };
+  const decCand=[]; /* floor cells eligible for the theme decal pass */
   const base = new THREE.Color(), tint = new THREE.Color(),
         heatA = new THREE.Color(0x2f4bb0), heatB = new THREE.Color(0xe8502f);
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
@@ -1563,9 +1921,12 @@ function buildScene(d){
     floorColorsBase.push(base.getHex());
     const diff = rid>=0 ? rooms[rid].difficulty : (maxBfs ? bfs[c]/maxBfs : 0.5);
     floorColorsHeat.push(heatA.clone().lerp(heatB, Math.min(1,diff)).multiplyScalar(0.55 + 0.45*(1-0.09*Math.min(walls8,4))).getHex());
-    fs.add(wx(x), cellRng.f(-0.02,0.008), wz(y), 1,1,1, 0, floorColorsBase[floorColorsBase.length-1], Math.max(0,bfs[c])*dStep);
+    fs.add(wx(x), cellRng.f(-0.02,0.008), wz(y), 1,1,1, cellRng.i(0,3)*(Math.PI/2), floorColorsBase[floorColorsBase.length-1], Math.max(0,bfs[c])*dStep);
+    pushVar(fUv, cellRng);
+    decCand.push({x, y, rid, walls8});
   }
-  meshes.floor = buildMesh(fs, GEO.floor, matStone, 'pop', 0.34, 2);
+  meshes.floor = buildMesh(fs, GEO.floor, matFloor, 'pop', 0.34, 2);
+  setAtlasAttr(GEO.floor, fUv, fs.n);
 
   /* walls + trim caps */
   const nearFloorBfs = (x,y)=>{ let b=1e4;
@@ -1574,6 +1935,7 @@ function buildScene(d){
       if(nx>=0&&ny>=0&&nx<W&&ny<H && bfs[idx(nx,ny)]>=0) b=Math.min(b,bfs[idx(nx,ny)]);
     } return b===1e4?0:b; };
   const ws = instSet(), cs = instSet();
+  const wUv=[], cUv=[];
   const wcol = new THREE.Color();
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
     if(grid[idx(x,y)]!==WALL) continue;
@@ -1581,11 +1943,15 @@ function buildScene(d){
     const dl = nearFloorBfs(x,y)*dStep + 0.30;
     wcol.set(TH.wall).multiplyScalar(cellRng.f(0.9,1.08));
     ws.add(wx(x),0,wz(y), 1,h,1, 0, wcol.getHex(), dl);
+    pushVar(wUv, cellRng);
     wcol.set(TH.cap).multiplyScalar(cellRng.f(0.92,1.1));
-    cs.add(wx(x),h,wz(y), 1,1,1, 0, wcol.getHex(), dl+0.12);
+    cs.add(wx(x),h,wz(y), 1,1,1, cellRng.i(0,3)*(Math.PI/2), wcol.getHex(), dl+0.12);
+    pushVar(cUv, cellRng);
   }
-  meshes.wall    = buildMesh(ws, GEO.wall, matStone, 'rise', 0.42, 1);
-  meshes.wallCap = buildMesh(cs, GEO.wallCap, matStone, 'pop', 0.3, 1);
+  meshes.wall    = buildMesh(ws, GEO.wall, matWall, 'rise', 0.42, 1);
+  setAtlasAttr(GEO.wall, wUv, ws.n);
+  meshes.wallCap = buildMesh(cs, GEO.wallCap, matFloor, 'pop', 0.3, 1);
+  setAtlasAttr(GEO.wallCap, cUv, cs.n);
 
   /* prop instance sets */
   const S = { pillar:instSet(), arch:instSet(), archL:instSet(), torchArm:instSet(),
@@ -1598,141 +1964,151 @@ function buildScene(d){
               spawn1:instSet(), spawn2:instSet(), spawn3:instSet(), band2:instSet(), band3:instSet(),
               crystal:instSet(), ring:instSet(), plinth:instSet(), platform:instSet(),
               brazier:instSet(), coals:instSet(), basin:instSet(),
-              bossGlow:instSet(), bossRock:instSet() };
+              bossGlow:instSet(), bossRock:instSet(),
+              runeSeal:instSet(), ember:instSet(), rime:instSet(), stain:instSet(), growth:instSet() };
   const pd = (x,y)=> Math.max(0,bfs[idx(x,y)])*dStep + 0.62;
   const shaftAt = [];
   let portalXZ = null, runeXZ = null;
 
   for(const p of d.props){
     const X=wx(p.x), Z=wz(p.y), dl=pd(p.x,p.y);
+    const propRoom = p.roomId !== undefined ? p.roomId : d.roomId[idx(p.x + (p.dx||0), p.y + (p.dy||0))];
     switch(p.kind){
       case 'pillar': { const s=p.scale*1.15;
-        S.pillar.add(X,0,Z, s,s,s, cellRng.i(0,3)*Math.PI/2, TH.pillar, dl); break; }
+        S.pillar.add(X,0,Z, s,s,s, cellRng.i(0,3)*Math.PI/2, TH.pillar, dl, propRoom); break; }
       case 'debris': { const set=[S.debrisA,S.debrisB,S.debrisC][p.v||0];
-        set.add(X,0,Z, p.scale,p.scale*0.85,p.scale, p.rot, lerpC(TH.debris[0],TH.debris[1],cellRng.raw()), dl); break; }
+        set.add(X,0,Z, p.scale,p.scale*0.85,p.scale, p.rot, lerpC(TH.debris[0],TH.debris[1],cellRng.raw()), dl, propRoom); break; }
       case 'chest':
-        S.chest.add(X,0,Z, 1,1,1, p.rot, 0x8a5a2c, dl);
-        S.chestTrim.add(X,0,Z, 1,1,1, p.rot, 0xc8a24a, dl);
-        S.chestGlow.add(X,0,Z, 1,1,1, p.rot, 0xffd27a, dl+0.15);
+        S.chest.add(X,0,Z, 1,1,1, p.rot, 0x8a5a2c, dl, propRoom);
+        S.chestTrim.add(X,0,Z, 1,1,1, p.rot, 0xc8a24a, dl, propRoom);
+        S.chestGlow.add(X,0,Z, 1,1,1, p.rot, 0xffd27a, dl+0.15, propRoom);
         break;
       case 'shrineCrystal': {
-        S.plinth.add(X,0,Z, 1,1,1, p.rot, lerpC(TH.pillar,0xffffff,0.12), dl);
-        S.crystal.add(X, 1.4, Z, 1.05,1.05,1.05, p.rot, 0x8fbcff, dl+0.2);
+        S.plinth.add(X,0,Z, 1,1,1, p.rot, lerpC(TH.pillar,0xffffff,0.12), dl, propRoom);
+        S.crystal.add(X, 1.4, Z, 1.05,1.05,1.05, p.rot, 0x8fbcff, dl+0.2, propRoom);
         for(let k=0;k<4;k++){
           const a = k*Math.PI/2 + Math.PI/4, cx = X+Math.cos(a)*0.36, cz = Z+Math.sin(a)*0.36;
-          S.candle.add(cx, 0.5, cz, 0.8,0.8,0.8, 0, 0xd8cba8, dl+0.15);
-          S.flameCore.add(cx, 0.65, cz, 0.5,0.5,0.5, 0, TH.flameCore, dl+0.25);
+          S.candle.add(cx, 0.5, cz, 0.8,0.8,0.8, 0, 0xd8cba8, dl+0.15, propRoom);
+          S.flameCore.add(cx, 0.65, cz, 0.5,0.5,0.5, 0, TH.flameCore, dl+0.25, propRoom);
         }
-        shaftAt.push([X,Z,1]);
+        shaftAt.push({x:X, z:Z, s:1, rid: propRoom});
         break; }
       case 'ring':
-        S.platform.add(X,-0.02,Z, 1,1,1, 0, lerpC(TH.floor,0xffffff,0.1), dl);
-        S.ring.add(X, 0.16, Z, 1,1,1, 0, 0x3fd0bb, dl+0.1);
-        S.pillar.add(X-1.45, 0.1, Z, 0.72,0.72,0.72, 0, TH.pillar, dl+0.15);
-        S.pillar.add(X+1.45, 0.1, Z, 0.72,0.72,0.72, 0, TH.pillar, dl+0.15);
+        S.platform.add(X,-0.02,Z, 1,1,1, 0, lerpC(TH.floor,0xffffff,0.1), dl, propRoom);
+        S.ring.add(X, 0.16, Z, 1,1,1, 0, 0x3fd0bb, dl+0.1, propRoom);
+        S.pillar.add(X-1.45, 0.1, Z, 0.72,0.72,0.72, 0, TH.pillar, dl+0.15, propRoom);
+        S.pillar.add(X+1.45, 0.1, Z, 0.72,0.72,0.72, 0, TH.pillar, dl+0.15, propRoom);
         portalXZ = [X,Z];
-        shaftAt.push([X,Z,0.9]);
+        shaftAt.push({x:X, z:Z, s:0.9, rid: propRoom});
         break;
       case 'bossCrystal': {
-        S.bossGlow.add(X,0,Z, 1.15,1.15,1.15, p.rot, 0xff4636, dl);
-        S.bossGlow.add(X+0.55,0,Z-0.42, 0.6,0.75,0.6, p.rot+1.2, 0xff6a45, dl+0.12);
-        S.bossRock.addT(X-0.62,0,Z+0.42, 0.75,0.8,0.75, 0.05,p.rot+2.1,-0.06, 0x4a3336, dl+0.15);
-        S.bossRock.addT(X+0.75,0,Z+0.55, 0.55,0.6,0.55, -0.06,p.rot+3.6,0.05, 0x51383a, dl+0.2);
-        S.bossRock.addT(X-0.5,0,Z-0.62, 0.5,0.55,0.5, 0.04,p.rot+4.9,0.04, 0x452f31, dl+0.24);
+        S.bossGlow.add(X,0,Z, 1.15,1.15,1.15, p.rot, 0xff4636, dl, propRoom);
+        S.bossGlow.add(X+0.55,0,Z-0.42, 0.6,0.75,0.6, p.rot+1.2, 0xff6a45, dl+0.12, propRoom);
+        S.bossRock.addT(X-0.62,0,Z+0.42, 0.75,0.8,0.75, 0.05,p.rot+2.1,-0.06, 0x4a3336, dl+0.15, propRoom);
+        S.bossRock.addT(X+0.75,0,Z+0.55, 0.55,0.6,0.55, -0.06,p.rot+3.6,0.05, 0x51383a, dl+0.2, propRoom);
+        S.bossRock.addT(X-0.5,0,Z-0.62, 0.5,0.55,0.5, 0.04,p.rot+4.9,0.04, 0x452f31, dl+0.24, propRoom);
         const r = rooms[p.roomId];
         runeXZ = {x:X, z:Z, s:Math.min(1.6, Math.max(0.8, (Math.min(r.w,r.h)/2-1.5)/2.3))};
         break; }
       case 'brazier':
-        S.brazier.add(X,0,Z, 1,1,1, cellRng.f(0,6.28), 0x3a3f4a, dl);
-        S.coals.add(X,0,Z, 1,1,1, 0, 0xff7a30, dl+0.1);
-        S.flame.add(X, 0.62, Z, 1.35,1.35,1.35, 0, TH.flame, dl+0.12);
-        S.flameCore.add(X, 0.66, Z, 1.3,1.3,1.3, 0, TH.flameCore, dl+0.12);
+        S.brazier.add(X,0,Z, 1,1,1, cellRng.f(0,6.28), 0x3a3f4a, dl, propRoom);
+        S.coals.add(X,0,Z, 1,1,1, 0, 0xff7a30, dl+0.1, propRoom);
+        S.flame.add(X, 0.62, Z, 1.35,1.35,1.35, 0, TH.flame, dl+0.12, propRoom);
+        S.flameCore.add(X, 0.66, Z, 1.3,1.3,1.3, 0, TH.flameCore, dl+0.12, propRoom);
         break;
       case 'grave':
         S.grave.addT(X,0,Z, p.scale,p.scale,p.scale, cellRng.f(-0.08,0.08), p.rot, cellRng.f(-0.13,0.13),
-                     lerpC(TH.wall,0xffffff,0.15), dl);
+                     lerpC(TH.wall,0xffffff,0.15), dl, propRoom);
         break;
       case 'sarco':
-        S.sarco.add(X,0,Z, 1,1,1, p.rot, lerpC(TH.pillar,0xffffff,0.08), dl);
+        S.sarco.add(X,0,Z, 1,1,1, p.rot, lerpC(TH.pillar,0xffffff,0.08), dl, propRoom);
         break;
       case 'candle':
-        S.candle.add(X,0,Z, p.scale,p.scale,p.scale, 0, 0xd8cba8, dl);
-        S.flameCore.add(X, 0.19*p.scale, Z, 0.55,0.55,0.55, 0, TH.flameCore, dl+0.1);
+        S.candle.add(X,0,Z, p.scale,p.scale,p.scale, 0, 0xd8cba8, dl, propRoom);
+        S.flameCore.add(X, 0.19*p.scale, Z, 0.55,0.55,0.55, 0, TH.flameCore, dl+0.1, propRoom);
         break;
       case 'icicle':
         S.icicle.add(wx(p.x)+p.dx*0.42, 1.75, wz(p.y)+p.dy*0.42, p.scale,p.scale,p.scale, p.rot,
-                     0xbfe2ff, nearFloorBfs(p.x,p.y)*dStep + 0.7);
+                     0xbfe2ff, nearFloorBfs(p.x,p.y)*dStep + 0.7, propRoom);
         break;
       case 'shardIce':
         S.shardIce.addT(X,-0.1,Z, p.scale,p.scale,p.scale, cellRng.f(-0.15,0.15), p.rot, cellRng.f(-0.15,0.15),
-                        0xcfeaff, dl);
+                        0xcfeaff, dl, propRoom);
         break;
       case 'roots':
         S.roots.add(wx(p.x), 0, wz(p.y), p.scale,p.scale,p.scale, Math.atan2(p.dx,p.dy),
-                    0x5a4632, nearFloorBfs(p.x,p.y)*dStep + 0.6);
+                    0x5a4632, nearFloorBfs(p.x,p.y)*dStep + 0.6, propRoom);
         break;
       case 'moss':
-        S.moss.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, lerpC(0x3f6b3a,0x5a8a4a,cellRng.raw()), dl);
+        S.moss.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, lerpC(0x3f6b3a,0x5a8a4a,cellRng.raw()), dl, propRoom);
         break;
       case 'crack': {
-        /* centered on the pool/lake edge so branches radiate outward */
         const cx = X - (p.dx||0)*0.5, cz = Z - (p.dy||0)*0.5;
         const vc = p.ice ? 0x9fd8ff : (TH.pools && TH.pools.mode===3 ? 0x86c05a : 0xff6a28);
-        S.crackD.add(cx, 0, cz, p.scale,p.scale,p.scale, p.rot, vc, dl);
+        S.crackD.add(cx, 0, cz, p.scale,p.scale,p.scale, p.rot, vc, dl, propRoom);
         break; }
       case 'bones':
-        S.bone.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, 0xcfc4a4, dl);
+        S.bone.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, 0xcfc4a4, dl, propRoom);
         break;
       case 'banner': {
         const ry = Math.atan2(p.dx, p.dy);
         const bx = wx(p.x)+p.dx*0.54, bz = wz(p.y)+p.dy*0.54;
         const bdl = nearFloorBfs(p.x,p.y)*dStep + 0.7;
-        S.bannerRod.add(bx, 1.98, bz, 1,1,1, ry, 0x6a5a3a, bdl);
-        S.bannerCloth.add(bx+p.dx*0.03, 1.96, bz+p.dy*0.03, 1,1,1, ry, TH.cloth, bdl+0.05);
-        S.emblem.add(bx+p.dx*0.06, 1.6, bz+p.dy*0.06, 1,1,1, ry, accC, bdl+0.1);
+        S.bannerRod.add(bx, 1.98, bz, 1,1,1, ry, 0x6a5a3a, bdl, propRoom);
+        S.bannerCloth.add(bx+p.dx*0.03, 1.96, bz+p.dy*0.03, 1,1,1, ry, TH.cloth, bdl+0.05, propRoom);
+        S.emblem.add(bx+p.dx*0.06, 1.6, bz+p.dy*0.06, 1,1,1, ry, accC, bdl+0.1, propRoom);
         break; }
     }
   }
 
-  /* torches */
+  /* torches — mounted on WALL cells; fog anchor is the FLOOR cell they face.
+     Corridor-facing torches (roomId -1) use the -2-cell encoding so they
+     follow corridor reachability instead of never fogging. */
   for(const t of d.torches){
     const ry = Math.atan2(t.dx, t.dy);
     const X = wx(t.x)+t.dx*0.5, Z = wz(t.y)+t.dy*0.5, dl = nearFloorBfs(t.x,t.y)*dStep + 0.66;
-    S.torchArm.add(X, 1.02, Z, 1,1,1, ry, 0x4a4038, dl);
-    S.flame.add(X+t.dx*0.16, 1.5, Z+t.dy*0.16, 1.2,1.2,1.2, 0, TH.flame, dl+0.08);
-    S.flameCore.add(X+t.dx*0.16, 1.53, Z+t.dy*0.16, 1.2,1.2,1.2, 0, TH.flameCore, dl+0.08);
+    const tc = idx(t.x + t.dx, t.y + t.dy);
+    const trid = d.roomId[tc] >= 0 ? d.roomId[tc] : -2 - tc;
+    S.torchArm.add(X, 1.02, Z, 1,1,1, ry, 0x4a4038, dl, trid);
+    S.flame.add(X+t.dx*0.16, 1.5, Z+t.dy*0.16, 1.2,1.2,1.2, 0, TH.flame, dl+0.08, trid);
+    S.flameCore.add(X+t.dx*0.16, 1.53, Z+t.dy*0.16, 1.2,1.2,1.2, 0, TH.flameCore, dl+0.08, trid);
   }
 
   /* spawn markers: three authored tiers */
   for(const sp of d.spawns){
     const X=wx(sp.x), Z=wz(sp.y), dl=pd(sp.x,sp.y)+0.1, rot=cellRng.f(0,6.28);
+    const sth = SPAWN_THEMES[d.params.themeKey] || SPAWN_THEMES.ancient;
     if(sp.tier===1){
-      S.spawn1.add(X,0,Z, 1,1,1, rot, 0x5f4b45, dl);
-      S.band2.add(X, 0.14, Z, 0.7,0.7,0.7, rot, 0xb03a2a, dl+0.08);
+      S.spawn1.add(X,0,Z, 1,1,1, rot, sth.baseCol, dl, sp.roomId);
+      S.band2.add(X, 0.14, Z, 0.7,0.7,0.7, rot, sth.ringCol, dl+0.08, sp.roomId);
     } else if(sp.tier===2){
-      S.spawn2.add(X,0,Z, 1,1,1, rot, 0x5a4348, dl);
-      S.band2.add(X, 0.55, Z, 1,1,1, rot, 0xd8433a, dl+0.1);
+      S.spawn2.add(X,0,Z, 1,1,1, rot, sth.baseCol, dl, sp.roomId);
+      S.band2.add(X, 0.55, Z, 1,1,1, rot, sth.ringCol, dl+0.1, sp.roomId);
     } else {
-      S.spawn3.add(X,0,Z, 1,1,1, rot, 0x4c4258, dl);
-      S.band3.add(X, 0.62, Z, 1,1,1, rot, 0x9b6cf0, dl+0.1);
-      S.crystal.add(X, 1.98, Z, 0.42,0.42,0.42, rot, 0xb794ff, dl+0.2);
+      S.spawn3.add(X,0,Z, 1,1,1, rot, sth.baseCol, dl, sp.roomId);
+      S.band3.add(X, 0.62, Z, 1,1,1, rot, sth.ringCol, dl+0.1, sp.roomId);
+      S.crystal.add(X, 1.98, Z, 0.42,0.42,0.42, rot, sth.crystalCol, dl+0.2, sp.roomId);
     }
   }
 
-  /* doorway arches */
+  /* doorway arches — fog anchors to the doorway cell itself (encoded -2-cell):
+     one side of a doorway is almost always corridor (roomId -1), so a
+     room-pair rule can never hide these. The corridor BFS in fog.js already
+     computes exactly the right visibility for the doorway cell. */
   for(const a of d.arches){
     const X=wx(a.x), Z=wz(a.y);
     const half = a.len/2 + 0.15;
     const dlA = nearFloorBfs(Math.round(a.x), Math.round(a.y))*dStep + 0.7;
     const col = lerpC(TH.wall, 0xffffff, 0.12);
+    const dcell = -2 - idx(Math.round(a.x), Math.round(a.y));
     if(a.px===1){
-      S.arch.add(X-half,0,Z, 1,1,1, 0, col, dlA);
-      S.arch.add(X+half,0,Z, 1,1,1, 0, col, dlA);
-      S.archL.add(X,1.62,Z, a.len+0.42,1,1, 0, col, dlA+0.1);
+      S.arch.add(X-half,0,Z, 1,1,1, 0, col, dlA, dcell);
+      S.arch.add(X+half,0,Z, 1,1,1, 0, col, dlA, dcell);
+      S.archL.add(X,1.62,Z, a.len+0.42,1,1, 0, col, dlA+0.1, dcell);
     } else {
-      S.arch.add(X,0,Z-half, 1,1,1, 0, col, dlA);
-      S.arch.add(X,0,Z+half, 1,1,1, 0, col, dlA);
-      S.archL.add(X,1.62,Z, a.len+0.42,1,1, Math.PI/2, col, dlA+0.1);
+      S.arch.add(X,0,Z-half, 1,1,1, 0, col, dlA, dcell);
+      S.arch.add(X,0,Z+half, 1,1,1, 0, col, dlA, dcell);
+      S.archL.add(X,1.62,Z, a.len+0.42,1,1, Math.PI/2, col, dlA+0.1, dcell);
     }
   }
 
@@ -1745,18 +2121,99 @@ function buildScene(d){
   }
   if(d.pools.length){
     const skirtC = TH.pools.mode===0 ? 0xff5a1f : (TH.pools.mode===3 ? 0x33531e : 0x11463c);
+    /* Pools are carved from WALL cells, so their own roomId is always -1.
+       Fog anchor = the pool's single FLOOR neighbour: a room cell (follow
+       that room's tier) or a corridor cell (encoded -2-cell, follows
+       corridor reachability). One liquid mesh per anchor group so hidden
+       rooms don't render lava belonging to visible ones. */
+    const anchorOf = p => { const c = idx(p.x,p.y);
+      if(grid[c+1]===FLOOR) return c+1; if(grid[c-1]===FLOOR) return c-1;
+      if(grid[c+W]===FLOOR) return c+W; if(grid[c-W]===FLOOR) return c-W; return -1; };
+    const poolGroups = new Map();
     for(const p of d.pools){
       const dl = nearFloorBfs(p.x,p.y)*dStep + 0.5;
-      S.basin.add(wx(p.x), 0, wz(p.y), 1,1,1, 0, lerpC(TH.wall,0x000000,0.35), dl);
-      S.skirt.add(wx(p.x), 0, wz(p.y), cellRng.f(0.85,1.25),1,cellRng.f(0.85,1.25), cellRng.f(0,6.28), skirtC, dl+0.15);
+      const a = anchorOf(p), rid = a>=0 ? roomId[a] : -1;
+      const fogId = rid>=0 ? rid : (a>=0 ? -2-a : -1);
+      S.basin.add(wx(p.x), 0, wz(p.y), 1,1,1, 0, lerpC(TH.wall,0x000000,0.35), dl, fogId);
+      S.skirt.add(wx(p.x), 0, wz(p.y), cellRng.f(0.85,1.25),1,cellRng.f(0.85,1.25), cellRng.f(0,6.28), skirtC, dl+0.15, fogId);
+      const key = rid>=0 ? 'r'+rid : 'c'+a;
+      if(!poolGroups.has(key)) poolGroups.set(key, {rid, anchors:[], cells:[]});
+      const pg = poolGroups.get(key); pg.cells.push(p); if(a>=0) pg.anchors.push(a);
     }
-    const m = buildLiquidMesh(d.pools, wx, wz, -0.08);
-    group.add(m); fx.liquids.push(m);
+    for(const pg of poolGroups.values()){
+      const m = buildLiquidMesh(pg.cells, wx, wz, -0.08);
+      group.add(m); fx.liquids.push(m);
+      standaloneRooms.push(pg.rid>=0 ? {mesh:m, rid:pg.rid} : {mesh:m, cells:pg.anchors});
+    }
   }
   if(d.lakeCells.length){
-    const m = buildLiquidMesh(d.lakeCells, wx, wz, -0.12);
-    group.add(m); fx.liquids.push(m);
+    /* Lakes are room-interior by construction — one mesh per room */
+    const byRoom = new Map();
+    for(const lc of d.lakeCells){
+      const r = roomId[idx(lc.x,lc.y)];
+      if(!byRoom.has(r)) byRoom.set(r, []);
+      byRoom.get(r).push(lc);
+    }
+    for(const [r, cells] of byRoom){
+      const m = buildLiquidMesh(cells, wx, wz, -0.12);
+      group.add(m); fx.liquids.push(m);
+      standaloneRooms.push({mesh:m, rid:r});
+    }
   }
+
+  /* ---- theme tile flavor: one signature floor detail per theme ----
+     ancient = engraved seals · molten = ember vents · frost = rime
+     creeping from walls · grim = dark stains · verdant = moss overgrowth.
+     All deterministic (cellRng) and instanced like the rest of the decor. */
+  const TT = TH.tile || {};
+  matFloor.roughness = TT.rough || 0.93;
+  const decDl = t => Math.max(0, bfs[idx(t.x,t.y)])*dStep + 0.55;
+  if(TT.runes){
+    const byRoom = new Map();
+    for(const t of decCand){
+      if(t.rid<0 || t.walls8>0 || rooms[t.rid].type===TYPE.BOSS) continue;
+      if(!byRoom.has(t.rid)) byRoom.set(t.rid, []);
+      byRoom.get(t.rid).push(t);
+    }
+    for(const tiles of byRoom.values()){
+      if(!cellRng.chance(TT.runes)) continue;
+      const t = tiles[cellRng.i(0, tiles.length-1)];
+      const s = cellRng.f(0.8,1.1);
+      S.runeSeal.add(wx(t.x), 0, wz(t.y), s,1,s, cellRng.f(0,6.28),
+                     lerpC(0x7a5220, accC, 0.25), decDl(t), t.rid);
+    }
+  }
+  if(TT.embers) for(const t of decCand){
+    if(!cellRng.chance(TT.embers)) continue;
+    const s = cellRng.f(0.55,1.0);
+    S.ember.add(wx(t.x), 0, wz(t.y), s,1,s, cellRng.f(0,6.28),
+                lerpC(0x8a3512, 0xff5a1f, cellRng.raw()), decDl(t), t.rid);
+  }
+  if(TT.rime) for(const t of decCand){
+    if(!t.walls8 || !cellRng.chance(TT.rime)) continue;
+    const s = cellRng.f(0.8,1.3);
+    S.rime.add(wx(t.x), 0, wz(t.y), s,1,s, cellRng.f(0,6.28),
+               lerpC(0x4a7290, 0x86b8d8, cellRng.raw()), decDl(t), t.rid);
+  }
+  if(TT.stains) for(const t of decCand){
+    if(!cellRng.chance(TT.stains)) continue;
+    const s = cellRng.f(0.7,1.45);
+    S.stain.add(wx(t.x), 0, wz(t.y), s,1,s, cellRng.f(0,6.28),
+                lerpC(0x0d120c, 0x1c2416, cellRng.raw()), decDl(t), t.rid);
+  }
+  if(TT.growth) for(const t of decCand){
+    const hit = t.walls8 ? cellRng.chance(TT.growth) : cellRng.chance(TT.sprout||0);
+    if(!hit) continue;
+    const s = cellRng.f(0.75,1.35);
+    S.growth.add(wx(t.x), 0, wz(t.y), s,1,s, cellRng.f(0,6.28),
+                 lerpC(0x2e5230, 0x4f7f42, cellRng.raw()), decDl(t), t.rid);
+  }
+
+  const sth = SPAWN_THEMES[d.params.themeKey] || SPAWN_THEMES.ancient;
+  const spawnMat = sth.spawnMatName === 'ice' ? matIce : (sth.spawnMatName === 'bark' ? matBark : matStone);
+  const spawn1Geo = GEO[sth.spawn1GeoName] || GEO.spawn1;
+  const spawn2Geo = GEO[sth.spawn2GeoName] || GEO.spawn2;
+  const spawn3Geo = GEO[sth.spawn3GeoName] || GEO.spawn3;
 
   const setDefs = [
     ['pillar',   GEO.pillar,    matStone,  'rise', 0.4,  1],
@@ -1784,9 +2241,9 @@ function buildScene(d){
     ['bannerRod',GEO.bannerRod, matTrim,   'pop',  0.3,  0],
     ['bannerCloth',GEO.bannerCloth,matCloth,'rise',0.4,  0],
     ['emblem',   GEO.emblem,    matGlow,   'pop',  0.3,  0],
-    ['spawn1',   GEO.spawn1,    matStone,  'rise', 0.4,  1],
-    ['spawn2',   GEO.spawn2,    matStone,  'rise', 0.4,  1],
-    ['spawn3',   GEO.spawn3,    matStone,  'rise', 0.4,  1],
+    ['spawn1',   spawn1Geo,     spawnMat,  'rise', 0.4,  1],
+    ['spawn2',   spawn2Geo,     spawnMat,  'rise', 0.4,  1],
+    ['spawn3',   spawn3Geo,     spawnMat,  'rise', 0.4,  1],
     ['band2',    GEO.band2,     matGlow,   'pop',  0.3,  0],
     ['band3',    GEO.band3,     matGlow,   'pop',  0.3,  0],
     ['crystal',  GEO.crystal,   matGlow,   'pop',  0.4,  0],
@@ -1797,7 +2254,12 @@ function buildScene(d){
     ['coals',    GEO.coals,     matGlow,   'pop',  0.35, 0],
     ['basin',    GEO.basin,     matStone,  'pop',  0.3,  0],
     ['bossGlow', GEO.bossShard, matGlow,   'rise', 0.5,  0],
-    ['bossRock', GEO.bossShard, matStone,  'rise', 0.5,  1]
+    ['bossRock', GEO.bossShard, matStone,  'rise', 0.5,  1],
+    ['runeSeal', GEO.seal,      matRuneSeal,'pop', 0.45, 0],
+    ['ember',    GEO.crack,     matEmber,  'pop',  0.4,  0],
+    ['rime',     GEO.blot,      matBlotAdd,'pop',  0.5,  0],
+    ['stain',    GEO.blot,      matBlot,   'pop',  0.5,  0],
+    ['growth',   GEO.blot,      matBlot,   'pop',  0.5,  0]
   ];
   for(const [k, geo, mat, mode, dur, sh] of setDefs) meshes[k] = buildMesh(S[k], geo, mat, mode, dur, sh);
   for(const k in meshes) group.add(meshes[k]);
@@ -1808,6 +2270,7 @@ function buildScene(d){
     const m = new THREE.Mesh(GEO.portal, matPortal);
     m.position.set(portalXZ[0], 0.12, portalXZ[1]);
     group.add(m); fx.spinners.push({m, spd:0.55});
+    standaloneRooms.push({mesh:m, rid: d.entrance});
   }
   if(runeXZ){
     matRune.color.set(0xff5040);
@@ -1815,16 +2278,18 @@ function buildScene(d){
     m.position.set(runeXZ.x, 0.06, runeXZ.z);
     m.scale.setScalar(runeXZ.s);
     group.add(m); fx.spinners.push({m, spd:-0.16});
+    standaloneRooms.push({mesh:m, rid: d.boss});
   }
   if(TH.shafts){
     const big = rooms.filter(r=>r.type===TYPE.COMBAT && !r.lake).sort((a,b)=>b.w*b.h-a.w*a.h).slice(0,2);
-    for(const r of big) shaftAt.push([wx(r.cx), wz(r.cy), 1.3]);
+    for(const r of big) shaftAt.push({x:wx(r.cx), z:wz(r.cy), s:1.3, rid: r.id});
   }
   for(const s of shaftAt){
     const m = new THREE.Mesh(GEO.shaft, matShaft);
-    m.position.set(s[0], 0, s[1]);
-    m.scale.setScalar(s[2]);
+    m.position.set(s.x, 0, s.z);
+    m.scale.setScalar(s.s);
     group.add(m); fx.shafts.push(m);
+    standaloneRooms.push({mesh:m, rid: s.rid !== undefined ? s.rid : -1});
   }
 
   /* ambient particles — emitted from sources that make physical sense:
@@ -1832,7 +2297,9 @@ function buildScene(d){
      moss/roots/water, dust inside light shafts, snow as weather everywhere */
   { const spec = TH.particles;
     const pts = [];
-    const pp = (x,z,y)=>pts.push({x,z,y});
+    /* each emitter point carries a fog anchor: the nearest FLOOR grid cell,
+       recovered from its world position (inverse of wx/wz) */
+    const pp = (x,z,y)=>pts.push({x,z,y, cell: floorAnchor(x + W/2 - 0.5, z + H/2 - 0.5)});
     if(spec.kind===1){
       for(const p of d.pools) pp(wx(p.x)+cellRng.f(-0.3,0.3), wz(p.y)+cellRng.f(-0.3,0.3), -0.02);
       for(const t of d.torches) pp(wx(t.x)+t.dx*0.66, wz(t.y)+t.dy*0.66, 1.5);
@@ -1852,7 +2319,7 @@ function buildScene(d){
       for(const p of d.pools) pp(wx(p.x), wz(p.y), 0);
     } else if(spec.kind===0){
       for(const s of shaftAt) for(let k=0;k<10;k++)
-        pp(s[0]+cellRng.f(-0.8,0.8)*s[2], s[1]+cellRng.f(-0.8,0.8)*s[2], cellRng.f(0.3,2.4));
+        pp(s.x+cellRng.f(-0.8,0.8)*s.s, s.z+cellRng.f(-0.8,0.8)*s.s, cellRng.f(0.3,2.4));
       for(const t of d.torches) pp(wx(t.x)+t.dx*0.7, wz(t.y)+t.dy*0.7, cellRng.f(1.2,1.9));
     } else {
       for(let y=0;y<H;y++) for(let x=0;x<W;x++)
@@ -1864,10 +2331,12 @@ function buildScene(d){
     if(pts.length){
       const n = Math.min(spec.n, Math.max(40, pts.length*6));
       const pos = new Float32Array(n*3), seed = new Float32Array(n);
+      const fogCells = new Int32Array(n), origY = new Float32Array(n);
       for(let i=0;i<n;i++){
         const p = pts[cellRng.i(0, pts.length-1)];
         pos[i*3]=p.x; pos[i*3+1]=p.y; pos[i*3+2]=p.z;
         seed[i]=cellRng.raw();
+        fogCells[i]=p.cell; origY[i]=p.y;
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(pos,3));
@@ -1877,6 +2346,7 @@ function buildScene(d){
       partMat.uniforms.uColor.value.set(spec.color);
       const pm = new THREE.Points(g, partMat);
       pm.frustumCulled = false;
+      pm.userData.fogCells = fogCells; pm.userData.origY = origY;
       group.add(pm); fx.parts = pm;
     }
   }
@@ -1911,12 +2381,13 @@ function buildScene(d){
   for(const k of keys){
     const L = new THREE.PointLight(k.col, k.i, k.dist, 2);
     L.position.set(wx(k.x), k.ry||1.6, wz(k.y));
-    L.userData={base:k.i, ph:li*2.1, ramp:1}; group.add(L); lights.push(L); li++;
+    L.userData={base:k.i, ph:li*2.1, ramp:1, roomId: d.roomId[idx(k.x, k.y)], fogMult:1}; group.add(L); lights.push(L); li++;
   }
   for(const t of chosen){
     const L = new THREE.PointLight(TH.torchLight[0], TH.torchLight[1], TH.torchLight[2], 2);
     L.position.set(wx(t.x)+t.dx*0.6, 1.7, wz(t.y)+t.dy*0.6);
-    L.userData={base:TH.torchLight[1], ph:li*1.7, ramp:1}; group.add(L); lights.push(L); li++;
+    const ltc = idx(t.x+t.dx, t.y+t.dy);  // -2-cell encoding for corridor torches
+    L.userData={base:TH.torchLight[1], ph:li*1.7, ramp:1, roomId: d.roomId[ltc] >= 0 ? d.roomId[ltc] : -2 - ltc, fogMult:1}; group.add(L); lights.push(L); li++;
   }
 
   /* graph overlay */
@@ -2068,7 +2539,8 @@ const OBJ_MESHES = {
   props: ['pillar','arch','archL','debrisA','debrisB','debrisC','chest','chestTrim','chestGlow',
           'grave','sarco','candle','bone','icicle','shardIce','roots','moss','crackD','skirt',
           'bannerRod','bannerCloth','emblem','spawn1','spawn2','spawn3','band2','band3',
-          'crystal','ring','plinth','platform','basin','bossGlow','bossRock'],
+          'crystal','ring','plinth','platform','basin','bossGlow','bossRock',
+          'runeSeal','ember','rime','stain','growth'],
   torches: ['torchArm','flame','flameCore','brazier','coals'],
 };
 /* Apply current toggle state to the live scene. Called after every forge (which
@@ -2078,9 +2550,12 @@ function applyObjectVis(){
     for(const k of OBJ_MESHES[cat])
       if(meshes[k]) meshes[k].visible = objVis[cat];
   if(fx.parts) fx.parts.visible = objVis.particles;
-  for(const m of fx.shafts) m.visible = objVis.particles;
-  for(const m of fx.liquids) m.visible = objVis.liquids;
-  for(const sp of fx.spinners) sp.m.visible = objVis.props;
+  /* fog also drives .visible on these (userData.fogVisible); combine so a
+     chip toggle doesn't resurrect meshes fog has hidden, and vice versa */
+  const comb = (m, layerOn)=>{ m.userData.layerVisible = layerOn; m.visible = layerOn && m.userData.fogVisible !== false; };
+  for(const m of fx.shafts) comb(m, objVis.particles);
+  for(const m of fx.liquids) comb(m, objVis.liquids);
+  for(const sp of fx.spinners) comb(sp.m, objVis.props);
   for(const L of lights) L.visible = objVis.lights;
 }
 
@@ -2147,16 +2622,31 @@ function forge(animate){
 const ENGINE = {
   scene,
   cam,
+  renderer,
   camTarget,
   updateCam,
   isAnimating: ()=>animating,
   getMeshes: ()=>meshes,
+  getLights: ()=>lights,
+  getStandalone: ()=>standaloneRooms,
+  getParticles: ()=>fx.parts,
   reforge(seed, roomCount, themeKey, animate=false){
     el.seed.value = seed;
     el.rooms.value = Math.max(12, Math.min(80, roomCount));
     setThemeSel(themeKey);
     forge(animate);
-  }
+  },
+  /* Combat spectacle */
+  triggerHitStop(frames = 3) {
+    gameTimeScale = 0.05;
+    shakeIntensity = Math.max(shakeIntensity, 0.3);
+  },
+  triggerSlowMo(duration = 1.5) {
+    gameTimeScale = Math.min(gameTimeScale, 0.25);
+  },
+  triggerShake(intensity = 0.6, duration = 0.3) {
+    shakeIntensity = Math.max(shakeIntensity, intensity);
+  },
 };
 
 /* -------- live per-frame animation: flames, crystals, liquids, particles -------- */
@@ -2190,18 +2680,19 @@ function liveUpdate(time, tt){
   }
   liquidMat.uniforms.uTime.value = time;
   partMat.uniforms.uTime.value = time;
+  matEmber.opacity = 0.72 + 0.24*Math.sin(time*2.3)*Math.sin(time*1.13);
   /* device pixels per world unit, so particle sizes track the ortho zoom */
   partMat.uniforms.uZoom.value = renderer.domElement.height * cam.zoom / (2*BASE_HALF);
   for(const sp of fx.spinners) sp.m.rotation.y = time * sp.spd;
   for(const L of lights){
     const ramp = L.userData.ramp === undefined ? 1 : L.userData.ramp;
-    L.intensity = L.userData.base * LIGHT_K * ramp * (0.84 + 0.22*Math.sin(time*9 + L.userData.ph)*Math.sin(time*4.7 + L.userData.ph*1.7));
+    const fogM = L.userData.fogMult !== undefined ? L.userData.fogMult : 1;
+    L.intensity = L.userData.base * LIGHT_K * ramp * fogM * (0.84 + 0.22*Math.sin(time*9 + L.userData.ph)*Math.sin(time*4.7 + L.userData.ph*1.7));
   }
 }
 
 /* -------- main loop -------- */
 const timer = new THREE.Timer();   // Clock is deprecated in modern three; Timer replaces it
-let elapsed = 0;
 let fpsFrames = 0, fpsTime = 0;
 function tick(){
   /* RAF pauses entirely in occluded windows; keep a slow heartbeat so the
@@ -2209,18 +2700,31 @@ function tick(){
   if(document.hidden) setTimeout(tick, 100);
   else requestAnimationFrame(tick);
   timer.update();
-  const dt = Math.min(timer.getDelta(), 0.05);
-  elapsed += dt;
+  const rawDt = Math.min(timer.getDelta(), 0.05);
+  elapsed += rawDt;
+
+  /* Spring gameTimeScale back to 1.0 (for hit-stop / slow-mo recovery) */
+  if (Math.abs(gameTimeScale - 1.0) > 0.001) {
+    gameTimeScale += (1.0 - gameTimeScale) * Math.min(1, rawDt * 10);
+    if (Math.abs(gameTimeScale - 1.0) < 0.002) gameTimeScale = 1.0;
+  }
+  /* Decay screen shake */
+  if (shakeIntensity > 0.001) {
+    shakeIntensity *= Math.exp(-rawDt * 8);
+    if (shakeIntensity < 0.002) shakeIntensity = 0;
+  }
+
+  const gameDt = rawDt * gameTimeScale;
   if(animating){
-    animT += dt;
+    animT += rawDt;
     applyReveal(animT);
     if(animT > animEnd + 0.35) finishAnim();
   }
   liveUpdate(elapsed, animating ? animT - 2.3 : Infinity);
-  game.update(dt, elapsed);
+  game.update(gameDt, elapsed);
   renderer.info.reset();
   renderFrame();
-  fpsFrames++; fpsTime += dt;
+  fpsFrames++; fpsTime += rawDt;
   if(fpsTime >= 0.5){
     el.sFps.textContent = Math.round(fpsFrames/fpsTime);
     el.sCalls.textContent = renderer.info.render.calls;

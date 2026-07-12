@@ -7,9 +7,10 @@
  *   short → partial recover (warlocks full)
  *   long  → full recover
  */
-import { hasFeature } from './features.js';
+import { hasFeature, totalSlots, recoverSlots } from './features.js';
 import { drawBar } from './entities.js';
 import { log, updatePartyFrames } from './ui.js';
+import { clearEffectsByTag } from './conditions.js';
 
 /** Normalize legacy `day` flag → `long`. */
 export function ensureAbilityUsed(h) {
@@ -35,15 +36,16 @@ export function applyShortRestToHero(h, opts = {}) {
   h.smiteUsed = false;
   h.tidesUsed = false;
 
-  /* Spell slots */
-  if (h.slotsMax > 0) {
+  /* Spell slots (leveled). Warlock Pact Magic refills fully on a short rest;
+     other casters recover the lowest expended slot (Arcane Recovery: more). */
+  if (totalSlots(h.slotsMax) > 0) {
     if (h.classKey === 'warlock') {
-      h.slots = h.slotsMax;
+      h.slots = { ...h.slotsMax };
     } else {
       const gain = hasFeature(h, 'arcaneRecovery')
-        ? Math.max(1, Math.ceil(h.slotsMax / 2))
+        ? Math.max(1, Math.ceil(totalSlots(h.slotsMax) / 2))
         : 1;
-      h.slots = Math.min(h.slotsMax, (h.slots || 0) + gain);
+      recoverSlots(h, gain);
     }
   }
 
@@ -78,7 +80,7 @@ export function applyLongRestToHero(h) {
   h.tidesUsed = false;
   h.rageUsed = false;
 
-  if (h.slotsMax > 0) h.slots = h.slotsMax;
+  if (totalSlots(h.slotsMax) > 0) h.slots = { ...h.slotsMax };
   if (h.healSlotsMax) h.healSlots = h.healSlotsMax;
   if (h.layOnHandsMax) h.layOnHands = h.layOnHandsMax;
 }
@@ -125,6 +127,8 @@ export function partyLongRest(game, opts = {}) {
     hero.tempHp = 0;
     hero.uncannyUsed = false;
     hero._foughtThisCombat = false;
+    hero.conc = null;   // concentration drops on a long rest / floor change
+    clearEffectsByTag(hero, 'skill');   // skill-check boons/debuffs expire on floor change
     if (hero.ent?.bar && hero.data.hp > 0) {
       drawBar(hero.ent.bar, Math.max(0, hero.data.hp / hero.data.maxHp));
     }

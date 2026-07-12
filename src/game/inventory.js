@@ -32,11 +32,32 @@ export const inventoryMethods = {
     updateResources(this);
   },
 
+  /** Set a per-hero AI priority knob (called from the AI Priorities tab). */
+  setAIPref(heroIdx, key, val) {
+    const hero = this.heroes[heroIdx];
+    if (!hero || !hero.data) return;
+    if (!hero.data.aiPrefs) hero.data.aiPrefs = { targetPref:0.5, abilityUse:0.5, potionThreshold:0.5, combatMovement:0.5 };
+    hero.data.aiPrefs[key] = val;
+    this.saveGame();
+  },
+
   /** Equip an inventory item onto a hero. `preferSlot` picks between ring slots. */
   equipItem(hero, item, preferSlot = null) {
     if (!canEquip(hero, item)) return { ok: false, reason: 'Not proficient with that.' };
     migrateItem(item);
     bondLegendaryOnEquip(item, hero.level);
+
+    /* two-handed weapon: auto-unequip offhand slot */
+    if (item.slot === 'weapon' && item.twoHanded && hero.equipment.offhand) {
+      this.inventory.push(hero.equipment.offhand);
+      delete hero.equipment.offhand;
+    }
+
+    /* prevent equipping an offhand item while wielding a two-handed weapon */
+    if (item.slot === 'shield' && hero.equipment.weapon && hero.equipment.weapon.twoHanded) {
+      return { ok: false, reason: 'Cannot equip offhand with a two-handed weapon.' };
+    }
+
     const opts = slotsFor(item.slot);
     const slot = preferSlot && opts.includes(preferSlot) ? preferSlot
       : (opts.find(s => !hero.equipment[s]) || opts[0]);
@@ -162,11 +183,17 @@ export const inventoryMethods = {
   saveGame() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        heroes: this.heroes.map(h => h.data),
+        /* h.temp = one-floor quest ally — never persisted */
+        heroes: this.heroes.filter(h => !h.temp).map(h => h.data),
+        storedHeroes: this.storedHeroes || [],
+        townShopInventory: this.townShopInventory || [],
+        townTavernHirePool: this.townTavernHirePool || [],
         inventory: this.inventory,
         gold: this.gold, potions: this.potions, dungeonLevel: this.dungeonLevel,
         activeQuest: this.activeQuest || null,
-        questFloor: this.questFloor || 0
+        questFloor: this.questFloor || 0,
+        questChains: this.questChains || { active: [], log: [] },
+        bestiary: this.bestiary || {}
       }));
     } catch (e) { /* storage full/blocked — play on without saves */ }
   },

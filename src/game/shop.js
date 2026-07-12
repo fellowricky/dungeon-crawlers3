@@ -52,24 +52,37 @@ export function showShop() {
   selItem = null;
   G.setPaused(true);
 
+  // Skill-check boons that affect this visit
+  const buffs = G._floorBuffs || [];
+  const hasDiscount = buffs.some(b => b.type === 'merchantDiscount');
+  const hasBetter = buffs.some(b => b.type === 'betterShop');
+  const priceMult = hasDiscount ? 0.85 : 1;
+
   // Generate inventory
   shopInventory = [];
 
   // Always stock potions
-  shopInventory.push({ type: 'potion', kind: 'heal', name: 'Healing Potion', icon: '🧪', price: 100, desc: 'Heals the most wounded hero (2d4+2)' });
-  shopInventory.push({ type: 'potion', kind: 'greater', name: 'Greater Healing Potion', icon: '⚗️', price: 350, desc: 'Greater healing (4d4+4)' });
+  shopInventory.push({ type: 'potion', kind: 'heal', name: 'Healing Potion', icon: '🧪', price: Math.round(100 * priceMult), desc: 'Heals the most wounded hero (2d4+2)' });
+  shopInventory.push({ type: 'potion', kind: 'greater', name: 'Greater Healing Potion', icon: '⚗️', price: Math.round(350 * priceMult), desc: 'Greater healing (4d4+4)' });
 
   // Rarity-scaled shop markup: higher rarities cost exponentially more.
   // Players can afford commons easily, but rares+ are aspirational purchases.
   const RARITY_MARKUP = { common: 4, uncommon: 7, rare: 12, epic: 20, legendary: 35 };
 
-  // 4-6 random gear items scaled to the *next* floor
-  const numItems = 4 + Math.floor(Math.random() * 3);
+  // 4-6 random gear items scaled to the *next* floor; betterShop adds +1 item
+  // and rolls at a higher level so stock trends rarer/stronger.
+  const baseLevel = G.activeQuest ? G.activeQuest.level : G.dungeonLevel;
+  const rollLevel = hasBetter ? baseLevel + 2 : baseLevel;
+  let numItems = 4 + Math.floor(Math.random() * 3);
+  if (hasBetter) numItems += 1;
   for (let i = 0; i < numItems; i++) {
-    const item = rollItem(G.dungeonLevel);
+    const item = rollItem(rollLevel);
     const markup = RARITY_MARKUP[item.rarity] || 4;
-    shopInventory.push({ type: 'gear', item: item, price: Math.round(item.value * markup) });
+    shopInventory.push({ type: 'gear', item: item, price: Math.round(item.value * markup * priceMult) });
   }
+
+  if (hasDiscount) log(`💰 Merchant's favour — all prices reduced 15% this visit.`, 'treasure');
+  if (hasBetter) log(`🎭 Your renown precedes you — the merchant has laid out finer wares.`, 'treasure');
 
   $('shopscreen').classList.add('show');
   $('shop-next-floor').textContent = G.dungeonLevel;
@@ -182,12 +195,9 @@ function renderShop() {
 
   const descendBtn = $('shop-descend');
   if (descendBtn) {
-    if (G.currentQuest) {
-      if (G.currentFloorInQuest < G.currentQuest.floors) {
-        descendBtn.innerHTML = `Descend to Floor <span id="shop-next-floor">${G.currentFloorInQuest + 1}</span> of ${G.currentQuest.floors}`;
-      } else {
-        descendBtn.innerHTML = `Complete Quest &amp; Return to Map`;
-      }
+    /* questFloor is incremented before the shop opens, so it already IS the next floor */
+    if (G.activeQuest) {
+      descendBtn.innerHTML = `Descend to Floor <span id="shop-next-floor">${G.questFloor}</span> of ${G.activeQuest.floors}`;
     } else {
       descendBtn.innerHTML = `Descend to Floor <span id="shop-next-floor">${G.dungeonLevel}</span>`;
     }

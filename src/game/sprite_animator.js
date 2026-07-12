@@ -3,12 +3,14 @@ import * as THREE from 'three';
 const ASSETS_ROOT = './lpc/';
 const LAYER_ORDER = [
   'shield_behind',
+  'weapon_crystal_behind',
   'weapon_behind',
   'body',
   'head',
   'eyes',
   'legs',
   'torso',
+  'sleeves',
   'feet',
   'shoulders',
   'gloves',
@@ -19,7 +21,8 @@ const LAYER_ORDER = [
   'helm',
   'visor',
   'shield',
-  'weapon'
+  'weapon',
+  'weapon_crystal'
 ];
 
 const ANIM_META = {
@@ -48,8 +51,45 @@ function loadImage(src) {
 }
 
 // Cache composed textures so we don't redraw canvases for identical visual setups
-const textureCache = {};
+/* ---- HSL color utilities for proper sprite recolor ---- */
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return [r, g, b];
+}
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let h = 0, s = 0, l = (mx + mn) / 2;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (mx === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h, s, l];
+}
+function hslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [
+    Math.round(hue2rgb(p, q, h + 1/3) * 255),
+    Math.round(hue2rgb(p, q, h) * 255),
+    Math.round(hue2rgb(p, q, h - 1/3) * 255)
+  ];
+}
 
+const textureCache = {};
 export class HeroSprite {
   constructor(hero, color) {
     this.visual = hero.visual || {};
@@ -58,6 +98,7 @@ export class HeroSprite {
     this.textures = {}; 
     this.material = new THREE.SpriteMaterial({ transparent: true, depthTest: true, depthWrite: false });
     this.mesh = new THREE.Sprite(this.material);
+    this.mesh.renderOrder = 1;
     const sx = this.visual.spriteScaleX || 1.0;
     const sy = this.visual.spriteScaleY || 1.0;
     this.mesh.scale.set(1.5 * sx, 1.5 * sy, 1);
@@ -99,29 +140,37 @@ export class HeroSprite {
     ].join('|');
   }
 
-  // Draw an image to the canvas, tinting it using source-in if a tint color is provided
-  drawTintedLayer(ctx, img, tintColor) {
+  // Draw an image to the canvas, tinting it using HSL recolor (preserves
+  // shading, replaces hue/saturation — works on pre-coloured sprites)
+  drawSkinTintedLayer(ctx, img, tintColor) {
     if (!tintColor) {
-      ctx.drawImage(img, 0, 0);
+      if (img.width !== ctx.canvas.width) {
+        ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
+      } else {
+        ctx.drawImage(img, 0, 0);
+      }
       return;
     }
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = img.width; tempCanvas.height = img.height;
     const tctx = tempCanvas.getContext('2d');
-    
-    // Draw original image
     tctx.drawImage(img, 0, 0);
-    // Tint it using multiply (so shadows remain)
-    tctx.globalCompositeOperation = 'multiply';
-    tctx.fillStyle = tintColor;
-    tctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    
-    // The previous step tinted the transparent pixels too! We must mask it using destination-in
-    tctx.globalCompositeOperation = 'destination-in';
-    tctx.drawImage(img, 0, 0);
-    
-    // Draw the properly tinted layer onto the main canvas
-    ctx.drawImage(tempCanvas, 0, 0);
+    const id = tctx.getImageData(0, 0, img.width, img.height);
+    const d = id.data;
+    const [tr, tg, tb] = hexToRgb(tintColor);
+    const [th, ts] = rgbToHsl(tr, tg, tb);
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      const [, , l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+      const [cr, cg, cb] = hslToRgb(th, ts, l);
+      d[i] = cr; d[i+1] = cg; d[i+2] = cb;
+    }
+    tctx.putImageData(id, 0, 0);
+    if (img.width !== ctx.canvas.width) {
+      ctx.drawImage(tempCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
+    } else {
+      ctx.drawImage(tempCanvas, 0, 0);
+    }
   }
 
   async loadState(action) {
@@ -144,7 +193,9 @@ export class HeroSprite {
     const clothG = (g === 'muscular' || g === 'teen' || g === 'child') ? 'male' : g;
     
     const w = this.equipment.weapon ? this.equipment.weapon.visualWeapon : null;
+    const wc = this.equipment.weapon ? this.equipment.weapon.visualCrystal : null;
     const t = this.equipment.armor ? this.equipment.armor.visualTorso : null;
+    const tsleeve = this.equipment.armor ? this.equipment.armor.visualSleeves : null;
     const l = this.equipment.armor ? (this.equipment.armor.visualLegs || 'pants') : (this.visual.pants !== undefined ? this.visual.pants : 'pants');
     const h = this.equipment.helm ? this.equipment.helm.visualHelm : null;
     const v = this.equipment.helm ? this.equipment.helm.visualVisor : null;
@@ -162,6 +213,7 @@ export class HeroSprite {
 
     const paths = {
       shield_behind: sh_behind,
+      weapon_crystal_behind: wc ? `weapon_behind/${wc}` : null,
       weapon_behind: w_behind,
       body: `body/bodies/${g}`,
       head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
@@ -171,6 +223,7 @@ export class HeroSprite {
       horns: (!isMonster && this.visual.horns && this.visual.horns !== 'none') ? `head/horns/${this.visual.horns}` : null,
       legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
       torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
+      sleeves: (isMonster || !tsleeve) ? null : `torso/${tsleeve}/${clothG}`,
       feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
       shoulders: shld ? `shoulders/${shld}/${shld === 'legion' ? clothG : (clothG === 'male' ? 'male' : 'thin')}` : null,
       gloves: glv ? `${glv}/${clothG === 'male' ? 'male' : 'thin'}` : null,
@@ -179,7 +232,8 @@ export class HeroSprite {
       helm: h ? (h.includes('greathelm') ? `hat/${h}/${clothG}` : `hat/${h}/adult`) : null,
       visor: v ? `hat/visor/${v}/adult` : null,
       shield: sh ? (sh === 'round' ? `shield/${sh}` : `shield/${sh}/${clothG}`) : null,
-      weapon: w ? `weapon/${w}` : null
+      weapon: w ? `weapon/${w}` : null,
+      weapon_crystal: wc ? `weapon/${wc}` : null
     };
 
     for (const layer of LAYER_ORDER) {
@@ -187,25 +241,42 @@ export class HeroSprite {
       const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/${action}.png`);
       if (img) {
         if (layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') {
-          this.drawTintedLayer(ctx, img, this.visual.skinColor);
+          this.drawSkinTintedLayer(ctx, img, this.visual.skinColor);
         } else if (layer === 'hair' || layer === 'facialHair') {
-          this.drawTintedLayer(ctx, img, this.visual.hairColor);
+          this.drawSkinTintedLayer(ctx, img, this.visual.hairColor);
         } else if (layer === 'eyes' && this.visual.eyeColor) {
-          this.drawTintedLayer(ctx, img, this.visual.eyeColor);
+          this.drawSkinTintedLayer(ctx, img, this.visual.eyeColor);
         } else {
           // If the equipment in this slot has a visual color, tint it!
           let slotKey = layer;
           if (layer === 'helm' || layer === 'visor') slotKey = 'helm';
           else if (layer === 'shield' || layer === 'shield_behind') slotKey = 'offhand';
           else if (layer === 'weapon' || layer === 'weapon_behind') slotKey = 'weapon';
-          else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders') slotKey = 'armor';
+          else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders' || layer === 'sleeves') slotKey = 'armor';
           else if (layer === 'gloves') slotKey = 'gloves';
 
-          const it = this.equipment[slotKey];
-          if (it && it.visualColor) {
-            this.drawTintedLayer(ctx, img, it.visualColor);
+          if (layer === 'weapon_crystal' || layer === 'weapon_crystal_behind') {
+            const wItem = this.equipment.weapon;
+            if (wItem && wItem.crystalColor) {
+              this.drawSkinTintedLayer(ctx, img, wItem.crystalColor);
+            } else {
+              if (img.width !== canvas.width) {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              } else {
+                ctx.drawImage(img, 0, 0);
+              }
+            }
           } else {
-            ctx.drawImage(img, 0, 0);
+            const it = this.equipment[slotKey];
+            if (it && it.visualColor) {
+              this.drawSkinTintedLayer(ctx, img, it.visualColor);
+            } else {
+              if (img.width !== canvas.width) {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+              } else {
+                ctx.drawImage(img, 0, 0);
+              }
+            }
           }
         }
       }
@@ -226,8 +297,22 @@ export class HeroSprite {
     this.state = action;
     this.time = 0;
     this.animating = true;
+    this._dying = false;
     if (!this.textures[action]) {
       this.loadState(action);
+    }
+  }
+
+  /** Begin the death animation: play hurt once, then hold the last frame. */
+  playDeath() {
+    this.state = 'hurt';
+    this.time = 0;
+    this.animating = true;
+    this._dying = true;
+    this._deathDone = false;
+    this.dir = 'down'; // always face camera when falling
+    if (!this.textures['hurt']) {
+      this.loadState('hurt');
     }
   }
 
@@ -275,8 +360,11 @@ export class HeroSprite {
       currentFrame = frames - 1;
       this.animating = false;
       
-      // If hurt finishes, return to walk(idle)
-      if (this.state === 'hurt') {
+      if (this._dying) {
+        // Death anim finished — hold the last hurt frame indefinitely
+        this._deathDone = true;
+      } else if (this.state === 'hurt' && !this._dying) {
+        // If hurt finishes (non-death), return to walk(idle)
         this.play('walk');
         return;
       }
@@ -308,6 +396,26 @@ function drawPortraitFrame(ctx, img, tint){
   ctx.drawImage(tmp, 0, 0);
 }
 
+/* Portrait frame using HSL recolor — preserves shading, replaces hue/sat */
+function drawSkinPortraitFrame(ctx, img, tintColor) {
+  if (!tintColor) { ctx.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64); return; }
+  const tc = document.createElement('canvas'); tc.width = 64; tc.height = 64;
+  const t = tc.getContext('2d');
+  t.drawImage(img, 0, 128, 64, 64, 0, 0, 64, 64);
+  const id = t.getImageData(0, 0, 64, 64);
+  const d = id.data;
+  const [tr, tg, tb] = hexToRgb(tintColor);
+  const [th, ts] = rgbToHsl(tr, tg, tb);
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue;
+    const [, , l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+    const [cr, cg, cb] = hslToRgb(th, ts, l);
+    d[i] = cr; d[i+1] = cg; d[i+2] = cb;
+  }
+  t.putImageData(id, 0, 0);
+  ctx.drawImage(tc, 0, 0);
+}
+
 export async function drawHeroPortrait(canvas, hero){
   const ctx = canvas.getContext('2d');
   const token = (canvas._portraitToken = (canvas._portraitToken || 0) + 1);
@@ -321,7 +429,9 @@ export async function drawHeroPortrait(canvas, hero){
   const clothG = (g === 'muscular' || g === 'teen' || g === 'child') ? 'male' : g;
 
   const w = equipment.weapon ? equipment.weapon.visualWeapon : null;
+  const wc = equipment.weapon ? equipment.weapon.visualCrystal : null;
   const t = equipment.armor ? equipment.armor.visualTorso : null;
+  const tsleeve = equipment.armor ? equipment.armor.visualSleeves : null;
   const l = equipment.armor ? (equipment.armor.visualLegs || 'pants') : (visual.pants !== undefined ? visual.pants : 'pants');
   const hlm = equipment.helm ? equipment.helm.visualHelm : null;
   const v = equipment.helm ? equipment.helm.visualVisor : null;
@@ -339,6 +449,7 @@ export async function drawHeroPortrait(canvas, hero){
 
   const paths = {
     shield_behind: sh_behind,
+    weapon_crystal_behind: wc ? `weapon_behind/${wc}` : null,
     weapon_behind: w_behind,
     body: `body/bodies/${g}`,
     head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
@@ -348,6 +459,7 @@ export async function drawHeroPortrait(canvas, hero){
     horns: (!isMonster && visual.horns && visual.horns !== 'none') ? `head/horns/${visual.horns}` : null,
     legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
     torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
+    sleeves: (isMonster || !tsleeve) ? null : `torso/${tsleeve}/${clothG}`,
     feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
     shoulders: shld ? `shoulders/${shld}/${shld === 'legion' ? clothG : (clothG === 'male' ? 'male' : 'thin')}` : null,
     gloves: glv ? `${glv}/${clothG === 'male' ? 'male' : 'thin'}` : null,
@@ -356,7 +468,8 @@ export async function drawHeroPortrait(canvas, hero){
     helm: hlm ? (hlm.includes('greathelm') ? `hat/${hlm}/${clothG}` : `hat/${hlm}/adult`) : null,
     visor: v ? `hat/visor/${v}/adult` : null,
     shield: sh ? (sh === 'round' ? `shield/${sh}` : `shield/${sh}/${clothG}`) : null,
-    weapon: w ? `weapon/${w}` : null
+    weapon: w ? `weapon/${w}` : null,
+    weapon_crystal: wc ? `weapon/${wc}` : null
   };
 
   for(const layer of LAYER_ORDER){
@@ -364,7 +477,7 @@ export async function drawHeroPortrait(canvas, hero){
     const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/walk.png`);
     if(canvas._portraitToken !== token) return;   // a newer draw superseded us
     if(!img) continue;
-    if(layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') drawPortraitFrame(ctx, img, visual.skinColor);
+    if(layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') drawSkinPortraitFrame(ctx, img, visual.skinColor);
     else if(layer === 'hair' || layer === 'facialHair') drawPortraitFrame(ctx, img, visual.hairColor);
     else if(layer === 'eyes' && visual.eyeColor) drawPortraitFrame(ctx, img, visual.eyeColor);
     else {
@@ -372,14 +485,23 @@ export async function drawHeroPortrait(canvas, hero){
       if (layer === 'helm' || layer === 'visor') slotKey = 'helm';
       else if (layer === 'shield' || layer === 'shield_behind') slotKey = 'offhand';
       else if (layer === 'weapon' || layer === 'weapon_behind') slotKey = 'weapon';
-      else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders') slotKey = 'armor';
+      else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders' || layer === 'sleeves') slotKey = 'armor';
       else if (layer === 'gloves') slotKey = 'gloves';
 
-      const it = equipment[slotKey];
-      if (it && it.visualColor) {
-        drawPortraitFrame(ctx, img, it.visualColor);
+      if (layer === 'weapon_crystal' || layer === 'weapon_crystal_behind') {
+        const wItem = equipment.weapon;
+        if (wItem && wItem.crystalColor) {
+          drawSkinPortraitFrame(ctx, img, wItem.crystalColor);
+        } else {
+          drawPortraitFrame(ctx, img, null);
+        }
       } else {
-        drawPortraitFrame(ctx, img, null);
+        const it = equipment[slotKey];
+        if (it && it.visualColor) {
+          drawPortraitFrame(ctx, img, it.visualColor);
+        } else {
+          drawPortraitFrame(ctx, img, null);
+        }
       }
     }
   }

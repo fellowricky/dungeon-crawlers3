@@ -4,6 +4,7 @@
   "description": "Idle party-based dungeon crawler (Clickpocalypse-inspired) using SRD 5.1 mechanics, built on Dungeon Forge by Majid Manzarpour (MIT).",
   "type": "module",
   "license": "MIT",
+  "main": "electron/main.cjs",
   "keywords": [
     "three.js",
     "procedural-generation",
@@ -17,12 +18,37 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview --port 4173"
-  },
-  "dependencies": {
-    "three": "^0.185.0"
+    "preview": "vite preview --port 4173",
+    "electron": "electron .",
+    "app": "vite build && electron .",
+    "pack:win": "vite build && electron-packager . \"Dungeon Crawlers\" --platform=win32 --arch=x64 --out=release --overwrite --asar=false --ignore=\"/node_modules\" --ignore=\"/src\" --ignore=\"/public\" --ignore=\"/scratch\" --ignore=\"/lpc_repo\" --ignore=\"/Sprites\" --ignore=\"/dist-smoke\" --ignore=\"/release\" --ignore=\"(web|portable)\\.zip$\"",
+    "test": "vitest run && node smoke_quests.mjs && electron electron/smoke.cjs"
   },
   "devDependencies": {
-    "vite": "^8.0.0"
+    "@electron/packager": "^20.0.2",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "three": "^0.185.0",
+    "vite": "^8.0.0",
+    "vitest": "^4.1.10"
+  },
+  "build": {
+    "appId": "com.zenu.dungeoncrawlers",
+    "productName": "Dungeon Crawlers",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "DungeonCrawlers-${version}-portable.exe"
+    }
   }
 }

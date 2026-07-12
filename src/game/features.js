@@ -11,6 +11,7 @@
  */
 
 /* Intentionally no import from srd.js — that module imports us (avoid cycles). */
+import { SPELLS, SPELL_POOLS } from './spells.js';
 const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const ABILITY_LABEL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
 const MELEE_CLASSES = new Set(['fighter', 'barbarian', 'monk', 'paladin', 'rogue', 'bard']);
@@ -99,201 +100,6 @@ export const FEATS = {
   }
 };
 
-/* ================================================================
-   Spells — learned by casters; auto-cast by idle AI tags
-   ai.when: 'hurtAlly' | 'cluster' | 'eliteOrBoss' | 'selfHurt' | 'any'
-   recharge: 'slot' | 'short' | 'long'
-   ================================================================ */
-export const SPELLS = {
-  /* --- shared / wizard --- */
-  magicMissile: {
-    label: 'Magic Missile', level: 1,
-    desc: '3 unerring darts of force (1d4+1 each). Great vs elites.',
-    recharge: 'slot',
-    ai: { when: 'eliteOrBoss', priority: 6 },
-    color: 0xb08cff
-  },
-  shield: {
-    label: 'Shield', level: 1,
-    desc: 'When bloodied, gain +5 AC for 6 seconds.',
-    recharge: 'slot',
-    ai: { when: 'selfHurt', priority: 8, hpFrac: 0.4 },
-    color: 0x88aaff
-  },
-  scorchingRay: {
-    label: 'Scorching Ray', level: 2,
-    desc: 'Three rays of fire; solid single-target burst.',
-    recharge: 'slot',
-    ai: { when: 'eliteOrBoss', priority: 7 },
-    color: 0xff7a30
-  },
-  fireball: {
-    label: 'Fireball', level: 3,
-    desc: '8d6 blast when foes cluster together.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 9, minTargets: 3 },
-    color: 0xff7a30
-  },
-  haste: {
-    label: 'Haste', level: 3,
-    desc: 'Hasten yourself: +40% speed and +2 AC for 8s.',
-    recharge: 'slot',
-    ai: { when: 'selfHurt', priority: 5, hpFrac: 0.55 },
-    color: 0xa0e0ff
-  },
-
-  /* --- cleric --- */
-  bless: {
-    label: 'Bless', level: 1,
-    desc: 'Party-wide +2 to attack rolls for 8 seconds.',
-    recharge: 'slot',
-    ai: { when: 'any', priority: 4 },
-    color: 0xffe08a
-  },
-  spiritualWeapon: {
-    label: 'Spiritual Weapon', level: 2,
-    desc: 'Force weapon strikes the foe for 1d8 + WIS.',
-    recharge: 'slot',
-    ai: { when: 'eliteOrBoss', priority: 6 },
-    color: 0xbfe0ff
-  },
-  spiritGuardians: {
-    label: 'Spirit Guardians', level: 3,
-    desc: 'Damaging aura: 3d8 to nearby enemies once.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 8, minTargets: 2 },
-    color: 0xd0c0ff
-  },
-
-  /* --- druid --- */
-  entangle: {
-    label: 'Entangle', level: 1,
-    desc: 'Roots nearby foes briefly and chips damage.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 5, minTargets: 2 },
-    color: 0x4cae4c
-  },
-  moonbeam: {
-    label: 'Moonbeam', level: 2,
-    desc: 'Silver fire burns a target for 2d10.',
-    recharge: 'slot',
-    ai: { when: 'eliteOrBoss', priority: 7 },
-    color: 0xc0e8ff
-  },
-  callLightning: {
-    label: 'Call Lightning', level: 3,
-    desc: 'Bolt the pack: 3d10 to clustered foes.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 8, minTargets: 2 },
-    color: 0x7090ff
-  },
-
-  /* --- bard --- */
-  healingWord: {
-    label: 'Healing Word', level: 1,
-    desc: 'Bonus heal on a wounded ally (1d4 + CHA).',
-    recharge: 'slot',
-    ai: { when: 'hurtAlly', priority: 8, hpFrac: 0.5 },
-    color: 0xe8a8ff
-  },
-  shatter: {
-    label: 'Shatter', level: 2,
-    desc: 'Thunderous burst: 3d8 to a cluster.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 7, minTargets: 3 },
-    color: 0xd0a0ff
-  },
-
-  /* --- sorcerer --- */
-  chaosBolt: {
-    label: 'Chaos Bolt', level: 1,
-    desc: 'Unstable bolt: 2d8 + CHA, crits more often.',
-    recharge: 'slot',
-    ai: { when: 'any', priority: 5 },
-    color: 0xff8844
-  },
-  dragonBreathSpell: {
-    label: 'Burning Hands', level: 1,
-    desc: 'Cone of fire: 3d6 to nearby enemies.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 6, minTargets: 2 },
-    color: 0xff6020
-  },
-
-  /* --- warlock --- */
-  hex: {
-    label: 'Hex', level: 1,
-    desc: 'Curse a foe: +1d6 damage on your hits for 8s.',
-    recharge: 'short',
-    ai: { when: 'eliteOrBoss', priority: 7 },
-    color: 0x9b59b6
-  },
-  armsOfHadar: {
-    label: 'Arms of Hadar', level: 1,
-    desc: 'Dark tentacles: 2d6 to nearby foes.',
-    recharge: 'slot',
-    ai: { when: 'cluster', priority: 6, minTargets: 2 },
-    color: 0x6a3080
-  },
-
-  /* --- paladin / ranger half-casters --- */
-  thunderousSmite: {
-    label: 'Thunderous Smite', level: 1,
-    desc: 'Next melee hit deals +2d6 thunder.',
-    recharge: 'slot',
-    ai: { when: 'eliteOrBoss', priority: 7 },
-    color: 0xf1c40f
-  },
-  huntersMark: {
-    label: 'Hunter\'s Mark', level: 1,
-    desc: 'Mark prey: +1d6 damage for 8s.',
-    recharge: 'slot',
-    ai: { when: 'eliteOrBoss', priority: 7 },
-    color: 0x1abc9c
-  }
-};
-
-/** Spell pools offered when a class learns a spell at a given spell-level tier. */
-export const SPELL_POOLS = {
-  wizard: {
-    1: ['magicMissile', 'shield'],
-    2: ['scorchingRay', 'magicMissile', 'shield'],
-    3: ['fireball', 'haste', 'scorchingRay']
-  },
-  cleric: {
-    1: ['bless', 'healingWord'],
-    2: ['spiritualWeapon', 'bless'],
-    3: ['spiritGuardians', 'spiritualWeapon']
-  },
-  druid: {
-    1: ['entangle', 'healingWord'],
-    2: ['moonbeam', 'entangle'],
-    3: ['callLightning', 'moonbeam']
-  },
-  bard: {
-    1: ['healingWord', 'bless'],
-    2: ['shatter', 'healingWord'],
-    3: ['shatter', 'haste']
-  },
-  sorcerer: {
-    1: ['chaosBolt', 'dragonBreathSpell', 'shield'],
-    2: ['scorchingRay', 'chaosBolt'],
-    3: ['fireball', 'haste']
-  },
-  warlock: {
-    1: ['hex', 'armsOfHadar', 'magicMissile'],
-    2: ['hex', 'scorchingRay'],
-    3: ['armsOfHadar', 'hex']
-  },
-  paladin: {
-    1: ['thunderousSmite', 'bless'],
-    2: ['thunderousSmite', 'bless']
-  },
-  ranger: {
-    1: ['huntersMark', 'entangle'],
-    2: ['huntersMark', 'healingWord']
-  }
-};
 
 /* ================================================================
    Passive feature definitions (auto-unlocked keys)
@@ -358,6 +164,16 @@ export const FEATURES = {
     label: 'Brutal Critical',
     desc: 'Melee crits deal +1 damage die.',
     combat: 'brutalCrit'
+  },
+  brutalCritical2: {
+    label: 'Brutal Critical II',
+    desc: '+1 damage; 2 extra crit dice.',
+    pb: { dmg: 1 }
+  },
+  brutalCritical3: {
+    label: 'Brutal Critical III',
+    desc: '+1 damage; 3 extra crit dice.',
+    pb: { dmg: 1 }
   },
   flurryOfBlows: {
     label: 'Flurry of Blows',
@@ -481,58 +297,280 @@ export const FEATURES = {
   },
   /* subclass milestone autos (granted at 6 / 10 when subclass chosen) */
   subclass6: { label: 'Subclass Feature', desc: 'Your path deepens.', pb: {} },
-  subclass10: { label: 'Subclass Mastery', desc: 'Your path reaches a peak.', pb: {} }
+  subclass10: { label: 'Subclass Mastery', desc: 'Your path reaches a peak.', pb: {} },
+
+  /* ===== Barbarian L11-20 ===== */
+  relentlessRage: {
+    label: 'Relentless Rage',
+    desc: 'When downed while raging, CON save to stay at 1 HP.',
+    pb: { str: 1 },
+    combat: 'relentlessRage'
+  },
+  persistentRage: {
+    label: 'Persistent Rage',
+    desc: 'Rage only ends on death or by choice; +1 AC.',
+    pb: { ac: 1 }
+  },
+  indomitableMight: {
+    label: 'Indomitable Might',
+    desc: '+2 STR; your raw power is unstoppable.',
+    pb: { str: 2 }
+  },
+  primalChampion: {
+    label: 'Primal Champion',
+    desc: '+2 STR, +2 CON, +10 HP. Maximum STR/CON raised to 24.',
+    pb: { str: 2, con: 2, hp: 10 }
+  },
+
+  /* ===== Fighter L11-20 ===== */
+  extraAttack3: {
+    label: 'Extra Attack (x4)',
+    desc: 'Attack four times per turn.',
+    combat: 'extraAttack3'
+  },
+  actionSurge2: {
+    label: 'Action Surge II',
+    desc: 'Use Action Surge twice between rests.',
+    combat: 'actionSurge2'
+  },
+  indomitable2: {
+    label: 'Indomitable II',
+    desc: '+1 AC; your will is iron.',
+    pb: { ac: 1 }
+  },
+
+  /* ===== Rogue L11-20 ===== */
+  reliableTalent: {
+    label: 'Reliable Talent',
+    desc: '+1 attack; your skills never fail you.',
+    pb: { atk: 1 }
+  },
+  blindsense: {
+    label: 'Blindsense',
+    desc: '+1 attack; you sense hidden foes nearby.',
+    pb: { atk: 1 }
+  },
+  slipperyMind: {
+    label: 'Slippery Mind',
+    desc: '+1 AC; your mind slips free of influence.',
+    pb: { ac: 1 }
+  },
+  elusive: {
+    label: 'Elusive',
+    desc: '+2 AC; attackers never have advantage against you.',
+    pb: { ac: 2 }
+  },
+  strokeOfLuck: {
+    label: 'Stroke of Luck',
+    desc: 'Once per short rest, turn a miss into a hit.',
+    combat: 'strokeOfLuck'
+  },
+
+  /* ===== Cleric L11-20 ===== */
+  destroyUndeadGreater: {
+    label: 'Destroy Undead (Greater)',
+    desc: '+2 damage; divine wrath burns the unholy.',
+    pb: { dmg: 2 }
+  },
+  divineInterventionImproved: {
+    label: 'Divine Intervention',
+    desc: '+3 heal, +1 AC; your deity answers without delay.',
+    pb: { heal: 3, ac: 1 }
+  },
+
+  /* ===== Wizard L11-20 ===== */
+  spellMastery: {
+    label: 'Spell Mastery',
+    desc: '+2 spell damage; free 1st-/2nd-level spell once per short rest.',
+    pb: { dmg: 2 },
+    combat: 'spellMastery'
+  },
+  signatureSpells: {
+    label: 'Signature Spells',
+    desc: '+3 spell damage; free 3rd-level spell once per short rest.',
+    pb: { dmg: 3 }
+  },
+
+  /* ===== Bard L11-20 ===== */
+  inspiredPerformance: {
+    label: 'Inspired Performance',
+    desc: '+1 attack, +1 heal; your art reaches its peak.',
+    pb: { atk: 1, heal: 1 }
+  },
+  superiorInspiration: {
+    label: 'Superior Inspiration',
+    desc: 'Begin combat with 1 Bardic Inspiration charge.',
+    combat: 'superiorInspiration'
+  },
+
+  /* ===== Druid L11-20 ===== */
+  beastSpells: {
+    label: 'Beast Spells',
+    desc: '+2 damage; cast spells while in Wild Shape.',
+    pb: { dmg: 2 }
+  },
+  archdruid: {
+    label: 'Archdruid',
+    desc: '+2 dmg, +1 AC, +2 heal. Unlimited Wild Shapes.',
+    pb: { dmg: 2, ac: 1, heal: 2 }
+  },
+
+  /* ===== Monk L11-20 ===== */
+  tongueSunMoon: {
+    label: 'Tongue of the Sun and Moon',
+    desc: '+1 attack; transcendent understanding of all.',
+    pb: { atk: 1 }
+  },
+  diamondSoul: {
+    label: 'Diamond Soul',
+    desc: '+1 AC, +4 HP; proficiency in all saving throws.',
+    pb: { ac: 1, hp: 4 }
+  },
+  emptyBody: {
+    label: 'Empty Body',
+    desc: '+2 AC; become invisible and half all damage briefly.',
+    pb: { ac: 2 },
+    combat: 'emptyBody'
+  },
+  perfectSelf: {
+    label: 'Perfect Self',
+    desc: 'Regain 4 Ki points when combat begins.',
+    combat: 'perfectSelf'
+  },
+
+  /* ===== Paladin L11-20 ===== */
+  improvedDivineSmite: {
+    label: 'Improved Divine Smite',
+    desc: '+2 damage; every melee hit sears with radiant light.',
+    pb: { dmg: 2 }
+  },
+  cleansingTouch: {
+    label: 'Cleansing Touch',
+    desc: '+2 heal; end harmful spells with a touch.',
+    pb: { heal: 2 }
+  },
+  auraImproved: {
+    label: 'Aura of Devotion',
+    desc: '+1 AC; your protective aura stretches to 30 ft.',
+    pb: { ac: 1 }
+  },
+  oathCapstone: {
+    label: 'Sacred Oath Champion',
+    desc: '+2 damage, +1 attack; you embody your oath.',
+    pb: { dmg: 2, atk: 1 }
+  },
+
+  /* ===== Ranger L11-20 ===== */
+  vanish: {
+    label: 'Vanish',
+    desc: '+10% speed, +1 AC; hide as a bonus action.',
+    pb: { speed: 0.1, ac: 1 }
+  },
+  feralSenses: {
+    label: 'Feral Senses',
+    desc: '+2 attack; no disadvantage vs unseen enemies.',
+    pb: { atk: 2 }
+  },
+  foeSlayer: {
+    label: 'Foe Slayer',
+    desc: '+3 damage; relentless enemy of your quarry.',
+    pb: { dmg: 3 }
+  },
+
+  /* ===== Sorcerer L11-20 ===== */
+  metamagicExpert: {
+    label: 'Metamagic Expert',
+    desc: '+2 spell damage; third metamagic option unlocked.',
+    pb: { dmg: 2 }
+  },
+  sorcerousRestoration: {
+    label: 'Sorcerous Restoration',
+    desc: '+2 spell dmg, +1 atk. Regain 4 SP on short rest.',
+    pb: { dmg: 2, atk: 1 }
+  },
+
+  /* ===== Warlock L11-20 ===== */
+  eldritchMaster: {
+    label: 'Eldritch Master',
+    desc: '+2 damage, +6 HP. Regain all pact slots 1/long rest.',
+    pb: { dmg: 2, hp: 6 },
+    combat: 'eldritchMaster'
+  }
 };
 
-/* Subclass passive boosts at L6 / L10 (on top of L3 pick) */
+/* Subclass passive boosts at L6 / L10 / L14 / L18 (on top of L3 pick) */
 export const SUBCLASS_MILESTONES = {
   fighter: {
-    champion: { 6: { pb: { crit: 1 }, label: 'Superior Critical' }, 10: { pb: { dmg: 2 }, label: 'Survivor' } },
-    guardian: { 6: { pb: { ac: 1, hp: 4 }, label: 'Hold the Line' }, 10: { pb: { ac: 1 }, label: 'Bulwark' } }
+    champion: { 6: { pb: { crit: 1 }, label: 'Superior Critical' }, 10: { pb: { dmg: 2 }, label: 'Survivor' },
+                14: { pb: { crit: 1, dmg: 2 }, label: 'Champion Ascendant' }, 18: { pb: { dmg: 3, hp: 10 }, label: 'Legendary Champion' } },
+    guardian: { 6: { pb: { ac: 1, hp: 4 }, label: 'Hold the Line' }, 10: { pb: { ac: 1 }, label: 'Bulwark' },
+                14: { pb: { ac: 1, hp: 8 }, label: 'Iron Bulwark' }, 18: { pb: { ac: 2, hp: 12 }, label: 'Living Wall' } }
   },
   rogue: {
-    thief: { 6: { pb: { speed: 0.1 }, label: 'Supreme Sneak' }, 10: { pb: { ac: 1, dmg: 1 }, label: 'Use Magic Device' } },
-    nightblade: { 6: { pb: { crit: 1 }, label: 'Assassinate' }, 10: { pb: { dmg: 2 }, label: 'Death Strike+' } }
+    thief: { 6: { pb: { speed: 0.1 }, label: 'Supreme Sneak' }, 10: { pb: { ac: 1, dmg: 1 }, label: 'Use Magic Device' },
+             14: { pb: { speed: 0.1, dmg: 2 }, label: 'Master Infiltrator' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Ghost in the Dark' } },
+    nightblade: { 6: { pb: { crit: 1 }, label: 'Assassinate' }, 10: { pb: { dmg: 2 }, label: 'Death Strike+' },
+                  14: { pb: { crit: 1, dmg: 2 }, label: 'Death Mark' }, 18: { pb: { dmg: 4 }, label: 'Executioner' } }
   },
   cleric: {
-    life: { 6: { pb: { heal: 3 }, label: 'Blessed Healer' }, 10: { pb: { heal: 2, ac: 1 }, label: 'Supreme Healing' } },
-    war: { 6: { pb: { atk: 1, dmg: 1 }, label: 'War Priest' }, 10: { pb: { dmg: 2 }, label: 'Avatar of Battle' } }
+    life: { 6: { pb: { heal: 3 }, label: 'Blessed Healer' }, 10: { pb: { heal: 2, ac: 1 }, label: 'Supreme Healing' },
+            14: { pb: { heal: 3, hp: 6 }, label: 'Divine Restoration' }, 18: { pb: { heal: 4, ac: 1 }, label: 'Avatar of Life' } },
+    war: { 6: { pb: { atk: 1, dmg: 1 }, label: 'War Priest' }, 10: { pb: { dmg: 2 }, label: 'Avatar of Battle' },
+           14: { pb: { atk: 1, dmg: 3 }, label: 'Scourge of Heretics' }, 18: { pb: { dmg: 4, ac: 1 }, label: 'Vessel of War' } }
   },
   wizard: {
-    evoker: { 6: { pb: { dmg: 2 }, label: 'Potent Cantrip' }, 10: { pb: { dmg: 2 }, label: 'Overchannel' } },
-    abjurer: { 6: { pb: { ac: 1, hp: 6 }, label: 'Projected Ward' }, 10: { pb: { ac: 1 }, label: 'Spell Resistance' } }
+    evoker: { 6: { pb: { dmg: 2 }, label: 'Potent Cantrip' }, 10: { pb: { dmg: 2 }, label: 'Overchannel' },
+              14: { pb: { dmg: 3, atk: 1 }, label: 'Unstable Overchannel' }, 18: { pb: { dmg: 4 }, label: 'Archmage of Evocation' } },
+    abjurer: { 6: { pb: { ac: 1, hp: 6 }, label: 'Projected Ward' }, 10: { pb: { ac: 1 }, label: 'Spell Resistance' },
+               14: { pb: { ac: 1, hp: 8 }, label: 'Greater Abjuration' }, 18: { pb: { ac: 2, hp: 12 }, label: 'Wardmaster' } }
   },
   barbarian: {
-    berserker: { 6: { pb: { dmg: 2 }, label: 'Mindless Rage' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Intimidating Presence' } },
-    totem: { 6: { pb: { ac: 1, hp: 6 }, label: 'Aspect of the Eagle' }, 10: { pb: { ac: 1 }, label: 'Totemic Attunement' } }
+    berserker: { 6: { pb: { dmg: 2 }, label: 'Mindless Rage' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Intimidating Presence' },
+                 14: { pb: { dmg: 3, str: 1 }, label: 'Furious Rampage' }, 18: { pb: { dmg: 4, atk: 1 }, label: 'Unstoppable Fury' } },
+    totem: { 6: { pb: { ac: 1, hp: 6 }, label: 'Aspect of the Eagle' }, 10: { pb: { ac: 1 }, label: 'Totemic Attunement' },
+             14: { pb: { ac: 1, hp: 8 }, label: 'Spirit Guardian' }, 18: { pb: { ac: 2, hp: 14 }, label: 'Totem Incarnate' } }
   },
   bard: {
-    lore: { 6: { pb: { atk: 1 }, label: 'Additional Magical Secrets' }, 10: { pb: { dmg: 1, heal: 2 }, label: 'Peerless Skill' } },
-    valor: { 6: { pb: { ac: 1, dmg: 1 }, label: 'Combat Training' }, 10: { pb: { atk: 1 }, label: 'Battle Magic' } }
+    lore: { 6: { pb: { atk: 1 }, label: 'Additional Magical Secrets' }, 10: { pb: { dmg: 1, heal: 2 }, label: 'Peerless Skill' },
+            14: { pb: { atk: 1, heal: 3 }, label: 'Font of Inspiration' }, 18: { pb: { dmg: 2, heal: 3 }, label: 'Legend of Lore' } },
+    valor: { 6: { pb: { ac: 1, dmg: 1 }, label: 'Combat Training' }, 10: { pb: { atk: 1 }, label: 'Battle Magic' },
+             14: { pb: { ac: 1, dmg: 2 }, label: 'War Chant' }, 18: { pb: { atk: 2, dmg: 2 }, label: 'Saga of Valor' } }
   },
   druid: {
-    land: { 6: { pb: { atk: 1 }, label: "Land's Stride" }, 10: { pb: { dmg: 2 }, label: "Nature's Ward" } },
-    moon: { 6: { pb: { dmg: 1, hp: 6 }, label: 'Primal Strike' }, 10: { pb: { dmg: 2 }, label: 'Elemental Wild Shape' } }
+    land: { 6: { pb: { atk: 1 }, label: "Land's Stride" }, 10: { pb: { dmg: 2 }, label: "Nature's Ward" },
+            14: { pb: { dmg: 2, atk: 1 }, label: "Nature's Sanctuary" }, 18: { pb: { dmg: 3, hp: 10 }, label: 'Archdruid of the Land' } },
+    moon: { 6: { pb: { dmg: 1, hp: 6 }, label: 'Primal Strike' }, 10: { pb: { dmg: 2 }, label: 'Elemental Wild Shape' },
+            14: { pb: { dmg: 2, hp: 10 }, label: 'Thousand Forms' }, 18: { pb: { dmg: 4, ac: 1 }, label: 'Primal Avatar' } }
   },
   monk: {
-    openhand: { 6: { pb: { dmg: 1 }, label: 'Wholeness of Body' }, 10: { pb: { ac: 1, speed: 0.1 }, label: 'Quivering Palm Ready' } },
-    shadow: { 6: { pb: { ac: 1 }, label: 'Shadow Step+' }, 10: { pb: { dmg: 2 }, label: 'Opportunist' } }
+    openhand: { 6: { pb: { dmg: 1 }, label: 'Wholeness of Body' }, 10: { pb: { ac: 1, speed: 0.1 }, label: 'Quivering Palm Ready' },
+                14: { pb: { dmg: 2, ac: 1 }, label: 'Tranquility' }, 18: { pb: { dmg: 3, speed: 0.1 }, label: 'Grandmaster' } },
+    shadow: { 6: { pb: { ac: 1 }, label: 'Shadow Step+' }, 10: { pb: { dmg: 2 }, label: 'Opportunist' },
+              14: { pb: { ac: 1, dmg: 2 }, label: 'Cloak of Shadows' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Shadow Master' } }
   },
   paladin: {
-    devotion: { 6: { pb: { atk: 1 }, label: 'Aura of Devotion' }, 10: { pb: { ac: 1, heal: 2 }, label: 'Holy Nimbus' } },
-    vengeance: { 6: { pb: { dmg: 2 }, label: 'Relentless Avenger' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Soul of Vengeance' } }
+    devotion: { 6: { pb: { atk: 1 }, label: 'Aura of Devotion' }, 10: { pb: { ac: 1, heal: 2 }, label: 'Holy Nimbus' },
+                14: { pb: { atk: 1, heal: 3 }, label: 'Cleansing Touch' }, 18: { pb: { ac: 2, heal: 3 }, label: 'Angel of Devotion' } },
+    vengeance: { 6: { pb: { dmg: 2 }, label: 'Relentless Avenger' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Soul of Vengeance' },
+                 14: { pb: { dmg: 3, atk: 1 }, label: 'Avenging Angel' }, 18: { pb: { dmg: 4, atk: 1 }, label: 'Scourge of Vengeance' } }
   },
   ranger: {
-    hunter: { 6: { pb: { dmg: 1 }, label: 'Multiattack Defense' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Superior Hunter' } },
-    beastmaster: { 6: { pb: { ac: 1 }, label: 'Exceptional Training' }, 10: { pb: { dmg: 2 }, label: 'Bestial Fury' } }
+    hunter: { 6: { pb: { dmg: 1 }, label: 'Multiattack Defense' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Superior Hunter' },
+              14: { pb: { dmg: 2, atk: 1 }, label: 'Apex Predator' }, 18: { pb: { dmg: 3, atk: 1 }, label: 'Legendary Hunter' } },
+    beastmaster: { 6: { pb: { ac: 1 }, label: 'Exceptional Training' }, 10: { pb: { dmg: 2 }, label: 'Bestial Fury' },
+                   14: { pb: { dmg: 2, hp: 8 }, label: 'Shared Fury' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Pack Alpha' } }
   },
   sorcerer: {
-    draconic: { 6: { pb: { dmg: 2 }, label: 'Elemental Affinity' }, 10: { pb: { ac: 1, hp: 4 }, label: 'Dragon Wings' } },
-    wildmagic: { 6: { pb: { atk: 1 }, label: 'Bend Luck' }, 10: { pb: { dmg: 2 }, label: 'Controlled Chaos' } }
+    draconic: { 6: { pb: { dmg: 2 }, label: 'Elemental Affinity' }, 10: { pb: { ac: 1, hp: 4 }, label: 'Dragon Wings' },
+                14: { pb: { dmg: 2, ac: 1 }, label: 'Dragon Fear' }, 18: { pb: { dmg: 4, hp: 6 }, label: 'Draconic Ascension' } },
+    wildmagic: { 6: { pb: { atk: 1 }, label: 'Bend Luck' }, 10: { pb: { dmg: 2 }, label: 'Controlled Chaos' },
+                 14: { pb: { dmg: 2, atk: 1 }, label: 'Spell Bombardment' }, 18: { pb: { dmg: 4 }, label: 'Chaos Ascendant' } }
   },
   warlock: {
-    fiend: { 6: { pb: { dmg: 1, hp: 4 }, label: "Dark One's Own Luck" }, 10: { pb: { dmg: 2 }, label: 'Fiendish Resilience' } },
-    archfey: { 6: { pb: { ac: 1 }, label: 'Misty Escape' }, 10: { pb: { atk: 1, ac: 1 }, label: 'Beguiling Defenses' } }
+    fiend: { 6: { pb: { dmg: 1, hp: 4 }, label: "Dark One's Own Luck" }, 10: { pb: { dmg: 2 }, label: 'Fiendish Resilience' },
+             14: { pb: { dmg: 2, hp: 6 }, label: 'Hurl Through Hell' }, 18: { pb: { dmg: 4 }, label: 'Fiendish Ascendancy' } },
+    archfey: { 6: { pb: { ac: 1 }, label: 'Misty Escape' }, 10: { pb: { atk: 1, ac: 1 }, label: 'Beguiling Defenses' },
+               14: { pb: { ac: 1, dmg: 2 }, label: 'Dark Delirium' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Archfey Presence' } }
   }
 };
 
@@ -570,8 +608,18 @@ export const CLASS_PROGRESSION = {
     6: [skillPoint(), milestone(6)],
     7: [auto('indomitable')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10), auto('extraAttack2')]
+      9: [skillPoint()],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), auto('extraAttack2')],
+      12: [asi(12)],
+      13: [skillPoint(), auto('indomitable2')],
+      14: [asi(14), milestone(14)],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint(), auto('actionSurge2')],
+      18: [asi(18), milestone(18)],
+      19: [skillPoint()],
+      20: [asi(20), auto('extraAttack3')]
   },
   rogue: {
     1: [auto('sneakAttack')],
@@ -580,10 +628,20 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [auto('uncannyDodge')],
     6: [skillPoint(), milestone(6)],
-    7: [auto('evasion')],
-    8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+     7: [auto('evasion')],
+     8: [asi(8)],
+      9: [skillPoint()],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), auto('reliableTalent')],
+      12: [asi(12)],
+      13: [skillPoint()],
+      14: [asi(14), milestone(14), auto('blindsense')],
+      15: [skillPoint(), auto('slipperyMind')],
+      16: [asi(16)],
+      17: [skillPoint()],
+      18: [asi(18), milestone(18), auto('elusive')],
+      19: [skillPoint()],
+      20: [asi(20), auto('strokeOfLuck')]
   },
   cleric: {
     1: [learnSpell('cleric_sp1', 'cleric', 1, 'Domain spell')],
@@ -592,10 +650,20 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [learnSpell('cleric_sp3', 'cleric', 3)],
     6: [skillPoint(), milestone(6)],
-    7: [learnSpell('cleric_sp3b', 'cleric', 3, 'Additional spell')],
+    7: [learnSpell('cleric_sp4', 'cleric', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+     9: [skillPoint(), learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), learnSpell('cleric_sp4b', 'cleric', 4, 'Additional domain spell')],
+      12: [asi(12)],
+      13: [skillPoint(), learnSpell('cleric_sp5b', 'cleric', 5, 'Higher-tier spell')],
+      14: [asi(14), milestone(14), auto('destroyUndeadGreater')],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint(), learnSpell('cleric_sp5c', 'cleric', 5, 'Mastery spell')],
+      18: [asi(18), milestone(18)],
+      19: [skillPoint()],
+      20: [asi(20), auto('divineInterventionImproved')]
   },
   wizard: {
     1: [learnSpell('wiz_sp1', 'wizard', 1, 'Learn a 1st-level spell'), auto('arcaneRecovery')],
@@ -604,10 +672,20 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [learnSpell('wiz_sp3', 'wizard', 3)],
     6: [skillPoint(), milestone(6)],
-    7: [learnSpell('wiz_sp3b', 'wizard', 3, 'Additional spell')],
+    7: [learnSpell('wiz_sp4', 'wizard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+     9: [skillPoint(), learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), learnSpell('wiz_sp4b', 'wizard', 4, 'Additional spell')],
+      12: [asi(12)],
+      13: [skillPoint(), learnSpell('wiz_sp5b', 'wizard', 5, 'Higher-tier spell')],
+      14: [asi(14), milestone(14)],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint(), learnSpell('wiz_sp5c', 'wizard', 5, 'Mastery spell')],
+      18: [asi(18), milestone(18), auto('spellMastery')],
+      19: [skillPoint()],
+      20: [asi(20), auto('signatureSpells')]
   },
   barbarian: {
     1: [auto('rage')],
@@ -618,8 +696,18 @@ export const CLASS_PROGRESSION = {
     6: [skillPoint(), milestone(6)],
     7: [auto('brutalCritical')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+       9: [skillPoint()],
+       10: [asi(10), milestone(10)],
+       11: [skillPoint(), learnSpell('wlk_sp4b', 'warlock', 4, 'Mystic Arcanum')],
+       12: [asi(12)],
+       13: [skillPoint(), learnSpell('wlk_mystic7', 'warlock', 5, 'Mystic Arcanum (7th)')],
+       14: [asi(14), milestone(14)],
+       15: [skillPoint(), learnSpell('wlk_mystic8', 'warlock', 5, 'Mystic Arcanum (8th)')],
+       16: [asi(16)],
+       17: [skillPoint(), learnSpell('wlk_mystic9', 'warlock', 5, 'Mystic Arcanum (9th)')],
+       18: [asi(18), milestone(18)],
+       19: [skillPoint()],
+       20: [asi(20), auto('eldritchMaster')]
   },
   bard: {
     1: [auto('bardicInspiration'), learnSpell('bard_sp1', 'bard', 1)],
@@ -628,10 +716,20 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [learnSpell('bard_sp3', 'bard', 3)],
     6: [skillPoint(), milestone(6)],
-    7: [learnSpell('bard_sp3b', 'bard', 3)],
+    7: [learnSpell('bard_sp4', 'bard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+     9: [skillPoint(), learnSpell('bard_sp5', 'bard', 5, 'Learn a 5th-level spell')],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), learnSpell('bard_sp4b', 'bard', 4, 'Additional spell')],
+      12: [asi(12)],
+      13: [skillPoint(), learnSpell('bard_sp5b', 'bard', 5, 'Higher-tier spell')],
+      14: [asi(14), milestone(14)],
+      15: [skillPoint(), auto('inspiredPerformance')],
+      16: [asi(16)],
+      17: [skillPoint()],
+      18: [asi(18), milestone(18)],
+      19: [skillPoint()],
+      20: [asi(20), auto('superiorInspiration')]
   },
   druid: {
     1: [learnSpell('druid_sp1', 'druid', 1)],
@@ -640,10 +738,20 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [learnSpell('druid_sp3', 'druid', 3)],
     6: [skillPoint(), milestone(6)],
-    7: [learnSpell('druid_sp3b', 'druid', 3)],
+    7: [learnSpell('druid_sp4', 'druid', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+     9: [skillPoint(), learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), learnSpell('druid_sp4b', 'druid', 4, 'Additional spell')],
+      12: [asi(12)],
+      13: [skillPoint(), learnSpell('druid_sp5b', 'druid', 5, 'Higher-tier spell')],
+      14: [asi(14), milestone(14)],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint()],
+      18: [asi(18), milestone(18), auto('beastSpells')],
+      19: [skillPoint()],
+      20: [asi(20), auto('archdruid')]
   },
   monk: {
     1: [auto('martialArts'), auto('ki')],
@@ -654,8 +762,18 @@ export const CLASS_PROGRESSION = {
     6: [skillPoint(), milestone(6)],
     7: [auto('stillMind')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+      9: [skillPoint()],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint()],
+      12: [asi(12)],
+      13: [skillPoint(), auto('tongueSunMoon')],
+      14: [asi(14), milestone(14), auto('diamondSoul')],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint()],
+      18: [asi(18), milestone(18), auto('emptyBody')],
+      19: [skillPoint()],
+      20: [asi(20), auto('perfectSelf')]
   },
   paladin: {
     1: [auto('divineSmite'), auto('layOnHands')],
@@ -666,8 +784,18 @@ export const CLASS_PROGRESSION = {
     6: [auto('auraProtection'), skillPoint(), milestone(6)],
     7: [auto('divineHealth')],
     8: [asi(8)],
-    9: [skillPoint(), learnSpell('pal_sp2', 'paladin', 2)],
-    10: [asi(10)]
+      9: [skillPoint(), learnSpell('pal_sp2', 'paladin', 2)],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), auto('improvedDivineSmite'), learnSpell('pal_sp3', 'paladin', 3, 'Higher prayer')],
+      12: [asi(12)],
+      13: [skillPoint()],
+      14: [asi(14), milestone(14), auto('cleansingTouch')],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint()],
+      18: [asi(18), milestone(18), auto('auraImproved')],
+      19: [skillPoint()],
+      20: [asi(20), auto('oathCapstone')]
   },
   ranger: {
     1: [auto('favoredEnemy'), auto('naturalExplorer')],
@@ -678,8 +806,18 @@ export const CLASS_PROGRESSION = {
     6: [skillPoint(), milestone(6)],
     7: [auto('primevalAwareness')],
     8: [asi(8)],
-    9: [skillPoint(), learnSpell('rng_sp2', 'ranger', 2)],
-    10: [asi(10), auto('colossusSlayerClass')]
+      9: [skillPoint(), learnSpell('rng_sp2', 'ranger', 2)],
+      10: [asi(10), milestone(10), auto('colossusSlayerClass')],
+      11: [skillPoint()],
+      12: [asi(12)],
+      13: [skillPoint()],
+      14: [asi(14), milestone(14), auto('vanish')],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint()],
+      18: [asi(18), milestone(18), auto('feralSenses')],
+      19: [skillPoint()],
+      20: [asi(20), auto('foeSlayer')]
   },
   sorcerer: {
     1: [learnSpell('sorc_sp1', 'sorcerer', 1), auto('tidesOfChaos')],
@@ -688,10 +826,20 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [learnSpell('sorc_sp3', 'sorcerer', 3)],
     6: [skillPoint(), milestone(6)],
-    7: [learnSpell('sorc_sp3b', 'sorcerer', 3)],
+    7: [learnSpell('sorc_sp4', 'sorcerer', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+      9: [skillPoint(), learnSpell('sorc_sp5', 'sorcerer', 5, 'Learn a 5th-level spell')],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), learnSpell('sorc_sp4b', 'sorcerer', 4, 'Additional spell')],
+      12: [asi(12)],
+      13: [skillPoint(), learnSpell('sorc_sp5b', 'sorcerer', 5, 'Higher-tier spell')],
+      14: [asi(14), milestone(14)],
+      15: [skillPoint()],
+      16: [asi(16)],
+      17: [skillPoint(), auto('metamagicExpert')],
+      18: [asi(18), milestone(18)],
+      19: [skillPoint()],
+      20: [asi(20), auto('sorcerousRestoration')]
   },
   warlock: {
     1: [auto('pactMagic'), auto('eldritchBlast'), learnSpell('wlk_sp1', 'warlock', 1)],
@@ -700,27 +848,133 @@ export const CLASS_PROGRESSION = {
     4: [asi(4)],
     5: [learnSpell('wlk_sp3', 'warlock', 3)],
     6: [skillPoint(), milestone(6)],
-    7: [learnSpell('wlk_sp3b', 'warlock', 3)],
-    8: [asi(8)],
-    9: [skillPoint()],
-    10: [asi(10)]
+     7: [learnSpell('wlk_sp4', 'warlock', 4, 'Learn a 4th-level spell')],
+     8: [asi(8)],
+      9: [skillPoint()],
+      10: [asi(10), milestone(10)],
+      11: [skillPoint(), auto('relentlessRage')],
+      12: [asi(12)],
+      13: [skillPoint(), auto('brutalCritical2')],
+      14: [asi(14), milestone(14)],
+      15: [skillPoint(), auto('persistentRage')],
+      16: [asi(16)],
+      17: [skillPoint(), auto('brutalCritical3')],
+      18: [asi(18), auto('indomitableMight'), milestone(18)],
+      19: [skillPoint()],
+      20: [asi(20), auto('primalChampion')]
   }
 };
 
 /* ================================================================
-   Spell slot table by caster progression
+   Spell slots by caster progression — SRD 5.1 leveled slot tables.
+   Slots are objects keyed by spell level: { 1:4, 2:3, 3:2 }.
+   No upcasting: casting consumes the lowest slot ≥ the spell's level.
    ================================================================ */
+const FULL_CASTER_SLOTS = [
+  null,
+  { 1:2 },                                              // 1
+  { 1:3 },                                              // 2
+  { 1:4, 2:2 },                                         // 3
+  { 1:4, 2:3 },                                         // 4
+  { 1:4, 2:3, 3:2 },                                    // 5
+  { 1:4, 2:3, 3:3 },                                    // 6
+  { 1:4, 2:3, 3:3, 4:1 },                               // 7
+  { 1:4, 2:3, 3:3, 4:2 },                               // 8
+  { 1:4, 2:3, 3:3, 4:3, 5:1 },                          // 9
+  { 1:4, 2:3, 3:3, 4:3, 5:2 },                          // 10
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1 },                     // 11
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1 },                     // 12
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1, 7:1 },                // 13
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1, 7:1 },                // 14
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1, 7:1, 8:1 },           // 15
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1, 7:1, 8:1 },           // 16
+  { 1:4, 2:3, 3:3, 4:3, 5:2, 6:1, 7:1, 8:1, 9:1 },      // 17
+  { 1:4, 2:3, 3:3, 4:3, 5:3, 6:1, 7:1, 8:1, 9:1 },      // 18
+  { 1:4, 2:3, 3:3, 4:3, 5:3, 6:2, 7:1, 8:1, 9:1 },      // 19
+  { 1:4, 2:3, 3:3, 4:3, 5:3, 6:2, 7:2, 8:1, 9:1 },      // 20
+];
+
+/** Warlock Pact Magic: all slots share one level; recharge on short rest. */
+function pactSlotsFor(level) {
+  const count = level >= 17 ? 4 : (level >= 11 ? 3 : (level >= 2 ? 2 : 1));
+  const slotLevel = level >= 9 ? 5 : (level >= 7 ? 4 : (level >= 5 ? 3 : (level >= 3 ? 2 : 1)));
+  return { [slotLevel]: count };
+}
+
+/** Leveled slots for a class at a level. Empty object for non-casters. */
 export function spellSlotsFor(classKey, level) {
   const full = ['wizard', 'cleric', 'druid', 'bard', 'sorcerer'];
   const half = ['paladin', 'ranger'];
-  if (classKey === 'warlock') return level >= 5 ? 2 : (level >= 1 ? 1 : 0);
-  if (full.includes(classKey)) return Math.min(6, 1 + Math.floor(level / 2));
-  if (half.includes(classKey)) return level < 2 ? 0 : Math.min(4, Math.floor((level + 1) / 3));
-  return 0;
+  if (classKey === 'warlock') return pactSlotsFor(level);
+  if (full.includes(classKey)) return { ...FULL_CASTER_SLOTS[Math.max(1, Math.min(20, level))] };
+  if (half.includes(classKey)) {
+    if (level < 2) return {};
+    return { ...FULL_CASTER_SLOTS[Math.max(1, Math.min(20, Math.ceil(level / 2)))] };
+  }
+  return {};
+}
+
+/* ── slot-pool helpers (tolerate legacy numeric pools, e.g. boss fake-casters) ── */
+
+/** Total slots across all levels (works on slots or slotsMax). */
+export function totalSlots(s) {
+  if (!s) return 0;
+  if (typeof s === 'number') return s;
+  let t = 0;
+  for (const k in s) t += s[k];
+  return t;
+}
+
+/** True if a slot of level ≥ lvl is available. */
+export function hasSlotFor(d, lvl = 1) {
+  const s = d.slots;
+  if (!s) return false;
+  if (typeof s === 'number') return s > 0;
+  for (const k in s) if (+k >= lvl && s[k] > 0) return true;
+  return false;
+}
+
+/** Spend the LOWEST available slot of level ≥ lvl (high slots are conserved
+ *  for high spells). Returns the slot level spent, or 0 if none. */
+export function spendSlotFor(d, lvl = 1) {
+  const s = d.slots;
+  if (typeof s === 'number') { if (s > 0) { d.slots = s - 1; return lvl; } return 0; }
+  if (!s) return 0;
+  let best = 0;
+  for (const k in s) {
+    const kl = +k;
+    if (kl >= lvl && s[k] > 0 && (best === 0 || kl < best)) best = kl;
+  }
+  if (!best) return 0;
+  s[best]--;
+  return best;
+}
+
+/** Recover up to n expended slots, lowest level first. Returns count restored. */
+export function recoverSlots(d, n = 1) {
+  if (!d.slotsMax || typeof d.slotsMax === 'number') return 0;
+  if (!d.slots || typeof d.slots === 'number') { d.slots = { ...d.slotsMax }; return n; }
+  let restored = 0;
+  const lvls = Object.keys(d.slotsMax).map(Number).sort((a, b) => a - b);
+  for (const lv of lvls) {
+    while (restored < n && (d.slots[lv] || 0) < d.slotsMax[lv]) {
+      d.slots[lv] = (d.slots[lv] || 0) + 1;
+      restored++;
+    }
+    if (restored >= n) break;
+  }
+  return restored;
+}
+
+/** Display string like "L1 3/4 · L2 2/3" for tooltips / menus. */
+export function slotBreakdown(slots, slotsMax) {
+  if (!slotsMax || typeof slotsMax === 'number') return '';
+  const lvls = Object.keys(slotsMax).map(Number).sort((a, b) => a - b);
+  return lvls.map(lv => `L${lv} ${(slots && slots[lv]) || 0}/${slotsMax[lv]}`).join(' · ');
 }
 
 export function isCasterClass(classKey) {
-  return spellSlotsFor(classKey, 10) > 0;
+  return totalSlots(spellSlotsFor(classKey, 20)) > 0;
 }
 
 /* ================================================================

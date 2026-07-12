@@ -80,6 +80,98 @@ export function drawBar(bar, frac, color='#4ade4a'){
   tex.needsUpdate = true;
 }
 
+/* -------- status effect tray sprite (above entity heads) -------- */
+export function makeStatusTray() {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 64;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false });
+  const spr = new THREE.Sprite(mat);
+  spr.scale.set(1.8, 0.45, 1);
+  spr.position.set(0, 1.6, 0); // Positioned above entity head
+  spr.renderOrder = 55;
+  return { spr, cv, g: cv.getContext('2d'), tex };
+}
+
+export function drawStatusTray(tray, entity) {
+  const { g, cv, tex } = tray;
+  g.clearRect(0, 0, cv.width, cv.height);
+
+  if (!entity || !entity._effects) {
+    tex.needsUpdate = true;
+    return;
+  }
+
+  const effects = Object.keys(entity._effects);
+  if (effects.length === 0) {
+    tex.needsUpdate = true;
+    return;
+  }
+
+  const EFFECT_ICONS = {
+    raging: '😡',
+    hasted: '⚡',
+    inspired: '✨',
+    shielded: '🛡️',
+    sacredWeapon: '⚔️',
+    bearTotem: '🐻',
+    wildShape: '🐺',
+    phaseStep: '👥',
+    remarkableAthlete: '🏃',
+    deathWarded: '👼',
+    blinded: '👁️',
+    charmed: '💜',
+    frightened: '😱',
+    poisoned: '🤢',
+    paralyzed: '🌀',
+    stunned: '💫',
+    restrained: '🕸️',
+    slowed: '⏳',
+    burning: '🔥',
+    prone: '🛌',
+    deafened: '🔇',
+    incapacitated: '✖️',
+    unconscious: '💤',
+    weakenedDmg: '🥀',
+    baned: '📉',
+    faerieFire: '🧚',
+    hexMarked: '🔮',
+    huntersMarked: '🎯'
+  };
+
+  g.font = 'bold 44px Arial, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.lineWidth = 8;
+  g.strokeStyle = '#000000';
+
+  const size = 48;
+  const totalW = effects.length * size;
+  const startX = (cv.width - totalW) / 2 + size / 2;
+
+  for (let i = 0; i < effects.length; i++) {
+    const key = effects[i];
+    const icon = EFFECT_ICONS[key] || '⭐';
+    const x = startX + i * size;
+    const y = cv.height / 2;
+
+    g.strokeText(icon, x, y);
+    g.fillText(icon, x, y);
+  }
+
+  tex.needsUpdate = true;
+}
+
+export function updateStatusTray(e) {
+  if (!e || !e.ent || !e.ent.statusTray) return;
+  const effects = e._effects ? Object.keys(e._effects).sort().join(',') : '';
+  if (e._lastEffectsStr !== effects) {
+    e._lastEffectsStr = effects;
+    drawStatusTray(e.ent.statusTray, e);
+  }
+}
+
 /* -------- hero mini: 2D animated LPC sprite -------- */
 export function makeHeroMesh(hero){
   const cls = CLASSES[hero.classKey];
@@ -93,7 +185,10 @@ export function makeHeroMesh(hero){
   drawBar(bar, 1);
   grp.add(bar.spr);
 
-  return { grp, bar, anim };
+  const statusTray = makeStatusTray();
+  grp.add(statusTray.spr);
+
+  return { grp, bar, anim, statusTray };
 }
 
 /* -------- monster mini: DCSS sprite -------- */
@@ -111,14 +206,17 @@ export function makeMonsterMesh(mon){
   
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
   const mesh = new THREE.Sprite(mat);
+  mesh.renderOrder = 1;
   mesh.center.set(0.5, 0);
   mesh.scale.set(1.5 * s, 1.5 * s, 1);
   grp.add(mesh);
 
-  const bar = makeBar();
-  bar.spr.position.y = 1.5 * s + 0.2;
-  drawBar(bar, 1, '#e0483a');
+  const bar = makeCircularBar('#e0483a');
+  drawBar(bar, 1);
   grp.add(bar.spr);
+
+  const statusTray = makeStatusTray();
+  grp.add(statusTray.spr);
   
   const anim = {
     mesh,
@@ -138,7 +236,7 @@ export function makeMonsterMesh(mon){
     }
   };
   
-  return { grp, bar, anim };
+  return { grp, bar, anim, statusTray };
 }
 
 /* -------- floating damage/heal numbers -------- */
@@ -177,10 +275,88 @@ export function updateFloatTexts(scene, dt){
   }
 }
 
+/* -------- Death fountain particles (boss kill spectacle) -------- */
+const fountainPool = [];
+export function spawnDeathFountain(scene, pos) {
+  const count = 40;
+  for (let i = 0; i < count; i++) {
+    const cv = document.createElement('canvas');
+    cv.width = 16; cv.height = 16;
+    const g = cv.getContext('2d');
+    const hue = 40 + Math.random() * 20;
+    g.fillStyle = `hsl(${hue}, 90%, ${60 + Math.random() * 30}%)`;
+    g.beginPath(); g.arc(8, 8, 4 + Math.random() * 3, 0, Math.PI * 2); g.fill();
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, blending: THREE.AdditiveBlending }));
+    spr.scale.set(0.3 + Math.random() * 0.3, 0.3 + Math.random() * 0.3, 1);
+    spr.position.copy(pos);
+    spr.renderOrder = 65;
+    scene.add(spr);
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.8 + Math.random() * 2.5;
+    fountainPool.push({
+      spr, tex,
+      vx: Math.cos(angle) * speed * (0.5 + Math.random()),
+      vy: 1.5 + Math.random() * 3.5,
+      vz: Math.sin(angle) * speed * (0.5 + Math.random()),
+      t: 0, life: 0.8 + Math.random() * 0.6
+    });
+  }
+}
+function updateDeathFountains(scene, dt) {
+  for (let i = fountainPool.length - 1; i >= 0; i--) {
+    const p = fountainPool[i];
+    p.t += dt;
+    p.vy -= dt * 3;
+    p.spr.position.x += p.vx * dt;
+    p.spr.position.y += p.vy * dt;
+    p.spr.position.z += p.vz * dt;
+    p.spr.material.opacity = Math.max(0, 1 - p.t / p.life);
+    if (p.t > p.life) {
+      scene.remove(p.spr);
+      p.tex.dispose();
+      p.spr.material.dispose();
+      fountainPool.splice(i, 1);
+    }
+  }
+}
+
+/* -------- Ground telegraph rings (monster ability warnings) -------- */
+const telegraphPool = [];
+export function spawnTelegraph(scene, pos, radius = 2.0, color = 0xe04040, duration = 0.8) {
+  const geom = new THREE.RingGeometry(0.15, radius, 32);
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, depthTest: false, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(pos.x, 0.06, pos.z);
+  mesh.renderOrder = 50;
+  scene.add(mesh);
+  telegraphPool.push({ mesh, mat, geom, t: 0, duration, startScale: 0.3 });
+}
+function updateTelegraphs(scene, dt) {
+  for (let i = telegraphPool.length - 1; i >= 0; i--) {
+    const tg = telegraphPool[i];
+    tg.t += dt;
+    const progress = tg.t / tg.duration;
+    const scale = tg.startScale + (1 - tg.startScale) * Math.min(1, progress);
+    tg.mesh.scale.set(scale, scale, scale);
+    tg.mat.opacity = 0.5 * (1 - progress);
+    if (tg.t >= tg.duration) {
+      scene.remove(tg.mesh);
+      tg.mat.dispose();
+      tg.geom.dispose();
+      telegraphPool.splice(i, 1);
+    }
+  }
+}
+
 /* flash a mesh red/white on hit */
 export function hitFlash(ent){
   if (ent.anim) {
-    ent.anim.play('hurt', true);
+    if (!ent.anim._dying) {
+      ent.anim.play('hurt', true);
+    }
     ent.anim.mesh.material.color.set(0xff6050);
   } else if (ent.bodyMat) {
     ent.bodyMat.emissive = ent.bodyMat.emissive || new THREE.Color();
@@ -200,6 +376,13 @@ export function updateFlash(ent, dt){
       }
     }
   }
+}
+
+/** Tick pooled world FX (death fountains, boss telegraphs). Called from the
+ *  game update loop with the live scene. */
+export function updateWorldFx(scene, dt){
+  updateDeathFountains(scene, dt);
+  updateTelegraphs(scene, dt);
 }
 
 /* ================= attack effects: projectiles + slashes ================= */
@@ -300,5 +483,8 @@ export function clearEffects(scene){
   for(const p of projectiles){ scene.remove(p.mesh); p.mat.dispose(); if(p.glowMat) p.glowMat.dispose(); }
   for(const s of slashes){ scene.remove(s.m); s.mat.dispose(); }
   for(const e of spriteEffects){ scene.remove(e.mesh); e.mat.dispose(); e.tex.dispose(); }
+  for(const p of fountainPool){ scene.remove(p.spr); p.tex.dispose(); p.spr.material.dispose(); }
+  for(const t of telegraphPool){ scene.remove(t.mesh); t.mat.dispose(); t.geom.dispose(); }
   projectiles.length = 0; slashes.length = 0; spriteEffects.length = 0;
+  fountainPool.length = 0; telegraphPool.length = 0;
 }
