@@ -19,6 +19,12 @@ if (!existsSync(manifestPath)) {
   process.exit(1);
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+/* story-mode lines (crawl / missions / briefings / story challenges) live in a
+   second manifest, produced by extract_story.mjs — include when present */
+const storyManifestPath = join(here, 'out', 'story-manifest.json');
+if (existsSync(storyManifestPath)) {
+  manifest.push(...JSON.parse(readFileSync(storyManifestPath, 'utf8')));
+}
 const have = new Set(existsSync(narrDir) ? readdirSync(narrDir) : []);
 const has = id => have.has(id + '.wav') || have.has(id + '.mp3');
 

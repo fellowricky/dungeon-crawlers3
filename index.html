@@ -99,8 +99,6 @@
       </div>
     </div>
 
-    <div id="hints"><b>drag</b> pan · <b>wheel</b> zoom · <b>shift-drag</b> orbit · <b>P</b> post FX</div>
-
     <!-- ===== game HUD ===== -->
     <div id="partyframes"></div>
 
@@ -109,31 +107,43 @@
     <!-- initiative / turn-order tracker (shown only during combat) -->
     <div id="initiative"></div>
 
-    <!-- healing potions: primary player action, kept prominent up top -->
-    <div id="potionbar">
-      <button id="potheal" class="potion-btn potion-heal" title="Heal the most wounded hero (2d4+2) — press 1">
-        <span class="potion-ico">🧪</span>
-        <span class="potion-label">Potion</span>
-        <span class="potion-count" id="potheal-n">0</span>
-        <span class="potion-key">1</span>
-      </button>
-      <button id="potgreater" class="potion-btn potion-greater" title="Greater healing (4d4+4) — press 2">
-        <span class="potion-ico">⚗️</span>
-        <span class="potion-label">Greater</span>
-        <span class="potion-count" id="potgreater-n">0</span>
-        <span class="potion-key">2</span>
+    <!-- healing potions & mode toggle: primary player actions centered at top -->
+    <div id="hud-top-center">
+      <div id="potionbar">
+        <button id="potheal" class="potion-btn potion-heal" title="Heal the most wounded hero (2d4+2) — press 1">
+          <span class="potion-ico">🧪</span>
+          <span class="potion-label">Potion</span>
+          <span class="potion-count" id="potheal-n">0</span>
+          <span class="potion-key">1</span>
+        </button>
+        <button id="potgreater" class="potion-btn potion-greater" title="Greater healing (4d4+4) — press 2">
+          <span class="potion-ico">⚗️</span>
+          <span class="potion-label">Greater</span>
+          <span class="potion-count" id="potgreater-n">0</span>
+          <span class="potion-key">2</span>
+        </button>
+        <button id="potsuperior" class="potion-btn potion-superior" title="Superior healing (8d4+8) — press 3">
+          <span class="potion-ico">🍶</span>
+          <span class="potion-label">Superior</span>
+          <span class="potion-count" id="potsuperior-n">0</span>
+          <span class="potion-key">3</span>
+        </button>
+      </div>
+      <button id="mode-toggle-btn" class="mode-toggle-btn" title="Toggle Auto/Manual mode (press M)">
+        <span class="mode-ico">⚡</span>
+        <span class="mode-label">AUTO</span>
       </button>
     </div>
 
-    <div id="resources">
-      <span class="res">🪙 <b id="goldval">0</b></span>
-    </div>
+    <!-- Manual combat control bar (bottom center) -->
+    <div id="manual-combat-bar" class="manual-combat-bar" style="display:none;"></div>
 
     <div id="logpanel">
       <div id="log-resize-handle"></div>
       <div class="log-header">
         <span class="log-title">Combat Log</span>
         <div class="log-header-right" style="display:flex; align-items:center; gap:6px;">
+          <button id="log-pause-btn" class="log-pause-btn" title="Pause game (Space)">⏸️ Pause</button>
           <div class="log-tabs">
             <button class="log-tab on" data-filter="all">All</button>
             <button class="log-tab" data-filter="combat">Combat</button>
@@ -153,22 +163,67 @@
       <div id="dbg-body"></div>
     </div>
 
+    <!-- ===== main menu / title screen ===== -->
+    <div id="titlescreen">
+      <div class="ts-inner">
+        <img id="ts-logo" src="./art/title_card.png" alt="Dungeons &amp; Delvers" />
+        <div class="ts-menu">
+          <button id="ts-new" class="ts-btn">NEW GAME</button>
+          <button id="ts-continue" class="ts-btn">CONTINUE GAME</button>
+          <button id="ts-settings" class="ts-btn">SETTINGS</button>
+          <button id="ts-exit" class="ts-btn">EXIT</button>
+        </div>
+        <div class="ts-note">
+          Mechanics from the SRD 5.1 by Wizards of the Coast LLC (CC-BY-4.0). ·
+          Dungeon engine: Dungeon Forge by Majid Manzarpour (MIT). ·
+          Hero sprites from the Liberated Pixel Cup (OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0);
+          per-artist credits in <code>Sprites/lpc_repo/CREDITS.csv</code>. ·
+          Assembled with the Universal LPC Spritesheet Character Generator (GPL-3.0). ·
+          Tiles, monster &amp; item art from Dungeon Crawl Stone Soup (CC0). ·
+          Particle effects from the Kenney Particle Pack (CC0). ·
+          Music: <i>Castle Tales</i> — Free 30 Pixel Fantasy RPG Tracks by alkakrab
+          (free for commercial use). ·
+          Sound effects: Free Fantasy 200 SFX Pack by TomMusic
+          (royalty-free; not for resale or redistribution). ·
+          Fonts: Press Start 2P, VT323, Cinzel &amp; Alegreya (SIL Open Font License 1.1).
+        </div>
+      </div>
+
+      <!-- The title screen's SETTINGS button opens the shared Options panel
+           (volume + combat log + automation), built by options_ui.js. -->
+
+    </div>
+
     <!-- ===== party setup ===== -->
     <div id="setup">
       <div class="setup-inner">
-        <h1>DUNGEON CRAWLERS</h1>
-        <div class="tagline">Forge a party of four. They'll handle the rest — you just keep the potions coming.</div>
+        <div class="setup-head">
+          <h1>DUNGEON CRAWLERS</h1>
+          <div class="tagline">Forge a party of four. They'll handle the rest — you just keep the potions coming.</div>
+        </div>
         <div class="setup-columns">
           <div id="setup-roster"></div>
           <div id="setup-slots"></div>
         </div>
         <div class="actions">
-          <button id="setup-continue">CONTINUE SAVED PARTY</button>
+          <button id="setup-back">↩ BACK TO TITLE</button>
+          <button id="setup-prev">◀ BACK</button>
+          <button id="setup-next">NEXT ▶</button>
           <button id="setup-embark">⚔ EMBARK</button>
         </div>
         <div class="srd-note">
           Mechanics from the SRD 5.1 by Wizards of the Coast LLC (CC-BY-4.0). ·
-          Dungeon engine: Dungeon Forge by Majid Manzarpour (MIT).
+          Dungeon engine: Dungeon Forge by Majid Manzarpour (MIT). ·
+          Hero sprites from the Liberated Pixel Cup (OGA-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0);
+          per-artist credits in <code>Sprites/lpc_repo/CREDITS.csv</code>. ·
+          Assembled with the Universal LPC Spritesheet Character Generator (GPL-3.0). ·
+          Tiles, monster &amp; item art from Dungeon Crawl Stone Soup (CC0). ·
+          Particle effects from the Kenney Particle Pack (CC0). ·
+          Music: <i>Castle Tales</i> — Free 30 Pixel Fantasy RPG Tracks by alkakrab
+          (free for commercial use). ·
+          Sound effects: Free Fantasy 200 SFX Pack by TomMusic
+          (royalty-free; not for resale or redistribution). ·
+          Fonts: Press Start 2P, VT323, Cinzel &amp; Alegreya (SIL Open Font License 1.1).
         </div>
       </div>
     </div>
@@ -180,10 +235,15 @@
           <div class="wm-header-top">
             <div class="wm-tabs">
               <button class="wm-tab active" data-tab="map">🗺️ Quests</button>
+              <button class="wm-tab" data-tab="story">📖 Story</button>
               <button class="wm-tab" data-tab="shop">🛒 Shop</button>
-              <button class="wm-tab" data-tab="tavern">🍻 Tavern</button>
+              <button class="wm-tab" data-tab="guild">🏰 Guild</button>
             </div>
-            <div class="wm-header-gold">🪙 <b id="wm-header-gold-val">0</b></div>
+            <div class="wm-header-right">
+              <button id="wm-party-btn" title="Manage equipment & inventory">🎒 Party<span id="wm-party-badge" class="badge" style="display:none">0</span></button>
+              <button id="wm-menu-btn" title="Save, options & quit">⚙️ Menu</button>
+              <div class="wm-header-gold">🪙 <b id="wm-header-gold-val">0</b></div>
+            </div>
           </div>
         </div>
 
@@ -214,11 +274,45 @@
           </div>
         </div>
 
+        <!-- Panel: Story -->
+        <div class="wm-content wm-panel" id="wm-panel-story" style="display: none;">
+          <div class="wm-story-list" id="wm-story-list"></div>
+          <div class="wm-sidebar" id="wm-story-sidebar">
+            <div id="wm-story-placeholder">Select a chapter to view the mission briefing.</div>
+            <div id="wm-story-content" style="display:none;">
+              <h3 id="wm-story-name" class="q-name"></h3>
+              <div id="wm-story-desc" class="q-desc"></div>
+              <div class="q-meta-grid">
+                <div class="q-meta-row"><span>Region:</span> <strong id="wm-story-region"></strong></div>
+                <div class="q-meta-row"><span>Map:</span> <strong id="wm-story-mapkind"></strong></div>
+                <div class="q-meta-row"><span>Difficulty:</span> <strong id="wm-story-level"></strong></div>
+              </div>
+              <div class="q-rewards">
+                <h4>Rewards</h4>
+                <div class="q-reward-item">🪙 <span id="wm-story-gold"></span> gold</div>
+                <div class="q-reward-item">✨ <span id="wm-story-xp"></span> XP</div>
+              </div>
+              <button id="wm-story-embark-btn" class="btn primary">BEGIN MISSION</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Panel: Shop -->
         <div class="wm-content wm-panel" id="wm-panel-shop" style="display: none;">
           <div class="wm-shop-layout">
             <div class="wm-shop-column wm-shop-buy">
               <h3>Buy Items</h3>
+              <div class="wm-shop-filter-bar" id="wm-shop-filter-bar">
+                <button class="wm-filter-btn active" data-filter="all">All</button>
+                <button class="wm-filter-btn" data-filter="weapon">Weapons</button>
+                <button class="wm-filter-btn" data-filter="armor">Armor</button>
+                <button class="wm-filter-btn" data-filter="helm">Helmets</button>
+                <button class="wm-filter-btn" data-filter="boots">Boots</button>
+                <button class="wm-filter-btn" data-filter="shield">Shields</button>
+                <button class="wm-filter-btn" data-filter="other">Accessory</button>
+                <button class="wm-filter-btn" data-filter="potion">Potions</button>
+                <button class="wm-filter-btn" data-filter="dye">Dyes</button>
+              </div>
               <div class="wm-shop-grid" id="wm-shop-buy-grid"></div>
             </div>
             <div class="wm-shop-column wm-shop-sell">
@@ -232,27 +326,82 @@
           </div>
         </div>
 
-        <!-- Panel: Tavern -->
-        <div class="wm-content wm-panel" id="wm-panel-tavern" style="display: none;">
-          <div class="wm-tavern-layout">
-            <div class="wm-tavern-column wm-tavern-active">
-              <h3>Active Party (<span id="wm-tavern-active-count">0</span>/4)</h3>
-              <div class="wm-tavern-list" id="wm-tavern-active-list"></div>
+        <!-- Panel: Guild -->
+        <div class="wm-content wm-panel" id="wm-panel-guild" style="display: none;">
+          <div class="wm-guild-layout">
+            <!-- Guild Sub-Tabs Navigation Bar -->
+            <div class="guild-subtabs-bar" id="guild-subtabs-bar">
+              <button class="guild-subtab active" data-subtab="roster">🏰 Roster & Quarters</button>
+              <button class="guild-subtab" data-subtab="armory">🗄️ Armory</button>
+              <button class="guild-subtab" data-subtab="blacksmith">⚒️ Blacksmith</button>
+              <button class="guild-subtab" data-subtab="apothecary">🧪 Apothecary</button>
+              <button class="guild-subtab" data-subtab="training_grounds">⚔️ Training Grounds</button>
+              <button class="guild-subtab" data-subtab="infirmary">🩺 Infirmary</button>
+              <button class="guild-subtab" data-subtab="crypt">🪦 Crypt</button>
+              <button class="guild-subtab" data-subtab="enchanter">🔮 Enchanter</button>
+              <button class="guild-subtab" data-subtab="academy">📜 Academy</button>
+              <button class="guild-subtab" data-subtab="cartographer">🗺️ Cartographer</button>
+              <button class="guild-subtab" data-subtab="war_room">🛡️ War Room</button>
             </div>
-            <div class="wm-tavern-column wm-tavern-stored">
-              <h3>Stored Heroes</h3>
-              <div class="wm-tavern-list" id="wm-tavern-stored-list"></div>
+
+            <!-- Subpanel: Roster & Quarters -->
+            <div class="guild-subpanel" id="guild-subpanel-roster">
+              <div class="wm-tavern-layout">
+                <div class="wm-tavern-column wm-tavern-active">
+                  <h3>Active Party (<span id="wm-tavern-active-count">0</span>/4)</h3>
+                  <div class="wm-tavern-list" id="wm-tavern-active-list"></div>
+                </div>
+                <div class="wm-tavern-column wm-tavern-stored">
+                  <h3>Stored Heroes</h3>
+                  <div class="wm-tavern-list" id="wm-tavern-stored-list"></div>
+                </div>
+                <div class="wm-tavern-column wm-tavern-hire">
+                  <h3>Recruitment Pool</h3>
+                  <div class="wm-tavern-list" id="wm-tavern-hire-list"></div>
+                </div>
+                <div class="wm-tavern-column wm-tavern-detail">
+                  <h3>Hero Details</h3>
+                  <div id="wm-tavern-detail-content"></div>
+                </div>
+              </div>
             </div>
-            <div class="wm-tavern-column wm-tavern-hire">
-              <h3>Available for Hire</h3>
-              <div class="wm-tavern-list" id="wm-tavern-hire-list"></div>
-            </div>
-            <div class="wm-tavern-column wm-tavern-detail">
-              <h3>Hero Details</h3>
-              <div id="wm-tavern-detail-content"></div>
+
+            <!-- Subpanel: Facility Focused View -->
+            <div class="guild-subpanel" id="guild-subpanel-facility" style="display: none;">
+              <div id="guild-facility-content"></div>
             </div>
           </div>
         </div>
+
+        <!-- System menu overlay (save / options / quit) -->
+        <div id="wm-sysmenu">
+          <div class="wm-sysmenu-panel">
+            <h2 class="wm-sysmenu-title">Menu</h2>
+
+            <!-- Volume moved into the Options panel (⚙ Options below) so every
+                 preference lives in one place. -->
+            <div class="wm-sysmenu-actions">
+              <button id="sys-save-btn" class="btn primary">💾 Save Game</button>
+              <button id="sys-options-btn" class="btn">⚙️ Options</button>
+              <a href="bestiary.html" target="_blank" class="btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">📖 Open Bestiary</a>
+              <a href="loot_editor.html" target="_blank" class="btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">🎁 Open Loot Editor</a>
+              <a href="sound_editor.html" target="_blank" class="btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">🔊 Open Sound Editor</a>
+              <button id="sys-quit-btn" class="btn">🚪 Save &amp; Quit to Title</button>
+              <button id="sys-resume-btn" class="btn">↩ Resume</button>
+            </div>
+            <div id="sys-menu-toast" class="wm-sysmenu-toast"></div>
+          </div>
+        </div>
+      </div><!-- /.wm-frame -->
+    </div><!-- /#worldmapscreen -->
+
+    <!-- NB: .wm-frame and #worldmapscreen were unclosed until 2026-07-29, so the
+         browser auto-closed them at </body> and silently nested everything below
+         INSIDE the (usually display:none) world-map screen. The Options overlay
+         is built in document.body by options_ui.js rather than declared here, so
+         it can never be captured by a hidden container again. -->
+
+    <div id="hover-cursor-tooltip"></div>
 
     <script type="module" src="./src/main.js"></script>
   </body>

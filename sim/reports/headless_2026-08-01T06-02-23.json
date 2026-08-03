@@ -1,0 +1,458 @@
+{
+  "byClass": {
+    "cleric": [
+      {
+        "class": "cleric",
+        "race": "dwarf",
+        "name": "Bram-cleric",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 82,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 2,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 26,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "cleric",
+        "race": "tiefling",
+        "name": "Doric-cleric",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 52,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 1,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 29,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 23,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "paladin": [
+      {
+        "class": "paladin",
+        "race": "halforc",
+        "name": "Kira-paladin",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 123,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 4,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 40,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 43,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 40,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "druid": [
+      {
+        "class": "druid",
+        "race": "dragonborn",
+        "name": "Aldric-druid",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 65,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 2,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 7,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 40,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "monk": [
+      {
+        "class": "monk",
+        "race": "gnome",
+        "name": "Wren-monk",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 82,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 2,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 32,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 9,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 41,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "warlock": [
+      {
+        "class": "warlock",
+        "race": "wolf",
+        "name": "Sariel-warlock",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 51,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 1,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 23,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 10,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "wolf": [
+      {
+        "class": "wolf",
+        "race": "tiefling",
+        "name": "Toby-wolf",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 46,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 2,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 8,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "wizard": [
+      {
+        "class": "wizard",
+        "race": "gnome",
+        "name": "Magda-wizard",
+        "encounters": 6,
+        "dmgDealt": 0,
+        "dmgTaken": 16,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 0,
+        "downs": 1,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 16,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 2,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ]
+  },
+  "summary": {
+    "cleric": {
+      "count": 2,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 67,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 1.5,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    },
+    "paladin": {
+      "count": 1,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 123,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 4,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    },
+    "druid": {
+      "count": 1,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 65,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 2,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    },
+    "monk": {
+      "count": 1,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 82,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 2,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    },
+    "warlock": {
+      "count": 1,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 51,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 1,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    },
+    "wolf": {
+      "count": 1,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 46,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 2,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    },
+    "wizard": {
+      "count": 1,
+      "avgDmgDealt": 0,
+      "avgDmgTaken": 16,
+      "avgHealing": 0,
+      "avgKills": 0,
+      "avgDowns": 1,
+      "avgDeaths": 0,
+      "avgEncounters": 6
+    }
+  }
+}

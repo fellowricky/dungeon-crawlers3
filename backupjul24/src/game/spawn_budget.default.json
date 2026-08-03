@@ -1,0 +1,110 @@
+{
+  "baseBudget": 150,
+  "difficultyFloor": 0.35,
+  "difficultySpan": 0.65,
+  "maxSpawns": 10,
+  "overspendSlack": 0.7,
+  "typeMult": {
+    "combat": 0.8,
+    "elite": 1.5,
+    "boss": 2.2
+  },
+  "crAnchorLevels": [
+    1,
+    4,
+    8,
+    12,
+    16
+  ],
+  "crAnchorCRs": [
+    0.25,
+    1,
+    3,
+    6,
+    10
+  ],
+  "crCostScale": 1,
+  "crCostOverrides": {},
+  "levelCurve": {
+    "1": {
+      "budgetMult": 0.15,
+      "spawnCap": 4
+    },
+    "2": {
+      "budgetMult": 0.2,
+      "spawnCap": 5
+    },
+    "3": {
+      "budgetMult": 0.28,
+      "spawnCap": 5
+    },
+    "4": {
+      "budgetMult": 0.38,
+      "spawnCap": 6
+    },
+    "5": {
+      "budgetMult": 0.5,
+      "spawnCap": 6
+    },
+    "6": {
+      "budgetMult": 0.6,
+      "spawnCap": 7
+    },
+    "7": {
+      "budgetMult": 0.7,
+      "spawnCap": 7
+    },
+    "8": {
+      "budgetMult": 0.8,
+      "spawnCap": 8
+    },
+    "9": {
+      "budgetMult": 0.9,
+      "spawnCap": 8
+    },
+    "10": {
+      "budgetMult": 1.0,
+      "spawnCap": 9
+    },
+    "11": {
+      "budgetMult": 1.1,
+      "spawnCap": 9
+    },
+    "12": {
+      "budgetMult": 1.15,
+      "spawnCap": 10
+    },
+    "13": {
+      "budgetMult": 1.35,
+      "spawnCap": 10
+    },
+    "14": {
+      "budgetMult": 1.5,
+      "spawnCap": 10
+    },
+    "15": {
+      "budgetMult": 1.7,
+      "spawnCap": 10
+    },
+    "16": {
+      "budgetMult": 1.9,
+      "spawnCap": 10
+    },
+    "17": {
+      "budgetMult": 1.9,
+      "spawnCap": 10
+    },
+    "18": {
+      "budgetMult": 1.9,
+      "spawnCap": 10
+    },
+    "19": {
+      "budgetMult": 1.9,
+      "spawnCap": 10
+    },
+    "20": {
+      "budgetMult": 1.9,
+      "spawnCap": 10
+    }
+  }
+}

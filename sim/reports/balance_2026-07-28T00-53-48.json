@@ -1,0 +1,1984 @@
+{
+  "config": {
+    "parties": 20,
+    "partySize": 4,
+    "maxLevel": 20,
+    "encountersPerLevel": 6,
+    "seed": 1337,
+    "quiet": true
+  },
+  "rows": [
+    {
+      "class": "fighter",
+      "label": "Fighter",
+      "n": 5,
+      "encounters": 600,
+      "rounds": 3916,
+      "dmgDealt": 333156,
+      "dmgTaken": 28593,
+      "mitigated": 0,
+      "healingDone": 749,
+      "attacks": 10736,
+      "hits": 9035,
+      "crits": 1605,
+      "kills": 1010,
+      "downs": 29,
+      "deaths": 5,
+      "dpr": 85.0755873340143,
+      "dmgPerEnc": 555.26,
+      "takenPerEnc": 47.655,
+      "healPerEnc": 1.2483333333333333,
+      "killsPerEnc": 1.6833333333333333,
+      "hitRate": 0.8415611028315947,
+      "critRate": 0.14949701937406856,
+      "downRate": 0.04833333333333333,
+      "deathRate": 0.008333333333333333,
+      "zOffense": 2.086191392973782,
+      "zDefense": 0.7063661012149962
+    },
+    {
+      "class": "ranger",
+      "label": "Ranger",
+      "n": 5,
+      "encounters": 600,
+      "rounds": 4244,
+      "dmgDealt": 312510,
+      "dmgTaken": 27772,
+      "mitigated": 0,
+      "healingDone": 0,
+      "attacks": 7721,
+      "hits": 7046,
+      "crits": 955,
+      "kills": 937,
+      "downs": 11,
+      "deaths": 5,
+      "dpr": 73.63572101790763,
+      "dmgPerEnc": 520.85,
+      "takenPerEnc": 46.28666666666667,
+      "healPerEnc": 0,
+      "killsPerEnc": 1.5616666666666668,
+      "hitRate": 0.912576091179899,
+      "critRate": 0.12368864136769848,
+      "downRate": 0.018333333333333333,
+      "deathRate": 0.008333333333333333,
+      "zOffense": 1.5382181658900316,
+      "zDefense": 0.8500875515293344
+    },
+    {
+      "class": "barbarian",
+      "label": "Barbarian",
+      "n": 4,
+      "encounters": 480,
+      "rounds": 3846,
+      "dmgDealt": 243923,
+      "dmgTaken": 14213,
+      "mitigated": 13467,
+      "healingDone": 0,
+      "attacks": 6796,
+      "hits": 5365,
+      "crits": 872,
+      "kills": 716,
+      "downs": 10,
+      "deaths": 4,
+      "dpr": 63.42251690067603,
+      "dmgPerEnc": 508.17291666666665,
+      "takenPerEnc": 29.610416666666666,
+      "healPerEnc": 0,
+      "killsPerEnc": 1.4916666666666667,
+      "hitRate": 0.7894349617422013,
+      "critRate": 0.12831077104178928,
+      "downRate": 0.020833333333333332,
+      "deathRate": 0.008333333333333333,
+      "zOffense": 1.0490024474244404,
+      "zDefense": 2.6016599041270085
+    },
+    {
+      "class": "paladin",
+      "label": "Paladin",
+      "n": 11,
+      "encounters": 1320,
+      "rounds": 10500,
+      "dmgDealt": 574535,
+      "dmgTaken": 70350,
+      "mitigated": 0,
+      "healingDone": 44503,
+      "attacks": 18895,
+      "hits": 14151,
+      "crits": 2149,
+      "kills": 1762,
+      "downs": 31,
+      "deaths": 11,
+      "dpr": 54.717619047619046,
+      "dmgPerEnc": 435.2537878787879,
+      "takenPerEnc": 53.29545454545455,
+      "healPerEnc": 33.714393939393936,
+      "killsPerEnc": 1.334848484848485,
+      "hitRate": 0.7489282879068536,
+      "critRate": 0.11373379200846785,
+      "downRate": 0.023484848484848483,
+      "deathRate": 0.008333333333333333,
+      "zOffense": 0.6320350776870782,
+      "zDefense": 0.11392689948186911
+    },
+    {
+      "class": "rogue",
+      "label": "Rogue",
+      "n": 2,
+      "encounters": 240,
+      "rounds": 2148,
+      "dmgDealt": 86897,
+      "dmgTaken": 14600,
+      "mitigated": 0,
+      "healingDone": 0,
+      "attacks": 2044,
+      "hits": 1488,
+      "crits": 277,
+      "kills": 288,
+      "downs": 8,
+      "deaths": 2,
+      "dpr": 40.454841713221604,
+      "dmgPerEnc": 362.0708333333333,
+      "takenPerEnc": 60.833333333333336,
+      "healPerEnc": 0,
+      "killsPerEnc": 1.2,
+      "hitRate": 0.7279843444227005,
+      "critRate": 0.13551859099804306,
+      "downRate": 0.03333333333333333,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.05115648304845187,
+      "zDefense": -0.6778062588769317
+    },
+    {
+      "class": "warlock",
+      "label": "Warlock",
+      "n": 10,
+      "encounters": 1200,
+      "rounds": 8927,
+      "dmgDealt": 345603,
+      "dmgTaken": 62663,
+      "mitigated": 0,
+      "healingDone": 1415,
+      "attacks": 18854,
+      "hits": 8109,
+      "crits": 2251,
+      "kills": 1120,
+      "downs": 64,
+      "deaths": 10,
+      "dpr": 38.7143497255517,
+      "dmgPerEnc": 288.0025,
+      "takenPerEnc": 52.219166666666666,
+      "healPerEnc": 1.1791666666666667,
+      "killsPerEnc": 0.9333333333333333,
+      "hitRate": 0.43009440967433965,
+      "critRate": 0.11939111063965206,
+      "downRate": 0.05333333333333334,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.1345266016182881,
+      "zDefense": 0.22697366310803493
+    },
+    {
+      "class": "druid",
+      "label": "Druid",
+      "n": 8,
+      "encounters": 960,
+      "rounds": 8459,
+      "dmgDealt": 287125,
+      "dmgTaken": 60146,
+      "mitigated": 0,
+      "healingDone": 47114,
+      "attacks": 5651,
+      "hits": 3371,
+      "crits": 732,
+      "kills": 691,
+      "downs": 26,
+      "deaths": 8,
+      "dpr": 33.94313748670056,
+      "dmgPerEnc": 299.0885416666667,
+      "takenPerEnc": 62.65208333333333,
+      "healPerEnc": 49.077083333333334,
+      "killsPerEnc": 0.7197916666666667,
+      "hitRate": 0.5965315873296761,
+      "critRate": 0.12953459564678818,
+      "downRate": 0.027083333333333334,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.3630691820454462,
+      "zDefense": -0.8688367493221463
+    },
+    {
+      "class": "monk",
+      "label": "Monk",
+      "n": 7,
+      "encounters": 840,
+      "rounds": 6354,
+      "dmgDealt": 210894,
+      "dmgTaken": 40049,
+      "mitigated": 0,
+      "healingDone": 0,
+      "attacks": 11830,
+      "hits": 6557,
+      "crits": 1282,
+      "kills": 794,
+      "downs": 44,
+      "deaths": 7,
+      "dpr": 33.19074598677998,
+      "dmgPerEnc": 251.06428571428572,
+      "takenPerEnc": 47.67738095238095,
+      "healPerEnc": 0,
+      "killsPerEnc": 0.9452380952380952,
+      "hitRate": 0.5542688081149619,
+      "critRate": 0.10836855452240067,
+      "downRate": 0.05238095238095238,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.399108973669705,
+      "zDefense": 0.7040153414569406
+    },
+    {
+      "class": "wizard",
+      "label": "Wizard",
+      "n": 3,
+      "encounters": 360,
+      "rounds": 2715,
+      "dmgDealt": 89410,
+      "dmgTaken": 20265,
+      "mitigated": 0,
+      "healingDone": 0,
+      "attacks": 1662,
+      "hits": 759,
+      "crits": 203,
+      "kills": 224,
+      "downs": 17,
+      "deaths": 3,
+      "dpr": 32.93186003683241,
+      "dmgPerEnc": 248.36111111111111,
+      "takenPerEnc": 56.291666666666664,
+      "healPerEnc": 0,
+      "killsPerEnc": 0.6222222222222222,
+      "hitRate": 0.4566787003610108,
+      "critRate": 0.12214199759326114,
+      "downRate": 0.04722222222222222,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.41150969283192784,
+      "zDefense": -0.200777084569292
+    },
+    {
+      "class": "cleric",
+      "label": "Cleric",
+      "n": 8,
+      "encounters": 960,
+      "rounds": 8916,
+      "dmgDealt": 235699,
+      "dmgTaken": 62611,
+      "mitigated": 0,
+      "healingDone": 70432,
+      "attacks": 6314,
+      "hits": 3677,
+      "crits": 778,
+      "kills": 656,
+      "downs": 32,
+      "deaths": 8,
+      "dpr": 26.435509196949305,
+      "dmgPerEnc": 245.51979166666666,
+      "takenPerEnc": 65.21979166666667,
+      "healPerEnc": 73.36666666666666,
+      "killsPerEnc": 0.6833333333333333,
+      "hitRate": 0.5823566677225214,
+      "critRate": 0.12321824516946468,
+      "downRate": 0.03333333333333333,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.7226869597364324,
+      "zDefense": -1.1385332893836901
+    },
+    {
+      "class": "sorcerer",
+      "label": "Sorcerer",
+      "n": 8,
+      "encounters": 960,
+      "rounds": 8071,
+      "dmgDealt": 213283,
+      "dmgTaken": 60169,
+      "mitigated": 0,
+      "healingDone": 0,
+      "attacks": 5219,
+      "hits": 1975,
+      "crits": 623,
+      "kills": 562,
+      "downs": 45,
+      "deaths": 8,
+      "dpr": 26.42584562012142,
+      "dmgPerEnc": 222.16979166666667,
+      "takenPerEnc": 62.67604166666667,
+      "healPerEnc": 0,
+      "killsPerEnc": 0.5854166666666667,
+      "hitRate": 0.37842498562943094,
+      "critRate": 0.11937152711247366,
+      "downRate": 0.046875,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.7231498481333092,
+      "zDefense": -0.8713531876269809
+    },
+    {
+      "class": "bard",
+      "label": "Bard",
+      "n": 4,
+      "encounters": 480,
+      "rounds": 4247,
+      "dmgDealt": 88098,
+      "dmgTaken": 30399,
+      "mitigated": 0,
+      "healingDone": 32244,
+      "attacks": 3251,
+      "hits": 2084,
+      "crits": 398,
+      "kills": 244,
+      "downs": 11,
+      "deaths": 4,
+      "dpr": 20.743583706145515,
+      "dmgPerEnc": 183.5375,
+      "takenPerEnc": 63.33125,
+      "healPerEnc": 67.175,
+      "killsPerEnc": 0.5083333333333333,
+      "hitRate": 0.6410335281451861,
+      "critRate": 0.12242386957859121,
+      "downRate": 0.022916666666666665,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -0.9953319971285747,
+      "zDefense": -0.9401723047461328
+    },
+    {
+      "class": "wolf",
+      "label": "Beast",
+      "n": 5,
+      "encounters": 600,
+      "rounds": 4927,
+      "dmgDealt": 49789,
+      "dmgTaken": 35516,
+      "mitigated": 0,
+      "healingDone": 0,
+      "attacks": 4626,
+      "hits": 2271,
+      "crits": 544,
+      "kills": 251,
+      "downs": 40,
+      "deaths": 5,
+      "dpr": 10.105337933833976,
+      "dmgPerEnc": 82.98166666666667,
+      "takenPerEnc": 59.193333333333335,
+      "healPerEnc": 0,
+      "killsPerEnc": 0.41833333333333333,
+      "hitRate": 0.4909208819714656,
+      "critRate": 0.11759619541720709,
+      "downRate": 0.06666666666666667,
+      "deathRate": 0.008333333333333333,
+      "zOffense": -1.5049073457632047,
+      "zDefense": -0.5055505863929988
+    }
+  ],
+  "curve": {
+    "1": {
+      "cleric": {
+        "dmgDealt": 479,
+        "rounds": 229,
+        "taken": 452,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 996,
+        "rounds": 253,
+        "taken": 561,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 492,
+        "rounds": 219,
+        "taken": 402,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 461,
+        "rounds": 206,
+        "taken": 296,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 292,
+        "rounds": 91,
+        "taken": 195,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 474,
+        "rounds": 128,
+        "taken": 153,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 533,
+        "rounds": 108,
+        "taken": 157,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 216,
+        "rounds": 75,
+        "taken": 119,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 648,
+        "rounds": 213,
+        "taken": 365,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 339,
+        "rounds": 106,
+        "taken": 196,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 182,
+        "rounds": 95,
+        "taken": 155,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 539,
+        "rounds": 153,
+        "taken": 280,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 77,
+        "rounds": 15,
+        "taken": 72,
+        "encounters": 12
+      }
+    },
+    "2": {
+      "cleric": {
+        "dmgDealt": 1548,
+        "rounds": 269,
+        "taken": 525,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 2808,
+        "rounds": 364,
+        "taken": 716,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 1452,
+        "rounds": 284,
+        "taken": 633,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 1572,
+        "rounds": 208,
+        "taken": 384,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 946,
+        "rounds": 111,
+        "taken": 166,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 1069,
+        "rounds": 150,
+        "taken": 141,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 1831,
+        "rounds": 163,
+        "taken": 273,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 488,
+        "rounds": 60,
+        "taken": 152,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 2028,
+        "rounds": 273,
+        "taken": 485,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 1298,
+        "rounds": 126,
+        "taken": 296,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 807,
+        "rounds": 141,
+        "taken": 350,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 1571,
+        "rounds": 228,
+        "taken": 480,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 432,
+        "rounds": 61,
+        "taken": 141,
+        "encounters": 12
+      }
+    },
+    "3": {
+      "cleric": {
+        "dmgDealt": 2414,
+        "rounds": 305,
+        "taken": 554,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 3765,
+        "rounds": 373,
+        "taken": 699,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 2512,
+        "rounds": 291,
+        "taken": 597,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 2022,
+        "rounds": 222,
+        "taken": 316,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 1261,
+        "rounds": 107,
+        "taken": 259,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 1433,
+        "rounds": 132,
+        "taken": 138,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 2162,
+        "rounds": 144,
+        "taken": 223,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 1253,
+        "rounds": 105,
+        "taken": 188,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 2513,
+        "rounds": 291,
+        "taken": 853,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 1719,
+        "rounds": 111,
+        "taken": 203,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 1145,
+        "rounds": 156,
+        "taken": 461,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 2428,
+        "rounds": 257,
+        "taken": 549,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 624,
+        "rounds": 66,
+        "taken": 185,
+        "encounters": 12
+      }
+    },
+    "4": {
+      "cleric": {
+        "dmgDealt": 2547,
+        "rounds": 305,
+        "taken": 710,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 4992,
+        "rounds": 375,
+        "taken": 838,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 3115,
+        "rounds": 302,
+        "taken": 780,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 2355,
+        "rounds": 252,
+        "taken": 601,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 1533,
+        "rounds": 121,
+        "taken": 211,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 1756,
+        "rounds": 113,
+        "taken": 139,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 2794,
+        "rounds": 142,
+        "taken": 169,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 1316,
+        "rounds": 98,
+        "taken": 378,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 2810,
+        "rounds": 311,
+        "taken": 835,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 2082,
+        "rounds": 137,
+        "taken": 342,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 1053,
+        "rounds": 146,
+        "taken": 530,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 2936,
+        "rounds": 253,
+        "taken": 539,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 771,
+        "rounds": 66,
+        "taken": 109,
+        "encounters": 12
+      }
+    },
+    "5": {
+      "cleric": {
+        "dmgDealt": 2738,
+        "rounds": 178,
+        "taken": 375,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 7768,
+        "rounds": 219,
+        "taken": 297,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 3510,
+        "rounds": 153,
+        "taken": 232,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 2862,
+        "rounds": 156,
+        "taken": 219,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 1389,
+        "rounds": 88,
+        "taken": 205,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 2454,
+        "rounds": 76,
+        "taken": 78,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 3858,
+        "rounds": 92,
+        "taken": 61,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 1578,
+        "rounds": 66,
+        "taken": 172,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 4410,
+        "rounds": 210,
+        "taken": 440,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 3633,
+        "rounds": 93,
+        "taken": 212,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 854,
+        "rounds": 108,
+        "taken": 303,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 3706,
+        "rounds": 171,
+        "taken": 439,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 892,
+        "rounds": 50,
+        "taken": 116,
+        "encounters": 12
+      }
+    },
+    "6": {
+      "cleric": {
+        "dmgDealt": 3560,
+        "rounds": 190,
+        "taken": 319,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 9482,
+        "rounds": 257,
+        "taken": 720,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 4160,
+        "rounds": 184,
+        "taken": 392,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 3685,
+        "rounds": 182,
+        "taken": 423,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 1683,
+        "rounds": 93,
+        "taken": 241,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 3795,
+        "rounds": 96,
+        "taken": 110,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 5590,
+        "rounds": 106,
+        "taken": 201,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 2345,
+        "rounds": 86,
+        "taken": 316,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 5575,
+        "rounds": 258,
+        "taken": 880,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 5356,
+        "rounds": 124,
+        "taken": 318,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 1151,
+        "rounds": 138,
+        "taken": 416,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 4658,
+        "rounds": 176,
+        "taken": 582,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 999,
+        "rounds": 56,
+        "taken": 201,
+        "encounters": 12
+      }
+    },
+    "7": {
+      "cleric": {
+        "dmgDealt": 4536,
+        "rounds": 198,
+        "taken": 548,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 10530,
+        "rounds": 247,
+        "taken": 616,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 5876,
+        "rounds": 193,
+        "taken": 586,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 3985,
+        "rounds": 166,
+        "taken": 197,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 1730,
+        "rounds": 98,
+        "taken": 240,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 3602,
+        "rounds": 96,
+        "taken": 164,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 6009,
+        "rounds": 107,
+        "taken": 185,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 2721,
+        "rounds": 71,
+        "taken": 218,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 6052,
+        "rounds": 248,
+        "taken": 823,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 5155,
+        "rounds": 116,
+        "taken": 245,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 1066,
+        "rounds": 143,
+        "taken": 478,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 6175,
+        "rounds": 199,
+        "taken": 546,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 1273,
+        "rounds": 54,
+        "taken": 173,
+        "encounters": 12
+      }
+    },
+    "8": {
+      "cleric": {
+        "dmgDealt": 5365,
+        "rounds": 221,
+        "taken": 642,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 11741,
+        "rounds": 268,
+        "taken": 583,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 6226,
+        "rounds": 188,
+        "taken": 534,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 5237,
+        "rounds": 198,
+        "taken": 538,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 1954,
+        "rounds": 97,
+        "taken": 210,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 4350,
+        "rounds": 95,
+        "taken": 163,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 6759,
+        "rounds": 102,
+        "taken": 73,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 2155,
+        "rounds": 67,
+        "taken": 169,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 7034,
+        "rounds": 263,
+        "taken": 726,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 6486,
+        "rounds": 115,
+        "taken": 247,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 1336,
+        "rounds": 128,
+        "taken": 339,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 6290,
+        "rounds": 193,
+        "taken": 617,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 1290,
+        "rounds": 41,
+        "taken": 24,
+        "encounters": 12
+      }
+    },
+    "9": {
+      "cleric": {
+        "dmgDealt": 7261,
+        "rounds": 222,
+        "taken": 724,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 13333,
+        "rounds": 282,
+        "taken": 1027,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 7098,
+        "rounds": 207,
+        "taken": 624,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 6486,
+        "rounds": 186,
+        "taken": 376,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 2192,
+        "rounds": 119,
+        "taken": 588,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 4331,
+        "rounds": 87,
+        "taken": 130,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 7195,
+        "rounds": 98,
+        "taken": 141,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 2574,
+        "rounds": 64,
+        "taken": 212,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 8278,
+        "rounds": 276,
+        "taken": 883,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 6693,
+        "rounds": 119,
+        "taken": 354,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 1430,
+        "rounds": 146,
+        "taken": 561,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 6883,
+        "rounds": 213,
+        "taken": 779,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 2030,
+        "rounds": 61,
+        "taken": 211,
+        "encounters": 12
+      }
+    },
+    "10": {
+      "cleric": {
+        "dmgDealt": 7827,
+        "rounds": 307,
+        "taken": 1095,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 16312,
+        "rounds": 336,
+        "taken": 805,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 9246,
+        "rounds": 292,
+        "taken": 1236,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 7277,
+        "rounds": 225,
+        "taken": 801,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 2764,
+        "rounds": 126,
+        "taken": 506,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 6533,
+        "rounds": 118,
+        "taken": 272,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 8436,
+        "rounds": 122,
+        "taken": 226,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 3428,
+        "rounds": 85,
+        "taken": 227,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 9012,
+        "rounds": 348,
+        "taken": 1353,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 9037,
+        "rounds": 154,
+        "taken": 277,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 2102,
+        "rounds": 211,
+        "taken": 895,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 8382,
+        "rounds": 313,
+        "taken": 1215,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 2547,
+        "rounds": 75,
+        "taken": 217,
+        "encounters": 12
+      }
+    },
+    "11": {
+      "cleric": {
+        "dmgDealt": 9245,
+        "rounds": 379,
+        "taken": 1775,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 22065,
+        "rounds": 386,
+        "taken": 1518,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 10345,
+        "rounds": 305,
+        "taken": 1422,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 8320,
+        "rounds": 287,
+        "taken": 803,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 2909,
+        "rounds": 141,
+        "taken": 614,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 7243,
+        "rounds": 121,
+        "taken": 231,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 10916,
+        "rounds": 155,
+        "taken": 614,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 3077,
+        "rounds": 96,
+        "taken": 439,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 11901,
+        "rounds": 349,
+        "taken": 1838,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 14484,
+        "rounds": 168,
+        "taken": 738,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 2407,
+        "rounds": 257,
+        "taken": 1484,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 9113,
+        "rounds": 370,
+        "taken": 1803,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 2553,
+        "rounds": 65,
+        "taken": 171,
+        "encounters": 12
+      }
+    },
+    "12": {
+      "cleric": {
+        "dmgDealt": 11388,
+        "rounds": 496,
+        "taken": 2628,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 24869,
+        "rounds": 549,
+        "taken": 2963,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 12717,
+        "rounds": 443,
+        "taken": 2029,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 9943,
+        "rounds": 356,
+        "taken": 1320,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 4193,
+        "rounds": 233,
+        "taken": 1308,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 9659,
+        "rounds": 175,
+        "taken": 513,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 12337,
+        "rounds": 200,
+        "taken": 878,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 3663,
+        "rounds": 125,
+        "taken": 849,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 18595,
+        "rounds": 559,
+        "taken": 2732,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 15643,
+        "rounds": 223,
+        "taken": 963,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 2702,
+        "rounds": 278,
+        "taken": 1460,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 10817,
+        "rounds": 533,
+        "taken": 3236,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 3542,
+        "rounds": 95,
+        "taken": 313,
+        "encounters": 12
+      }
+    },
+    "13": {
+      "cleric": {
+        "dmgDealt": 12078,
+        "rounds": 545,
+        "taken": 3901,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 38296,
+        "rounds": 745,
+        "taken": 5080,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 12751,
+        "rounds": 486,
+        "taken": 3498,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 12545,
+        "rounds": 366,
+        "taken": 2343,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 5272,
+        "rounds": 343,
+        "taken": 2289,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 16717,
+        "rounds": 276,
+        "taken": 918,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 17469,
+        "rounds": 249,
+        "taken": 1474,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 5092,
+        "rounds": 186,
+        "taken": 1437,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 18126,
+        "rounds": 543,
+        "taken": 3380,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 19206,
+        "rounds": 258,
+        "taken": 2141,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 2525,
+        "rounds": 263,
+        "taken": 1807,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 11057,
+        "rounds": 500,
+        "taken": 3814,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 5387,
+        "rounds": 136,
+        "taken": 874,
+        "encounters": 12
+      }
+    },
+    "14": {
+      "cleric": {
+        "dmgDealt": 16375,
+        "rounds": 609,
+        "taken": 4434,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 42164,
+        "rounds": 786,
+        "taken": 5746,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 16287,
+        "rounds": 701,
+        "taken": 5708,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 14212,
+        "rounds": 427,
+        "taken": 2640,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 6917,
+        "rounds": 371,
+        "taken": 2957,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 18730,
+        "rounds": 282,
+        "taken": 1020,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 25159,
+        "rounds": 276,
+        "taken": 1750,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 6155,
+        "rounds": 279,
+        "taken": 2093,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 22662,
+        "rounds": 670,
+        "taken": 4762,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 23324,
+        "rounds": 296,
+        "taken": 2356,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 4299,
+        "rounds": 388,
+        "taken": 2854,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 11843,
+        "rounds": 625,
+        "taken": 5023,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 8052,
+        "rounds": 157,
+        "taken": 1105,
+        "encounters": 12
+      }
+    },
+    "15": {
+      "cleric": {
+        "dmgDealt": 19146,
+        "rounds": 662,
+        "taken": 5945,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 48274,
+        "rounds": 817,
+        "taken": 6930,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 20863,
+        "rounds": 598,
+        "taken": 6214,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 10281,
+        "rounds": 360,
+        "taken": 3363,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 7027,
+        "rounds": 395,
+        "taken": 3386,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 20461,
+        "rounds": 320,
+        "taken": 1460,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 30469,
+        "rounds": 323,
+        "taken": 2718,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 5415,
+        "rounds": 143,
+        "taken": 1564,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 17372,
+        "rounds": 511,
+        "taken": 5568,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 23522,
+        "rounds": 268,
+        "taken": 2909,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 2778,
+        "rounds": 312,
+        "taken": 3126,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 13833,
+        "rounds": 556,
+        "taken": 5174,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 8108,
+        "rounds": 204,
+        "taken": 1353,
+        "encounters": 12
+      }
+    },
+    "16": {
+      "cleric": {
+        "dmgDealt": 19033,
+        "rounds": 618,
+        "taken": 6485,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 64916,
+        "rounds": 872,
+        "taken": 9089,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 24236,
+        "rounds": 605,
+        "taken": 6543,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 18140,
+        "rounds": 418,
+        "taken": 4490,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 7174,
+        "rounds": 343,
+        "taken": 3519,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 25340,
+        "rounds": 294,
+        "taken": 1931,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 31872,
+        "rounds": 338,
+        "taken": 3456,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 7619,
+        "rounds": 184,
+        "taken": 2169,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 21724,
+        "rounds": 583,
+        "taken": 6005,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 29158,
+        "rounds": 267,
+        "taken": 2573,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 2355,
+        "rounds": 266,
+        "taken": 3245,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 14689,
+        "rounds": 497,
+        "taken": 5741,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 8877,
+        "rounds": 214,
+        "taken": 2043,
+        "encounters": 12
+      }
+    },
+    "17": {
+      "cleric": {
+        "dmgDealt": 23459,
+        "rounds": 744,
+        "taken": 7047,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 58821,
+        "rounds": 825,
+        "taken": 7193,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 27377,
+        "rounds": 743,
+        "taken": 5864,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 19796,
+        "rounds": 445,
+        "taken": 4551,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 7065,
+        "rounds": 359,
+        "taken": 3156,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 25303,
+        "rounds": 321,
+        "taken": 1493,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 29694,
+        "rounds": 353,
+        "taken": 3453,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 6387,
+        "rounds": 245,
+        "taken": 2227,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 40236,
+        "rounds": 681,
+        "taken": 6378,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 40517,
+        "rounds": 324,
+        "taken": 4065,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 5459,
+        "rounds": 490,
+        "taken": 3790,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 16891,
+        "rounds": 608,
+        "taken": 4954,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 8398,
+        "rounds": 185,
+        "taken": 1449,
+        "encounters": 12
+      }
+    },
+    "18": {
+      "cleric": {
+        "dmgDealt": 26694,
+        "rounds": 833,
+        "taken": 8074,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 56951,
+        "rounds": 805,
+        "taken": 7215,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 34243,
+        "rounds": 713,
+        "taken": 6559,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 27325,
+        "rounds": 531,
+        "taken": 4997,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 8538,
+        "rounds": 324,
+        "taken": 3212,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 30563,
+        "rounds": 331,
+        "taken": 1736,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 35555,
+        "rounds": 382,
+        "taken": 3586,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 8701,
+        "rounds": 211,
+        "taken": 2281,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 35955,
+        "rounds": 715,
+        "taken": 7388,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 34149,
+        "rounds": 264,
+        "taken": 3014,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 5241,
+        "rounds": 430,
+        "taken": 4540,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 21960,
+        "rounds": 749,
+        "taken": 7729,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 10384,
+        "rounds": 205,
+        "taken": 1991,
+        "encounters": 12
+      }
+    },
+    "19": {
+      "cleric": {
+        "dmgDealt": 26715,
+        "rounds": 867,
+        "taken": 8271,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 61030,
+        "rounds": 856,
+        "taken": 8463,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 40366,
+        "rounds": 856,
+        "taken": 8449,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 30933,
+        "rounds": 614,
+        "taken": 5178,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 9521,
+        "rounds": 315,
+        "taken": 2970,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 27527,
+        "rounds": 309,
+        "taken": 1663,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 36515,
+        "rounds": 394,
+        "taken": 3923,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 10573,
+        "rounds": 239,
+        "taken": 2348,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 54150,
+        "rounds": 839,
+        "taken": 7177,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 41660,
+        "rounds": 301,
+        "taken": 2426,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 5382,
+        "rounds": 414,
+        "taken": 4088,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 27430,
+        "rounds": 773,
+        "taken": 8441,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 8700,
+        "rounds": 143,
+        "taken": 1478,
+        "encounters": 12
+      }
+    },
+    "20": {
+      "cleric": {
+        "dmgDealt": 33291,
+        "rounds": 739,
+        "taken": 8107,
+        "encounters": 48
+      },
+      "paladin": {
+        "dmgDealt": 75422,
+        "rounds": 885,
+        "taken": 9291,
+        "encounters": 66
+      },
+      "druid": {
+        "dmgDealt": 44253,
+        "rounds": 696,
+        "taken": 7844,
+        "encounters": 48
+      },
+      "monk": {
+        "dmgDealt": 27658,
+        "rounds": 549,
+        "taken": 6213,
+        "encounters": 42
+      },
+      "bard": {
+        "dmgDealt": 13738,
+        "rounds": 372,
+        "taken": 4167,
+        "encounters": 24
+      },
+      "barbarian": {
+        "dmgDealt": 32583,
+        "rounds": 326,
+        "taken": 1760,
+        "encounters": 24
+      },
+      "ranger": {
+        "dmgDealt": 37357,
+        "rounds": 390,
+        "taken": 4211,
+        "encounters": 30
+      },
+      "wizard": {
+        "dmgDealt": 14654,
+        "rounds": 230,
+        "taken": 2707,
+        "encounters": 18
+      },
+      "warlock": {
+        "dmgDealt": 56522,
+        "rounds": 786,
+        "taken": 9792,
+        "encounters": 60
+      },
+      "fighter": {
+        "dmgDealt": 49695,
+        "rounds": 346,
+        "taken": 4718,
+        "encounters": 30
+      },
+      "wolf": {
+        "dmgDealt": 5515,
+        "rounds": 417,
+        "taken": 4634,
+        "encounters": 30
+      },
+      "sorcerer": {
+        "dmgDealt": 32082,
+        "rounds": 704,
+        "taken": 8228,
+        "encounters": 48
+      },
+      "rogue": {
+        "dmgDealt": 11961,
+        "rounds": 199,
+        "taken": 2374,
+        "encounters": 12
+      }
+    }
+  },
+  "baseline": {
+    "mDpr": 41.52281966971951,
+    "sDpr": 20.87668840499436,
+    "mTaken": 54.38012196137197,
+    "sTaken": 9.520731458947868
+  }
+}

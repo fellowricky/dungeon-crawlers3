@@ -1,6 +1,6 @@
 {
   "name": "dungeon-crawlers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Idle party-based dungeon crawler (Clickpocalypse-inspired) using SRD 5.1 mechanics, built on Dungeon Forge by Majid Manzarpour (MIT).",
   "type": "module",
   "license": "MIT",
@@ -21,7 +21,7 @@
     "preview": "vite preview --port 4173",
     "electron": "electron .",
     "app": "vite build && electron .",
-    "pack:win": "vite build && electron-packager . \"Dungeon Crawlers\" --platform=win32 --arch=x64 --out=release --overwrite --asar=false --ignore=\"/node_modules\" --ignore=\"/src\" --ignore=\"/public\" --ignore=\"/scratch\" --ignore=\"/lpc_repo\" --ignore=\"/Sprites\" --ignore=\"/dist-smoke\" --ignore=\"/release\" --ignore=\"(web|portable)\\.zip$\"",
+    "pack:win": "vite build && node scripts/pack.mjs",
     "test": "vitest run && node smoke_quests.mjs && electron electron/smoke.cjs"
   },
   "devDependencies": {

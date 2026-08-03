@@ -11,6 +11,10 @@ const { app, BrowserWindow, protocol, net, Menu } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
+// Prevent WebGL context creation failure on systems with GPU blocklists or driver quirks
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+
 const DIST = path.join(__dirname, '..', 'dist');
 
 protocol.registerSchemesAsPrivileged([{

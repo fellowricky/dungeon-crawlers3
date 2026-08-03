@@ -17,13 +17,18 @@
  *
  * Integrated into game.js — all data, logic, and UI lives here.
  */
-import { SKILLS, mod, d as die, roll as d20roll, spawnMonster, makeHero, recalc, grantXp } from './srd.js';
+import { SKILLS, mod, d as die, roll as d20roll, spawnMonster, dungeonMonsterIds, makeHero, createWolfCompanion, recalc, grantXp } from './srd.js';
+import { featSkillBonus } from './features.js';
 import { rollItem } from './items.js';
 import { log, updateResources, updatePartyFrames } from './ui.js';
 import { partyShortRest } from './rest.js';
-import { applyEffect, clearEffectsByTag, EFFECTS } from './conditions.js';
-import { recoverSlots, totalSlots } from './features.js';
-import { playNarration, queueNarration, narrationId } from './audio.js';
+import { applyEffect, clearEffectsByTag, EFFECTS, ROUND_SECONDS } from './conditions.js';
+import { recoverSlots, totalSlots, restoreCharges } from './features.js';
+import { playNarration, queueNarration, narrationId, playSfx, isNarrationActive } from './audio.js';
+import { trackGold, trackLoot } from './run_stats.js';
+import { getSetting } from './settings.js';
+import { recolorPixels, isCharacterLayer,
+         LAYER_ORDER, buildLayerPaths, layerTint } from './appearance.js';
 
 /* ================================================================
    Module State — no global leaks
@@ -36,6 +41,16 @@ let _autoContinueTimer = null;         // timeout for auto-continue after result
 let _autoChooseTimer = null;           // timeout for auto-pick in choose phase
 let _diceInterval = null;              // dice tick animation handle
 let _phase = 'idle';                   // idle | choose | rolling | result
+
+/* Choose-phase timing. IDLE is both the hands-off safety net (pick the safest
+   approach so an unattended run doesn't stall) and the ceiling on how long
+   auto-complete will wait for narration. */
+const AUTO_CHOOSE_MIN_MS = 900;
+const AUTO_CHOOSE_IDLE_MS = 30000;
+const AUTO_CHOOSE_POLL_MS = 150;
+/* Result-phase auto-continue: MIN is the old flat 15s, MAX the narration cap. */
+const AUTO_CONTINUE_MIN_MS = 15000;
+const AUTO_CONTINUE_MAX_MS = 45000;
 
 /* ================================================================
    Approach Tiers — risk/reward scaling
@@ -66,11 +81,21 @@ const REWARD_ICONS = {
 const SCALABLE = new Set(['item', 'gold', 'potion', 'heal', 'tempHp', 'xp']);
 
 /* Tactical combat buffs grantable via the buffEffect reward kind (short timed
- * bursts via the EFFECTS registry). Strategic floor-long boons use kind:'buff'. */
+ * bursts via the EFFECTS registry). Strategic floor-long boons use kind:'buff'.
+ *
+ * Durations here — and the per-challenge `buffDuration` / `debuffDuration`
+ * overrides below — are in 5e seconds (ROUND_SECONDS = 6 per round), so 30
+ * means five rounds. They are spent against the combat clock, which means a
+ * boon won earned out of combat is banked whole and starts burning down at the
+ * top of the next fight; whatever is left of it is wiped when that fight ends.
+ * See conditions.js. */
 const BUFF_EFFECTS = {
   raging: 30, hasted: 20, shielded: 15, sacredWeapon: 20,
   inspired: 30, bearTotem: 25, remarkableAthlete: 30
 };
+
+/** Duration in 5e seconds → the round count shown to the player. */
+const asRounds = (sec) => Math.max(1, Math.round(sec / ROUND_SECONDS));
 
 /* Debuffs applicable by the 'debuff'/'poison'/'frighten'/'curse' failEffects,
  * mapped to their EFFECTS key and default floor-long duration (null = floor). */
@@ -178,7 +203,8 @@ const REWARD_VISUALS = {
 };
 
 function getVisuals(challenge) {
-  return CHALLENGE_VISUALS[challenge.name]
+  return challenge.visuals              // curated (story) challenges carry their own
+    || CHALLENGE_VISUALS[challenge.name]
     || REWARD_VISUALS[challenge.reward?.kind]
     || { props: [], heroAnim: 'walk' };
 }
@@ -202,12 +228,6 @@ const VIG_ANIM_META = {
   hurt:      { cols: 6, rows: 1, speed: 8 }
 };
 
-const VIG_LAYER_ORDER = [
-  'shield_behind','weapon_behind','body','head','eyes','legs','torso',
-  'feet','shoulders','gloves','ears','horns','facialHair','hair',
-  'helm','visor','shield','weapon'
-];
-
 const vigImageCache = {};
 function vigLoadImage(src) {
   if (vigImageCache[src]) return Promise.resolve(vigImageCache[src]);
@@ -219,44 +239,15 @@ function vigLoadImage(src) {
   });
 }
 
-function vigHexToRgb(hex) {
-  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
-}
-function vigRgbToHsl(r,g,b) {
-  r/=255; g/=255; b/=255;
-  const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
-  let h=0,s=0,l=(mx+mn)/2;
-  if(mx!==mn){
-    const d=mx-mn; s=l>0.5?d/(2-mx-mn):d/(mx+mn);
-    if(mx===r) h=((g-b)/d+(g<b?6:0))/6;
-    else if(mx===g) h=((b-r)/d+2)/6;
-    else h=((r-g)/d+4)/6;
-  }
-  return [h,s,l];
-}
-function vigHslToRgb(h,s,l) {
-  if(s===0){const v=Math.round(l*255);return[v,v,v];}
-  const hue2rgb=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};
-  const q=l<0.5?l*(1+s):l+s-l*s, p=2*l-q;
-  return [Math.round(hue2rgb(p,q,h+1/3)*255),Math.round(hue2rgb(p,q,h)*255),Math.round(hue2rgb(p,q,h-1/3)*255)];
-}
 
-function vigDrawTinted(ctx, img, tintColor) {
+function vigDrawTinted(ctx, img, tintColor, matchLightness = false) {
   if (!tintColor) { ctx.drawImage(img, 0, 0); return; }
   const tc = document.createElement('canvas');
   tc.width = img.width; tc.height = img.height;
   const t = tc.getContext('2d');
   t.drawImage(img, 0, 0);
   const id = t.getImageData(0, 0, img.width, img.height);
-  const d = id.data;
-  const [tr,tg,tb] = vigHexToRgb(tintColor);
-  const [th,ts] = vigRgbToHsl(tr,tg,tb);
-  for (let i = 0; i < d.length; i += 4) {
-    if (d[i+3] === 0) continue;
-    const [,,ll] = vigRgbToHsl(d[i], d[i+1], d[i+2]);
-    const [cr,cg,cb] = vigHslToRgb(th, ts, ll);
-    d[i]=cr; d[i+1]=cg; d[i+2]=cb;
-  }
+  recolorPixels(id.data, tintColor, matchLightness);
   t.putImageData(id, 0, 0);
   ctx.drawImage(tc, 0, 0);
 }
@@ -272,69 +263,14 @@ async function vigCompositeHeroSheet(hero, action) {
 
   const visual = hero.visual || {};
   const equipment = hero.equipment || {};
-  const g = visual.gender || 'male';
-  const isMonster = (g === 'skeleton' || g === 'zombie');
-  const customHead = visual.head;
-  const clothG = (g === 'muscular' || g === 'teen' || g === 'child') ? 'male' : g;
   const ASSETS_ROOT = './lpc/';
+  const paths = buildLayerPaths(visual, equipment);
 
-  const w = equipment.weapon ? equipment.weapon.visualWeapon : null;
-  const t = equipment.armor ? equipment.armor.visualTorso : null;
-  const l = equipment.armor ? (equipment.armor.visualLegs || 'pants') : (visual.pants !== undefined ? visual.pants : 'pants');
-  const hlm = equipment.helm ? equipment.helm.visualHelm : null;
-  const v = equipment.helm ? equipment.helm.visualVisor : null;
-  const sh = equipment.offhand ? equipment.offhand.visualShield : null;
-  const f = equipment.boots ? equipment.boots.visualShoes : (visual.shoes !== undefined ? visual.shoes : 'shoes/basic');
-  const shld = equipment.armor ? equipment.armor.visualShoulders : null;
-  const glv = equipment.gloves ? equipment.gloves.visualGloves : null;
-
-  let w_behind = w ? `weapon_behind/${w}` : null;
-  let sh_behind = null;
-  if (sh && sh.includes('crusader/fg')) sh_behind = `shield_behind/crusader/fg/${clothG}`;
-
-  const paths = {
-    shield_behind: sh_behind,
-    weapon_behind: w_behind,
-    body: `body/bodies/${g}`,
-    head: customHead ? `head/heads/${customHead}` : (isMonster ? null : `head/heads/human/${clothG}`),
-    eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
-    ears: (!isMonster && visual.ears && visual.ears !== 'none'
-           && (!customHead || visual.ears === 'dragon')) ? `head/ears/${visual.ears}/adult` : null,
-    horns: (!isMonster && visual.horns && visual.horns !== 'none') ? `head/horns/${visual.horns}` : null,
-    legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
-    torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
-    feet: (isMonster || f === 'none') ? null : `feet/${f}/${clothG === 'male' ? 'male' : 'thin'}`,
-    shoulders: shld ? `shoulders/${shld}/${shld === 'legion' ? clothG : (clothG === 'male' ? 'male' : 'thin')}` : null,
-    gloves: glv ? `${glv}/${clothG === 'male' ? 'male' : 'thin'}` : null,
-    facialHair: (isMonster || customHead || !visual.facialHair || visual.facialHair === 'none') ? null : `beards/${visual.facialHair}`,
-    hair: (isMonster || customHead || visual.hair === 'none') ? null : `hair/${visual.hair}`,
-    helm: hlm ? (hlm.includes('greathelm') ? `hat/${hlm}/${clothG}` : `hat/${hlm}/adult`) : null,
-    visor: v ? `hat/visor/${v}/adult` : null,
-    shield: sh ? (sh === 'round' ? `shield/${sh}` : `shield/${sh}/${clothG}`) : null,
-    weapon: w ? `weapon/${w}` : null
-  };
-
-  for (const layer of VIG_LAYER_ORDER) {
+  for (const layer of LAYER_ORDER) {
     if (!paths[layer]) continue;
     const img = await vigLoadImage(`${ASSETS_ROOT}${paths[layer]}/${action}.png`);
     if (!img) continue;
-    if (layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') {
-      vigDrawTinted(ctx, img, visual.skinColor);
-    } else if (layer === 'hair' || layer === 'facialHair') {
-      vigDrawTinted(ctx, img, visual.hairColor);
-    } else if (layer === 'eyes' && visual.eyeColor) {
-      vigDrawTinted(ctx, img, visual.eyeColor);
-    } else {
-      let slotKey = layer;
-      if (layer === 'helm' || layer === 'visor') slotKey = 'helm';
-      else if (layer === 'shield' || layer === 'shield_behind') slotKey = 'offhand';
-      else if (layer === 'weapon' || layer === 'weapon_behind') slotKey = 'weapon';
-      else if (layer === 'legs' || layer === 'torso' || layer === 'feet' || layer === 'shoulders') slotKey = 'armor';
-      else if (layer === 'gloves') slotKey = 'gloves';
-      const it = equipment[slotKey];
-      if (it && it.visualColor) vigDrawTinted(ctx, img, it.visualColor);
-      else ctx.drawImage(img, 0, 0);
-    }
+    vigDrawTinted(ctx, img, layerTint(layer, visual, equipment), isCharacterLayer(layer));
   }
   return canvas;
 }
@@ -358,6 +294,7 @@ class ChallengeVignette {
     this.destroyed = false;
     this._lastTS = 0;
     this._actionName = 'walk';
+    this.backdrop = null;
   }
 
   async init(heroes, challenge) {
@@ -392,6 +329,9 @@ class ChallengeVignette {
       h0.actionMeta = VIG_ANIM_META[visuals.heroAnim] || VIG_ANIM_META.walk;
       h0.hurt = await vigCompositeHeroSheet(heroes[0].hero, 'hurt');
     }
+
+    // Optional painted backdrop behind the sprites (story challenges only)
+    this.backdrop = visuals.backdrop ? await vigLoadImage(visuals.backdrop) : null;
 
     // Load prop sprites
     const propPromises = visuals.props.map(src => vigLoadImage(src));
@@ -435,6 +375,17 @@ class ChallengeVignette {
     const ctx = this.ctx;
     const w = VIGNETTE_W, h = VIGNETTE_H;
     ctx.clearRect(0, 0, w, h);
+
+    /* Painted backdrop, cover-fitted and knocked back so the sprites on top
+       of it stay readable against it. */
+    if (this.backdrop) {
+      const img = this.backdrop;
+      const sc = Math.max(w / img.width, h / img.height);
+      const dw = img.width * sc, dh = img.height * sc;
+      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+      ctx.fillStyle = 'rgba(10,8,6,0.42)';
+      ctx.fillRect(0, 0, w, h);
+    }
 
     const grad = ctx.createRadialGradient(w/2, h*0.65, 10, w/2, h*0.65, w*0.5);
     if (this.state === 'failure') {
@@ -2166,6 +2117,7 @@ function calcDC(baseDC, dungeonLevel) {
    ================================================================ */
 function skillBonus(game, hero, skillKey) {
   let b = hero.data.skillsDerived?.[skillKey] ?? 0;
+  b += featSkillBonus(hero.data);   // Observant / Skilled / Actor / Linguist / Dungeon Delver
   if (game._floorDebuffs) {
     for (const deb of game._floorDebuffs) {
       if (deb.type === 'woundedPride' && deb.hero === hero.data.name && deb.skill === skillKey) {
@@ -2220,6 +2172,7 @@ export function checkForChallenge(game) {
   for (let rid = 0; rid < rooms.length; rid++) {
     if (_challengesFired.has(rid)) continue;
     if (!game.visitedRooms[rid]) continue;
+    if (!game._searchedRooms || !game._searchedRooms[rid]) continue;
     if (!game.roomDone(rid)) continue;
 
     const room = rooms[rid];
@@ -2275,7 +2228,21 @@ function precomputeReward(game, reward, tierKey, isCrit) {
       let count = tierKey === 'risky' ? 2 : 1;
       if (critBonus) count++;
       const items = [];
-      for (let i = 0; i < count; i++) items.push(rollItem(lvl));
+      /* Skill challenges are literally about skills, so their gear rewards
+         favor adventuring-gear tools (~45%) over combat loot. Tools gate their
+         tier on the party's average level (per the level→tier design). */
+      const alive = game.heroes.filter(h => h.data.hp > 0);
+      const partyLevel = alive.length
+        ? Math.round(alive.reduce((s, h) => s + (h.data.level || 1), 0) / alive.length)
+        : lvl;
+      for (let i = 0; i < count; i++) {
+        const forceKit = Math.random() < 0.45 ? 'kit' : null;
+        /* Kits are budgeted off the party's level rather than the encounter's. */
+        const opts = { source: 'chest' };
+        if (forceKit) opts.ilvl = partyLevel;
+        const it = rollItem(lvl, Math.random, forceKit, opts);
+        if (it) items.push(it);
+      }
       out.data = { kind: 'item', items };
       out.detailText = items.map(it => it.name).join(', ');
       break;
@@ -2341,7 +2308,8 @@ function precomputeReward(game, reward, tierKey, isCrit) {
       const targets = reward.buffTargets || 'party';
       out.data = { kind: 'buffEffect', buffKey, duration, targets };
       const lbl = EFFECTS[buffKey]?.label || buffKey;
-      out.detailText = `${lbl} ${targets === 'self' ? 'on hero' : 'on party'} (${duration}s${critBonus ? ', crit!' : ''})`;
+      const rds = asRounds(duration);
+      out.detailText = `${lbl} ${targets === 'self' ? 'on hero' : 'on party'} (${rds} round${rds === 1 ? '' : 's'} of the next fight${critBonus ? ', crit!' : ''})`;
       break;
     }
     case 'tempHp': {
@@ -2417,11 +2385,12 @@ function applyComputedReward(game, computed, challenge, hero) {
 
   switch (d.kind) {
     case 'item': {
-      for (const item of d.items) game.inventory.push(item);
+      for (const item of d.items) { game.inventory.push(item); trackLoot(game, item); }
       break;
     }
     case 'gold': {
       game.gold += d.gold;
+      trackGold(game, d.gold);
       break;
     }
     case 'potion': {
@@ -2458,22 +2427,23 @@ function applyComputedReward(game, computed, challenge, hero) {
       const targets = d.targets === 'self' && hero ? [hero]
         : game.heroes.filter(h => h.data.hp > 0);
       for (const h of targets) {
-        applyEffect(h, d.buffKey, { duration: d.duration, elapsed: game.elapsed || 0, tag: 'skill' });
+        applyEffect(h, d.buffKey, { duration: d.duration, elapsed: game.fxNow || 0, tag: 'skill' });
       }
       const lbl = EFFECTS[d.buffKey]?.label || d.buffKey;
-      log(`  ↳ 🛡 ${lbl} granted to ${targets.length} hero${targets.length > 1 ? 'es' : ''} for ${d.duration}s.`, 'heal');
+      const rds = asRounds(d.duration);
+      log(`  ↳ 🛡 ${lbl} granted to ${targets.length} hero${targets.length > 1 ? 'es' : ''} — ${rds} round${rds === 1 ? '' : 's'}, starting when the next fight does.`, 'heal');
       break;
     }
     case 'tempHp': {
       for (const h of game.heroes) {
-        if (h.data.hp > 0) h.tempHp = (h.tempHp || 0) + d.amount;
+        if (h.data.hp > 0) h.data.tempHp = (h.data.tempHp || 0) + d.amount;
       }
       log(`  ↳ 💙 +${d.amount} temp HP to the party.`, 'heal');
       break;
     }
     case 'xp': {
       for (const h of game.heroes) {
-        if (h.data.hp > 0) grantXp(h.data, d.amount, game);
+        if (h.data.hp > 0 && !h.temp && !h.companion) grantXp(h.data, d.amount, game);
       }
       log(`  ↳ ✦ +${d.amount} XP to the party.`, 'treasure');
       break;
@@ -2495,6 +2465,7 @@ function applyComputedReward(game, computed, challenge, hero) {
       for (const h of game.heroes) {
         if (h.data.hp > 0) {
           if (h.data.abilityUsed?.short) h.data.abilityUsed.short = false;
+          restoreCharges(h.data, 'short');
           if (totalSlots(h.data)) recoverSlots(h.data);
         }
       }
@@ -2502,7 +2473,11 @@ function applyComputedReward(game, computed, challenge, hero) {
       break;
     }
     case 'summonAlly': {
-      spawnBeastAlly(game);
+      if (sc && sc.name === 'Recruit the Guard') {
+        spawnGuardAlly(game);
+      } else {
+        spawnBeastAlly(game);
+      }
       break;
     }
     case 'secret': {
@@ -2553,7 +2528,7 @@ function applyComputedReward(game, computed, challenge, hero) {
     }
   }
 
-  if (d.riderGold) game.gold += d.riderGold;
+  if (d.riderGold) { game.gold += d.riderGold; trackGold(game, d.riderGold); }
 
   updateResources(game);
   updatePartyFrames(game.heroes.map(h => h.data));
@@ -2595,7 +2570,7 @@ function applyStrategicBuff(game, buffType, hero) {
     default: {
       /* genericBuff → inspire the party for the next combat */
       const targets = game.heroes.filter(h => h.data.hp > 0);
-      for (const h of targets) applyEffect(h, 'inspired', { duration: 45, elapsed: game.elapsed || 0, tag: 'skill' });
+      for (const h of targets) applyEffect(h, 'inspired', { duration: 45, elapsed: game.fxNow || 0, tag: 'skill' });
       log(`  ↳ ✨ The party feels inspired (+1d4 atk) for the next fight.`, 'heal');
     }
   }
@@ -2607,7 +2582,7 @@ function applyBossEffect(game, effectKey) {
   let n = 0;
   for (const m of game.monsters) {
     if (m.isBoss && m.data && m.data.hp > 0) {
-      if (applyEffect(m, effectKey, { elapsed: game.elapsed || 0, tag: 'skill' })) n++;
+      if (applyEffect(m, effectKey, { elapsed: game.fxNow || 0, tag: 'skill' })) n++;
     }
   }
   if (n > 0) {
@@ -2616,27 +2591,41 @@ function applyBossEffect(game, effectKey) {
   }
 }
 
-/* Spawn a temporary beast ally via the game orchestrator's mesh/group plumbing. */
+/* Spawn a temporary wolf companion via wolfsheet1.png and scaled stats. */
 function spawnBeastAlly(game) {
   if (game.heroes.some(h => h.temp)) {
-    log(`  ↳ A beast already travels with you.`, 'sys');
+    log(`  ↳ A companion already travels with you.`, 'sys');
+    return;
+  }
+  const lvl = Math.max(1, (game.effectiveLevel || 1) | 0);
+  const data = createWolfCompanion(lvl);
+  if (typeof game.spawnTempAlly === 'function') {
+    game.spawnTempAlly(data, 'beast');
+    log(`  ↳ 🐺 Alpha Wolf joins the party for this floor!`, 'treasure');
+  }
+}
+
+/* Spawn a temporary guard ally for Recruit the Guard. */
+function spawnGuardAlly(game) {
+  if (game.heroes.some(h => h.temp)) {
+    log(`  ↳ A companion already travels with you.`, 'sys');
     return;
   }
   const lvl = Math.max(1, (game.effectiveLevel || 1) | 0);
   const visual = {
-    race: 'human', gender: 'male', bodyType: 'male',
-    skinColor: '#7a6a55', hairColor: '#2a2a2a',
-    spriteScaleX: 0.7, spriteScaleY: 0.7
+    gender: 'male', race: 'human', bodyType: 'male',
+    /* field is `hair`, not `hairStyle` — and `short` was never a real LPC
+       style, so this guard used to spawn bald */
+    skinColor: '#d0a080', hair: 'buzzcut/adult', hairColor: '#4a3020'
   };
-  const data = makeHero('Beast Companion', 'human', 'ranger',
-    { str: 14, dex: 14, con: 14, int: 8, wis: 12, cha: 8 }, visual);
+  const data = makeHero('Garrison Guard', 'human', 'fighter',
+    { str: 14 + Math.floor(lvl / 3), dex: 12, con: 14 + Math.floor(lvl / 4), int: 10, wis: 10, cha: 10 }, visual);
   data.level = lvl;
-  data.name = 'Beast Companion';
   recalc(data);
   data.hp = data.maxHp;
   if (typeof game.spawnTempAlly === 'function') {
-    game.spawnTempAlly(data, 'beast');
-    log(`  ↳ 🐾 A loyal beast joins the party for this floor.`, 'treasure');
+    game.spawnTempAlly(data, 'guard');
+    log(`  ↳ 🛡 A loyal guard joins the party for this floor!`, 'treasure');
   }
 }
 
@@ -2654,7 +2643,7 @@ function applyWoundedPride(game, hero, skillKey) {
   const skillLabel = SKILLS[skillKey]?.label || skillKey;
   if (existing.length >= 3) {
     /* maxed out — pile on a short weakness instead */
-    applyEffect(hero, 'weakenedDmg', { duration: 20, elapsed: game.elapsed || 0, tag: 'skill' });
+    applyEffect(hero, 'weakenedDmg', { duration: 20, elapsed: game.fxNow || 0, tag: 'skill' });
     log(`  ↳ ${hero.data.name} is rattled — weakened (-50% dmg) for the next fight.`, 'down');
     return;
   }
@@ -2662,7 +2651,7 @@ function applyWoundedPride(game, hero, skillKey) {
   log(`  ↳ ${hero.data.name}'s pride is wounded: -1 to ${skillLabel} this floor.`, 'sys');
   if (existing.length >= 1) {
     /* second+ failure bites into combat output too */
-    applyEffect(hero, 'weakenedDmg', { duration: 15, elapsed: game.elapsed || 0, tag: 'skill' });
+    applyEffect(hero, 'weakenedDmg', { duration: 15, elapsed: game.fxNow || 0, tag: 'skill' });
   }
 }
 
@@ -2684,8 +2673,10 @@ function applyAlerted(game) {
     questFloor: game.questFloor,
     floors: game.activeQuest ? game.activeQuest.floors : 10
   };
+  /* Reinforcements are natives of this dungeon, not a bestiary lucky dip. */
+  const allowed = game.D.themeKey ? dungeonMonsterIds(game.D.themeKey) : null;
   for (let i = 0; i < extra; i++) {
-    const spec = spawnMonster(1, game.effectiveLevel, Math.random, null, questInfo);
+    const spec = spawnMonster(1, game.effectiveLevel, Math.random, allowed, questInfo);
     game.addMonster(spec, ax + (Math.random() - 0.5), ay + (Math.random() - 0.5), rid);
   }
   log(`  ↳ ⚠ The dungeon is alerted! Reinforcements gather ahead (+${extra} monsters).`, 'down');
@@ -2845,6 +2836,18 @@ function applyOutcome(state) {
 
   if (result.success) {
     if (challenge.reward) applyComputedReward(game, computedReward, challenge, result.hero);
+    /* Story approaches may set a narrative flag on success — this is how an
+       optional discovery ("you actually read the contract") is remembered by
+       later chapters. Mirrors the briefing-node `effect: { flag }` contract. */
+    if (appr.effect && appr.effect.flag && game.activeQuest) {
+      const q = game.activeQuest;
+      if (!q.storyFlags) q.storyFlags = {};
+      q.storyFlags[appr.effect.flag] = true;
+      if (game.storyProgress) {
+        if (!game.storyProgress.flags) game.storyProgress.flags = {};
+        game.storyProgress.flags[appr.effect.flag] = true;
+      }
+    }
     const who = result.party ? 'The party' : result.hero.data.name;
     log(`✨ ${who} succeeds at "${challenge.name}" (${TIERS[appr.tier].label.toLowerCase()})! ${computedReward ? computedReward.detailText : ''}`, 'treasure');
     game._skillMomentum = (game._skillMomentum || 0) + 1;
@@ -2865,14 +2868,16 @@ function applyOutcome(state) {
     // Failure effects
     if (computedFailure?.kind === 'damage') {
       for (const hit of computedFailure.hits) {
-        hit.hero.data.hp = Math.max(0, hit.hero.data.hp - hit.dmg);
+        /* Temp HP soaks mishap damage first (no combat reactions here). */
+        const net = game.absorbTempHp(hit.hero, hit.dmg);
+        hit.hero.data.hp = Math.max(0, hit.hero.data.hp - net);
         log(`  ↳ ${hit.hero.data.name} takes ${hit.dmg} damage from the mishap.`, 'down');
       }
     } else if (computedFailure?.kind === 'alert') {
       const reps = computedFailure.noiseRooms || 1;
       for (let i = 0; i < reps; i++) applyAlerted(game);
     } else if (computedFailure?.kind === 'debuff') {
-      const opts = { elapsed: game.elapsed || 0, tag: 'skill' };
+      const opts = { elapsed: game.fxNow || 0, tag: 'skill' };
       if (computedFailure.duration != null) opts.duration = computedFailure.duration;
       if (computedFailure.dotDmg != null) opts.dotDmg = computedFailure.dotDmg;
       for (const h of computedFailure.targets) {
@@ -2921,7 +2926,7 @@ export function initSkills(game) {
       <div class="cs-frame challenge-frame">
         <div class="cs-header">
           <div class="cs-tabs">
-            <span style="color:#e8c25a; font-weight:700; font-size:14px; letter-spacing:1px;">⚔ SKILL CHALLENGE</span>
+            <span style="color:#e8c25a; font-weight:700; font-size:18px; letter-spacing:1px;">⚔ SKILL CHALLENGE</span>
             <span id="challenge-momentum" class="challenge-momentum"></span>
           </div>
         </div>
@@ -2979,15 +2984,15 @@ export function initSkills(game) {
         display: flex !important;
       }
       .challenge-momentum {
-        margin-left: 12px; font-size: 12px; font-weight: 700; color: #ff9a3c;
+        margin-left: 12px; font-size: 16px; font-weight: 700; color: #ff9a3c;
       }
 
       .challenge-text { text-align: center; margin-bottom: 4px; }
       .challenge-name {
-        font-size: 20px; font-weight: 700; color: #e8c25a; margin-bottom: 6px;
+        font-size: 26px; font-weight: 700; color: #e8c25a; margin-bottom: 6px;
       }
       .challenge-desc {
-        font-size: 13px; color: #a8a294; line-height: 1.5; padding: 0 8px;
+        font-size: 17px; color: #a8a294; line-height: 1.5; padding: 0 8px;
       }
 
       /* ---- approach cards ---- */
@@ -3024,31 +3029,31 @@ export function initSkills(game) {
 
       .appr-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
       .appr-tier {
-        font-size: 10px; font-weight: 800; letter-spacing: 1.2px;
+        font-size: 13px; font-weight: 800; letter-spacing: 1.2px;
         padding: 2px 8px; border-radius: 8px;
       }
       .appr-tier.tier-safe     { color: #6aea6a; background: rgba(106,234,106,0.12); border: 1px solid rgba(106,234,106,0.35); }
       .appr-tier.tier-standard { color: #e8c25a; background: rgba(232,194,90,0.12);  border: 1px solid rgba(232,194,90,0.35); }
       .appr-tier.tier-risky    { color: #ff6a55; background: rgba(255,106,85,0.12);  border: 1px solid rgba(255,106,85,0.4); }
       .appr-dc {
-        font-size: 12px; font-weight: 800; color: #f0e2c0;
+        font-size: 16px; font-weight: 800; color: #f0e2c0;
         background: rgba(35,30,25,0.9); border: 1px solid rgba(200,170,90,0.35);
         border-radius: 8px; padding: 2px 8px;
       }
       .appr-label {
-        font-size: 14px; font-weight: 700; color: #f0e6cc; line-height: 1.3;
+        font-size: 18px; font-weight: 700; color: #f0e6cc; line-height: 1.3;
         margin-bottom: 4px; min-height: 36px;
       }
-      .appr-skill { font-size: 11px; color: #8fb0d8; margin-bottom: 8px; }
+      .appr-skill { font-size: 14px; color: #8fb0d8; margin-bottom: 8px; }
       .appr-reward {
-        font-size: 12px; font-weight: 700; color: #e8c25a;
+        font-size: 16px; font-weight: 700; color: #e8c25a;
         padding: 5px 8px; border-radius: 8px;
         background: rgba(232,194,90,0.07); border: 1px dashed rgba(232,194,90,0.25);
         margin-bottom: 8px; text-align: center;
       }
       .appr-heroes { margin-top: auto; display: flex; flex-wrap: wrap; gap: 5px; }
       .appr-hero-chip {
-        font-size: 11px; font-weight: 600; color: #d8d0bc;
+        font-size: 14px; font-weight: 600; color: #d8d0bc;
         background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
         border-radius: 10px; padding: 3px 9px; cursor: pointer;
         transition: background 0.15s, border-color 0.15s;
@@ -3056,7 +3061,7 @@ export function initSkills(game) {
       .appr-hero-chip:hover { background: rgba(232,194,90,0.18); border-color: rgba(232,194,90,0.55); color: #fff; }
       .appr-hero-chip b { color: #6aea6a; }
       .appr-party-note {
-        margin-top: auto; font-size: 11px; font-weight: 700; color: #c88fe0;
+        margin-top: auto; font-size: 14px; font-weight: 700; color: #c88fe0;
         text-align: center; padding: 5px 6px;
         background: rgba(200,143,224,0.08); border: 1px dashed rgba(200,143,224,0.3);
         border-radius: 8px;
@@ -3069,7 +3074,7 @@ export function initSkills(game) {
         border: 2px solid rgba(200, 170, 90, 0.3);
         border-radius: 12px;
         display: flex; align-items: center; justify-content: center;
-        font-size: 30px; font-weight: 700; color: #f0e2c0;
+        font-size: 39px; font-weight: 700; color: #f0e2c0;
         font-family: 'Georgia', serif;
         transition: border-color 0.3s, color 0.3s;
       }
@@ -3077,9 +3082,9 @@ export function initSkills(game) {
       .appr-d20.failure { border-color: #e0483a; color: #e0483a; }
       .appr-d20.crit { border-color: #ffd34a; color: #ffd34a; text-shadow: 0 0 16px rgba(255,211,74,0.4); }
       .appr-d20.fumble { border-color: #ff5040; color: #ff5040; text-shadow: 0 0 16px rgba(255,80,64,0.4); }
-      .appr-roll-math { font-size: 12px; color: #a8a294; margin-bottom: 4px; min-height: 16px; }
-      .appr-roll-sub { font-size: 10px; color: #7a7466; margin-bottom: 6px; min-height: 13px; }
-      .appr-verdict { font-size: 16px; font-weight: 800; letter-spacing: 1px; min-height: 22px; }
+      .appr-roll-math { font-size: 16px; color: #a8a294; margin-bottom: 4px; min-height: 16px; }
+      .appr-roll-sub { font-size: 13px; color: #7a7466; margin-bottom: 6px; min-height: 13px; }
+      .appr-verdict { font-size: 21px; font-weight: 800; letter-spacing: 1px; min-height: 22px; }
       .appr-verdict.success { color: #6aea6a; }
       .appr-verdict.failure { color: #e0483a; }
       .appr-verdict.crit { color: #ffd34a; text-shadow: 0 0 20px rgba(255,211,74,0.3); }
@@ -3088,23 +3093,23 @@ export function initSkills(game) {
       .appr-party-rolls { width: 100%; }
       .pr-row {
         display: flex; justify-content: space-between; align-items: center;
-        font-size: 11px; color: #c8c0ac; padding: 2px 4px;
+        font-size: 14px; color: #c8c0ac; padding: 2px 4px;
         opacity: 0; transition: opacity 0.3s;
       }
       .pr-row.show { opacity: 1; }
       .pr-row .pr-ok { color: #6aea6a; font-weight: 700; }
       .pr-row .pr-no { color: #e0483a; font-weight: 700; }
-      .pr-needed { font-size: 10px; color: #8a8474; margin-bottom: 6px; }
+      .pr-needed { font-size: 13px; color: #8a8474; margin-bottom: 6px; }
 
       .challenge-outcome {
-        text-align: center; font-size: 13px; color: #c8c0ac;
+        text-align: center; font-size: 17px; color: #c8c0ac;
         line-height: 1.5; padding: 6px 4px; margin: 2px 0 4px;
         opacity: 0; transition: opacity 0.4s; min-height: 20px;
       }
       .challenge-outcome.show { opacity: 1; }
 
       .challenge-reward {
-        text-align: center; font-size: 14px; font-weight: 700; color: #e8c25a;
+        text-align: center; font-size: 18px; font-weight: 700; color: #e8c25a;
         line-height: 1.5; padding: 2px 4px; min-height: 20px;
         opacity: 0; transition: opacity 0.4s;
       }
@@ -3114,7 +3119,7 @@ export function initSkills(game) {
       .challenge-btn {
         background: linear-gradient(180deg, #b06a28, #8a4e1c); color: #fff;
         border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
-        padding: 10px 32px; font-size: 14px; font-weight: 700;
+        padding: 10px 32px; font-size: 18px; font-weight: 700;
         cursor: pointer; letter-spacing: 1px;
         transition: filter 0.15s, opacity 0.3s;
       }
@@ -3218,12 +3223,77 @@ function showChoosePhase(state) {
 
   ov.classList.add('show');
 
-  // Idle safety: auto-pick the first (safest) approach with the best hero
+  /* "Auto-complete skill challenges" (Options menu): take the decision off the
+     player's hands. The cards still render and the roll still plays out — only
+     the choice is automated — so the outcome and its consequences stay visible.
+     We hold until the situation narration has finished speaking, so the pick
+     never cuts the voice off mid-line. AUTO_CHOOSE_MIN_MS still applies when the
+     line is unrecorded or narration is muted (there's then nothing to wait for
+     but the player still needs a beat to read the cards), and the idle timeout
+     caps the wait if a line somehow never reports finishing. */
   if (_autoChooseTimer) clearTimeout(_autoChooseTimer);
+  if (getSetting('autoSkillChallenges')) {
+    const pick = bestApproach(state);
+    const startedAt = Date.now();
+    const poll = () => {
+      _autoChooseTimer = null;
+      if (_phase !== 'choose') return;
+      const waited = Date.now() - startedAt;
+      if (waited < AUTO_CHOOSE_MIN_MS || (isNarrationActive() && waited < AUTO_CHOOSE_IDLE_MS)) {
+        _autoChooseTimer = setTimeout(poll, AUTO_CHOOSE_POLL_MS);
+        return;
+      }
+      resolveApproach(state, pick.idx, pick.hero);
+    };
+    _autoChooseTimer = setTimeout(poll, AUTO_CHOOSE_POLL_MS);
+    return;
+  }
+
+  // Idle safety: auto-pick the first (safest) approach with the best hero
   _autoChooseTimer = setTimeout(() => {
     _autoChooseTimer = null;
     if (_phase === 'choose') resolveApproach(state, 0, null);
-  }, 30000);
+  }, AUTO_CHOOSE_IDLE_MS);
+}
+
+/**
+ * Which approach the party should take, for the auto-complete setting.
+ *
+ * Scored as expected value: the chance the check lands, times the tier's reward
+ * multiplier. That naturally prefers a RISKY approach the party is genuinely
+ * good at over a SAFE one they'd also pass, while steering clear of long shots.
+ * Success chance comes straight off the d20: a margin of 0 needs a 20, hence
+ * (21 - needed) / 20, clamped to the 5%..95% nat-1/nat-20 band.
+ *
+ * Returns { idx, hero } — `hero` is null for party checks and for approaches
+ * where the roster view-model gave us nobody.
+ */
+function bestApproach(state) {
+  const { game, approaches } = state;
+  const alive = game.heroes.filter(h => h.data.hp > 0);
+  const momentum = momentumBonus(game);
+  let best = { idx: 0, hero: null, ev: -Infinity };
+
+  approaches.forEach((appr, idx) => {
+    let bonus, hero = null;
+    if (appr.party) {
+      /* Party check: half the party must pass, so the average bonus is the
+         honest predictor rather than the best hero's. */
+      bonus = alive.length
+        ? alive.reduce((s, h) => s + skillBonus(game, h, appr.skill), 0) / alive.length
+        : 0;
+    } else if (appr.heroes && appr.heroes.length) {
+      hero = appr.heroes[0].hero;              // topHeroes() sorts by bonus desc
+      bonus = appr.heroes[0].bonus;
+    } else {
+      bonus = 0;
+    }
+    const needed = appr.actualDC - (bonus + momentum);
+    const chance = Math.max(0.05, Math.min(0.95, (21 - needed) / 20));
+    const ev = chance * (TIERS[appr.tier]?.mult || 1);
+    if (ev > best.ev) best = { idx, hero, ev };
+  });
+  return best;
 }
 
 /* ---------- roll phase: flip the chosen card, animate dice ---------- */
@@ -3291,7 +3361,7 @@ function startRollPhase(state, onContinue) {
   // Single-hero back: d20 + math + verdict
   const skillInfo = SKILLS[appr.skill];
   back.innerHTML = `
-    <div style="font-size:12px; font-weight:700; color:#f0e6cc; margin-bottom:6px;">${result.hero.data.name}</div>
+    <div style="font-size:16px; font-weight:700; color:#f0e6cc; margin-bottom:6px;">${result.hero.data.name}</div>
     <div class="appr-d20">0</div>
     <div class="appr-roll-math"></div>
     <div class="appr-roll-sub">${skillInfo ? skillInfo.label : appr.skill}${momentum ? ` · 🔥 momentum +${momentum}` : ''} · DC ${appr.actualDC}</div>
@@ -3326,10 +3396,16 @@ function startRollPhase(state, onContinue) {
       else if (result.success) { verdictEl.textContent = '✅ SUCCESS'; verdictEl.className = 'appr-verdict success'; }
       else { verdictEl.textContent = '❌ FAILURE'; verdictEl.className = 'appr-verdict failure'; }
 
+      /* Verdict stinger. These four slots are declared but unrecorded in
+         audio.js — silent for now, audible the moment files land. */
+      playSfx(result.isCrit ? 'skillCrit' : result.isCritFail ? 'skillFumble'
+              : result.success ? 'skillSuccess' : 'skillFail', { throttleMs: 0 });
+
       showResult(state);
       return;
     }
     d20El.textContent = String(die(20));
+    playSfx('skillRoll', { throttleMs: 0 });
     _diceInterval = setTimeout(nextRollTick, rollSequence[seqIdx++]);
   }
   _diceInterval = setTimeout(nextRollTick, 700); // wait for flip
@@ -3366,12 +3442,22 @@ function showResult(state) {
 
     document.getElementById('challenge-continue').classList.remove('hidden');
 
-    // 15s auto-continue — player can click sooner
+    /* Auto-continue after 15s — player can click sooner. Same rule as the
+       auto-pick above: don't close over a voice line that's still speaking, and
+       don't wait forever if one never reports finishing. */
     if (!_autoContinueTimer) {
-      _autoContinueTimer = setTimeout(() => {
+      const startedAt = Date.now();
+      const poll = () => {
+        _autoContinueTimer = null;
+        const waited = Date.now() - startedAt;
+        if (waited < AUTO_CONTINUE_MIN_MS || (isNarrationActive() && waited < AUTO_CONTINUE_MAX_MS)) {
+          _autoContinueTimer = setTimeout(poll, AUTO_CHOOSE_POLL_MS);
+          return;
+        }
         const btn = document.getElementById('challenge-continue');
         if (btn) btn.click();
-      }, 15000);
+      };
+      _autoContinueTimer = setTimeout(poll, AUTO_CHOOSE_POLL_MS);
     }
   }, 350);
 }
@@ -3389,8 +3475,9 @@ function dismissOverlay() {
 /* ================================================================
    Reset per-floor state (called when a new dungeon loads)
    ================================================================ */
-export function resetChallengeState(game) {
+export function resetChallengeState(game, opts = {}) {
   _challengesFired = new Set();
+  if (game) game._storyChallengesFired = new Set();
   _activeChallenge = null;
   _phase = 'idle';
   _resolveOverlay = null;
@@ -3398,17 +3485,20 @@ export function resetChallengeState(game) {
   if (_autoChooseTimer) { clearTimeout(_autoChooseTimer); _autoChooseTimer = null; }
   if (_diceInterval) { clearTimeout(_diceInterval); _diceInterval = null; }
   if (game) {
-    game._floorBuffs = [];    // floor-long boons expire with the floor
-    game._floorDebuffs = [];  // wounded pride etc. expire with the floor
     game._skillMomentum = 0;  // momentum resets between floors
     game._entryChallenged = new Set();   // room-entry challenge roll tracking
     game._preBossFired = false;          // one-shot pre-boss challenge
-    /* expire skill-granted EFFECTS-registry buffs/debuffs from heroes */
-    if (game.heroes) {
-      for (const h of game.heroes) clearEffectsByTag(h, 'skill');
+    /* Only reset banked floor boons, debuffs, and skill effects when explicitly
+       starting a new quest/expedition or abandoning/completing a run. Floor transitions
+       preserve banked merchant/camp boons so they can be spent in the next floor's combat. */
+    if (opts.newQuest) {
+      game._floorBuffs = [];
+      game._floorDebuffs = [];
+      if (game.heroes) {
+        for (const h of game.heroes) clearEffectsByTag(h, 'skill');
+      }
+      if (typeof game.dismissTempAlly === 'function') game.dismissTempAlly();
     }
-    /* dismiss any temp beast ally from animalFriend */
-    if (typeof game.dismissTempAlly === 'function') game.dismissTempAlly();
   }
 }
 
@@ -3523,7 +3613,7 @@ export function firePreBossChallenge(game, onResolved) {
 }
 
 /**
- * Per-frame scan for room-entry challenges (combat/elite rooms just entered)
+ * Per-frame scan for room skill challenges (combat/elite rooms after search)
  * and the one-shot pre-boss challenge. Idempotent via the _entryChallenged set.
  */
 export function checkRoomEntryChallenge(game) {
@@ -3534,10 +3624,31 @@ export function checkRoomEntryChallenge(game) {
 
   if (!game._entryChallenged) game._entryChallenged = new Set();
 
-  /* Pre-boss: when the boss room is adjacent/known but not yet entered, fire once. */
-  if (!game._preBossFired && game.D.boss !== undefined && game.visitedRooms &&
-      !game.visitedRooms[game.D.boss] && game._searchRoom === game.D.boss) {
-    /* party is actively heading to the boss — fire the threshold challenge */
+  /* Story-mission curated challenges: each binding names a zone (by role);
+     the challenge fires once, after that zone is searched. These
+     take priority over the random pools so scripted beats always land. */
+  const sq = game.activeQuest;
+  if (sq && Array.isArray(sq.storyChallenges) && sq.storyChallenges.length) {
+    if (!game._storyChallengesFired) game._storyChallengesFired = new Set();
+    for (let i = 0; i < sq.storyChallenges.length; i++) {
+      if (game._storyChallengesFired.has(i)) continue;
+      const sc = sq.storyChallenges[i];
+      /* `floor` pins a beat to one floor of a multi-floor expedition. Without
+         it the binding would re-fire every floor, since the fired-set resets
+         on floor load. Unpinned bindings keep the old any-floor behaviour. */
+      if (sc.floor != null && (game.questFloor | 0) !== (sc.floor | 0)) continue;
+      const rid = resolveStoryZone(game, sc.zone);
+      if (rid < 0 || !game._searchedRooms || !game._searchedRooms[rid]) continue;
+      game._storyChallengesFired.add(i);
+      fireChallenge(game, sc.challenge);
+      return;
+    }
+  }
+
+  /* Pre-boss: when the boss room is searched, fire once. */
+  if (!game._preBossFired && game.D.boss !== undefined && game._searchedRooms &&
+      game._searchedRooms[game.D.boss]) {
+    /* boss room is searched — fire the threshold challenge */
     if (Math.random() < 0.5) {
       game._preBossFired = true;
       const ok = firePreBossChallenge(game, () => {});
@@ -3547,10 +3658,10 @@ export function checkRoomEntryChallenge(game) {
     }
   }
 
-    /* Room-entry: small chance when a combat/elite room is freshly visited. */
+  /* Room skill challenge: small chance when a combat/elite room is searched. */
   for (let rid = 0; rid < game.D.rooms.length; rid++) {
     if (game._entryChallenged.has(rid)) continue;
-    if (!game.visitedRooms || !game.visitedRooms[rid]) continue;
+    if (!game._searchedRooms || !game._searchedRooms[rid]) continue;
     const t = game.D.rooms[rid].type;
     if (t !== 'combat' && t !== 'elite') continue;
     game._entryChallenged.add(rid);
@@ -3564,6 +3675,25 @@ export function checkRoomEntryChallenge(game) {
       }
     }
   }
+}
+
+/**
+ * Resolve a story-challenge zone binding to a room/zone id.
+ *   'entrance' | 'boss'      — the fixed special zones
+ *   'shrine' | 'treasure'    — first zone of that type
+ *   'combat' or 'combat:N'   — Nth combat zone in depth order (default first)
+ */
+function resolveStoryZone(game, zone) {
+  const d = game.D;
+  if (!d || !d.rooms || !zone) return -1;
+  if (zone === 'entrance') return d.entrance ?? -1;
+  if (zone === 'boss') return d.boss ?? -1;
+  const [kind, nRaw] = String(zone).split(':');
+  const n = Math.max(0, parseInt(nRaw, 10) || 0);
+  const matches = d.rooms
+    .filter(r => r.type === kind)
+    .sort((a, b) => a.depth - b.depth);
+  return matches[n] ? matches[n].id : -1;
 }
 
 /* Exported for testing/debug console use */

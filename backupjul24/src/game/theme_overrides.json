@@ -1,0 +1,415 @@
+{
+  "ancient": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "decor": {
+      "furniture": 2,
+      "debris": 2,
+      "pillars": 2,
+      "sconces": 0,
+      "bones": 0.35,
+      "webs": 0.2,
+      "moss": 0,
+      "icicles": 0
+    },
+    "tile": {
+      "runes": 0,
+      "embers": 0
+    },
+    "propScatter": {
+      "coffin": 0.0025,
+      "vase": 0.0125
+    },
+    "hemi": [
+      4742258,
+      1843240,
+      0.85
+    ],
+    "dir": [
+      15586744,
+      0.17
+    ],
+    "fogD": 0.0018,
+    "floor": 6646650,
+    "wall": 3293554
+  },
+  "grim": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "fogD": 0.006,
+    "hemi": [
+      3294776,
+      1054224,
+      1.08
+    ],
+    "dir": [
+      7112815,
+      0.57
+    ],
+    "floor": 5659237,
+    "wall": 5840403,
+    "cap": 6966831,
+    "corridor": 5659237,
+    "debris": [
+      5781021,
+      4868148
+    ],
+    "cloth": 2240532,
+    "pillar": 5455923,
+    "pools": {
+      "amount": 0.18,
+      "pits": 1,
+      "glow": 0.65
+    },
+    "particles": {
+      "n": 600,
+      "color": 1371646
+    },
+    "fog": 1055505,
+    "decor": {
+      "bones": 0.65,
+      "sconces": 0,
+      "pillars": 0.65,
+      "webs": 0.6,
+      "moss": 1.05,
+      "icicles": 1.05
+    },
+    "tile": {
+      "stains": 0.33,
+      "growth": 0.38,
+      "sprout": 0,
+      "runes": 0
+    }
+  },
+  "frost": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "wall/emerald",
+        "variants": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sat": 0.1,
+        "target": 0.68,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 0.6,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 1.5
+      },
+      "cap": {
+        "family": "wall/emerald",
+        "variants": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "decor": {
+      "furniture": 0,
+      "debris": 2,
+      "sconces": 0,
+      "pillars": 0,
+      "bones": 0,
+      "icicles": 1.7
+    },
+    "tile": {
+      "rime": 1,
+      "rough": 1,
+      "stains": 0,
+      "growth": 0.93,
+      "sprout": 0
+    },
+    "propScatter": {
+      "icebone": 0.0145
+    },
+    "icicles": true,
+    "lakes": true,
+    "hemi": [
+      5883391,
+      1185828,
+      0.38
+    ],
+    "dir": [
+      9214975,
+      0.68
+    ],
+    "floor": 15856629,
+    "corridor": 16053751,
+    "wall": 5626367,
+    "pillar": 449279,
+    "debris": [
+      16777215,
+      16777215
+    ],
+    "pools": {
+      "colA": 764671,
+      "amount": 0.6,
+      "glow": 0
+    },
+    "particles": {
+      "n": 600
+    },
+    "cap": 47856
+  },
+  "verdant": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "propScatter": {
+      "rootsA": 0.003,
+      "rootsB": 0.003,
+      "fren4": 0.0105,
+      "fren3": 0.011,
+      "fren2": 0.0115,
+      "fren1": 0.012,
+      "mushroomB": 0.0105,
+      "mushroomA": 0.005
+    },
+    "tile": {
+      "sprout": 0.61,
+      "stains": 0.11,
+      "growth": 0.68
+    },
+    "decor": {
+      "moss": 0,
+      "furniture": 0,
+      "debris": 2,
+      "sconces": 0,
+      "pillars": 0,
+      "bones": 0,
+      "webs": 0.9
+    },
+    "debris": [
+      6776679,
+      2295045
+    ],
+    "pools": {
+      "pits": 3,
+      "amount": 0.32,
+      "glow": 0.05
+    },
+    "particles": {
+      "n": 600
+    },
+    "pillar": 3606793
+  },
+  "snowfield": {
+    "oc": {
+      "ground": {
+        "debris": 0.2,
+        "brokenSignpost": 0.058,
+        "rocks": 0,
+        "cairn": 0,
+        "icebone": 0.018
+      }
+    },
+    "decor": {
+      "moss": 0
+    },
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "particles": {
+      "n": 600
+    }
+  }
+}

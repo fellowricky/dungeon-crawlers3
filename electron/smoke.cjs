@@ -50,10 +50,13 @@ app.whenReady().then(() => {
       const probe = await win.webContents.executeJavaScript(`(() => ({
         game: window.__game ? window.__game.state : null,
         three: !!window.__THREE__,
-        audioCtl: !!document.getElementById('audio-ctl'),
+        /* the topnav Options button — replaced the old #audio-ctl volume
+           popover when volume moved into the Options panel */
+        optionsBtn: !!document.getElementById('nav-options'),
+        optionsOverlay: !!document.getElementById('options-overlay'),
         embark: !!document.getElementById('setup-embark'),
       }))()`);
-      const ok = probe.game && probe.three && probe.audioCtl && probe.embark
+      const ok = probe.game && probe.three && probe.optionsBtn && probe.optionsOverlay && probe.embark
         && failedAssets.length === 0 && errors.length === 0;
       console.log('SMOKE_RESULT', JSON.stringify({ probe, failedAssets: failedAssets.slice(0, 8), errors: errors.slice(0, 8) }));
       console.log(ok ? 'SMOKE_PASS' : 'SMOKE_FAIL');

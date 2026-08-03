@@ -7,10 +7,21 @@
  *   short → partial recover (warlocks full)
  *   long  → full recover
  */
-import { hasFeature, totalSlots, recoverSlots } from './features.js';
+import { hasFeature, totalSlots, recoverSlots, restoreCharges } from './features.js';
 import { drawBar } from './entities.js';
 import { log, updatePartyFrames } from './ui.js';
 import { clearEffectsByTag } from './conditions.js';
+
+/** Clear until-rest monster-ability debuffs (drained / corroded, tag:'rest')
+ *  and give back any drained max HP. Runs on both short and long rests. */
+function clearRestDebuffs(hero) {
+  clearEffectsByTag(hero, 'rest');
+  const d = hero.data;
+  if (d.hpDrain) {
+    d.maxHp += d.hpDrain;
+    d.hpDrain = 0;
+  }
+}
 
 /** Normalize legacy `day` flag → `long`. */
 export function ensureAbilityUsed(h) {
@@ -32,6 +43,13 @@ export function ensureAbilityUsed(h) {
 export function applyShortRestToHero(h, opts = {}) {
   ensureAbilityUsed(h);
   h.abilityUsed.short = false;
+  if (opts.fullHeal || opts.reason === 'shrine') {
+    h.abilityUsed.long = false;
+    h.rageUsed = false;
+    restoreCharges(h, 'long');
+  } else {
+    restoreCharges(h, 'short');
+  }
   h.secondWindUsed = false;
   h.smiteUsed = false;
   h.tidesUsed = false;
@@ -39,7 +57,7 @@ export function applyShortRestToHero(h, opts = {}) {
   /* Spell slots (leveled). Warlock Pact Magic refills fully on a short rest;
      other casters recover the lowest expended slot (Arcane Recovery: more). */
   if (totalSlots(h.slotsMax) > 0) {
-    if (h.classKey === 'warlock') {
+    if (opts.fullHeal || h.classKey === 'warlock') {
       h.slots = { ...h.slotsMax };
     } else {
       const gain = hasFeature(h, 'arcaneRecovery')
@@ -49,21 +67,18 @@ export function applyShortRestToHero(h, opts = {}) {
     }
   }
 
-  /* Heal slots — recover one */
-  if (h.healSlotsMax) {
-    h.healSlots = Math.min(h.healSlotsMax, (h.healSlots || 0) + 1);
-  }
-
   /* Lay on Hands — recover half the pool (min 5) */
   if (h.layOnHandsMax) {
     const gain = Math.max(5, Math.floor(h.layOnHandsMax / 2));
     h.layOnHands = Math.min(h.layOnHandsMax, (h.layOnHands || 0) + gain);
   }
 
+  /* Song of Rest is no longer a short-rest effect — it is a passive
+     post-combat heal (10% max HP) applied in combat.js when a room's last
+     monster dies. Short rests already heal the party, so the old bonus was
+     redundant. The songOfRest opt is kept for call-site compatibility. */
   if (opts.fullHeal && h.hp > 0) {
     h.hp = h.maxHp;
-  } else if (opts.songOfRest !== false && hasFeature(h, 'songOfRest') && h.hp > 0 && h.hp < h.maxHp) {
-    h.hp = Math.min(h.maxHp, h.hp + 4 + h.level);
   }
 }
 
@@ -75,13 +90,14 @@ export function applyLongRestToHero(h) {
   ensureAbilityUsed(h);
   h.abilityUsed.short = false;
   h.abilityUsed.long = false;
+  restoreCharges(h, 'long');
   h.secondWindUsed = false;
   h.smiteUsed = false;
   h.tidesUsed = false;
   h.rageUsed = false;
 
+  if (h.hp > 0 && h.maxHp) h.hp = h.maxHp;
   if (totalSlots(h.slotsMax) > 0) h.slots = { ...h.slotsMax };
-  if (h.healSlotsMax) h.healSlots = h.healSlotsMax;
   if (h.layOnHandsMax) h.layOnHands = h.layOnHandsMax;
 }
 
@@ -93,6 +109,7 @@ export function applyLongRestToHero(h) {
 export function partyShortRest(game, opts = {}) {
   if (!game?.heroes?.length) return false;
   for (const hero of game.heroes) {
+    clearRestDebuffs(hero);   // restore drained max HP before any full-heal
     applyShortRestToHero(hero.data, {
       fullHeal: !!opts.fullHeal,
       songOfRest: true
@@ -104,6 +121,8 @@ export function partyShortRest(game, opts = {}) {
       drawBar(hero.ent.bar, Math.max(0, hero.data.hp / hero.data.maxHp));
     }
   }
+  /* Summoned companions: revive the downed (per deathPolicy) and rescale. */
+  if (game.summons?.onShortRest) game.summons.onShortRest();
   if (!opts.silent) {
     const why = opts.reason || 'short rest';
     log(opts.fullHeal
@@ -122,17 +141,26 @@ export function partyShortRest(game, opts = {}) {
 export function partyLongRest(game, opts = {}) {
   if (!game?.heroes?.length) return false;
   for (const hero of game.heroes) {
+    clearRestDebuffs(hero);             // drained / corroded end on any rest
     applyLongRestToHero(hero.data);
     hero.raging = false;
-    hero.tempHp = 0;
+    hero.data.tempHp = 0;
     hero.uncannyUsed = false;
     hero._foughtThisCombat = false;
     hero.conc = null;   // concentration drops on a long rest / floor change
-    clearEffectsByTag(hero, 'skill');   // skill-check boons/debuffs expire on floor change
+    /* Note: skill-challenge boons/banes (tag:'skill') are intentionally NOT
+       cleared here. They burn down on the combat clock (conditions.js), which
+       is frozen outside a fight, so a player who earns a buff between fights
+       still gets to spend it in the next encounter. They clear when that fight
+       ends (initiative._endCombatEffects), when their duration runs out, or on
+       quest end (skills.js). */
+    clearRestDebuffs(hero);             // drained / corroded end on any rest
     if (hero.ent?.bar && hero.data.hp > 0) {
       drawBar(hero.ent.bar, Math.max(0, hero.data.hp / hero.data.maxHp));
     }
   }
+  /* Summoned companions: full heal + rescale, reviving the downed. */
+  if (game.summons?.onLongRest) game.summons.onLongRest();
   if (!opts.silent) {
     const why = opts.reason || 'floor cleared';
     log(`🌙 Long rest (${why}) — all abilities and spell slots restored.`, 'heal');

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SPELLS, SPELL_POOLS } from '../src/game/spells.js';
+import { combatMethods } from '../src/game/combat.js';
 
 describe('Spells Registry', () => {
   it('should export a valid SPELLS registry', () => {
@@ -41,4 +42,51 @@ describe('Spells Registry', () => {
       }
     }
   });
+
+  it('should support dynamic target selection and metadata for multi-projectile spells', () => {
+    expect(SPELLS.magicMissile.ai.targetType).toBe('execute');
+    expect(SPELLS.fireball.ai.aoeRadius).toBe(4.0);
+    expect(SPELLS.fireball.ai.minTargets).toBe(2);
+    expect(SPELLS.scorchingRay.ai.targetType).toBe('singleBurst');
+  });
+
+  it('should conserve spell slots based on abilityUse AI preference knob', () => {
+    const fakeHero = {
+      data: {
+        name: 'Gandalff',
+        hp: 30, maxHp: 30, level: 7,
+        knownSpells: ['magicMissile', 'fireball'],
+        slots: { 1: 4, 2: 3, 3: 2 },
+        aiPrefs: { abilityUse: 0.08 }
+      }
+    };
+    const fakeFoe = { x: 5, z: 5, data: { hp: 20, maxHp: 20 } };
+    const fakeContext = {
+      _scoreSpellForTarget: () => 10,
+      monsterEliteRoom: () => false,
+      canUseSpellRecharge: () => true
+    };
+
+    // When abilityUse is 0, no limited resource spell should be picked
+    fakeHero.data.aiPrefs.abilityUse = 0.0;
+    const zeroPick = combatMethods._pickKnownSpell.call(fakeContext, fakeHero, fakeFoe, [fakeHero], () => true);
+    expect(zeroPick).toBeNull();
+
+    // When abilityUse is 0.08, non-emergency spell selection should be gated (conserved ~92% of the time)
+    fakeHero.data.aiPrefs.abilityUse = 0.08;
+    let castCount = 0;
+    for (let i = 0; i < 1000; i++) {
+      const pick = combatMethods._pickKnownSpell.call(fakeContext, fakeHero, fakeFoe, [fakeHero], () => true);
+      if (pick) castCount++;
+    }
+    // Expected ~80 casts out of 1000 trials (allow reasonable variance 40..130)
+    expect(castCount).toBeGreaterThanOrEqual(30);
+    expect(castCount).toBeLessThanOrEqual(150);
+
+    // When abilityUse is 1.0, limited resource spells are cast freely 100% of the time
+    fakeHero.data.aiPrefs.abilityUse = 1.0;
+    const fullPick = combatMethods._pickKnownSpell.call(fakeContext, fakeHero, fakeFoe, [fakeHero], () => true);
+    expect(fullPick).toBe('magicMissile');
+  });
 });
+

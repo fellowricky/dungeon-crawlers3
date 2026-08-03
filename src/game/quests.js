@@ -5,14 +5,38 @@
  * Legendaries are quest-exclusive: harder/longer quests have higher odds; the
  * hardest offered quest always guarantees a legendary reward.
  */
-import { rollItem, rollLegendary, perkText, ilvlText, bonusText } from './items.js';
-import { BOSS_IDS, MONSTERS, MONSTER_THEMES, DUNGEON_MONSTER_MAP, monsterName } from './srd.js';
+import { rollItem, rollLegendary, perkText, ilvlText, bonusText, TIER } from './items.js';
+import { BOSS_IDS, BOSS_MONSTERS, MONSTER_THEMES, DUNGEON_MONSTER_MAP, monsterSpawnsIn, dungeonMonsterIds, monsterName, getCuratedBossEncounter, getCuratedMonsterRoster, MONSTERS_ALL, getThemeForMonster } from './srd.js';
+
 import {
   QUEST_EMBARK, QUEST_VICTORY, PHASE_RUMORS, ALLY_PERSONAS,
   CHAIN_SUBTITLES, CHAIN_EMBARK
 } from './quest_story.js';
 
-const THEMES = ['ancient', 'verdant', 'frost', 'grim', 'molten'];
+/* The five dungeon themes. This is the whole vocabulary for a *quest* theme —
+   the overland biomes (moor, forest, mire, holdfast, boneyard, …) are floor
+   themes only, used by the prologue and by hand-authored story floorPlans, and
+   must never end up on a quest object. */
+export const DUNGEON_THEMES = ['ancient', 'verdant', 'frost', 'grim', 'molten'];
+const THEMES = DUNGEON_THEMES;
+
+/** Overland biome -> the dungeon theme it reads as, for repairing bad data. */
+const BIOME_TO_DUNGEON = {
+  forest: 'verdant', sporewood: 'verdant',
+  mire: 'grim', boneyard: 'grim', moor: 'grim',
+  holdfast: 'ancient', ruinfield: 'ancient',
+  ashfield: 'molten', snowfield: 'frost'
+};
+
+/** Coerce any theme string to one of the five dungeon themes. */
+export function asDungeonTheme(theme, rng = Math.random) {
+  if (THEMES.includes(theme)) return theme;
+  return BIOME_TO_DUNGEON[theme] || THEMES[Math.floor(rng() * THEMES.length)];
+}
+
+const getQuestXpBase = () => parseFloat(globalThis.localStorage?.getItem('dc_quest_xp_base') || '30');
+const getQuestXpCoeff = () => parseFloat(globalThis.localStorage?.getItem('dc_quest_xp_coeff') || '15');
+const getSideXpMult = () => parseFloat(globalThis.localStorage?.getItem('dc_side_xp_mult') || '0.30');
 
 /** Deterministic PRNG for stable sequel offers. */
 export function mulberry32(seed) {
@@ -75,12 +99,18 @@ const STORY_TEMPLATES = {
   ]
 };
 
-// Preset spaced map coordinates so nodes never overlap
+// Preset spaced map coordinates so nodes never overlap.
+// 8 slots: 6 offered quests + up to 2 pinned chain sequels. Keep x <= 84
+// so node labels don't clip the right edge.
 const MAP_POSITIONS = [
-  { x: 22, y: 40 }, // North-West
-  { x: 50, y: 28 }, // North-East
-  { x: 74, y: 50 }, // South-East
-  { x: 42, y: 68 }  // South-West
+  { x: 22, y: 40 }, // West
+  { x: 50, y: 28 }, // North
+  { x: 74, y: 50 }, // East
+  { x: 42, y: 68 }, // South
+  { x: 30, y: 18 }, // North-West
+  { x: 68, y: 22 }, // North-East
+  { x: 84, y: 72 }, // South-East
+  { x: 56, y: 52 }  // Center
 ];
 
 function shuffleArray(arr) {
@@ -92,21 +122,26 @@ function shuffleArray(arr) {
   return newArr;
 }
 
-/** Quest commitment score — used to rank "hardest" for guaranteed legendary. */
+/** Quest commitment score — used to rank "hardest" for the pity legendary. */
 export function questHardness(q) {
   return (q.level || 1) * 2 + (q.floors || 1) * 3 + Math.max(0, (q.level || 1) - 1);
 }
 
 /**
  * Legendary chance from quest floor count.
- * Only 10-floor dungeons can yield legendaries.
+ * Only 10-floor dungeons can yield legendaries. Deliberately scarce (was
+ * 50-75% pre-2026-07-15 — legendaries every board); the pity counter
+ * (LEGENDARY_PITY) is the bad-luck backstop.
  */
 export function legendaryChance(floors, level, partyLevel) {
   if (floors < 10) return 0;
-  let p = 0.50;
+  let p = 0.22;
   if (level > partyLevel) p += 0.15;
-  return Math.min(0.75, p);
+  return Math.min(0.40, p);
 }
+
+/** 10-floor quest clears without a legendary before one is guaranteed. */
+export const LEGENDARY_PITY = 3;
 
 /* ================= quest phases (special floors) ================= */
 
@@ -198,16 +233,30 @@ function rollSideObjectives(q, rng) {
     const so = {
       id: 'so' + (i + 1), kind, have: 0, done: false,
       rewardGold: Math.max(25, Math.round(q.rewardGold * 0.35)),
-      rewardXp: Math.max(15, Math.round(q.rewardXp * 0.30))
+      rewardXp: Math.max(15, Math.round(q.rewardXp * getSideXpMult()))
     };
     if (kind === 'slay') {
       const themeIdxs = DUNGEON_MONSTER_MAP[q.theme] || [0, 1, 2, 3];
       const fam = MONSTER_THEMES[themeIdxs[Math.floor(rng() * themeIdxs.length)]];
-      const ids = [...new Set([...(fam.monsters[1] || []), ...(fam.monsters[2] || [])])];
+      /* Target creatures that can actually appear in this dungeon — i.e. those
+         explicitly whitelisted for the theme in the bestiary. */
+      const ids = dungeonMonsterIds(q.theme);
       so.need = Math.max(8, Math.min(20, 6 + 2 * q.floors));
-      if (ids.length) {
-        so.targetIds = ids;
+      /* Narrow the whitelist to the family named in the label. Targeting the
+         theme's whole roster while the label read "Slay 8 goblinoids" meant
+         any kill in the dungeon ticked a family-specific objective. If the
+         family has no representative here, keep the generic wording so the
+         label never promises a creature the floor can't spawn. */
+      const famIds = ids.filter(id => {
+        const m = MONSTERS_ALL.find(x => x.id === id);
+        return m && getThemeForMonster(m) === fam.name;
+      });
+      if (famIds.length) {
+        so.targetIds = famIds;
         so.label = `Slay ${so.need} ${FAMILY_PLURAL[fam.name] || fam.name.toLowerCase()}`;
+      } else if (ids.length) {
+        so.targetIds = ids;
+        so.label = `Slay ${so.need} monsters`;
       } else {
         so.targetIds = null; /* match any kill */
         so.label = `Slay ${so.need} monsters`;
@@ -236,64 +285,17 @@ function decorateQuest(q, rng, opts = {}) {
     .replace(/\{locType\}/g, (q.locType || 'depths').toLowerCase());
   q.victoryText = pickRng(themed(QUEST_VICTORY, q.theme), rng).replace(/\{place\}/g, q.place);
   q.description = q.embarkText;
-  let selectedBossId = null;
-  if (BOSS_IDS.length) {
-    // Determine boss CR range for final floor
-    const dLevel = q.level || 1;
-    const floors = q.floors || 1;
-    const D = dLevel + Math.max(0, floors - 1) * 0.5;
-    const minCR = Math.max(1.0, D * 0.75);
-    const maxCR = Math.max(2.0, D * 1.25);
 
-    // Filter bosses by theme
-    const themeIdxs = DUNGEON_MONSTER_MAP[q.theme] || [0, 1, 2, 3];
-    const allowedBossIds = new Set();
-    for (const idx of themeIdxs) {
-      const fam = MONSTER_THEMES[idx];
-      if (fam && fam.monsters && fam.monsters.boss) {
-        for (const id of fam.monsters.boss) {
-          allowedBossIds.add(id);
-        }
-      }
-    }
-
-    const bosses = MONSTERS['boss'] || [];
-    let themedBosses = bosses.filter(m => allowedBossIds.has(m.id));
-    if (themedBosses.length === 0) {
-      themedBosses = bosses;
-    }
-
-    // Filter by CR range
-    let filtered = themedBosses.filter(m => m.cr >= minCR && m.cr <= maxCR);
-    if (filtered.length === 0) {
-      // Fallback: entire boss pool filtered by CR
-      filtered = bosses.filter(m => m.cr >= minCR && m.cr <= maxCR);
-    }
-
-    if (filtered.length === 0) {
-      // Fallback: find closest CR to average in target range
-      const targetCR = (minCR + maxCR) / 2;
-      let closestSpec = themedBosses[0] || bosses[0];
-      let minDiff = Infinity;
-      const searchPool = themedBosses.length ? themedBosses : bosses;
-      for (const spec of searchPool) {
-        const diff = Math.abs(spec.cr - targetCR);
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestSpec = spec;
-        }
-      }
-      filtered = closestSpec ? [closestSpec] : [];
-    }
-
-    const spec = filtered.length ? filtered[Math.floor(rng() * filtered.length)] : null;
-    selectedBossId = spec ? spec.id : null;
-  }
-  q.finalBossId = selectedBossId;
-  q.finalBossName = q.finalBossId ? monsterName(q.finalBossId) : null;
+  const dLevel = q.level || 1;
+  const curated = getCuratedBossEncounter(q.theme, dLevel);
+  q.bossEncounter = curated;
+  q.finalBossId = curated ? curated.bossId : null;
+  q.finalBossName = curated ? (curated.bossTitle || curated.name || monsterName(curated.bossId)) : null;
   q.bossIntel = false;
+
   q.phases = rollPhases(q, rng, opts);
   q.sideObjectives = rollSideObjectives(q, rng);
+  q.monsterRoster = getCuratedMonsterRoster(q.theme, dLevel, q.finalBossId);
   if (!q.chain) q.chain = null;
   return q;
 }
@@ -304,16 +306,15 @@ function rollQuestReward(itemLevel, floors, level, partyLevel, theme, forceLegen
     return rollLegendary(itemLevel, rng, { theme });
   }
   /* Scale reward rarity cap + forced floor by quest length */
-  let maxIdx = 1;   // uncommon
-  let fallback = 'rare';
-  if (floors >= 7) { maxIdx = 3; fallback = 'epic'; }       // epic
-  else if (floors >= 4) { maxIdx = 2; fallback = 'rare'; }  // rare
+  let luck = 4, fallback = 'uncommon';
+  if (floors >= 7) { luck = 14; fallback = 'epic'; }
+  else if (floors >= 4) { luck = 8; fallback = 'rare'; }
 
-  const item = rollItem(itemLevel, rng, null, { ilvl: itemLevel, maxRarityIdx: maxIdx });
-  if (item.rarity === 'common' || item.rarity === 'uncommon') {
-    return rollItem(itemLevel, rng, null, { ilvl: itemLevel, forceRarity: fallback });
-  }
-  return item;
+  /* Quest rewards roll at the 'quest' source offset with a heavy luck bonus, and
+     floor out at a guaranteed rarity so a long dungeon never pays out a common. */
+  const item = rollItem(itemLevel, rng, null, { source: 'quest', luck, noLegendary: true });
+  if (item && TIER[item.rarity] >= TIER[fallback]) return item;
+  return rollItem(itemLevel, rng, null, { source: 'quest', forceRarity: fallback });
 }
 
 export function generateQuests(partyLevel, count = 3, opts = {}) {
@@ -334,15 +335,23 @@ export function generateQuests(partyLevel, count = 3, opts = {}) {
     const locType = FANTASY_LOCATIONS[theme][Math.floor(Math.random() * FANTASY_LOCATIONS[theme].length)];
     const name = `The ${locType} of ${place}`;
 
-    const level = Math.max(1, pl + Math.floor(Math.random() * 3) - 1); // partyLevel - 1 to +1
-    const floors = 1 + Math.floor(Math.random() * 10); // 1 to 10 floors
+    /* opts.levelOffsets pins quest i's level to pl + offset (band contract
+       from the world map: 1 below / 4 at / 1 above). Absent → random ±1. */
+    const offset = Array.isArray(opts.levelOffsets) && opts.levelOffsets[i] !== undefined
+      ? opts.levelOffsets[i]
+      : Math.floor(Math.random() * 3) - 1;
+    const level = Math.max(1, pl + offset); // clamps to 1 (at pl 1 the "below" quest is just level 1)
+    /* 3 is the floor: every quest opens with an overland prologue (1-2 floors,
+       see overland_prologue.js) and the last floor must stay a dungeon for the
+       final boss, so a 3-floor quest is the shortest shape that still works. */
+    const floors = 3 + Math.floor(Math.random() * 8); // 3 to 10 floors
 
     const seed = 1 + Math.floor(Math.random() * 888888);
 
     const itemLevel = level;
     // Placeholder reward — finalized after we know the hardest quest
     const rewardGold = Math.round((50 + 25 * level) * floors * (0.9 + Math.random() * 0.2));
-    const rewardXp = Math.round((30 + 15 * level) * floors);
+    const rewardXp = Math.round((getQuestXpBase() + getQuestXpCoeff() * level) * floors);
 
     const q = {
       id: `q_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`,
@@ -367,18 +376,24 @@ export function generateQuests(partyLevel, count = 3, opts = {}) {
     quests.push(q);
   }
 
-  // Guarantee the hardest offered quest drops a legendary
-  let hardestIdx = 0;
-  let hardestScore = -1;
-  for (let i = 0; i < quests.length; i++) {
-    const s = questHardness(quests[i]);
-    if (s > hardestScore) { hardestScore = s; hardestIdx = i; }
+  /* Pity guarantee: after LEGENDARY_PITY 10-floor clears without a legendary
+     (opts.legendaryPity, tracked by the game), force one onto the hardest
+     10-floor quest on the board. No 10-floor offer → pity carries over
+     (legendaries stay strictly 10-floor). Otherwise rewards roll at the
+     normal (scarce) legendaryChance. */
+  let pityIdx = -1;
+  if ((opts.legendaryPity | 0) >= LEGENDARY_PITY) {
+    let best = -1;
+    for (let i = 0; i < quests.length; i++) {
+      if (quests[i].floors < 10) continue;
+      const s = questHardness(quests[i]);
+      if (s > best) { best = s; pityIdx = i; }
+    }
   }
 
   for (let i = 0; i < quests.length; i++) {
     const q = quests[i];
-    const forceLeg = i === hardestIdx && q.floors >= 10;
-    q.rewardItem = rollQuestReward(q.itemLevel, q.floors, q.level, pl, q.theme, forceLeg);
+    q.rewardItem = rollQuestReward(q.itemLevel, q.floors, q.level, pl, q.theme, i === pityIdx);
     q.isLegendaryReward = q.rewardItem.rarity === 'legendary';
   }
 
@@ -400,18 +415,23 @@ export function generateSequelQuest(entry, partyLevel) {
   const subtitle = pickRng(CHAIN_SUBTITLES[part] || CHAIN_SUBTITLES[2], rng);
   const itemLevel = level + Math.floor(floors / 2);
   const goldMult = part === 3 ? 1.5 : 1.15;
+  const mapPos = (entry.mapLocation && typeof entry.mapLocation.x === 'number' && typeof entry.mapLocation.y === 'number')
+    ? entry.mapLocation
+    : MAP_POSITIONS[seed % MAP_POSITIONS.length];
 
   const q = {
     id: `q_chain_${entry.chainId}_${part}`,
     name: `${entry.arcTitle} — ${subtitle}`,
-    theme: entry.theme,
+    /* Belt and braces: an old save may hold a chain entry seeded from a story
+       mission, whose theme is an overland biome. Sequels are dungeons. */
+    theme: asDungeonTheme(entry.theme, rng),
     level, floors, seed,
     rewardGold: Math.round((50 + 25 * level) * floors * goldMult),
-    rewardXp: Math.round((30 + 15 * level) * floors * (part === 3 ? 1.5 : 1)),
+    rewardXp: Math.round((getQuestXpBase() + getQuestXpCoeff() * level) * floors * (part === 3 ? 1.5 : 1)),
     rewardItem: null,
     itemLevel,
     description: '',
-    mapLocation: entry.mapLocation,
+    mapLocation: mapPos,
     isLegendaryReward: false,
     place: entry.place,
     locType: entry.locType,

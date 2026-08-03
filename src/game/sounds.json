@@ -1,0 +1,546 @@
+{
+  "_comment": "Sound registry for Dungeon Crawlers. Edited by sound_editor.html; consumed by src/game/audio.js. A slot with an empty files list is declared but unrecorded and plays its fallback until real audio lands (no fallback = intentionally silent).",
+  "slots": {
+    "swordAttack": {
+      "category": "melee",
+      "files": [
+        "Attacks/Sword Attacks Hits and Blocks/Sword Attack 1.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Attack 2.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Attack 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "swordHit": {
+      "category": "melee",
+      "files": [
+        "Attacks/Sword Attacks Hits and Blocks/Sword Impact Hit 1.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Impact Hit 2.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Impact Hit 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "swordBlock": {
+      "category": "melee",
+      "files": [
+        "Attacks/Sword Attacks Hits and Blocks/Sword Blocked 1.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Blocked 2.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Blocked 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "swordParry": {
+      "category": "melee",
+      "files": [
+        "Attacks/Sword Attacks Hits and Blocks/Sword Parry 1.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Parry 2.wav",
+        "Attacks/Sword Attacks Hits and Blocks/Sword Parry 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "bowAttack": {
+      "category": "ranged",
+      "files": [
+        "Attacks/Bow Attacks Hits and Blocks/Bow Attack 1.wav",
+        "Attacks/Bow Attacks Hits and Blocks/Bow Attack 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "bowHit": {
+      "category": "ranged",
+      "files": [
+        "Attacks/Bow Attacks Hits and Blocks/Bow Impact Hit 1.wav",
+        "Attacks/Bow Attacks Hits and Blocks/Bow Impact Hit 2.wav",
+        "Attacks/Bow Attacks Hits and Blocks/Bow Impact Hit 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "bowBlock": {
+      "category": "ranged",
+      "files": [
+        "Attacks/Bow Attacks Hits and Blocks/Bow Blocked 1.wav",
+        "Attacks/Bow Attacks Hits and Blocks/Bow Blocked 2.wav",
+        "Attacks/Bow Attacks Hits and Blocks/Bow Blocked 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "chestOpen": {
+      "category": "world",
+      "files": [
+        "Doors Gates and Chests/Chest Open 1.wav",
+        "Doors Gates and Chests/Chest Open 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "doorOpen": {
+      "category": "world",
+      "files": [
+        "Doors Gates and Chests/Door Open 1.wav",
+        "Doors Gates and Chests/Door Open 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "gateOpen": {
+      "category": "world",
+      "files": [
+        "Doors Gates and Chests/Gate Open.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "portcullis": {
+      "category": "world",
+      "files": [
+        "Doors Gates and Chests/Portcullis Gate.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "lockUnlock": {
+      "category": "world",
+      "files": [
+        "Doors Gates and Chests/Lock Unlock.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellFire": {
+      "category": "element",
+      "files": [
+        "Spells/Fireball 1.wav",
+        "Spells/Fireball 2.wav",
+        "Spells/Fireball 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellFireSpray": {
+      "category": "element",
+      "files": [
+        "Spells/Firespray 1.wav",
+        "Spells/Firespray 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellBuff": {
+      "category": "element",
+      "files": [
+        "Spells/Firebuff 1.wav",
+        "Spells/Firebuff 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellIce": {
+      "category": "element",
+      "files": [
+        "Spells/Ice Throw 1.wav",
+        "Spells/Ice Throw 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellIceStorm": {
+      "category": "element",
+      "files": [
+        "Spells/Ice Barrage 1.wav",
+        "Spells/Ice Barrage 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellFreeze": {
+      "category": "element",
+      "files": [
+        "Spells/Ice Freeze 1.wav",
+        "Spells/Ice Freeze 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellIceWall": {
+      "category": "element",
+      "files": [
+        "Spells/Ice Wall 1.wav",
+        "Spells/Ice Wall 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellRock": {
+      "category": "element",
+      "files": [
+        "Spells/Rock Meteor Throw 1.wav",
+        "Spells/Rock Meteor Throw 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellRockStorm": {
+      "category": "element",
+      "files": [
+        "Spells/Rock Meteor Swarm 1.wav",
+        "Spells/Rock Meteor Swarm 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellRockWall": {
+      "category": "element",
+      "files": [
+        "Spells/Rock Wall 1.wav",
+        "Spells/Rock Wall 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellWater": {
+      "category": "element",
+      "files": [
+        "Spells/Waterspray 1.wav",
+        "Spells/Waterspray 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellWave": {
+      "category": "element",
+      "files": [
+        "Spells/Wave Attack 1.wav",
+        "Spells/Wave Attack 2.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellImpact": {
+      "category": "element",
+      "files": [
+        "Spells/Spell Impact 1.wav",
+        "Spells/Spell Impact 2.wav",
+        "Spells/Spell Impact 3.wav"
+      ],
+      "fallback": null,
+      "note": ""
+    },
+    "spellArcane": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellImpact",
+      "note": "dry force thump, no element"
+    },
+    "spellLightning": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellRockStorm",
+      "note": "crack plus rolling thunder"
+    },
+    "spellThunder": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellRockStorm",
+      "note": "concussive boom"
+    },
+    "spellHoly": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "choral swell / radiant chime"
+    },
+    "spellNecrotic": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellWave",
+      "note": "wet life-siphon drain"
+    },
+    "spellCurse": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellWave",
+      "note": "low sour hex whisper"
+    },
+    "spellMind": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellFreeze",
+      "note": "woozy descending shimmer"
+    },
+    "spellNature": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellRockWall",
+      "note": "creaking vines, rustle"
+    },
+    "spellAcid": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellWater",
+      "note": "hissing corrosive splash"
+    },
+    "spellSummon": {
+      "category": "school",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "materialising shimmer"
+    },
+    "spellHeal": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "warm restorative chime"
+    },
+    "spellWard": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "metallic barrier snap"
+    },
+    "spellBlessing": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "light ascending sparkle"
+    },
+    "spellHaste": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "quick rising whoosh"
+    },
+    "spellSong": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "lute flourish / vocal jab"
+    },
+    "spellStealth": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "cloth and smoke displacement"
+    },
+    "spellMark": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellImpact",
+      "note": "sharp target ping"
+    },
+    "warCry": {
+      "category": "support",
+      "files": [],
+      "fallback": "spellBuff",
+      "note": "guttural roar"
+    },
+    "martialFlourish": {
+      "category": "support",
+      "files": [],
+      "fallback": "swordAttack",
+      "note": "rapid multi-strike whir"
+    },
+    "cantripFireBolt": {
+      "category": "cantrip",
+      "files": [],
+      "fallback": "spellFire",
+      "note": "wizard + sorcerer Fire Bolt"
+    },
+    "cantripSacredFlame": {
+      "category": "cantrip",
+      "files": [],
+      "fallback": "spellHoly",
+      "note": "cleric Sacred Flame"
+    },
+    "cantripProduceFlame": {
+      "category": "cantrip",
+      "files": [],
+      "fallback": "spellFireSpray",
+      "note": "druid Produce Flame"
+    },
+    "cantripEldritchBlast": {
+      "category": "cantrip",
+      "files": [],
+      "fallback": "spellArcane",
+      "note": "warlock Eldritch Blast"
+    },
+    "cantripViciousMockery": {
+      "category": "cantrip",
+      "files": [],
+      "fallback": "spellSong",
+      "note": "bard Vicious Mockery"
+    },
+    "cantripRayOfFrost": {
+      "category": "cantrip",
+      "files": [],
+      "fallback": "spellIce",
+      "note": "artificer Ray of Frost"
+    },
+    "skillRoll": {
+      "category": "skill",
+      "files": [],
+      "fallback": null,
+      "note": "per-tick d20 tumble"
+    },
+    "skillSuccess": {
+      "category": "skill",
+      "files": [],
+      "fallback": null,
+      "note": "short positive sting"
+    },
+    "skillFail": {
+      "category": "skill",
+      "files": [],
+      "fallback": null,
+      "note": "short negative sting"
+    },
+    "skillCrit": {
+      "category": "skill",
+      "files": [],
+      "fallback": null,
+      "note": "bright triumphant flourish (nat 20)"
+    },
+    "skillFumble": {
+      "category": "skill",
+      "files": [],
+      "fallback": null,
+      "note": "comedic thud (nat 1)"
+    }
+  },
+  "abilities": {
+    "secondWind": "spellHeal",
+    "actionSurge": "spellHaste",
+    "flurry": "martialFlourish",
+    "frenzy": "warCry",
+    "cunningAction": "spellStealth",
+    "dash": "spellStealth",
+    "disengage": "spellStealth",
+    "dodge": "spellWard",
+    "patientDefense": "spellWard",
+    "bloodlust": "warCry",
+    "shieldOfFaith": "spellWard",
+    "remarkableAthlete": "spellHaste",
+    "fastHands": "spellStealth",
+    "rage": "warCry",
+    "bearTotem": "spellWard",
+    "bardic": "spellSong",
+    "wildShape": "spellNature",
+    "combatSong": "spellSong",
+    "divineSmite": "spellHoly",
+    "tidesOfChaos": "spellArcane",
+    "indomitable": "spellWard",
+    "lucky": "spellBlessing",
+    "layOnHands": "spellHeal",
+    "deathstrike": "martialFlourish",
+    "guidedStrike": "spellHoly",
+    "vowOfEnmity": "spellMark",
+    "shadowStep": "spellStealth",
+    "sacredWeapon": "spellHoly",
+    "colossusSlayer": "spellMark",
+    "summonCompanion": "spellSummon",
+    "quiveringPalm": "martialFlourish",
+    "rallyingCry": "spellBlessing",
+    "preserveLife": "spellHeal",
+    "dragonBreath": "spellFireSpray",
+    "wildSurge": "spellArcane",
+    "cuttingWords": "spellSong",
+    "fiendishBlessing": "spellBlessing",
+    "feyPresence": "spellBlessing",
+    "fireball": "spellFire",
+    "flameStrike": "spellFire",
+    "wallOfFire": "spellFireSpray",
+    "scorchingRay": "spellFireSpray",
+    "dragonBreathSpell": "spellFireSpray",
+    "iceStorm": "spellIceStorm",
+    "coneOfCold": "spellFreeze",
+    "moonbeam": "spellIce",
+    "callLightning": "spellLightning",
+    "lightningBolt": "spellLightning",
+    "thunderwave": "spellThunder",
+    "thunderousSmite": "spellThunder",
+    "shatter": "spellThunder",
+    "magicMissile": "spellArcane",
+    "chaosBolt": "spellArcane",
+    "guidingBolt": "spellHoly",
+    "spiritGuardians": "spellHoly",
+    "acidArrow": "spellAcid",
+    "inflictWounds": "spellNecrotic",
+    "vampiricTouch": "spellNecrotic",
+    "blight": "spellNecrotic",
+    "armsOfHadar": "spellNecrotic",
+    "hex": "spellCurse",
+    "bestowCurse": "spellCurse",
+    "bane": "spellCurse",
+    "rayOfEnfeeblement": "spellCurse",
+    "huntersMark": "spellMark",
+    "sleep": "spellMind",
+    "slow": "spellMind",
+    "holdPerson": "spellMind",
+    "holdMonster": "spellMind",
+    "fear": "spellMind",
+    "blindness": "spellMind",
+    "silence": "spellMind",
+    "hideousLaughter": "spellMind",
+    "darkness": "spellMind",
+    "entangle": "spellNature",
+    "web": "spellNature",
+    "grease": "spellNature",
+    "faerieFire": "spellNature",
+    "barkskin": "spellNature",
+    "cureWounds": "spellHeal",
+    "healingWord": "spellHeal",
+    "massHealingWord": "spellHeal",
+    "massCureWounds": "spellHeal",
+    "lesserRestoration": "spellHeal",
+    "greaterRestoration": "spellHeal",
+    "shield": "spellWard",
+    "protectionFromEvil": "spellWard",
+    "deathWard": "spellWard",
+    "bless": "spellBlessing",
+    "haste": "spellHaste",
+    "magicWeapon": "spellArcane",
+    "mistyStep": "spellStealth",
+    "spiritualWeapon": "spellSummon",
+    "eldritchBlast": "spellArcane",
+    "chromaticOrb": "spellArcane",
+    "rayOfSickness": "spellAcid",
+    "flamingSphere": "spellFire",
+    "mirrorImage": "spellArcane",
+    "counterspell": "spellArcane",
+    "hypnoticPattern": "spellMind",
+    "polymorph": "spellNature",
+    "dimensionDoor": "spellStealth",
+    "cloudkill": "spellAcid",
+    "animateObjects": "spellArcane",
+    "findFamiliar": "spellSummon"
+  },
+  "cantrips": {
+    "wizard": "cantripFireBolt",
+    "sorcerer": "cantripFireBolt",
+    "cleric": "cantripSacredFlame",
+    "druid": "cantripProduceFlame",
+    "warlock": "cantripEldritchBlast",
+    "bard": "cantripViciousMockery",
+    "artificer": "cantripRayOfFrost"
+  },
+  "damageTypes": {
+    "fire": "spellFire",
+    "cold": "spellFreeze",
+    "lightning": "spellLightning",
+    "thunder": "spellThunder",
+    "acid": "spellAcid",
+    "poison": "spellAcid",
+    "necrotic": "spellNecrotic",
+    "radiant": "spellHoly",
+    "psychic": "spellMind",
+    "force": "spellArcane",
+    "bludgeoning": "spellRock",
+    "slashing": "swordHit",
+    "piercing": "swordHit"
+  }
+}
