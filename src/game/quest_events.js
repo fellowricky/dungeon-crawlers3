@@ -7,19 +7,22 @@
  * puzzleState, gems) is rebuilt per floor in resolveFloorPhase/placeGems.
  */
 import * as THREE from 'three';
-import { log, showBanner, buildPartyFrames, updatePartyFrames, updateResources } from './ui.js';
+import { log, showBanner, buildPartyFrames, updatePartyFrames, updateResources, layoutRightRail } from './ui.js';
 import { makeHero, recalc, grantXp } from './srd.js';
 import { rollItem } from './items.js';
-import { generateSequelQuest } from './quests.js';
+import { generateSequelQuest, DUNGEON_THEMES } from './quests.js';
 import { fireChallenge } from './skills.js';
+import { queueNarration } from './audio.js';
+import { trackGold, trackLoot } from './run_stats.js';
 import {
   FLOOR_FLAVOR, PHASE_ANNOUNCE, PHASE_RESOLVED, PHASE_CHOICES, ALLY_PERSONAS,
   BOSS_INTEL_LINES, PUZZLE_WARDS, PUZZLE_TEXT, OBJECTIVE_COMPLETE,
   CHAIN_TEASE, CHAIN_EPILOGUE, GAUNTLET_SPOILS, MIDBOSS_SLAIN, BOSS_SLAIN
 } from './quest_story.js';
+import { getRaceDefaults } from './appearance.js';
 
 let G = null;
-const $ = id => document.getElementById(id);
+const $ = id => (typeof document === 'undefined' ? null : document.getElementById(id));
 const themed = (table, theme) => table[theme] || table.generic || [];
 const sPick = (arr, n) => (arr && arr.length) ? arr[Math.abs(n | 0) % arr.length] : '';
 const rPick = arr => (arr && arr.length) ? arr[Math.floor(Math.random() * arr.length)] : '';
@@ -54,7 +57,7 @@ export function initQuestEvents(game) {
       <div class="cs-frame fc-frame">
         <div class="cs-header">
           <div class="cs-tabs">
-            <span style="color:#e8c25a; font-weight:700; font-size:14px; letter-spacing:1px;">🗺 THE WAY DOWN</span>
+            <span style="color:#e8c25a; font-weight:700; font-size:18px; letter-spacing:1px;">🗺 THE WAY DOWN</span>
           </div>
         </div>
         <div class="cs-body" style="flex-direction:column; padding:18px 22px;">
@@ -72,29 +75,29 @@ export function initQuestEvents(game) {
     style.textContent = `
       .logline.story{ color:#e8d5a0; font-style:italic; }
       #questtracker{
-        position:fixed; left:256px; top:12px; z-index:20; width:205px;
+        position:fixed; right:12px; top:52px; z-index:20; width:196px;
         background:rgba(10,12,18,0.78); border:1px solid rgba(232,194,90,0.25);
         border-radius:8px; padding:8px 10px; backdrop-filter:blur(3px);
-        font-size:11px; line-height:1.5; color:#d8d2c0;
+        font-size:14px; line-height:1.5; color:#d8d2c0;
       }
       @media (max-width:640px){
-        #questtracker{ left:196px; top:12px; width:130px; }
+        #questtracker{ right:12px; top:48px; width:150px; }
       }
-      .qt-title{ font-weight:700; color:#e8c25a; font-size:12px; }
+      .qt-title{ font-weight:700; color:#e8c25a; font-size:16px; }
       .qt-chain{ display:inline-block; margin-right:6px; padding:0 5px; border:1px solid #e8a83f;
         border-radius:4px; color:#e8a83f; font-weight:800; }
-      .qt-floor{ color:#8fd4e8; }
+      .qt-floor{ color:#8cc9b0; }
       .qt-phase{ color:#b98cf5; font-weight:600; }
-      .qt-intel{ color:#8fd4e8; }
+      .qt-intel{ color:#8cc9b0; }
       .qt-obj{ color:#b8b4a8; }
       .qt-obj.done{ color:#7ae08a; }
       #floorchoicescreen{ position:fixed; inset:0; z-index:52; display:none;
         align-items:center; justify-content:center; background:rgba(4,6,10,0.72); }
       #floorchoicescreen.show{ display:flex; }
       .fc-frame{ width:min(560px, 92vw); }
-      .fc-title{ font-size:20px; font-weight:800; letter-spacing:2px; color:#f0e8d0;
+      .fc-title{ font-family:'Cinzel',Georgia,serif; font-size:26px; font-weight:800; letter-spacing:2px; color:#f0e8d0;
         text-align:center; margin-bottom:10px; }
-      .fc-desc{ font-size:13px; color:#cfc8b4; font-style:italic; line-height:1.55;
+      .fc-desc{ font-size:17px; color:#cfc8b4; font-style:italic; line-height:1.55;
         text-align:center; margin-bottom:16px; }
       .fc-buttons{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
       .fc-btn{ flex:1; min-width:200px; display:flex; flex-direction:column; gap:5px; padding:14px 16px;
@@ -103,15 +106,15 @@ export function initQuestEvents(game) {
         transition:transform .15s, border-color .15s, box-shadow .15s; }
       .fc-btn:hover{ transform:translateY(-2px); border-color:#e8c25a; box-shadow:0 6px 18px rgba(0,0,0,0.5); }
       .fc-btn.primary{ border-color:#e8a83f; box-shadow:0 0 12px rgba(232,168,63,0.25); }
-      .fc-btn-label{ font-size:14px; font-weight:700; color:#e8c25a; }
-      .fc-btn-sub{ font-size:11px; color:#a8a294; line-height:1.4; }
-      .fc-count{ font-size:10px; color:#8fd4e8; }
+      .fc-btn-label{ font-size:18px; font-weight:700; color:#e8c25a; }
+      .fc-btn-sub{ font-size:14px; color:#a8a294; line-height:1.4; }
+      .fc-count{ font-size:13px; color:#8cc9b0; }
       .quest-node.chain-quest .quest-node-pin{ border-color:#e8a83f; box-shadow:0 0 14px #e8a83f, 0 0 5px #fff; }
       .quest-node.chain-quest .quest-node-label{ border-color:rgba(232,168,63,0.7); color:#ffd9a0; }
-      #wm-quest-extras{ margin-top:10px; font-size:12px; line-height:1.5; }
+      #wm-quest-extras{ margin-top:10px; font-size:16px; line-height:1.5; }
       .wm-chain-banner{ color:#e8a83f; font-weight:700; margin-bottom:6px; }
       .wm-rumor-head, .wm-obj-head{ color:#e8c25a; font-weight:700; margin-top:8px;
-        font-size:11px; letter-spacing:1px; }
+        font-size:14px; letter-spacing:1px; }
       .wm-rumor{ color:#b8a8d8; font-style:italic; }
       .wm-objective{ color:#b8c8a8; }
     `;
@@ -289,20 +292,15 @@ const ALLY_KINDS = {
 };
 
 function allyVisual(race, gender) {
-  const v = {
-    gender: gender || 'male', head: '', skinColor: '#ffddcc', hair: 'messy1/adult',
-    facialHair: 'none', hairColor: '#663311', eyeColor: '#000000',
-    ears: 'none', horns: 'none', spriteScaleX: 1, spriteScaleY: 1
+  /* Same race palette the character creator and the tavern use — see
+     getRaceDefaults in appearance.js. */
+  return {
+    ...getRaceDefaults(race),
+    gender: gender || 'male',
+    hair: 'messy1/adult',
+    hairExtension: 'none',
+    hairExtColor: ''
   };
-  if (race === 'halforc') {
-    v.head = 'orc/male'; v.skinColor = '#8fae7a'; v.hairColor = '#111111'; v.eyeColor = '#5a1010';
-  } else if (race === 'dwarf') {
-    v.skinColor = '#ffddbb'; v.hairColor = '#bbaa55'; v.facialHair = 'beard/medium';
-    v.spriteScaleX = 1.15; v.spriteScaleY = 0.85;
-  } else if (race === 'halfling') {
-    v.skinColor = '#eeddbb'; v.hairColor = '#664422'; v.spriteScaleX = 0.82; v.spriteScaleY = 0.82;
-  }
-  return v;
 }
 
 /** Push the temp ally wrapper BEFORE onDungeon's hero-placement loop so it
@@ -356,6 +354,10 @@ export function grantSideObjectiveReward(game, so) {
   storyLog(rPick(OBJECTIVE_COMPLETE[so.kind] || []));
   log(`🏅 Optional objective complete: ${so.label} — +${so.rewardGold}g, +${so.rewardXp} XP.`, 'treasure');
   game.gold += so.rewardGold;
+  trackGold(game, so.rewardGold);
+  if (typeof game.notifyLootFeedback === 'function') {
+    game.notifyLootFeedback({ gold: so.rewardGold });
+  }
   const real = game.heroes.filter(h => !h.temp);
   const each = Math.max(1, Math.round(so.rewardXp / Math.max(1, real.length)));
   const before = real.map(h => h.data.level);
@@ -514,8 +516,9 @@ function fireWardRound(game, ps) {
         ps.solved = true;
         if (ps.fails === 0) {
           storyLog(PUZZLE_TEXT.solvedFlawless);
-          const it = rollItem((game.activeQuest ? game.activeQuest.level : (game.dungeonLevel || 1)) + 1);
+          const it = rollItem(game.activeQuest ? game.activeQuest.level : (game.dungeonLevel || 1), Math.random, null, { source: 'boss' });
           game.inventory.push(it);
+          trackLoot(game, it);
           log(`  ↳ 💎 ${it.name} pried from the seal's wreckage!`, 'treasure');
         } else {
           storyLog(PUZZLE_TEXT.solved);
@@ -534,7 +537,8 @@ function fireWardRound(game, ps) {
           for (const h of game.heroes) {
             if (h.data.hp <= 0) continue;
             const dmg = 1 + Math.floor(Math.random() * 6);
-            h.data.hp = Math.max(1, h.data.hp - dmg);
+            const net = game.absorbTempHp(h, dmg);
+            h.data.hp = Math.max(1, h.data.hp - net);
           }
           log('  ↳ ⚡ The wards lash out — the party is scorched but standing.', 'down');
           ps.round = 0; ps.successes = 0; ps.fails = 0;
@@ -554,16 +558,25 @@ function fireWardRound(game, ps) {
    Must run BEFORE questFloor++ in finishDungeon.
    ================================================================ */
 export function onFloorCleared(game) {
+  if (game.guild) game.guild.onFloorCleared();
   const q = game.activeQuest;
   if (!q) return false;
 
   /* spoils promised by the previous floor's accepted gauntlet */
   if (q._gauntletSpoils) {
     q._gauntletSpoils = false;
-    const gold = 75 * (game.activeQuest ? game.activeQuest.level : (game.dungeonLevel || 1));
+    const gLvl = game.activeQuest ? game.activeQuest.level : (game.dungeonLevel || 1);
+    const gold = 75 * gLvl;
     game.gold += gold;
-    const it = rollItem((game.activeQuest ? game.activeQuest.level : (game.dungeonLevel || 1)) + 1, Math.random, null, { forceRarity: 'epic' });
+    trackGold(game, gold);
+    /* Opt-in gauntlet gamble: strongly boosted odds (still level-capped, so no
+       epics before floor 12). */
+    const it = rollItem(gLvl, Math.random, null, { source: 'hoard', luck: 6 });
     game.inventory.push(it);
+    trackLoot(game, it);
+    if (typeof game.notifyLootFeedback === 'function') {
+      game.notifyLootFeedback({ gold, item: it });
+    }
     storyLog(rPick(GAUNTLET_SPOILS));
     log(`  ↳ 🪙 +${gold}g and ${it.name} from the gauntlet's cache!`, 'treasure');
   }
@@ -574,6 +587,10 @@ export function onFloorCleared(game) {
     if (p.type === 'ambush' && p.choice === 'accept') {
       const gold = 50 * (game.dungeonLevel || 1);
       game.gold += gold;
+      trackGold(game, gold);
+      if (typeof game.notifyLootFeedback === 'function') {
+        game.notifyLootFeedback({ gold });
+      }
       storyLog(rPick(PHASE_RESOLVED.ambush));
       log(`  ↳ 🪙 War-chest: +${gold}g.`, 'treasure');
     } else if (p.type === 'gauntlet' && p.choice === 'accept') {
@@ -596,7 +613,11 @@ export function onFloorCleared(game) {
    ================================================================ */
 export function onQuestCompleted(game, q) {
   if (!game.questChains) game.questChains = { active: [], log: [] };
-  if (q.victoryText) storyLog(q.victoryText);
+  if (q.victoryText) {
+    storyLog(q.victoryText);
+    /* story missions have a prerecorded victory line (missing = silent) */
+    if (q.story && q.id) queueNarration(`${q.id}_victory`, { delay: 400 });
+  }
 
   const part = q.chain ? q.chain.part : 1;
   if (part >= 3) {
@@ -610,6 +631,10 @@ export function onQuestCompleted(game, q) {
     return;
   }
   if (part === 1 && (q.floors || 1) < 3) return; /* trivial quests don't spawn sagas */
+  /* Story chapters have their own authored progression and their themes are
+     overland biomes (forest, moor, holdfast, mire) — filing one as a chain
+     entry would put a "Moor" or "Holdfast" dungeon on the world map. */
+  if (q.story) return;
 
   const entry = {
     chainId: q.chain ? q.chain.chainId : 'ch_' + (q.seed || Math.floor(Math.random() * 888888)),
@@ -618,7 +643,7 @@ export function onQuestCompleted(game, q) {
     place: q.place || (q.name || '').split(' of ').pop() || 'the deep',
     locType: q.locType || 'Depths',
     theme: q.theme,
-    mapLocation: q.mapLocation,
+    mapLocation: (q.mapLocation && typeof q.mapLocation.x === 'number' && typeof q.mapLocation.y === 'number') ? q.mapLocation : null,
     baseSeed: (q.chain && q.chain.baseSeed) || q.seed,
     level: q.level, floors: q.floors,
     unlockedAt: Date.now()
@@ -632,8 +657,14 @@ export function onQuestCompleted(game, q) {
 
 /** Stable sequel offers materialized from persisted chain entries. */
 export function getSequelOffers(game, partyLevel) {
-  const chains = (game.questChains && Array.isArray(game.questChains.active))
-    ? game.questChains.active : [];
+  if (!game.questChains || !Array.isArray(game.questChains.active)) return [];
+  /* Saves made before story missions stopped spawning sagas can hold entries
+     with an overland theme. Drop them for good rather than offering an
+     overland-themed "dungeon". */
+  const before = game.questChains.active.length;
+  game.questChains.active = game.questChains.active.filter(e => e && DUNGEON_THEMES.includes(e.theme));
+  if (game.questChains.active.length !== before && typeof game.saveGame === 'function') game.saveGame();
+  const chains = game.questChains.active;
   return chains.slice(0, 2).map(e => {
     try { return generateSequelQuest(e, partyLevel); } catch (err) { return null; }
   }).filter(Boolean);
@@ -646,7 +677,7 @@ export function updateQuestTracker(game) {
   const el = $('questtracker');
   if (!el) return;
   const q = game.activeQuest;
-  if (!q || game.state === 'worldmap') { el.style.display = 'none'; return; }
+  if (!q || game.state === 'worldmap') { el.style.display = 'none'; layoutRightRail(); return; }
   el.style.display = 'block';
 
   const chainBadge = q.chain ? `<span class="qt-chain">${q.chain.part === 2 ? 'Ⅱ' : 'Ⅲ'}</span>` : '';
@@ -673,4 +704,5 @@ export function updateQuestTracker(game) {
       : `<div class="qt-obj">◈ ${so.label} (${so.have}/${so.need})</div>`;
   }
   el.innerHTML = html;
+  layoutRightRail();
 }

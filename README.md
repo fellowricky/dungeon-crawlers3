@@ -82,14 +82,30 @@ Here is a comprehensive directory map showing exactly what each file does and wh
     *   **Responsibility**: Resolves hero-side combat exchanges, active actions, and spells.
     *   **Key Aspects**:
         *   Triggers attacks, manages ability cooldowns, and updates target coordinates.
+        *   **Weapon-driven attacks**: the basic-attack profile (damage dice, melee/ranged, damage type, range) is derived from the *equipped weapon* via `pickAttackProfile()` (see srd.js), not from the hero's class. Casters roll between their class cantrip and the equipped weapon each turn based on the `rangedPref` AI knob.
         *   Implements flanking mechanics (qualifying Rogues for *Sneak Attack*).
         *   Resolves class features such as Frenzy, Action Surge, Bear Totem, and Smite.
+        *   **Two-Weapon Fighting**: when dual-wielding two `light` weapons, the off hand lands a bonus-action attack (weapon die only, no ability mod to damage — 5e TWF rule).
+        *   Reads each hero's `data.aiPrefs` knobs: `pickHeroTarget()` weights targets by CR (weakest↔strongest), `_worthSpending()` gates resource use by willingness (0 = no abilities), and `heroCombat()` drinks potions as an action when HP drops below the per-hero threshold, holds/chases based on the movement knob, and rolls cantrip-vs-weapon (or thrown-vs-melee) based on the ranged knob.
 *   [src/game/monster_ai.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/monster_ai.js)
     *   **Responsibility**: AI loop for monsters.
     *   **Key Aspects**:
         *   Aggro activation when heroes enter `AGGRO_RANGE`.
         *   Pursuits and path updates towards targets.
         *   Triggers boss spellcasting sequences (e.g., Fireball, Dragon Breath, Slow) on recurring combat rounds.
+*   [src/game/initiative.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/initiative.js)
+    *   **Responsibility**: D&D-style initiative layered on the real-time loop.
+    *   **Key Aspects**:
+        *   Movement stays fully real-time; only ACTIONS are serialized into initiative order via per-actor cooldown gating (one `TURN_TIME` spotlight per combatant).
+        *   `_beginTurn()` refreshes each actor's bonus-action economy and, via `turn_engine.resetTurnBudgets`, its per-turn movement/action budgets.
+*   [src/game/turn_engine.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/turn_engine.js)
+    *   **Responsibility**: Turn-based tactical combat rules engine — the shared truth both the AI controller (auto mode) and the human controller (manual mode) feed with commands.
+    *   **Key Aspects**:
+        *   Pure, unit-tested helpers: `ftToCells`, `diagCost`/`stepCost`/`pathMoveCost` (PHB alternating diagonals — 1,2,1,2…), `reachableCellsGrid` (budgeted Dijkstra with diagonal-parity state), `threatenedCellsGrid`, `provokesOA`, `validateCommand`.
+        *   Per-turn budgets reset in `initiative._beginTurn`: `moveLeft`, `actUsed`, `bonusUsed`, `reactionUsed`, `diagCount`, `disengageActive`. D&D action roster: Attack / Cast / Dash / Dodge / Disengage / Bonus / Free / End + the OA reaction.
+        *   `cellsForSpeed(e)` derives a cell budget from `RACES[].speedFt` (heroes) or `data.speedCells` (monsters, default 6), scaled by gear `speedMult` and effect haste/slow.
+        *   `moveStep(e, speed, dt)` is the budgeted wrapper around `pathfinding.stepAlong` used by every in-combat path-follower (heroCombat chase, combatCatchup, monsterChase, monsterKite, charmed-hero stalk). It freezes off-turn actors, spends `moveLeft` per cell entered (PHB diagonals), and drops the path when the budget is exhausted (the actor may still act — budgets are independent). `spendMove(e, dist)` does the same for `combatMove`'s continuous orbit. `applySeparation` also pins off-turn actors so they never drift.
+        *   **Phasing**: Phase 0 (rules math + budgets + validators) is additive; **Phase 1 (done)** locks movement to the current initiative actor and consumes `moveLeft` in BOTH auto and (future) manual modes — combat now moves one actor at a time (`TURN_TIME` 2.5s spotlights, `COMBAT_MOVE_BOOST` for pace; both in constants). Phase 2 wires opportunity attacks (`provokesOA`); Phase 3 refactors the AI to emit commands; Phase 4 adds the manual controller + grid overlay.
 *   [src/game/spells.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/spells.js)
     *   **Responsibility**: Registry of all game spells (`SPELLS` and `SPELL_POOLS`). Defines spell ranges, damage/healing formulas, target counts, and status effect application payloads.
 *   [src/game/conditions.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/conditions.js)
@@ -100,7 +116,9 @@ Here is a comprehensive directory map showing exactly what each file does and wh
     *   **Responsibility**: The mathematical core of the SRD 5.1 adaptation.
     *   **Key Aspects**:
         *   `d20Roll()` rolls a d20, supporting advantage/disadvantage summation.
-        *   `recalc()` rebuilds character stats by stacking base attributes, class rank adjustments, active passives, and equipment modifiers.
+        *   `recalc()` rebuilds character stats by stacking base attributes, class rank adjustments, active passives, and equipment modifiers. Caches three attack profiles: `h.weaponProfile` (from the equipped weapon), `h.offhandProfile` (Two-Weapon Fighting), and `h.cantripProfile` (caster classes).
+        *   **Attack-profile system** (`pickAttackProfile`, `buildWeaponProfile`, `buildCantripProfile`, `unarmedFallback`): derives the basic-attack damage dice, ability (finesse→max(STR,DEX)), melee/ranged flag, damage type, and range from the *equipped weapon* — not the class. Casters roll between cantrip and weapon each turn via `aiPrefs.rangedPref`. Finesse weapons use the higher of STR/DEX (5e). Monks fall back to 1d6 unarmed strikes when no weapon is equipped.
+        *   `heroDamage(h, crit, profile)` rolls damage from the active profile's dice + ability mod (cantrips and TWF offhand attacks add no ability mod).
         *   Maintains lists of races, classes, abilities, skills, and monster tier configurations.
 *   [src/game/features.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/features.js)
     *   **Responsibility**: Character progressions, leveling-up rules, and feat pools.
@@ -118,10 +136,14 @@ Here is a comprehensive directory map showing exactly what each file does and wh
     *   **Responsibility**: Loot generation, equipment configurations, and item affixes.
     *   **Key Aspects**:
         *   Supports 9 equipment slots.
+        *   **Weapons carry D&D 5e stats**: each weapon base defines `dmg:[count,sides]`, `melee:true/false`, `dmgType` (slashing/piercing/bludgeoning/force), `range`, and 5e properties (finesse, light, heavy, two-handed, thrown, versatile, reach, loading). `focus:true` marks arcane/druid foci (wands, staves) that keep casters on their cantrip.
         *   Handles rarity multipliers (common, uncommon, rare, epic, legendary).
         *   Defines special legendary perks (e.g., Cleave, Lifesteal, Speed Boost). Legendaries scale up in power to match the character's level.
+        *   `migrateItem()` backfills the 5e weapon fields on legacy saves by looking up `BASES.weapon` by `baseKey`.
 *   [src/game/inventory.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/inventory.js)
-    *   **Responsibility**: Handles item transactions, equipping/unequipping gear, and JSON-based save game serialization.
+    *   **Responsibility**: Handles item transactions, equipping/unequipping gear, and JSON-based save game serialization. Also exposes `setAIPref()` for the per-hero AI Priorities knobs (persisted inside each hero's `data.aiPrefs`).
+    *   **Key Aspects**:
+        *   `equipItem()` supports **Two-Weapon Fighting**: a `light` weapon can occupy the offhand slot when the main hand also holds a light weapon, enabling the bonus-action offhand attack.
 *   [src/game/shop.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/shop.js)
     *   **Responsibility**: Controls merchant interactions during the camp phases between floors.
 *   [src/game/chest_wheel.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/chest_wheel.js)
@@ -158,7 +180,7 @@ Here is a comprehensive directory map showing exactly what each file does and wh
 *   [src/game/ui.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/ui.js)
     *   **Responsibility**: Main DOM HUD updater (health frames, level-up notifications, activity log).
 *   [src/game/menus.js](file:///g:/ClaudesFolder/dungeon-crawlers/src/game/menus.js)
-    *   **Responsibility**: Manages character sheets, stats distribution, and equipment inventory displays.
+    *   **Responsibility**: Manages the pausing character-screen overlay — Equipment/Bag, Attributes, Skills (5e), and the **AI Priorities** tab (per-hero sliders + presets for target priority, ability use, melee↔ranged stance, potion threshold, and combat movement). The Equipment tab and item tooltips display each weapon's D&D 5e damage die, damage type, and properties.
 *   [src/ui/game.css](file:///g:/ClaudesFolder/dungeon-crawlers/src/ui/game.css)
     *   **Responsibility**: Game HUD, menu layouts, overlays, and animations styling.
 *   [src/ui/styles.css](file:///g:/ClaudesFolder/dungeon-crawlers/src/ui/styles.css)

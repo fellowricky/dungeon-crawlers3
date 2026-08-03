@@ -1,0 +1,229 @@
+/**
+ * DUNGEON FORGE — entry point & UI controller.
+ *
+ * Orchestrates procedural dungeon generation, WebGL showcase rendering,
+ * DOM control listeners, and connects the game loop controller (`game.js`).
+ */
+import { game } from './game/game.js';
+import {
+  generateDungeon, THEMES, SPAWN_THEMES, THEME_KEYS, VOID, FLOOR, WALL, POOL, TYPE, TINT
+} from './dungeon/dungeon_generator.js';
+import {
+  renderer, scene, cam, camTarget, updateCam, buildScene, liveUpdate, applyReveal,
+  tick, lights, meshes, fx, standaloneRooms, setYawPitch, shakeCamera, isAnimating,
+  triggerHitStop, triggerSlowMo, finishAnim
+} from './render/dungeon_scene.js';
+import { POST } from './render/dungeon_materials.js';
+
+/* ---------------- DOM Elements ---------------- */
+const el = {
+  seed:     document.getElementById('seed'),
+  dice:     document.getElementById('dice'),
+  forge:    document.getElementById('forge'),
+  rooms:    document.getElementById('rooms') || { value: 16 },
+  loops:    document.getElementById('loops') || { value: 18 },
+  decor:    document.getElementById('decor') || { value: 100 },
+  vRooms:   document.getElementById('vRooms') || { textContent: '' },
+  vLoops:   document.getElementById('vLoops') || { textContent: '' },
+  vDecor:   document.getElementById('vDecor') || { textContent: '' },
+  vTheme:   document.getElementById('vTheme') || { textContent: '' },
+  dname:    document.getElementById('dname') || { textContent: '' },
+  dsub:     document.getElementById('dsub') || { textContent: '' },
+  sRooms:   document.getElementById('sRooms') || { textContent: '' },
+  sEdges:   document.getElementById('sEdges') || { textContent: '' },
+  sCrit:    document.getElementById('sCrit') || { textContent: '' },
+  sTiles:   document.getElementById('sTiles') || { textContent: '' },
+  sLights:  document.getElementById('sLights') || { textContent: '' },
+  sMs:      document.getElementById('sMs') || { textContent: '' },
+  tGraph:   document.getElementById('tGraph') || { checked: false },
+  tHeat:    document.getElementById('tHeat') || { checked: false },
+  tAnim:    document.getElementById('tAnim') || { checked: true },
+  tPost:    document.getElementById('tPost') || { checked: true }
+};
+
+let themeSel = 'auto';
+let forgeThreatMult = 1;
+/* Dungeon level of the floor being forged — drives the spawn budget's level
+   curve. 1 (the standalone forge default) is the gentlest row. */
+let forgeLevel = 1;
+
+const OBJ_MESHES = {
+  props: ['pillar','debrisA','debrisB','debrisC','chestBody','chestTrim','chestSeam','tent','bone',
+          'skull','skeleton','bonePile','spiderWeb',
+          'ring','crystal','grave','sarco','candle','icicle','shard','roots','barrel','crate','table',
+          'bench','chair','bookshelf','weaponRack','statue','urn','rug','magicCircle','tapestry','sconce',
+          'treasureHeap','alchemyBench','hangingCage','webbing','shackle','alcove','stalagmite',
+          'scrollPedestal','weaponRackShield','potionPedestal','charnelPile','crystalCluster'],
+  torches: ['torch','flame','flameCore','brazier','coals'],
+};
+const objVis = { props:true, torches:true, particles:true, liquids:true, lights:true };
+
+function applyObjectVis(){
+  for(const cat in OBJ_MESHES)
+    for(const k of OBJ_MESHES[cat])
+      if(meshes[k]) meshes[k].visible = objVis[cat];
+  if(fx.parts) fx.parts.visible = objVis.particles;
+  const comb = (m, layerOn)=>{ m.userData.layerVisible = layerOn; m.visible = layerOn && m.userData.fogVisible !== false; };
+  for(const m of fx.shafts) comb(m, objVis.particles);
+  for(const m of fx.liquids) comb(m, objVis.liquids);
+  for(const sp of fx.spinners) comb(sp.m, objVis.props);
+  for(const L of lights) L.visible = objVis.lights;
+}
+
+function resolveTheme(seed){
+  if(themeSel !== 'auto') return themeSel;
+  return THEME_KEYS[seed % THEME_KEYS.length];
+}
+
+function setThemeSel(key){
+  themeSel = key;
+  document.querySelectorAll('#chips .chip').forEach(ch => {
+    ch.classList.toggle('on', ch.dataset.t === key);
+  });
+}
+
+/* ---------------- Forge & Showcase Presentation ---------------- */
+function forge(animate = true){
+  const seed = (parseInt(el.seed.value, 10) || 0) >>> 0;
+  const themeKey = resolveTheme(seed);
+  const params = {
+    seed,
+    roomCount: +el.rooms.value || 16,
+    loopChance: (+el.loops.value || 18) / 100,
+    decorDensity: (+el.decor.value || 100) / 100,
+    themeKey,
+    threatMult: forgeThreatMult,
+    level: forgeLevel
+  };
+  const d = generateDungeon(seed, params);
+  presentDungeon(d, animate);
+}
+
+function forgeOverland(seed, opts = {}){
+  if(el.seed) el.seed.value = seed >>> 0;
+  const params = {
+    seed: seed >>> 0,
+    themeKey: (opts.themeKey && THEMES[opts.themeKey] && THEMES[opts.themeKey].overland) ? opts.themeKey : 'forest',
+    decorDensity: (+el.decor.value/100) || 1,
+    level: opts.level || 1,
+    name: opts.name || null,
+    mapW: opts.mapW || 0,
+    mapH: opts.mapH || 0,
+    zones: opts.zones || 0,
+    threatMult: opts.threatMult || 1
+  };
+  const d = generateDungeon(seed, params);
+  presentDungeon(d, opts.animate === true);
+}
+
+function presentDungeon(d, animate){
+  buildScene(d);
+  applyObjectVis();
+  const TH = THEMES[d.params.themeKey] || THEMES.ancient;
+  if(el.vTheme) el.vTheme.textContent = (themeSel==='auto' && !TH.overland) ? 'AUTO \u00b7 '+TH.label : TH.label;
+  if(el.dname) el.dname.textContent = d.name;
+  const st = d.stats;
+  if(el.dsub){
+    el.dsub.innerHTML = 'seed ' + d.seed +
+      ' \u00b7 <span style="color:var(--ember)">' + TH.label.toLowerCase() + '</span>' +
+      ' \u00b7 ' + (TH.overland ? 'overland' : 'floor ' + ((d.seed % 9) + 2)) +
+      ' \u00b7 ' + (d.valid ? '<span class="ok">connected \u2713</span>' : '<span class="bad">unresolved</span>') +
+      (st.attempts > 1 ? ' \u00b7 reroll \u00d7' + (st.attempts-1) : '');
+  }
+  if(el.sRooms) el.sRooms.textContent  = st.rooms;
+  if(el.sEdges) el.sEdges.textContent  = st.edges + ' \u00b7 ' + st.loops;
+  if(el.sCrit) el.sCrit.textContent   = st.critLen + ' rm';
+  if(el.sTiles) el.sTiles.textContent  = st.floorTiles;
+  if(el.sLights) el.sLights.textContent = lights.length;
+  if(el.sMs) el.sMs.textContent     = st.genMs.toFixed(1) + 'ms';
+
+  if (!animate || !el.tAnim.checked) finishAnim();
+
+  game.onDungeon(d);
+}
+
+/* ---------------- Engine Glue Object ---------------- */
+const ENGINE = {
+  scene,
+  cam,
+  renderer,
+  camTarget,
+  updateCam,
+  isAnimating: () => isAnimating(),
+  getMeshes: () => meshes,
+  getLights: () => lights,
+  getStandalone: () => standaloneRooms,
+  getParticles: () => fx.parts,
+  reforge(seed, roomCount, themeKey, animate=false, threatMult=1, level=1){
+    forgeThreatMult = threatMult;
+    forgeLevel = level;
+    if(el.seed) el.seed.value = seed;
+    if(el.rooms) el.rooms.value = Math.max(12, Math.min(80, roomCount));
+    setThemeSel(themeKey);
+    forge(animate);
+    forgeThreatMult = 1;
+    /* forgeLevel stays put: a manual re-forge from the forge panel should match
+       the floor you're standing on, not snap back to the level-1 curve. */
+  },
+  reforgeOverland(seed, opts = {}){
+    forgeOverland(seed, opts);
+  },
+  triggerHitStop(frames = 3) {
+    triggerHitStop(frames);
+  },
+  triggerSlowMo(duration = 1.5) {
+    triggerSlowMo(duration);
+  },
+  triggerShake(intensity = 0.6, duration = 0.3) {
+    shakeCamera(intensity);
+  }
+};
+
+/* ---------------- UI Event Handlers ---------------- */
+if(el.seed) el.seed.addEventListener('change', () => forge(true));
+if(el.dice) el.dice.addEventListener('click', () => { el.seed.value = 1 + Math.floor(Math.random()*999999); forge(true); });
+if(el.forge) el.forge.addEventListener('click', () => forge(true));
+
+document.querySelectorAll('#chips .chip').forEach(ch => {
+  ch.addEventListener('click', () => { setThemeSel(ch.dataset.t); forge(true); });
+});
+
+document.querySelectorAll('#objchips .chip').forEach(ch => {
+  ch.addEventListener('click', () => {
+    const cat = ch.dataset.o;
+    if (objVis[cat] !== undefined) {
+      objVis[cat] = !objVis[cat];
+      ch.classList.toggle('on', objVis[cat]);
+      ch.setAttribute('aria-pressed', objVis[cat]);
+      applyObjectVis();
+    }
+  });
+});
+
+const collapseBtn = document.getElementById('collapse');
+if(collapseBtn){
+  collapseBtn.addEventListener('click', e => {
+    const p = document.getElementById('panel');
+    if(p){
+      p.classList.toggle('min');
+      e.target.textContent = p.classList.contains('min') ? '+' : '\u2013';
+    }
+  });
+}
+
+window.addEventListener('resize', () => {
+  if(renderer){
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const aspect = window.innerWidth / window.innerHeight;
+    cam.left   = -55 * aspect;
+    cam.right  =  55 * aspect;
+    cam.top    =  55;
+    cam.bottom = -55;
+    cam.updateProjectionMatrix();
+  }
+});
+
+/* ---------------- Initialization ---------------- */
+game.init(ENGINE);
+forge(true);
+tick();

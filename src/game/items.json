@@ -1,0 +1,4125 @@
+{
+  "rarities": {
+    "common": {
+      "name": "",
+      "color": "#b4b0a4",
+      "weight": 50,
+      "mult": 1,
+      "affixes": 0
+    },
+    "uncommon": {
+      "name": "Fine",
+      "color": "#5fd46a",
+      "weight": 26,
+      "mult": 1.7,
+      "affixes": 1
+    },
+    "rare": {
+      "name": "Enchanted",
+      "color": "#5aa0f0",
+      "weight": 14,
+      "mult": 2.5,
+      "affixes": 2
+    },
+    "epic": {
+      "name": "Ancient",
+      "color": "#b06cf0",
+      "weight": 6,
+      "mult": 3.5,
+      "affixes": 2
+    },
+    "legendary": {
+      "name": "Fabled",
+      "color": "#e8a83f",
+      "weight": 0,
+      "mult": 4.8,
+      "affixes": 2
+    }
+  },
+  "perks": {
+    "cleave": {
+      "id": "cleave",
+      "name": "Cleave",
+      "desc": "On hit, deal 45% damage to a nearby foe.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "lifesteal": {
+      "id": "lifesteal",
+      "name": "Bloodthirst",
+      "desc": "Heal for 18% of damage dealt on hit.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "execute": {
+      "id": "execute",
+      "name": "Execute",
+      "desc": "+35% damage vs enemies below 30% HP.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "burn": {
+      "id": "burn",
+      "name": "Immolate",
+      "desc": "Hits ignite the foe for bonus fire damage over time.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "firstStrike": {
+      "id": "firstStrike",
+      "name": "First Strike",
+      "desc": "Your opening blow each fight deals +50% damage.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "critSurge": {
+      "id": "critSurge",
+      "name": "Crit Surge",
+      "desc": "Critical hits deal +4 bonus damage.",
+      "hooks": [
+        "onCrit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "chain": {
+      "id": "chain",
+      "name": "Arc Chain",
+      "desc": "Ranged/magic hits have a 40% chance to arc to a second foe.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "manaFont": {
+      "id": "manaFont",
+      "name": "Mana Font",
+      "desc": "15% chance on hit to restore a spell slot.",
+      "hooks": [
+        "onHit"
+      ],
+      "slots": [
+        "weapon"
+      ]
+    },
+    "riposte": {
+      "id": "riposte",
+      "name": "Riposte",
+      "desc": "When hit in melee, retaliate for 3 + half level damage.",
+      "hooks": [
+        "onDamaged"
+      ],
+      "slots": [
+        "weapon",
+        "offhand"
+      ]
+    },
+    "thorns": {
+      "id": "thorns",
+      "name": "Thorns",
+      "desc": "Attackers take 2 + floor(level/3) damage.",
+      "hooks": [
+        "onDamaged"
+      ],
+      "slots": [
+        "armor",
+        "offhand",
+        "amulet"
+      ]
+    },
+    "phaseStep": {
+      "id": "phaseStep",
+      "name": "Phase Step",
+      "desc": "On kill, briefly gain +4 AC for 3 seconds.",
+      "hooks": [
+        "onKill"
+      ],
+      "slots": [
+        "boots",
+        "weapon",
+        "ring"
+      ]
+    },
+    "keenEdge": {
+      "id": "keenEdge",
+      "name": "Keen Edge",
+      "desc": "Widen critical range by 1 (stacks with other sources).",
+      "hooks": [
+        "passive"
+      ],
+      "slots": [
+        "weapon"
+      ],
+      "passive": {
+        "crit": 1
+      }
+    },
+    "bulwark": {
+      "id": "bulwark",
+      "name": "Bulwark",
+      "desc": "+1 AC and +8 HP while equipped.",
+      "hooks": [
+        "passive"
+      ],
+      "slots": [
+        "armor",
+        "offhand",
+        "helm"
+      ],
+      "passive": {
+        "ac": 1,
+        "hp": 8
+      }
+    },
+    "windwalker": {
+      "id": "windwalker",
+      "name": "Windwalker",
+      "desc": "+12% move speed while equipped.",
+      "hooks": [
+        "passive"
+      ],
+      "slots": [
+        "boots",
+        "amulet",
+        "ring"
+      ],
+      "passive": {
+        "speed": 0.12
+      }
+    }
+  },
+  "perkMags": {
+    "cleave": [
+      0.35,
+      0.45,
+      0.55,
+      0.65
+    ],
+    "lifesteal": [
+      0.12,
+      0.16,
+      0.2,
+      0.24
+    ],
+    "execute": [
+      1.25,
+      1.35,
+      1.45,
+      1.6
+    ],
+    "burn": [
+      2,
+      4,
+      7,
+      10
+    ],
+    "firstStrike": [
+      1.35,
+      1.5,
+      1.7,
+      1.9
+    ],
+    "critSurge": [
+      3,
+      5,
+      8,
+      12
+    ],
+    "chain": [
+      0.3,
+      0.4,
+      0.5,
+      0.6
+    ],
+    "manaFont": [
+      0.1,
+      0.15,
+      0.2,
+      0.25
+    ],
+    "riposte": [
+      3,
+      6,
+      10,
+      15
+    ],
+    "thorns": [
+      2,
+      4,
+      7,
+      10
+    ],
+    "phaseStep": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "themePerkBias": {
+    "ancient": [
+      "keenEdge",
+      "manaFont",
+      "chain",
+      "bulwark"
+    ],
+    "verdant": [
+      "lifesteal",
+      "thorns",
+      "windwalker",
+      "riposte"
+    ],
+    "frost": [
+      "firstStrike",
+      "execute",
+      "bulwark",
+      "phaseStep"
+    ],
+    "grim": [
+      "lifesteal",
+      "execute",
+      "critSurge",
+      "riposte"
+    ],
+    "molten": [
+      "burn",
+      "cleave",
+      "critSurge",
+      "thorns"
+    ]
+  },
+  "bases": {
+    "weapon": [
+      {
+        "name": "Frayed Sling",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/ranged/sling_1.png",
+        "prim": {},
+        "range": 5,
+        "visualWeapon": "ranged/slingshot",
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": false,
+        "dmgType": "bludgeoning",
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "hp",
+          "crit",
+          "dex",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Cracked Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/quarterstaff.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/gnarled",
+        "visualColor": "#7c6858",
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "hp",
+          "heal",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Club",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/giant_club.png",
+        "prim": {},
+        "visualWeapon": "blunt/club",
+        "visualColor": "#7a5c33",
+        "light": true,
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.4,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Rusty Dagger",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/dagger_old.png",
+        "prim": {},
+        "visualWeapon": "sword/dagger",
+        "visualColor": "#8f7777",
+        "finesse": true,
+        "light": true,
+        "thrown": true,
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.4,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "crit",
+          "dex",
+          "cha",
+          "speed",
+          "move",
+          "saveDex",
+          "saveCon",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "slot1",
+          "slot2",
+          "slot3"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Wooden Wand",
+        "weaponType": "simple",
+        "icon": "dcss/item/wand/gem_wood.png",
+        "prim": {},
+        "visualWeapon": "magic/truewand",
+        "visualColor": "#8b6b3a",
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": false,
+        "dmgType": "force",
+        "range": 6,
+        "focus": true,
+        "affixAllow": [
+          "hp",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Dagger",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/dagger.png",
+        "prim": {},
+        "visualWeapon": "sword/dagger",
+        "finesse": true,
+        "light": true,
+        "thrown": true,
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.4,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "hp",
+          "crit",
+          "dex",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Shortsword",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/short_sword_2_old.png",
+        "prim": {},
+        "visualWeapon": "sword/arming",
+        "finesse": true,
+        "light": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.4,
+        "_edited": true
+      },
+      {
+        "name": "Longsword",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/long_sword_1.png",
+        "prim": {},
+        "visualWeapon": "sword/longsword",
+        "versatile": true,
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.5,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "hp",
+          "crit",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Greatsword",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/greatsword_1.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "sword/longsword_alt",
+        "heavy": true,
+        "dmg": [
+          2,
+          6
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.6,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveWis",
+          "saveCha",
+          "elemPsychic"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Rapier",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/rapier_1.png",
+        "prim": {},
+        "visualWeapon": "sword/rapier",
+        "finesse": true,
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.5,
+        "affixAllow": [
+          "atk",
+          "crit",
+          "heal",
+          "dex",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveDex",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemPoison",
+          "elemNecrotic",
+          "elemPsychic",
+          "slot1"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Mace",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/mace_large_1.png",
+        "prim": {},
+        "visualWeapon": "blunt/mace",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "wis",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3"
+        ]
+      },
+      {
+        "name": "Warhammer",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/war_hammer.png",
+        "prim": {},
+        "visualWeapon": "blunt/hammer",
+        "versatile": true,
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "affixAllow": [
+          "dmg",
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "wis",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Spear",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/spear.png",
+        "prim": {},
+        "visualWeapon": "polearm/spear",
+        "versatile": true,
+        "thrown": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.5,
+        "affixAllow": [
+          "atk",
+          "crit",
+          "dex",
+          "wis",
+          "speed",
+          "move",
+          "saveDex",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemRadiant"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Battleaxe",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/battle_axe_3.png",
+        "prim": {},
+        "visualWeapon": "blunt/waraxe",
+        "versatile": true,
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.5,
+        "_edited": true,
+        "affixAllow": [
+          "dmg",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveWis",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot8"
+        ]
+      },
+      {
+        "name": "Shortbow",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/ranged/shortbow_1.png",
+        "prim": {},
+        "range": 5,
+        "twoHanded": true,
+        "visualWeapon": "ranged/bow",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": false,
+        "dmgType": "piercing",
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "crit",
+          "dex",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Longbow",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/ranged/longbow.png",
+        "prim": {},
+        "range": 8,
+        "twoHanded": true,
+        "visualWeapon": "ranged/bow",
+        "heavy": true,
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": false,
+        "dmgType": "piercing",
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "crit",
+          "dex",
+          "con",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot8"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Wand",
+        "weaponType": "simple",
+        "icon": "dcss/item/wand/gem_bone_old.png",
+        "prim": {},
+        "range": 6,
+        "visualWeapon": "magic/truewand",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": false,
+        "dmgType": "force",
+        "focus": true,
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "heal",
+          "int",
+          "speed",
+          "move",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/quarterstaff_2.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/simple",
+        "visualColor": "#8d5524",
+        "versatile": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Diamond Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/staff/staff_9.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/diamond",
+        "visualColor": "#5c4033",
+        "versatile": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "_edited": true,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "con",
+          "int",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Gnarled Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/artefact/spwpn_staff_of_dispater_old.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/gnarled",
+        "visualColor": "#8b5a2b",
+        "versatile": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "_edited": true,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Loop Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/artefact/spwpn_staff_of_dispater.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/loop",
+        "visualColor": "#7b4a1b",
+        "versatile": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "hp",
+          "crit",
+          "heal",
+          "dex",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "S Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/artefact/spwpn_staff_of_dispater_old.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/s",
+        "visualColor": "#4b2a0b",
+        "versatile": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "_edited": true,
+        "affixAllow": [
+          "dmg",
+          "hp",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Simple Staff",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/quarterstaff.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "magic/simple",
+        "visualColor": "#8d5524",
+        "versatile": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "focus": true,
+        "affixAllow": [
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Dragonspear",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/spear_7.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "polearm/dragonspear",
+        "heavy": true,
+        "reach": true,
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 2.5,
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "ac",
+          "crit",
+          "str",
+          "dex",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemForce",
+          "slot1",
+          "slot2",
+          "slot3"
+        ]
+      },
+      {
+        "name": "Halberd",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/spear_3.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "polearm/halberd",
+        "heavy": true,
+        "reach": true,
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 2.5,
+        "_edited": true
+      },
+      {
+        "name": "Longspear",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/spear_1_elven.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "polearm/longspear",
+        "heavy": true,
+        "reach": true,
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 2.5,
+        "_edited": true
+      },
+      {
+        "name": "Flail",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/dire_flail_1.png",
+        "prim": {},
+        "visualWeapon": "blunt/flail",
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "_edited": true
+      },
+      {
+        "name": "Katana",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/katana.png",
+        "prim": {},
+        "visualWeapon": "sword/katana",
+        "versatile": true,
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.5
+      },
+      {
+        "name": "Saber",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/sabre_1_silver.png",
+        "prim": {},
+        "visualWeapon": "sword/saber",
+        "finesse": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.5
+      },
+      {
+        "name": "Scimitar",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/scimitar_1.png",
+        "prim": {},
+        "visualWeapon": "sword/scimitar",
+        "finesse": true,
+        "light": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.4
+      },
+      {
+        "name": "Arming Sword",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/long_sword_1_new.png",
+        "prim": {},
+        "visualWeapon": "sword/arming",
+        "versatile": true,
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.5,
+        "_edited": true
+      },
+      {
+        "name": "Hand Axe",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/war_axe_1.png",
+        "prim": {},
+        "visualWeapon": "blunt/waraxe",
+        "light": true,
+        "thrown": true,
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.4,
+        "_edited": true
+      },
+      {
+        "name": "Greatclub",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/club.png",
+        "prim": {},
+        "twoHanded": true,
+        "visualWeapon": "blunt/club",
+        "visualColor": "#42301a",
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.5,
+        "_edited": true
+      },
+      {
+        "name": "Javelin",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/spear_2.png",
+        "prim": {},
+        "thrown": true,
+        "visualWeapon": "polearm/spear",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.5
+      },
+      {
+        "name": "Light Hammer",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/hammer_1.png",
+        "prim": {},
+        "light": true,
+        "thrown": true,
+        "visualWeapon": "blunt/hammer",
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.4
+      },
+      {
+        "name": "Sling",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/ranged/sling_1.png",
+        "prim": {},
+        "range": 5,
+        "visualWeapon": "ranged/slingshot",
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": false,
+        "dmgType": "bludgeoning"
+      },
+      {
+        "name": "Light Crossbow",
+        "weaponType": "simple",
+        "icon": "dcss/item/weapon/ranged/crossbow_1.png",
+        "prim": {},
+        "range": 6,
+        "twoHanded": true,
+        "loading": true,
+        "visualWeapon": "ranged/crossbow",
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": false,
+        "dmgType": "piercing"
+      },
+      {
+        "name": "Morningstar",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/morningstar_1.png",
+        "prim": {},
+        "visualWeapon": "blunt/mace",
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.5
+      },
+      {
+        "name": "War Pick",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/hammer_1_old.png",
+        "prim": {},
+        "visualWeapon": "blunt/mace",
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.5,
+        "_edited": true
+      },
+      {
+        "name": "Trident",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/trident_1.png",
+        "prim": {},
+        "versatile": true,
+        "thrown": true,
+        "visualWeapon": "polearm/trident",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "piercing",
+        "range": 1.5
+      },
+      {
+        "name": "Whip",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/bullwhip.png",
+        "prim": {},
+        "finesse": true,
+        "reach": true,
+        "visualWeapon": "blunt/flail",
+        "dmg": [
+          1,
+          4
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 2.5
+      },
+      {
+        "name": "Glaive",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/glaive_1.png",
+        "prim": {},
+        "twoHanded": true,
+        "heavy": true,
+        "reach": true,
+        "visualWeapon": "polearm/halberd",
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 2.5
+      },
+      {
+        "name": "Greataxe",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/battle_axe_3.png",
+        "prim": {},
+        "twoHanded": true,
+        "heavy": true,
+        "visualWeapon": "blunt/waraxe",
+        "dmg": [
+          1,
+          12
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.6
+      },
+      {
+        "name": "Maul",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/hammer_2.png",
+        "prim": {},
+        "twoHanded": true,
+        "heavy": true,
+        "visualWeapon": "blunt/hammer",
+        "dmg": [
+          2,
+          6
+        ],
+        "melee": true,
+        "dmgType": "bludgeoning",
+        "range": 1.6,
+        "_edited": true
+      },
+      {
+        "name": "Hand Crossbow",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/hand_crossbow.png",
+        "prim": {},
+        "range": 5,
+        "light": true,
+        "loading": true,
+        "visualWeapon": "ranged/crossbow",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": false,
+        "dmgType": "piercing"
+      },
+      {
+        "name": "Heavy Crossbow",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/ranged/arbalest_1.png",
+        "prim": {},
+        "range": 7,
+        "twoHanded": true,
+        "heavy": true,
+        "loading": true,
+        "visualWeapon": "ranged/crossbow",
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": false,
+        "dmgType": "piercing"
+      },
+      {
+        "name": "Cutlass",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/cutlass_1.png",
+        "prim": {},
+        "finesse": true,
+        "light": true,
+        "visualWeapon": "sword/saber",
+        "dmg": [
+          1,
+          6
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.4
+      },
+      {
+        "name": "Falchion",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/falchion_2.png",
+        "prim": {},
+        "visualWeapon": "sword/scimitar",
+        "dmg": [
+          1,
+          8
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.5
+      },
+      {
+        "name": "Scythe",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/scythe_1.png",
+        "prim": {},
+        "twoHanded": true,
+        "heavy": true,
+        "visualWeapon": "polearm/scythe",
+        "dmg": [
+          1,
+          10
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.6
+      },
+      {
+        "name": "Claymore",
+        "weaponType": "martial",
+        "icon": "dcss/item/weapon/claymore.png",
+        "prim": {},
+        "twoHanded": true,
+        "heavy": true,
+        "visualWeapon": "sword/longsword_alt",
+        "dmg": [
+          2,
+          6
+        ],
+        "melee": true,
+        "dmgType": "slashing",
+        "range": 1.6,
+        "_edited": true
+      }
+    ],
+    "shield": [
+      {
+        "name": "Buckler",
+        "icon": "dcss/item/armor/shields/buckler_1.png",
+        "prim": {},
+        "visualShield": "round",
+        "acBase": 1
+      },
+      {
+        "name": "Kite Shield",
+        "icon": "dcss/item/armor/shields/shield_2_kite.png",
+        "prim": {},
+        "visualShield": "kite",
+        "acBase": 2
+      },
+      {
+        "name": "Tower Shield",
+        "icon": "dcss/item/armor/shields/large_shield_1.png",
+        "prim": {},
+        "visualShield": "scutum",
+        "acBase": 2
+      },
+      {
+        "name": "Heater Shield",
+        "icon": "dcss/item/armor/shields/shield_1.png",
+        "prim": {},
+        "visualShield": "heater",
+        "acBase": 2
+      },
+      {
+        "name": "Spiked Buckler",
+        "icon": "dcss/item/armor/shields/buckler_2.png",
+        "prim": {},
+        "visualShield": "plus",
+        "acBase": 1
+      },
+      {
+        "name": "Dwarven Buckler",
+        "icon": "dcss/item/armor/shields/dwarven_buckler_1.png",
+        "prim": {},
+        "visualShield": "two_engrailed",
+        "acBase": 1
+      },
+      {
+        "name": "Round Shield",
+        "icon": "dcss/item/armor/shields/shield_3_round.png",
+        "prim": {},
+        "visualShield": "spartan",
+        "acBase": 2
+      }
+    ],
+    "helm": [
+      {
+        "name": "Rag Hood",
+        "icon": "dcss/item/armor/headgear/cap_2.png",
+        "prim": {},
+        "visualHelm": "cloth/hood",
+        "visualColor": "#7c6858",
+        "_edited": true
+      },
+      {
+        "name": "Cap",
+        "icon": "dcss/item/armor/headgear/cap_1.png",
+        "prim": {},
+        "visualHelm": "cloth/leather_cap",
+        "visualColor": "#8d5524",
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "hp",
+          "crit",
+          "heal",
+          "dex",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveDex",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Circlet",
+        "icon": "dcss/item/armor/headgear/hat_1.png",
+        "prim": {},
+        "visualHelm": "headband/thick",
+        "_edited": true,
+        "affixAllow": [
+          "hp",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Wizard Hat",
+        "icon": "dcss/item/armor/headgear/hat_2.png",
+        "prim": {},
+        "visualHelm": "magic/large",
+        "_edited": true,
+        "visualColor": "#1565c0",
+        "affixAllow": [
+          "hp",
+          "crit",
+          "heal",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Tricorne Hat",
+        "icon": "dcss/item/armor/headgear/elven_leather_helm.png",
+        "prim": {},
+        "visualHelm": "pirate/tricorne/basic",
+        "_edited": true
+      },
+      {
+        "name": "Barbuta",
+        "icon": "dcss/item/armor/headgear/helmet_3.png",
+        "prim": {},
+        "visualHelm": "helmet/barbuta",
+        "acBase": 1,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Bascinet",
+        "icon": "dcss/item/armor/headgear/helmet_1.png",
+        "prim": {},
+        "visualHelm": "helmet/bascinet",
+        "acBase": 1,
+        "_edited": true,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Kettle Helm",
+        "icon": "dcss/item/armor/headgear/helmet_1.png",
+        "prim": {},
+        "visualHelm": "helmet/kettle",
+        "acBase": 2,
+        "_edited": true,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Horned Helm",
+        "icon": "dcss/item/armor/headgear/crested_helmet.png",
+        "prim": {},
+        "visualHelm": "helmet/horned",
+        "acBase": 2,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Spangenhelm",
+        "icon": "dcss/item/armor/headgear/helmet_2_etched.png",
+        "prim": {},
+        "visualHelm": "helmet/spangenhelm",
+        "acBase": 2,
+        "_edited": true,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Armet",
+        "icon": "dcss/item/armor/headgear/helmet_5.png",
+        "prim": {},
+        "visualHelm": "helmet/armet",
+        "acBase": 3,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Close Helm",
+        "icon": "dcss/item/armor/headgear/helmet_4_visor.png",
+        "prim": {},
+        "visualHelm": "helmet/close",
+        "acBase": 3,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Sugarloaf Helm",
+        "icon": "dcss/item/armor/headgear/plumed_helmet.png",
+        "prim": {},
+        "visualHelm": "helmet/sugarloaf",
+        "acBase": 3,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Great Helm",
+        "icon": "dcss/item/armor/headgear/helmet_ego_2.png",
+        "prim": {},
+        "visualHelm": "helmet/greathelm",
+        "acBase": 4,
+        "_edited": true,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "con",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Cloth Hood",
+        "icon": "dcss/item/armor/headgear/cap_2.png",
+        "prim": {},
+        "visualHelm": "cloth/hood",
+        "visualColor": "#333333",
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "crit",
+          "heal",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Mail Coif",
+        "icon": "dcss/item/armor/headgear/helmet_1.png",
+        "prim": {},
+        "visualHelm": "helmet/mail",
+        "visualColor": "#a9a9a9",
+        "acBase": 1,
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "hp",
+          "crit",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      },
+      {
+        "name": "Nasal Helm",
+        "icon": "dcss/item/armor/headgear/helmet_2_etched.png",
+        "prim": {},
+        "visualHelm": "helmet/nasal",
+        "acBase": 1,
+        "_edited": true
+      },
+      {
+        "name": "Norman Helm",
+        "icon": "dcss/item/armor/headgear/helmet_4.png",
+        "prim": {},
+        "visualHelm": "helmet/norman",
+        "acBase": 2,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "ac",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "speed",
+          "move",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Morion",
+        "icon": "dcss/item/armor/headgear/helmet_2_etched.png",
+        "prim": {},
+        "visualHelm": "helmet/morion",
+        "acBase": 2,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "hp",
+          "heal",
+          "str",
+          "dex",
+          "con",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Legion Helm",
+        "icon": "dcss/item/armor/headgear/helmet_4_visor.png",
+        "prim": {},
+        "visualHelm": "helmet/legion",
+        "acBase": 2
+      },
+      {
+        "name": "Plumed Helm",
+        "icon": "dcss/item/armor/headgear/plumed_helmet.png",
+        "prim": {},
+        "visualHelm": "helmet/maximus",
+        "acBase": 2
+      },
+      {
+        "name": "Jester's Cap",
+        "icon": "dcss/item/armor/headgear/cap_jester.png",
+        "prim": {},
+        "visualHelm": "cloth/leather_cap",
+        "visualColor": "#6a1b9a",
+        "affixAllow": [
+          "dex",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveDex",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Feathered Hat",
+        "icon": "dcss/item/armor/headgear/elven_leather_helm.png",
+        "prim": {},
+        "visualHelm": "pirate/tricorne/basic",
+        "_edited": true,
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "crit",
+          "dex",
+          "cha",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ]
+      }
+    ],
+    "armor": [
+      {
+        "name": "Torn Robe",
+        "icon": "dcss/item/armor/torso/robe_2.png",
+        "prim": {},
+        "prof": "none",
+        "visualTorso": "clothes/robe",
+        "visualColor": "#7c6858",
+        "_edited": true,
+        "visualLegs": "hose",
+        "visualBelt": "sash"
+      },
+      {
+        "name": "Peasant Shirt",
+        "icon": "dcss/item/armor/torso/robe_1.png",
+        "prim": {},
+        "prof": "none",
+        "visualTorso": "clothes/shortsleeve/shortsleeves",
+        "visualColor": "#d6cbb1",
+        "_edited": true,
+        "visualLegs": "pants_walnut",
+        "visualBelt": "belt_loose"
+      },
+      {
+        "name": "Tabard",
+        "icon": "dcss/item/armor/torso/blue_dragon_scale_mail.png",
+        "prim": {},
+        "prof": "none",
+        "visualTorso": "jacket/tabard",
+        "visualLegs": "pants_walnut",
+        "_edited": true,
+        "visualBelt": "belt_double"
+      },
+      {
+        "name": "Robe",
+        "icon": "dcss/item/armor/torso/robe_art_1.png",
+        "prim": {},
+        "prof": "none",
+        "visualTorso": "clothes/robe",
+        "visualColor": "#3a66b2",
+        "_edited": true,
+        "visualLegs": "hose",
+        "visualBelt": "belt_mage"
+      },
+      {
+        "name": "Leather Armor",
+        "icon": "dcss/item/armor/torso/leather_armor_1.png",
+        "prim": {},
+        "armorBase": 11,
+        "prof": "light",
+        "visualTorso": "armour/leather",
+        "visualLegs": "pants_leather",
+        "visualBracers": "bracers",
+        "visualBelt": "belt_leather"
+      },
+      {
+        "name": "Chain Shirt",
+        "icon": "dcss/item/armor/torso/chain_mail_1.png",
+        "prim": {},
+        "armorBase": 13,
+        "prof": "medium",
+        "visualTorso": "chainmail",
+        "visualLegs": "pants_charcoal",
+        "visualBelt": "belt_leather"
+      },
+      {
+        "name": "Legion Armor",
+        "icon": "dcss/item/armor/torso/leather_armor_2.png",
+        "prim": {},
+        "armorBase": 14,
+        "prof": "medium",
+        "visualTorso": "armour/legion",
+        "visualShoulders": "legion",
+        "_edited": true,
+        "visualColor": "#a32020",
+        "visualLegs": "pants_tan",
+        "visualBelt": "belt_leather"
+      },
+      {
+        "name": "Plate Armor",
+        "icon": "dcss/item/armor/torso/plate_mail_2.png",
+        "prim": {},
+        "armorBase": 18,
+        "prof": "heavy",
+        "visualTorso": "armour/plate",
+        "visualLegs": "armour/plate",
+        "_edited": true,
+        "visualBracers": "armour/plate"
+      },
+      {
+        "name": "Sleeveless Tunic",
+        "icon": "dcss/item/armor/torso/orcish_chain_mail.png",
+        "prim": {},
+        "prof": "none",
+        "visualTorso": "clothes/sleeveless",
+        "visualColor": "#a0522d",
+        "_edited": true,
+        "visualLegs": "pants2",
+        "visualBelt": "belt_leather"
+      },
+      {
+        "name": "Leather Vest",
+        "icon": "dcss/item/armor/torso/leather_armor_1.png",
+        "prim": {},
+        "armorBase": 11,
+        "prof": "light",
+        "visualTorso": "clothes/vest",
+        "visualColor": "#5c4033",
+        "visualLegs": "pants2",
+        "visualBracers": "bracers",
+        "visualBelt": "belt_leather"
+      },
+      {
+        "name": "Padded Armor",
+        "icon": "dcss/item/armor/torso/ring_mail_2.png",
+        "prim": {},
+        "armorBase": 11,
+        "prof": "light",
+        "visualTorso": "jacket/trench",
+        "visualColor": "#3a3a3a",
+        "_edited": true,
+        "visualLegs": "pants_charcoal",
+        "visualBelt": "belt_double"
+      },
+      {
+        "name": "Studded Leather",
+        "icon": "dcss/item/armor/torso/studded_leather_armor.png",
+        "prim": {},
+        "armorBase": 12,
+        "prof": "light",
+        "visualTorso": "armour/leather",
+        "visualColor": "#3e2723",
+        "_edited": true,
+        "visualLegs": "cuffed",
+        "visualBracers": "bracers",
+        "visualBelt": "belt_double"
+      },
+      {
+        "name": "Hide Armor",
+        "icon": "dcss/item/armor/torso/elven_leather_armor.png",
+        "prim": {},
+        "armorBase": 12,
+        "prof": "medium",
+        "visualTorso": "clothes/vest",
+        "visualColor": "#8d5524",
+        "_edited": true,
+        "visualLegs": "fur",
+        "visualBracers": "bracers",
+        "visualBelt": "sash"
+      },
+      {
+        "name": "Scale Mail",
+        "icon": "dcss/item/armor/torso/scale_mail_1.png",
+        "prim": {},
+        "armorBase": 14,
+        "prof": "medium",
+        "visualTorso": "chainmail",
+        "visualLegs": "pants_charcoal",
+        "visualShoulders": "bauldron",
+        "visualBelt": "belt_leather"
+      },
+      {
+        "name": "Breastplate",
+        "icon": "dcss/item/armor/torso/elven_scalemail.png",
+        "prim": {},
+        "armorBase": 14,
+        "prof": "medium",
+        "visualTorso": "armour/plate",
+        "_edited": true,
+        "visualLegs": "pants_slate",
+        "visualBracers": "armour/plate",
+        "visualBelt": "buckles"
+      },
+      {
+        "name": "Half Plate",
+        "icon": "dcss/item/armor/torso/plate_mail_1.png",
+        "prim": {},
+        "armorBase": 15,
+        "prof": "medium",
+        "visualTorso": "armour/plate",
+        "visualLegs": "armour/plate",
+        "visualBracers": "armour/plate",
+        "visualShoulders": "epaulets"
+      },
+      {
+        "name": "Ring Mail",
+        "icon": "dcss/item/armor/torso/ring_mail_1.png",
+        "prim": {},
+        "armorBase": 14,
+        "prof": "heavy",
+        "visualTorso": "chainmail",
+        "visualLegs": "pants_charcoal",
+        "visualShoulders": "pauldrons",
+        "visualBelt": "belt_double"
+      },
+      {
+        "name": "Chain Mail",
+        "icon": "dcss/item/armor/torso/chain_mail_3.png",
+        "prim": {},
+        "armorBase": 16,
+        "prof": "heavy",
+        "visualTorso": "chainmail",
+        "visualLegs": "pants_charcoal",
+        "visualShoulders": "epaulets",
+        "visualBelt": "belt_double"
+      },
+      {
+        "name": "Splint Armor",
+        "icon": "dcss/item/armor/torso/splint_mail_1.png",
+        "prim": {},
+        "armorBase": 17,
+        "prof": "heavy",
+        "visualTorso": "armour/plate",
+        "visualLegs": "armour/plate",
+        "visualShoulders": "pauldrons",
+        "visualBracers": "armour/plate"
+      },
+      {
+        "name": "Dragonscale Mail",
+        "icon": "dcss/item/armor/torso/green_dragon_scale_mail.png",
+        "prim": {},
+        "armorBase": 15,
+        "prof": "medium",
+        "visualTorso": "chainmail",
+        "visualColor": "#2e7d32",
+        "visualLegs": "pants_black",
+        "visualShoulders": "pauldrons",
+        "visualCape": "solid",
+        "visualBelt": "buckles"
+      }
+    ],
+    "gloves": [
+      {
+        "name": "Gloves",
+        "icon": "dcss/item/armor/hands/glove_1.png",
+        "prim": {},
+        "visualGloves": "arms/hands/gloves"
+      },
+      {
+        "name": "Leather Bracers",
+        "icon": "dcss/item/armor/hands/gauntlet_1.png",
+        "prim": {},
+        "visualGloves": "arms/bracers",
+        "acBase": 1
+      },
+      {
+        "name": "Gauntlets",
+        "icon": "dcss/item/armor/hands/gauntlet_1.png",
+        "prim": {},
+        "visualGloves": "arms/armour/plate"
+      },
+      {
+        "name": "Mage Gloves",
+        "icon": "dcss/item/armor/hands/glove_3.png",
+        "prim": {},
+        "visualGloves": "arms/hands/gloves"
+      },
+      {
+        "name": "Duelist's Gloves",
+        "icon": "dcss/item/armor/hands/glove_2.png",
+        "prim": {},
+        "visualGloves": "arms/hands/gloves"
+      },
+      {
+        "name": "Archer's Gloves",
+        "icon": "dcss/item/armor/hands/glove_4.png",
+        "prim": {},
+        "visualGloves": "arms/hands/gloves"
+      },
+      {
+        "name": "Warrior Fists",
+        "icon": "dcss/item/armor/hands/glove_4_gauntlets.png",
+        "prim": {},
+        "visualGloves": "arms/armour/plate"
+      },
+      {
+        "name": "Healer's Mitts",
+        "icon": "dcss/item/armor/hands/glove_5.png",
+        "prim": {},
+        "visualGloves": "arms/hands/gloves"
+      }
+    ],
+    "boots": [
+      {
+        "name": "Sandals",
+        "icon": "dcss/item/armor/feet/boots_4_green.png",
+        "prim": {},
+        "visualShoes": "sandals"
+      },
+      {
+        "name": "Boots",
+        "icon": "dcss/item/armor/feet/boots_1_brown_new.png",
+        "prim": {},
+        "visualShoes": "shoes/basic"
+      },
+      {
+        "name": "Rimmed Boots",
+        "icon": "dcss/item/armor/feet/boots_1_brown_new.png",
+        "prim": {},
+        "visualShoes": "boots/rimmed"
+      },
+      {
+        "name": "Swift Boots",
+        "icon": "dcss/item/armor/feet/boots_2_jackboots.png",
+        "prim": {},
+        "visualShoes": "shoes/basic"
+      },
+      {
+        "name": "Ranger Boots",
+        "icon": "dcss/item/armor/feet/boots_3_stripe_new.png",
+        "prim": {},
+        "visualShoes": "boots/fold"
+      },
+      {
+        "name": "Ghillie Shoes",
+        "icon": "dcss/item/armor/feet/boots_1_brown_new.png",
+        "prim": {},
+        "visualShoes": "shoes/ghillies"
+      },
+      {
+        "name": "Greaves",
+        "icon": "dcss/item/armor/feet/boots_iron_2.png",
+        "prim": {},
+        "visualShoes": "armour/plate",
+        "acBase": 1
+      },
+      {
+        "name": "Steel Greaves",
+        "icon": "dcss/item/armor/feet/boots_iron_2.png",
+        "prim": {},
+        "visualShoes": "armour/plate",
+        "acBase": 1
+      },
+      {
+        "name": "Silent Slippers",
+        "icon": "dcss/item/armor/feet/boots_4_green.png",
+        "prim": {},
+        "visualShoes": "shoes/basic"
+      },
+      {
+        "name": "Marching Boots",
+        "icon": "dcss/item/armor/feet/boots_2_jackboots.png",
+        "prim": {},
+        "visualShoes": "boots/rimmed"
+      }
+    ],
+    "ring": [
+      {
+        "name": "Ring of Protection",
+        "icon": "dcss/item/ring/iron.png",
+        "prim": {},
+        "acBase": 1,
+        "affixAllow": [
+          "ac",
+          "hp",
+          "heal",
+          "dex",
+          "con",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Might",
+        "icon": "dcss/item/ring/gold.png",
+        "prim": {},
+        "affixAllow": [
+          "dmg",
+          "crit",
+          "str",
+          "con",
+          "wis",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemForce"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Precision",
+        "icon": "dcss/item/ring/emerald.png",
+        "prim": {},
+        "affixAllow": [
+          "atk",
+          "crit",
+          "dex",
+          "speed",
+          "move",
+          "saveDex",
+          "saveInt",
+          "elemAcid",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Vigor",
+        "icon": "dcss/item/ring/ruby.png",
+        "prim": {},
+        "affixAllow": [
+          "hp",
+          "crit",
+          "heal",
+          "con",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemNecrotic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of the Adept",
+        "icon": "dcss/item/ring/diamond.png",
+        "prim": {},
+        "affixAllow": [
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Charm",
+        "icon": "dcss/item/ring/ring_engagement.png",
+        "prim": {},
+        "affixAllow": [
+          "heal",
+          "int",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Grace",
+        "icon": "dcss/item/ring/jade.png",
+        "prim": {},
+        "affixAllow": [
+          "atk",
+          "crit",
+          "dex",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "saveDex",
+          "saveWis",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Fortitude",
+        "icon": "dcss/item/ring/granite.png",
+        "prim": {},
+        "affixAllow": [
+          "ac",
+          "hp",
+          "con",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Sorcery",
+        "icon": "dcss/item/ring/moonstone.png",
+        "prim": {},
+        "affixAllow": [
+          "int",
+          "cha",
+          "saveInt",
+          "saveCha",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemAcid",
+          "elemPoison",
+          "elemNecrotic",
+          "elemRadiant",
+          "elemForce",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Ring of Command",
+        "icon": "dcss/item/ring/gold_red.png",
+        "prim": {},
+        "affixAllow": [
+          "cha",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      }
+    ],
+    "amulet": [
+      {
+        "name": "Amulet of Health",
+        "icon": "dcss/item/amulet/crystal_red.png",
+        "prim": {},
+        "visualNeck": "dangle_gold_red",
+        "affixAllow": [
+          "hp",
+          "heal",
+          "con",
+          "saveCon"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Amulet of Fury",
+        "icon": "dcss/item/amulet/celtic_red.png",
+        "prim": {},
+        "visualNeck": "star_silver_red",
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "str",
+          "dex",
+          "move",
+          "elemFire",
+          "elemCold",
+          "elemLightning",
+          "elemForce",
+          "elemPsychic"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Amulet of Warding",
+        "icon": "dcss/item/amulet/celtic_yellow.png",
+        "prim": {},
+        "visualNeck": "cross_gold_yellow",
+        "acBase": 1,
+        "affixAllow": [
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Amulet of Insight",
+        "icon": "dcss/item/amulet/eye_cyan.png",
+        "prim": {},
+        "visualNeck": "dangle_silver_blue",
+        "affixAllow": [
+          "atk",
+          "wis",
+          "cha",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "elemPsychic",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Amulet of Presence",
+        "icon": "dcss/item/amulet/face_1_gold.png",
+        "prim": {},
+        "visualNeck": "dangle_gold_red",
+        "affixAllow": [
+          "atk",
+          "dmg",
+          "crit",
+          "heal",
+          "wis",
+          "speed",
+          "move",
+          "saveStr",
+          "saveDex",
+          "saveCon",
+          "saveInt",
+          "saveWis",
+          "saveCha",
+          "slot1",
+          "slot2",
+          "slot3",
+          "slot4",
+          "slot5",
+          "slot6",
+          "slot7",
+          "slot8",
+          "slot9"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Medallion of Valor",
+        "icon": "dcss/item/amulet/celtic_blue.png",
+        "prim": {},
+        "visualNeck": "star_silver_red",
+        "affixAllow": [
+          "dmg",
+          "ac",
+          "hp",
+          "str",
+          "dex",
+          "con",
+          "wis",
+          "cha",
+          "speed",
+          "move",
+          "slot1",
+          "slot2",
+          "slot3"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Serpent Charm",
+        "icon": "dcss/item/amulet/eye_green.png",
+        "prim": {},
+        "visualNeck": "dangle_silver_blue",
+        "affixAllow": [
+          "atk",
+          "crit",
+          "dex",
+          "cha",
+          "speed",
+          "move",
+          "saveDex",
+          "saveCha",
+          "elemAcid",
+          "elemPoison"
+        ],
+        "_edited": true
+      },
+      {
+        "name": "Swift Pendant",
+        "icon": "dcss/item/amulet/stone_2_blue.png",
+        "prim": {},
+        "visualNeck": "cross_gold_yellow",
+        "affixAllow": [
+          "speed",
+          "move",
+          "saveDex"
+        ],
+        "_edited": true
+      }
+    ],
+    "kit": [
+      {
+        "name": "Climber's Rig",
+        "icon": "dcss/item/misc/misc_box.png",
+        "toolSkills": [
+          "athletics"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Acrobat's Poles",
+        "icon": "dcss/item/misc/misc_fan.png",
+        "toolSkills": [
+          "acrobatics"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Fine Lockpicks",
+        "icon": "dcss/item/misc/key.png",
+        "toolSkills": [
+          "sleightOfHand"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Muffled Wraps",
+        "icon": "dcss/item/misc/misc_disc.png",
+        "toolSkills": [
+          "stealth"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Arcane Focus",
+        "icon": "dcss/item/misc/misc_crystal.png",
+        "toolSkills": [
+          "arcana"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Historian's Tome",
+        "icon": "dcss/item/book/misc_book.png",
+        "toolSkills": [
+          "history"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Magnifying Lens",
+        "icon": "dcss/item/misc/mirror.png",
+        "toolSkills": [
+          "investigation"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Herbalist's Pouch",
+        "icon": "dcss/item/potion/emerald.png",
+        "toolSkills": [
+          "nature"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Holy Symbol",
+        "icon": "dcss/item/misc/misc_rune.png",
+        "toolSkills": [
+          "religion"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Beast Whistle",
+        "icon": "dcss/item/misc/misc_horn.png",
+        "toolSkills": [
+          "animalHandling"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Fortune Deck",
+        "icon": "dcss/item/misc/misc_deck.png",
+        "toolSkills": [
+          "insight"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Healer's Kit",
+        "icon": "dcss/item/potion/potion_golden.png",
+        "toolSkills": [
+          "medicine"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Keen Spyglass",
+        "icon": "dcss/item/misc/misc_orb.png",
+        "toolSkills": [
+          "perception"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Explorer's Lantern",
+        "icon": "dcss/item/misc/misc_lantern.png",
+        "toolSkills": [
+          "survival"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Forger's Papers",
+        "icon": "dcss/item/scroll/scroll.png",
+        "toolSkills": [
+          "deception"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Grim Standard",
+        "icon": "dcss/item/misc/misc_stone.png",
+        "toolSkills": [
+          "intimidation"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Minstrel's Lute",
+        "icon": "dcss/item/misc/magic_lamp.png",
+        "toolSkills": [
+          "performance"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Envoy's Seal",
+        "icon": "dcss/item/amulet/celtic_yellow.png",
+        "toolSkills": [
+          "persuasion"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Thieves' Tools",
+        "icon": "dcss/item/misc/key.png",
+        "toolSkills": [
+          "sleightOfHand",
+          "stealth"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Scholar's Satchel",
+        "icon": "dcss/item/book/leather.png",
+        "toolSkills": [
+          "arcana",
+          "history"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Alchemist's Supplies",
+        "icon": "dcss/item/potion/ruby.png",
+        "toolSkills": [
+          "nature",
+          "medicine"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Investigator's Kit",
+        "icon": "dcss/item/misc/misc_lantern.png",
+        "toolSkills": [
+          "investigation",
+          "perception"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Ranger's Pack",
+        "icon": "dcss/item/misc/misc_box.png",
+        "toolSkills": [
+          "survival",
+          "animalHandling"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Diplomat's Regalia",
+        "icon": "dcss/item/amulet/celtic_red.png",
+        "toolSkills": [
+          "persuasion",
+          "deception"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Performer's Kit",
+        "icon": "dcss/item/misc/misc_horn.png",
+        "toolSkills": [
+          "performance",
+          "persuasion"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Zealot's Icon",
+        "icon": "dcss/item/misc/misc_rune.png",
+        "toolSkills": [
+          "religion",
+          "insight"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Tumbler's Harness",
+        "icon": "dcss/item/misc/misc_fan.png",
+        "toolSkills": [
+          "acrobatics",
+          "athletics"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      },
+      {
+        "name": "Warlord's Trophy",
+        "icon": "dcss/item/misc/misc_stone.png",
+        "toolSkills": [
+          "intimidation",
+          "performance"
+        ],
+        "prim": {},
+        "affixAllow": [],
+        "_edited": true
+      }
+    ]
+  },
+  "affixes": [
+    {
+      "key": "str",
+      "label": "of Strength",
+      "b": {
+        "str": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "dex",
+      "label": "of Agility",
+      "b": {
+        "dex": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "con",
+      "label": "of Endurance",
+      "b": {
+        "con": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "int",
+      "label": "of Intellect",
+      "b": {
+        "int": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "wis",
+      "label": "of Wisdom",
+      "b": {
+        "wis": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "cha",
+      "label": "of Presence",
+      "b": {
+        "cha": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "atk",
+      "label": "of Accuracy",
+      "b": {
+        "atk": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "dmg",
+      "label": "of Wrath",
+      "b": {
+        "dmg": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "ac",
+      "label": "of the Turtle",
+      "b": {
+        "ac": 1
+      },
+      "max": 3
+    },
+    {
+      "key": "hp",
+      "label": "of the Bear",
+      "b": {
+        "hp": 5
+      },
+      "max": 6
+    },
+    {
+      "key": "crit",
+      "label": "of Ruin",
+      "b": {
+        "crit": 1
+      },
+      "max": 1
+    },
+    {
+      "key": "heal",
+      "label": "of Mending",
+      "b": {
+        "heal": 2
+      },
+      "max": 4,
+      "slots": [
+        "amulet",
+        "ring",
+        "helm",
+        "gloves"
+      ]
+    },
+    {
+      "key": "speed",
+      "label": "of Alacrity",
+      "b": {
+        "speed": 0.05
+      },
+      "max": 4,
+      "slots": [
+        "boots",
+        "armor",
+        "amulet",
+        "ring"
+      ]
+    },
+    {
+      "key": "move",
+      "label": "of the Wind",
+      "b": {
+        "move": 5
+      },
+      "max": 3,
+      "slots": [
+        "boots",
+        "armor",
+        "amulet",
+        "ring"
+      ]
+    },
+    {
+      "key": "saveStr",
+      "label": "of the Ox",
+      "b": {
+        "saveStr": 1
+      },
+      "max": 4
+    },
+    {
+      "key": "saveDex",
+      "label": "of Evasion",
+      "b": {
+        "saveDex": 1
+      },
+      "max": 4
+    },
+    {
+      "key": "saveCon",
+      "label": "of Vigor",
+      "b": {
+        "saveCon": 1
+      },
+      "max": 4
+    },
+    {
+      "key": "saveInt",
+      "label": "of Clarity",
+      "b": {
+        "saveInt": 1
+      },
+      "max": 4
+    },
+    {
+      "key": "saveWis",
+      "label": "of Resolve",
+      "b": {
+        "saveWis": 1
+      },
+      "max": 4
+    },
+    {
+      "key": "saveCha",
+      "label": "of Poise",
+      "b": {
+        "saveCha": 1
+      },
+      "max": 4
+    },
+    {
+      "key": "elemFire",
+      "label": "of Embers",
+      "b": {
+        "elemFire": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemCold",
+      "label": "of Frost",
+      "b": {
+        "elemCold": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemLightning",
+      "label": "of Storms",
+      "b": {
+        "elemLightning": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemAcid",
+      "label": "of Corrosion",
+      "b": {
+        "elemAcid": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemPoison",
+      "label": "of Venom",
+      "b": {
+        "elemPoison": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemNecrotic",
+      "label": "of Blight",
+      "b": {
+        "elemNecrotic": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemRadiant",
+      "label": "of Dawn",
+      "b": {
+        "elemRadiant": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemForce",
+      "label": "of Sundering",
+      "b": {
+        "elemForce": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "elemPsychic",
+      "label": "of Madness",
+      "b": {
+        "elemPsychic": 1
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "ring",
+        "amulet"
+      ]
+    },
+    {
+      "key": "slot1",
+      "label": "of the Arcanum I",
+      "b": {
+        "slot1": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 0
+    },
+    {
+      "key": "slot2",
+      "label": "of the Arcanum II",
+      "b": {
+        "slot2": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 2
+    },
+    {
+      "key": "slot3",
+      "label": "of the Arcanum III",
+      "b": {
+        "slot3": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 4
+    },
+    {
+      "key": "slot4",
+      "label": "of the Arcanum IV",
+      "b": {
+        "slot4": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 6
+    },
+    {
+      "key": "slot5",
+      "label": "of the Arcanum V",
+      "b": {
+        "slot5": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 8
+    },
+    {
+      "key": "slot6",
+      "label": "of the Arcanum VI",
+      "b": {
+        "slot6": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 10
+    },
+    {
+      "key": "slot7",
+      "label": "of the Arcanum VII",
+      "b": {
+        "slot7": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 12
+    },
+    {
+      "key": "slot8",
+      "label": "of the Arcanum VIII",
+      "b": {
+        "slot8": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 14
+    },
+    {
+      "key": "slot9",
+      "label": "of the Arcanum IX",
+      "b": {
+        "slot9": 1
+      },
+      "max": 2,
+      "slots": [
+        "ring",
+        "amulet",
+        "weapon"
+      ],
+      "minIlvl": 16
+    }
+  ]
+}

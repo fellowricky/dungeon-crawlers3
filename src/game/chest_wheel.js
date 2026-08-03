@@ -3,10 +3,16 @@ import { rollChestLoot, bonusText } from './items.js';
 import { log, updateResources } from './ui.js';
 import { refreshMenus } from './menus.js';
 import { onChestLooted } from './quest_events.js';
+import { trackGold, trackLoot } from './run_stats.js';
 import { playSfx } from './audio.js';
+import { getSetting } from './settings.js';
 
 let _g = null;
 let _state = null;
+let _globalTimeout = null;
+let _offscreenWheel = null;
+let _vignetteGrad = null;
+let _hubGrad = null;
 
 export function initChestWheel(game) {
   _g = game;
@@ -42,7 +48,7 @@ export function initChestWheel(game) {
   text-align:center;display:flex;flex-direction:column;align-items:center;
 }
 .cw-header{
-  font-family:MedievalSharp,serif;font-size:20px;
+  font-family:'Cinzel',Georgia,serif;font-size:26px;
   color:#9a8a6a;text-shadow:0 2px 3px #000,0 0 16px rgba(140,60,30,0.35);
   margin-bottom:14px;letter-spacing:3px;
   animation:cw-flicker 3.2s infinite;
@@ -70,15 +76,15 @@ export function initChestWheel(game) {
   filter:drop-shadow(0 1px 2px #000) drop-shadow(0 0 5px rgba(140,40,30,0.6));
 }
 #chest-loot-display{
-  color:#a89c84;font-family:'Segoe UI',sans-serif;font-size:13px;
+  color:#a89c84;font-family:'Segoe UI',sans-serif;font-size:17px;
   min-height:50px;text-align:center;width:100%;margin:4px 0;
 }
 #chest-loot-display .loot-gold{
-  color:#b08d3c;font-size:14px;margin:2px 0;
+  color:#b08d3c;font-size:18px;margin:2px 0;
   text-shadow:0 1px 2px #000;
 }
 #chest-loot-display .loot-pot{
-  color:#6e8a5e;font-size:13px;margin:2px 0;
+  color:#6e8a5e;font-size:17px;margin:2px 0;
 }
 #chest-loot-display .loot-item{
   margin-top:6px;padding:6px 8px;
@@ -86,13 +92,13 @@ export function initChestWheel(game) {
   border:1px solid #2c241a;border-left:3px solid currentColor;text-align:left;
 }
 #chest-loot-display .loot-item .li-name{
-  font-size:14px;font-weight:bold;
+  font-size:18px;font-weight:bold;
 }
 #chest-loot-display .loot-item .li-bonus{
-  font-size:12px;opacity:0.8;margin-top:2px;
+  font-size:16px;opacity:0.8;margin-top:2px;
 }
 #chest-wheel-continue{
-  font-family:MedievalSharp,serif;font-size:15px;
+  font-family:'Cinzel',Georgia,serif;font-size:20px;
   background:linear-gradient(180deg,#26201a 0%,#120e0b 100%);
   color:#a89c7c;border:1px solid #4a3a26;border-radius:3px;
   padding:8px 32px;cursor:pointer;margin-top:10px;
@@ -108,7 +114,7 @@ export function initChestWheel(game) {
 
   document.getElementById('chest-wheel-continue').addEventListener('click', () => dismissWheel());
   document.getElementById('chestwheelscreen').addEventListener('click', (e) => {
-    if (_state && _state.phase === 'result' && e.target.id === 'chestwheelscreen') dismissWheel();
+    if (_state && e.target.id === 'chestwheelscreen') dismissWheel();
   });
 }
 
@@ -118,7 +124,7 @@ export function lootChest(chest, showWheel = false) {
   playSfx('chestOpen', { volume: 0.8 });
   const gold = rollChestGold();
   const potion = rollChestPotion();
-  const items = rollChestLoot(_g.dungeonLevel);
+  const items = rollChestLoot(_g.activeQuest ? _g.activeQuest.level : _g.dungeonLevel, Math.random, _g.questFloor || 0);
 
   if (showWheel) {
     showSpinWheel({ chest, gold, potion, items });
@@ -146,13 +152,18 @@ function rollChestPotion() {
 function applyLoot(chest, gold, potion, items) {
   chest.looted = true;
   _g.gold += gold;
+  trackGold(_g, gold);
   if (potion === 'greater') _g.potions.greater++;
   else if (potion === 'heal') _g.potions.heal++;
 
-  for (const it of items) _g.inventory.push(it);
+  for (const it of items) { _g.inventory.push(it); trackLoot(_g, it); }
   updateResources(_g);
   refreshMenus(_g);
   onChestLooted(_g);
+
+  if (typeof _g.notifyLootFeedback === 'function') {
+    _g.notifyLootFeedback({ gold, items, potion });
+  }
 
   log(`\u{1FA99} The party loots a chest: ${gold} gold.`, 'treasure');
   if (potion) log(`  \u{21B3} a ${potion === 'greater' ? 'Greater Healing' : 'Healing'} Potion.`, 'treasure');
@@ -177,10 +188,11 @@ function showSpinWheel(lootData) {
   ov.classList.add('show');
   document.getElementById('chest-wheel-continue').style.display = 'none';
   document.getElementById('chest-loot-display').innerHTML =
-    '<div style="color:#7a6c52;font-size:13px;font-style:italic;">the lock gives way&hellip;</div>';
+    '<div style="color:#7a6c52;font-size:17px;font-style:italic;">the lock gives way&hellip;</div>';
 
   drawWheel(_state.angle);
   requestAnimationFrame(tick);
+  _globalTimeout = setTimeout(() => { if (_state) dismissWheel(); }, 30000);
 }
 
 function tick(ts) {
@@ -212,17 +224,17 @@ function tick(ts) {
 const SEG_COLORS = ['#221c15','#171310','#2a211a','#3a1c18','#171310','#221c15','#2e2015','#171310'];
 const SEG_RUNES  = ['\u16a0','\u16cf','\u16a6','\u16df','\u16b1','\u16de','\u16c9','\u16d2'];
 
-function drawWheel(angle) {
-  const cvs = document.getElementById('chest-wheel-canvas');
-  if (!cvs) return;
-  const ctx = cvs.getContext('2d');
-  const cx = 130, cy = 130, R = 115;
-  ctx.clearRect(0, 0, 260, 260);
+function buildOffscreenWheel() {
+  if (_offscreenWheel) return;
 
-  /* segments: cold iron plates, one stained dried-blood */
+  const oc = document.createElement('canvas');
+  oc.width = 260; oc.height = 260;
+  const ctx = oc.getContext('2d');
+  const cx = 130, cy = 130, R = 115;
+
   const N = SEG_COLORS.length;
   for (let i = 0; i < N; i++) {
-    const a0 = angle + (i * Math.PI * 2) / N;
+    const a0 = (i * Math.PI * 2) / N;
     const a1 = a0 + (Math.PI * 2) / N;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -248,16 +260,6 @@ function drawWheel(angle) {
     ctx.restore();
   }
 
-  /* soot vignette so the plates fall into shadow toward the rim */
-  const vg = ctx.createRadialGradient(cx, cy, R * 0.3, cx, cy, R);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(0,0,0,0.45)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.fillStyle = vg;
-  ctx.fill();
-
-  /* riveted iron rim */
   ctx.beginPath();
   ctx.arc(cx, cy, R - 3, 0, Math.PI * 2);
   ctx.strokeStyle = '#3a3128';
@@ -269,20 +271,46 @@ function drawWheel(angle) {
   ctx.lineWidth = 2;
   ctx.stroke();
   for (let i = 0; i < 16; i++) {
-    const ra = angle + (i * Math.PI * 2) / 16;
+    const ra = (i * Math.PI * 2) / 16;
     ctx.beginPath();
     ctx.arc(cx + Math.cos(ra) * (R - 3), cy + Math.sin(ra) * (R - 3), 2.2, 0, Math.PI * 2);
     ctx.fillStyle = '#57493a';
     ctx.fill();
   }
 
-  /* hub: blackened iron boss with a skull */
+  _vignetteGrad = ctx.createRadialGradient(cx, cy, R * 0.3, cx, cy, R);
+  _vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  _vignetteGrad.addColorStop(1, 'rgba(0,0,0,0.45)');
+
+  _hubGrad = ctx.createRadialGradient(cx - 5, cy - 6, 3, cx, cy, 24);
+  _hubGrad.addColorStop(0, '#3c332a');
+  _hubGrad.addColorStop(1, '#14100c');
+
+  _offscreenWheel = oc;
+}
+
+function drawWheel(angle) {
+  const cvs = document.getElementById('chest-wheel-canvas');
+  if (!cvs) return;
+  buildOffscreenWheel();
+  const ctx = cvs.getContext('2d');
+  const cx = 130, cy = 130, R = 115;
+  ctx.clearRect(0, 0, 260, 260);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+  ctx.drawImage(_offscreenWheel, -cx, -cy);
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = _vignetteGrad;
+  ctx.fill();
+
   ctx.beginPath();
   ctx.arc(cx, cy, 24, 0, Math.PI * 2);
-  const hg = ctx.createRadialGradient(cx - 5, cy - 6, 3, cx, cy, 24);
-  hg.addColorStop(0, '#3c332a');
-  hg.addColorStop(1, '#14100c');
-  ctx.fillStyle = hg;
+  ctx.fillStyle = _hubGrad;
   ctx.fill();
   ctx.strokeStyle = '#4a3a26';
   ctx.lineWidth = 2;
@@ -313,7 +341,7 @@ function showLootPanel() {
     </div>`;
   }
   if (!_state.items.length) {
-    html += '<div style="color:#a09878;font-size:13px;margin-top:4px;">The chest is otherwise empty.</div>';
+    html += '<div style="color:#a09878;font-size:17px;margin-top:4px;">The chest is otherwise empty.</div>';
   }
 
   d.innerHTML = html;
@@ -321,13 +349,20 @@ function showLootPanel() {
   startAutoTake();
 }
 
-/* idle safety net: claim the loot on its own after 30s */
+/* Idle safety net: claim the loot on its own after 30s. With "Auto-loot chests"
+   (Options menu) the same countdown just runs short — the wheel still spins and
+   the haul is still shown, you simply don't have to click through it. */
 const AUTO_TAKE_SECS = 30;
+const AUTO_LOOT_SECS = 3;
 let _autoTimer = null;
+
+export function autoTakeSeconds() {
+  return getSetting('autoLootChests') ? AUTO_LOOT_SECS : AUTO_TAKE_SECS;
+}
 
 function startAutoTake() {
   stopAutoTake();
-  let remain = AUTO_TAKE_SECS;
+  let remain = autoTakeSeconds();
   const btn = document.getElementById('chest-wheel-continue');
   btn.textContent = `TAKE LOOT (${remain})`;
   _autoTimer = setInterval(() => {
@@ -345,6 +380,7 @@ function stopAutoTake() {
 function dismissWheel() {
   if (!_state) return;
   stopAutoTake();
+  if (_globalTimeout) { clearTimeout(_globalTimeout); _globalTimeout = null; }
   const { chest, gold, potion, items } = _state;
   _state = null;
 

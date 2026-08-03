@@ -1,0 +1,2829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dungeon Crawlers — Bestiary & Color Balance Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090b12;
+      --bg-panel: #111422;
+      --bg-card: #181c2e;
+      --bg-input: #0e101a;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(217, 164, 65, 0.3);
+      --text-main: #e2e4f0;
+      --text-muted: #8e95b0;
+      --gold: #d9a441;
+      --gold-bright: #fcd34d;
+      --gold-glow: rgba(217, 164, 65, 0.2);
+      --red: #ef4444;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --violet: #8b5cf6;
+      --cyan: #06b6d4;
+      --amber: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    #app-header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      z-index: 10;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-icon { font-size: 24px; }
+
+    .header-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    .header-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    #global-stats-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .badge-total { color: var(--gold); border-color: rgba(217, 164, 65, 0.3); }
+    .badge-edited { color: var(--amber); background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); }
+    .badge-redo { color: var(--red); background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
+    .badge-verified { color: var(--green); background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+    .badge-notes { color: var(--cyan); background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.3); }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-bright);
+      color: #fff;
+    }
+
+    .btn-xs {
+      padding: 2px 6px;
+      font-size: 10px;
+      border-radius: 4px;
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+      border-color: var(--gold);
+    }
+
+    .btn-primary:hover {
+      background: var(--gold-bright);
+      color: #000;
+    }
+
+    .btn-success {
+      background: var(--green);
+      color: #000;
+      border-color: var(--green);
+    }
+
+    /* Main Container Layout */
+    #main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar (Left) */
+    #sidebar {
+      width: 340px;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-controls {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--gold);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .filter-row select {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .sidebar-counter {
+      padding: 6px 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(0, 0, 0, 0.2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #monster-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* Monster List Items */
+    .monster-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .monster-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .monster-item.selected {
+      background: rgba(217, 164, 65, 0.12);
+      border-color: var(--gold);
+    }
+
+    .monster-item-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: 6px;
+      background: #000;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .monster-item-thumb img {
+      max-width: 58px;
+      max-height: 58px;
+      image-rendering: pixelated;
+    }
+
+    .monster-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .monster-item-name {
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fff;
+    }
+
+    .monster-item-sub {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      margin-top: 2px;
+    }
+
+    .cr-pill { color: var(--gold); font-weight: 600; }
+    .type-pill { color: var(--text-muted); text-transform: capitalize; }
+    .tier-pill { color: var(--violet); font-weight: 500; }
+
+    .monster-item-badges {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .mini-tag {
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .tag-edited { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+    .tag-redo { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .tag-verified { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .tag-note { background: rgba(6, 182, 212, 0.2); color: #67e8f9; }
+
+    .sidebar-footer {
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--bg-panel);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Content Area (Right) */
+    #content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background: var(--bg-dark);
+    }
+
+    /* Monster Header Card */
+    .detail-header-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .detail-title-group h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .detail-id-code {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+
+    .meta-badges {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .meta-badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .badge-cr { background: rgba(217, 164, 65, 0.15); color: var(--gold); border: 1px solid rgba(217, 164, 65, 0.3); }
+    .badge-tier { background: rgba(139, 92, 246, 0.15); color: var(--violet); border: 1px solid rgba(139, 92, 246, 0.3); }
+    .badge-type { background: rgba(59, 130, 246, 0.15); color: var(--blue); border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-tag { background: rgba(255, 255, 255, 0.05); color: var(--text-muted); }
+
+    .flag-toggles {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .flag-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .flag-checkbox:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .flag-checkbox input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--gold);
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Sprite Inspection Grid */
+    .sprite-workspace-grid {
+      display: grid;
+      grid-template-columns: 800px 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1550px) {
+      .sprite-workspace-grid {
+        grid-template-columns: 1.2fr 1fr;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .sprite-workspace-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .sprite-viewport-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sprite-viewport {
+      height: 660px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .sprite-viewport canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    /* Background Modes */
+    .bg-checkerboard {
+      background-color: #1a1c29;
+      background-image: linear-gradient(45deg, #11131f 25%, transparent 25%),
+                        linear-gradient(-45deg, #11131f 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #11131f 75%),
+                        linear-gradient(-45deg, transparent 75%, #11131f 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+
+    .bg-dark { background: #07080c; }
+    .bg-black { background: #000000; }
+    .bg-light { background: #d0d4e0; }
+
+    .viewport-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+
+    .zoom-buttons, .bg-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tool-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .tool-btn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.2); }
+    .tool-btn.active { color: var(--gold); border-color: var(--gold); background: rgba(217, 164, 65, 0.1); }
+
+    /* Granular Color Balance Panel */
+    .editor-section-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .cb-control-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .cb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .cb-tone-group {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .cb-tone-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 2px;
+    }
+
+    .cb-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+    }
+
+    .cb-label-left {
+      width: 60px;
+      text-align: right;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    .cb-label-right {
+      width: 50px;
+      color: #f87171;
+      font-weight: 600;
+    }
+
+    .cb-slider-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--gold);
+      cursor: pointer;
+      height: 5px;
+    }
+
+    .cb-num {
+      width: 35px;
+      text-align: right;
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--gold-bright);
+    }
+
+    .cb-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .cb-hex-summary {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Scale & Path Inputs */
+    .scale-editor-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .scale-editor-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--gold);
+      cursor: pointer;
+    }
+
+    .scale-editor-row input[type="number"] {
+      width: 70px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .sprite-tester-box {
+      background: var(--bg-card);
+      border: 1px dashed var(--border-bright);
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .tester-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+
+    .tester-input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tester-input-group input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    /* Stat Form Editor */
+    .stat-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .form-group input, .form-group select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--gold);
+      outline: none;
+    }
+
+    .dice-group {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .dice-group input {
+      width: 45px;
+      text-align: center;
+    }
+
+    /* Spawnable Dungeon Types */
+    .dungeon-chip-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 8px;
+    }
+
+    .dungeon-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .dungeon-chip:hover { border-color: rgba(255, 255, 255, 0.2); }
+    .dungeon-chip.on { border-color: var(--gold); background: rgba(217, 164, 65, 0.12); color: #fff; }
+    .dungeon-chip input { accent-color: var(--gold); cursor: pointer; }
+    .dungeon-chip .dungeon-accent { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .stat-card-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+    .stat-card-val { font-size: 18px; font-weight: 700; color: var(--gold); margin: 2px 0; }
+    .stat-card-sub { font-size: 10px; color: var(--text-main); }
+
+    /* Ability Scores */
+    .ability-scores-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .ability-scores-row { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .ability-score-cell {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .ab-label { font-size: 11px; font-weight: 700; color: var(--gold); }
+    .ab-score { font-size: 16px; font-weight: 700; color: #fff; margin: 2px 0; }
+    .ab-mod { font-size: 11px; color: var(--gold-bright); font-weight: 600; }
+    .ab-save { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+
+    .defense-traits-box {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-main);
+    }
+
+    .defense-item strong { color: var(--gold); }
+
+    /* Abilities & Spells Cards */
+    .abilities-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .ability-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--blue);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .ability-card.primary-attack { border-left-color: var(--gold); }
+    .ability-card.boss-spell { border-left-color: var(--violet); }
+    .ability-card.trait-card { border-left-color: var(--cyan); }
+    .ability-card.action-card { border-left-color: var(--red); }
+
+    .ability-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .ability-name { font-weight: 700; font-size: 13px; color: #fff; }
+    .ability-type-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.06); color: var(--text-muted); }
+    .spell-badge { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
+
+    .ability-desc { font-size: 12px; color: var(--text-main); line-height: 1.4; }
+    .spell-sprite-info { margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+
+    /* Notes Workspace */
+    .notes-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .notes-textarea {
+      width: 100%;
+      height: 100px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+    }
+
+    .notes-textarea:focus {
+      border-color: var(--gold);
+    }
+
+    .notes-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Toast Notification */
+    .bestiary-toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--gold);
+      color: #000;
+      font-weight: 600;
+      font-size: 12px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      z-index: 999;
+    }
+
+    .bestiary-toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Live Arena Modal Overlay */
+    .arena-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(4, 5, 12, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .arena-modal-content {
+      width: 96vw;
+      max-width: 1500px;
+      height: 92vh;
+      max-height: 950px;
+      background: #0d101d;
+      border: 1px solid var(--border-bright);
+      border-radius: 12px;
+      box-shadow: 0 10px 60px rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      transition: width 0.2s, height 0.2s, max-width 0.2s, max-height 0.2s;
+    }
+
+    .arena-modal-content.is-fullscreen {
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: none !important;
+      max-height: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+    }
+
+    .arena-modal-header {
+      background: #131728;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .arena-modal-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .arena-modal-title h3 {
+      font-size: 16px;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .arena-modal-title p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .arena-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .arena-viewport-container {
+      flex: 1;
+      position: relative;
+      background: #080911;
+      overflow: hidden;
+    }
+
+    .arena-viewport-container canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .arena-action-banner {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13, 16, 29, 0.9);
+      border: 1px solid var(--gold);
+      color: var(--gold-bright);
+      font-weight: 700;
+      font-size: 13px;
+      padding: 6px 20px;
+      border-radius: 20px;
+      pointer-events: none;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+      z-index: 10;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .arena-bottom-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(13, 16, 29, 0.92);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      z-index: 10;
+    }
+
+    .arena-speed-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ---------------- Top-level Tab Bar ---------------- */
+    #tab-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 20px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .app-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .app-tab:hover { color: var(--text-main); }
+
+    .app-tab.active {
+      color: var(--gold-bright);
+      border-bottom-color: var(--gold);
+      background: rgba(217, 164, 65, 0.06);
+    }
+
+    /* ---------------- CR Scaling Tab ---------------- */
+    #cr-scaling-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      background: var(--bg-dark);
+    }
+
+    #cr-scaling-view.active { display: flex; }
+
+    .cr-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cr-toolbar .cr-tool-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .cr-toolbar input[type="number"],
+    .cr-toolbar select {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      width: 74px;
+    }
+
+    #cr-difficulty-slider { width: 180px; accent-color: var(--gold); }
+    #cr-curve-power { width: 110px; accent-color: var(--gold); }
+
+    .cr-curve-preview {
+      width: 160px;
+      height: 44px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+    }
+
+    #cr-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    #cr-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--bg-panel);
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #cr-table td {
+      padding: 4px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    #cr-table tr:hover td { background: rgba(255, 255, 255, 0.025); }
+
+    #cr-table tr.cr-row-dirty td { background: rgba(245, 158, 11, 0.07); }
+
+    .cr-label {
+      font-weight: 700;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
+    .cr-count { font-size: 11px; color: var(--text-muted); }
+
+    .cr-input {
+      width: 78px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .cr-input:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px var(--gold-glow);
+    }
+
+    .cr-input.changed { border-color: var(--amber); color: var(--amber); }
+
+    .cr-preview {
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .cr-preview b { color: var(--green); font-weight: 600; }
+
+    .cr-preview .cr-base { color: var(--text-muted); opacity: 0.7; }
+
+    .cr-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* ---------------- Spawn Budget Tab ---------------- */
+    #spawn-budget-view {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+      background: var(--bg-dark);
+    }
+
+    #spawn-budget-view.active { display: flex; }
+
+    /* Knob grid: one labelled control per encounter-density lever. */
+    .sb-knob-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .sb-knob {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sb-knob.changed { border-color: var(--amber); }
+
+    .sb-knob-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .sb-knob-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .sb-knob-val {
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold-bright);
+    }
+
+    .sb-knob-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sb-knob-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--gold);
+      cursor: pointer;
+      height: 5px;
+    }
+
+    .sb-knob-row input[type="number"] {
+      width: 76px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-family: inherit;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .sb-knob-row input[type="number"]:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px var(--gold-glow);
+    }
+
+    .sb-knob-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    #sb-tier-table,
+    #sb-level-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    #sb-tier-table th,
+    #sb-level-table th {
+      background: var(--bg-panel);
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #sb-tier-table td,
+    #sb-level-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    #sb-tier-table tr.cr-row-dirty td,
+    #sb-level-table tr.cr-row-dirty td { background: rgba(245, 158, 11, 0.07); }
+
+    #sb-level-table tr.sb-row-current td,
+    #sb-tier-table tr.sb-row-current td { box-shadow: inset 2px 0 0 var(--gold); }
+
+    .sb-tier-label { font-weight: 700; color: var(--violet); white-space: nowrap; }
+
+    .sb-bar {
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--gold), var(--red));
+      min-width: 2px;
+    }
+
+    .sb-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .sb-preview-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--gold);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .sb-preview-card.elite { border-left-color: var(--violet); }
+    .sb-preview-card.boss { border-left-color: var(--red); }
+
+    .sb-preview-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .sb-preview-budget {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .sb-preview-line {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .sb-preview-line b { color: var(--green); font-weight: 600; }
+
+    .sb-chip {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin: 2px 3px 0 0;
+      background: rgba(139, 92, 246, 0.18);
+      color: #c084fc;
+    }
+
+    /* The tier the game actually fields — game.js overrides the generator's
+       budget-side tier for ordinary spawns, so the two are shown apart. */
+    .sb-chip.actual {
+      background: rgba(16, 185, 129, 0.18);
+      color: #6ee7b7;
+    }
+
+    /* Boss Encounters View */
+    #boss-encounters-view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--bg-dark);
+    }
+
+    #boss-encounters-view.active {
+      display: flex;
+    }
+
+    .boss-item-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .boss-item-card:hover {
+      border-color: var(--border-bright);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .boss-item-card.active {
+      border-color: var(--gold);
+      background: rgba(217, 164, 65, 0.1);
+      box-shadow: 0 0 10px rgba(217, 164, 65, 0.15);
+    }
+
+    .boss-escort-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    /* Story Quests View */
+    #story-quests-view,
+    #dungeon-rosters-view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--bg-dark);
+    }
+
+    #story-quests-view.active,
+    #dungeon-rosters-view.active { display: flex; }
+
+    /* Shared: a lane of monster chips with an "add" picker (used by the story
+       floor pools, the fallback roster, and the dungeon roster preview). */
+    .mob-lane {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mob-lane-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .mob-lane.lane-boss { border-color: rgba(217, 164, 65, 0.35); background: rgba(217, 164, 65, 0.06); }
+    .mob-lane.lane-boss .mob-lane-head { color: var(--gold-bright); }
+
+    .mob-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-height: 22px;
+    }
+
+    .mob-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 4px 2px 9px;
+      font-size: 11px;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .mob-chip .chip-cr {
+      font-family: monospace;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .mob-chip.chip-warn { border-color: rgba(239, 68, 68, 0.45); background: rgba(239, 68, 68, 0.1); }
+    .mob-chip.chip-note { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.08); }
+
+    .mob-chip button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1;
+      padding: 3px 5px;
+      border-radius: 999px;
+    }
+
+    .mob-chip button:hover { color: var(--red); background: rgba(239, 68, 68, 0.15); }
+
+    .mob-lane-empty { font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+    .sq-floor-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sq-floor-card.floor-final { border-color: rgba(217, 164, 65, 0.35); }
+
+    .sq-floor-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .warn-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11.5px;
+    }
+
+    .warn-row {
+      padding: 5px 9px;
+      border-radius: 5px;
+      border-left: 3px solid var(--amber);
+      background: rgba(245, 158, 11, 0.08);
+      color: #fcd9a0;
+    }
+
+    .warn-row.warn-bad { border-left-color: var(--red); background: rgba(239, 68, 68, 0.09); color: #fca5a5; }
+    .warn-row.warn-ok { border-left-color: var(--green); background: rgba(16, 185, 129, 0.08); color: #6ee7b7; }
+
+    /* Dungeon Rosters View */
+    .dr-theme-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      transition: all 0.15s ease;
+    }
+
+    .dr-theme-card:hover { border-color: var(--border-bright); background: rgba(255, 255, 255, 0.04); }
+    .dr-theme-card.active { border-color: var(--gold); background: rgba(217, 164, 65, 0.1); }
+    .dr-theme-card.roster-empty { border-color: rgba(239, 68, 68, 0.4); }
+
+    .dr-theme-swatch {
+      width: 6px;
+      align-self: stretch;
+      min-height: 26px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    #dr-monster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 6px;
+      align-content: start;
+    }
+
+    .dr-mob-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 9px;
+      cursor: pointer;
+      font-size: 12px;
+      user-select: none;
+    }
+
+    .dr-mob-row:hover { border-color: var(--border-bright); }
+    .dr-mob-row.on { border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.08); }
+    .dr-mob-row input { accent-color: var(--green); cursor: pointer; }
+    .dr-mob-row .dr-mob-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dr-mob-row .dr-mob-cr { font-family: monospace; font-size: 10.5px; color: var(--text-muted); }
+    .dr-mob-row .dr-mob-fam { font-size: 9.5px; color: var(--text-muted); opacity: 0.8; }
+
+    /* Per-level CR coverage strip: one cell per dungeon level 1-20 */
+    .dr-coverage {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 3px;
+    }
+
+    .dr-cov-cell {
+      text-align: center;
+      padding: 5px 0;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: monospace;
+      background: rgba(16, 185, 129, 0.16);
+      color: #6ee7b7;
+      border: 1px solid transparent;
+    }
+
+    .dr-cov-cell.thin { background: rgba(245, 158, 11, 0.16); color: #fcd34d; }
+    .dr-cov-cell.none { background: rgba(239, 68, 68, 0.16); color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); }
+    .dr-cov-lvl { font-size: 9px; color: var(--text-muted); text-align: center; }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top Navigation / Header -->
+  <header id="app-header">
+    <div class="header-brand">
+      <span class="header-icon">📖</span>
+      <div class="header-title">
+        <h1>BESTIARY & COLOR BALANCE EDITOR</h1>
+        <p>Granular Color Balance (Lows, Mediums, Highs), live scale controls, statblock editor & monsters.json exporter.</p>
+      </div>
+    </div>
+
+    <div id="global-stats-bar">
+      <!-- Populated dynamically -->
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-primary" id="open-arena-btn" title="Open live dungeon combat room preview with monster moving, attacking & casting abilities">⚔️ Arena Preview</button>
+      <button class="btn btn-success" id="export-monsters-json-btn" title="Save updated monsters.json directly to src/game/monsters.json">💾 Save to Codebase (monsters.json)</button>
+      <button class="btn" id="reset-all-edits-btn" title="Reset all custom monster edits to factory defaults">🔄 Reset Edits</button>
+      <button class="btn" id="export-data-btn" title="Export notes and edits backup JSON">📥 Export Backup</button>
+      <button class="btn" id="import-data-btn" title="Import notes and edits backup JSON">📤 Import Backup</button>
+      <input type="file" id="import-file-input" accept=".json" style="display:none">
+      <a href="index.html" class="btn" style="text-decoration:none">🎮 Main Game</a>
+    </div>
+  </header>
+
+  <!-- Top-level Tabs -->
+  <nav id="tab-bar">
+    <button class="app-tab active" data-tab="bestiary">📖 Bestiary</button>
+    <button class="app-tab" data-tab="cr-scaling" title="Edit the CR-based monster stat scaling table (difficulty tuning)">⚖️ CR Scaling</button>
+    <button class="app-tab" data-tab="spawn-budget" title="Edit the per-room spawn threat budget and what each monster tier costs against it">🐾 Spawn Budget</button>
+    <button class="app-tab" data-tab="boss-encounters" title="Curated Boss Encounters (100 total across 5 themes x 20 levels)" style="border-color:rgba(217, 164, 65, 0.4);color:var(--gold-bright)">⚔️ Boss Encounters (100)</button>
+    <button class="app-tab" data-tab="story-quests" title="Curate each story mission's per-floor mob pools and its final boss">📜 Story Quests</button>
+    <button class="app-tab" data-tab="dungeon-rosters" title="Build the monster list each dungeon theme may spawn from">🏰 Dungeon Rosters</button>
+  </nav>
+
+
+  <!-- Main Application Grid -->
+  <div id="main-container">
+
+    <!-- Left Sidebar: Monster List & Filtering -->
+    <aside id="sidebar">
+      <div class="sidebar-controls">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="Search name, ID, type, tag, note...">
+        </div>
+        <div class="filter-row">
+          <select id="tier-filter" title="Filter by CR band">
+            <option value="all">All CRs</option>
+            <option value="1">CR 0 – ½</option>
+            <option value="2">CR ½ – 2</option>
+            <option value="3">CR 2 – 4½</option>
+            <option value="4">CR 4½ – 8</option>
+            <option value="5">CR 8+</option>
+            <option value="boss">Bosses</option>
+          </select>
+
+          <select id="type-filter" title="Filter by Creature Type">
+            <option value="all">All Types</option>
+            <option value="beast">Beast</option>
+            <option value="undead">Undead</option>
+            <option value="fiend">Fiend</option>
+            <option value="dragon">Dragon</option>
+            <option value="humanoid">Humanoid</option>
+            <option value="monstrosity">Monstrosity</option>
+            <option value="aberration">Aberration</option>
+            <option value="elemental">Elemental</option>
+            <option value="giant">Giant</option>
+            <option value="construct">Construct</option>
+          </select>
+        </div>
+        <div class="filter-row">
+          <select id="cr-filter" title="Filter by CR">
+            <option value="all">All CRs</option>
+            <option value="0-0.5">CR 0 - 1/2</option>
+            <option value="1-4">CR 1 - 4</option>
+            <option value="5-10">CR 5 - 10</option>
+            <option value="11+">CR 11+</option>
+          </select>
+
+          <select id="status-filter" title="Filter by Review Status">
+            <option value="all">All Statuses</option>
+            <option value="edited">✏️ Custom Edited</option>
+            <option value="redo">🎨 Needs Sprite Redo</option>
+            <option value="verified">✅ Abilities Verified</option>
+            <option value="notes">📝 Has Notes</option>
+            <option value="unverified">Unverified Only</option>
+          </select>
+
+          <select id="sort-by" title="Sort Order">
+            <option value="name-asc">Name (A-Z)</option>
+            <option value="name-desc">Name (Z-A)</option>
+            <option value="cr-asc">CR (Low-High)</option>
+            <option value="cr-desc">CR (High-Low)</option>
+            <option value="threat-desc">Threat (High-Low)</option>
+            <option value="tier-asc">Tier</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sidebar-counter">
+        <span id="monster-count-label">Loading monsters...</span>
+        <span>Keyboard: ↑↓ / ←→</span>
+      </div>
+
+      <div id="monster-list">
+        <!-- Rendered by src/bestiary.js -->
+      </div>
+
+      <div class="sidebar-footer">
+        <span>Click monster to view & edit</span>
+        <span>Autosaves edits to local storage</span>
+      </div>
+    </aside>
+
+    <!-- Right Main Detail Panel -->
+    <main id="content-area">
+
+      <!-- Monster Header & Flag Bar -->
+      <section class="detail-header-card">
+        <div class="detail-title-group">
+          <div style="display:flex;align-items:center">
+            <h2 id="detail-name">Select Monster</h2>
+            <span class="detail-id-code" id="detail-id">—</span>
+          </div>
+          <div class="meta-badges" id="detail-meta-badges">
+            <!-- Badges -->
+          </div>
+        </div>
+
+        <div class="flag-toggles">
+          <button class="btn btn-primary" id="open-arena-card-btn" title="Open live dungeon combat room preview">⚔️ Test in Room Arena</button>
+          <label class="flag-checkbox" title="Tag this monster as needing a new/redone sprite">
+            <input type="checkbox" id="flag-redo">
+            <span>🎨 Needs Sprite Redo</span>
+          </label>
+          <label class="flag-checkbox" title="Mark this monster's abilities as verified">
+            <input type="checkbox" id="flag-verified">
+            <span>✅ Abilities Verified</span>
+          </label>
+          <div style="display:flex;gap:4px">
+            <button class="btn" id="prev-btn" title="Previous Monster (Left Arrow / A)">◄ Prev</button>
+            <button class="btn" id="next-btn" title="Next Monster (Right Arrow / D)">Next ►</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 1: Sprite Viewport & Granular Color Balance Editor -->
+      <section class="section-card">
+        <div class="section-title">
+          <span>🎨 Sprite Inspector & Color Balance Editor</span>
+          <div class="viewport-toolbar">
+            <div style="display:flex;align-items:center;gap:6px;margin-right:10px">
+              <label class="flag-checkbox" style="padding:2px 8px;font-size:11px;background:rgba(59,130,246,0.15);border-color:rgba(59,130,246,0.3)" title="Show hero sprite next to monster to measure relative scale">
+                <input type="checkbox" id="show-hero-ref-toggle" checked>
+                <span style="color:#60a5fa">🧍 Hero Reference</span>
+              </label>
+              <select id="hero-ref-select" style="background:var(--bg-input);border:1px solid var(--border);color:#fff;padding:3px 6px;border-radius:4px;font-size:11px" title="Select hero archetype for scale comparison">
+                <option value="human.png">Human (1.0x)</option>
+                <option value="dwarf.png">Dwarf (0.85x)</option>
+                <option value="elf.png">Elf (1.0x)</option>
+                <option value="halfling.png">Halfling (0.65x)</option>
+              </select>
+            </div>
+            <div class="zoom-buttons">
+              <span>Zoom:</span>
+              <button class="tool-btn zoom-btn" data-zoom="2">2x</button>
+              <button class="tool-btn zoom-btn active" data-zoom="6">6x</button>
+              <button class="tool-btn zoom-btn" data-zoom="12">12x</button>
+              <button class="tool-btn zoom-btn" data-zoom="18">18x</button>
+              <button class="tool-btn zoom-btn" data-zoom="24">24x</button>
+            </div>
+            <div class="bg-buttons" style="margin-left:10px">
+              <span>BG:</span>
+              <button class="tool-btn bg-btn active" data-bg="checkerboard">Grid</button>
+              <button class="tool-btn bg-btn" data-bg="dark">Dark</button>
+              <button class="tool-btn bg-btn" data-bg="black">Black</button>
+              <button class="tool-btn bg-btn" data-bg="light">Light</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sprite-workspace-grid">
+          <div class="sprite-viewport-container">
+            <div class="sprite-viewport bg-checkerboard" id="sprite-viewport">
+              <canvas id="sprite-viewport-canvas"></canvas>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--text-muted)">Sprite Path: <code id="sprite-path-label">animals/rat.png</code></span>
+              <span style="font-size:11px;color:var(--text-muted)" id="sprite-dim-label">-- × -- px</span>
+            </div>
+          </div>
+
+          <!-- Live Color Balance (Shadows, Midtones, Highlights) & Scale Editor -->
+          <div class="editor-section-group">
+            
+            <!-- In-Game Scale & Ground Alignment Editor -->
+            <div class="cb-control-card">
+              <div class="cb-header">
+                <span>📏 In-Game Scale Multiplier</span>
+                <span id="sprite-scale-label">1.00x</span>
+              </div>
+              <div class="scale-editor-row">
+                <input type="range" id="edit-scale-slider" min="0.1" max="3.0" step="0.05" value="1.0">
+                <input type="number" id="edit-scale-num" min="0.1" max="4.0" step="0.05" value="1.00">
+              </div>
+
+              <div class="cb-header" style="margin-top:8px">
+                <span>⚓ Vertical Ground Shift (Floating / Y-Offset)</span>
+                <span id="y-offset-val-label" style="font-family:monospace;color:var(--gold-bright)">0px</span>
+              </div>
+              <div class="scale-editor-row">
+                <input type="range" id="edit-y-offset-slider" min="-100" max="100" step="1" value="0">
+                <input type="number" id="edit-y-offset-num" min="-200" max="200" step="1" value="0">
+              </div>
+
+              <div class="cb-footer-row" style="margin-top:6px;gap:8px">
+                <label class="flag-checkbox" title="Snap non-transparent feet/claws directly onto the ground baseline">
+                  <input type="checkbox" id="snap-to-ground-toggle" checked>
+                  <span style="color:#10b981">✨ Snap Feet to Ground</span>
+                </label>
+                <label class="flag-checkbox" title="Auto-zoom out camera so large scaled monsters & hero never leave the viewport">
+                  <input type="checkbox" id="auto-fit-zoom-toggle" checked>
+                  <span style="color:#38bdf8">🔍 Auto-Fit Viewport Bounds</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Granular Color Balance (Krita-Style Shadows, Midtones, Highlights) -->
+            <div class="cb-control-card">
+              <div class="cb-header">
+                <span>🎛️ Color Balance Filter (Lows, Mediums, Highs)</span>
+                <button class="btn btn-xs" id="cb-reset-all-btn">Reset All Tones</button>
+              </div>
+
+              <!-- Shadows (Lows) -->
+              <div class="cb-tone-group">
+                <div class="cb-tone-title">
+                  <span>🌑 Shadows (Lows)</span>
+                  <button class="btn btn-xs" id="cb-reset-shadows-btn">Reset Shadows</button>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Cyan</span>
+                  <input type="range" id="cb-shadow-r" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Red</span>
+                  <span class="cb-num" id="cb-num-shadow-r">0</span>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Magenta</span>
+                  <input type="range" id="cb-shadow-g" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Green</span>
+                  <span class="cb-num" id="cb-num-shadow-g">0</span>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Yellow</span>
+                  <input type="range" id="cb-shadow-b" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Blue</span>
+                  <span class="cb-num" id="cb-num-shadow-b">0</span>
+                </div>
+              </div>
+
+              <!-- Midtones (Mediums) -->
+              <div class="cb-tone-group">
+                <div class="cb-tone-title">
+                  <span>🌓 Midtones (Mediums)</span>
+                  <button class="btn btn-xs" id="cb-reset-midtones-btn">Reset Midtones</button>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Cyan</span>
+                  <input type="range" id="cb-midtone-r" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Red</span>
+                  <span class="cb-num" id="cb-num-midtone-r">0</span>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Magenta</span>
+                  <input type="range" id="cb-midtone-g" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Green</span>
+                  <span class="cb-num" id="cb-num-midtone-g">0</span>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Yellow</span>
+                  <input type="range" id="cb-midtone-b" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Blue</span>
+                  <span class="cb-num" id="cb-num-midtone-b">0</span>
+                </div>
+              </div>
+
+              <!-- Highlights (Highs) -->
+              <div class="cb-tone-group">
+                <div class="cb-tone-title">
+                  <span>🌕 Highlights (Highs)</span>
+                  <button class="btn btn-xs" id="cb-reset-highlights-btn">Reset Highlights</button>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Cyan</span>
+                  <input type="range" id="cb-highlight-r" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Red</span>
+                  <span class="cb-num" id="cb-num-highlight-r">0</span>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Magenta</span>
+                  <input type="range" id="cb-highlight-g" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Green</span>
+                  <span class="cb-num" id="cb-num-highlight-g">0</span>
+                </div>
+                <div class="cb-slider-row">
+                  <span class="cb-label-left">Yellow</span>
+                  <input type="range" id="cb-highlight-b" min="-100" max="100" value="0">
+                  <span class="cb-label-right">Blue</span>
+                  <span class="cb-num" id="cb-num-highlight-b">0</span>
+                </div>
+              </div>
+
+              <div class="cb-footer-row">
+                <label class="flag-checkbox">
+                  <input type="checkbox" id="cb-preserve-lum" checked>
+                  <span>✔ Preserve Luminosity</span>
+                </label>
+                <span class="cb-hex-summary" id="cb-hex-summary">Tint Hex: #888888</span>
+              </div>
+            </div>
+
+            <!-- Sprite File Path & Speed/Threat Editor -->
+            <div class="cb-control-card">
+              <div class="cb-header">
+                <span>📁 Sprite Path & Speed / Threat</span>
+              </div>
+              <div class="form-group">
+                <label>Sprite File Path (relative to dcss/monster/)</label>
+                <input type="text" id="edit-sprite-input" placeholder="e.g. animals/rat.png">
+              </div>
+              <div style="display:flex;gap:12px;margin-top:6px">
+                <div class="form-group" style="flex:1">
+                  <label>Move Speed</label>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <input type="range" id="edit-speed-slider" min="1.0" max="8.0" step="0.1" value="3.0" style="flex:1">
+                    <input type="number" id="edit-speed-num" min="1.0" max="10.0" step="0.1" value="3.0" style="width:60px">
+                  </div>
+                </div>
+                <div class="form-group" style="width:110px">
+                  <label>Threat Cost</label>
+                  <input type="number" id="edit-threat-input" min="1" max="100" value="10">
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Sprite Tester & Importer -->
+            <div class="sprite-tester-box">
+              <div class="tester-title">🧪 Custom Sprite File Importer & Tester</div>
+              <div class="tester-input-group">
+                <button class="btn btn-primary" id="upload-sprite-btn" title="Choose image file from your computer">📂 Browse & Import Image File</button>
+                <input type="file" id="upload-sprite-file-input" accept="image/*" style="display:none">
+              </div>
+              <div class="tester-input-group" style="margin-top:6px">
+                <input type="text" id="custom-sprite-input" placeholder="Or enter path (e.g. sprites/wolfsheet1.png or dragons/red_dragon.png)">
+                <button class="btn" id="test-sprite-btn">Preview</button>
+                <button class="btn" id="reset-sprite-btn">Reset</button>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:6px">
+                <button class="btn" id="copy-json-btn" title="Copy updated sprite property">📋 Copy Sprite Snippet</button>
+                <button class="btn" id="copy-full-json-btn" title="Copy full statblock JSON">📋 Copy Monster JSON</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Interactive Statblock Form Editor -->
+      <section class="section-card">
+        <div class="section-title">
+          <span>✏️ Core Statblock Editor</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-primary" id="save-stat-form-btn">💾 Apply Statblock Edits</button>
+            <button class="btn" id="revert-monster-btn">↩ Revert to Default</button>
+          </div>
+        </div>
+
+        <div class="stat-form-grid">
+          <div class="form-group">
+            <label>Monster Name</label>
+            <input type="text" id="edit-name">
+          </div>
+          <div class="form-group">
+            <label>Creature Type</label>
+            <select id="edit-type">
+              <option value="beast">Beast</option>
+              <option value="undead">Undead</option>
+              <option value="fiend">Fiend</option>
+              <option value="dragon">Dragon</option>
+              <option value="humanoid">Humanoid</option>
+              <option value="monstrosity">Monstrosity</option>
+              <option value="aberration">Aberration</option>
+              <option value="elemental">Elemental</option>
+              <option value="giant">Giant</option>
+              <option value="construct">Construct</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Size</label>
+            <select id="edit-size">
+              <option value="tiny">Tiny</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+              <option value="huge">Huge</option>
+              <option value="gargantuan">Gargantuan</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Boss</label>
+            <label class="checkbox-row"><input type="checkbox" id="edit-isboss"> Flag as a boss (final-floor eligible, boss death spectacle)</label>
+          </div>
+          <div class="form-group">
+            <label>Challenge Rating (CR)</label>
+            <input type="number" id="edit-cr" step="0.125" min="0" max="30">
+          </div>
+          <div class="form-group">
+            <label>Armor Class (AC)</label>
+            <input type="number" id="edit-ac" min="1" max="30">
+          </div>
+          <div class="form-group">
+            <label>Attack Bonus (To-Hit)</label>
+            <input type="number" id="edit-atk" min="-5" max="25">
+          </div>
+          <div class="form-group">
+            <label>XP Reward</label>
+            <input type="number" id="edit-xp" min="0" max="50000">
+          </div>
+          <div class="form-group">
+            <label>Hit Points (Dice + Bonus)</label>
+            <div class="dice-group">
+              <input type="number" id="edit-hp-count" min="1" max="50">
+              <span>d</span>
+              <input type="number" id="edit-hp-sides" min="4" max="20">
+              <span>+</span>
+              <input type="number" id="edit-hp-bonus" min="0" max="500">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Melee Damage (Dice + Bonus)</label>
+            <div class="dice-group">
+              <input type="number" id="edit-dmg-count" min="1" max="20">
+              <span>d</span>
+              <input type="number" id="edit-dmg-sides" min="4" max="20">
+              <span>+</span>
+              <input type="number" id="edit-dmg-bonus" min="0" max="100">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2b: Spawnable Dungeon Types -->
+      <section class="section-card">
+        <div class="section-title">
+          <span>🗺️ Spawnable Dungeon Types</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-xs" id="dungeon-bulk-seed-btn" title="Write explicit dungeon picks for every creature that has none yet, based on their creature-type family">🪄 Seed All Unconfigured</button>
+            <button class="btn btn-xs" id="dungeon-seed-btn" title="Check the dungeon types this creature's type-family already maps to">🧬 Seed from Type</button>
+            <button class="btn btn-xs" id="dungeon-clear-btn" title="Uncheck every dungeon type (creature will not spawn anywhere)">✖ Clear All</button>
+          </div>
+        </div>
+        <p class="cr-hint">
+          A creature appears <b>only</b> in the dungeon types checked below. When a creature has no
+          saved selection yet the boxes are seeded from its creature-type family, so you can simply
+          uncheck the ones you don't want — the saved pick is then explicit. Unchecking everything
+          keeps the creature out of all themed dungeon spawns. New dungeon styles added to the game
+          appear here automatically.
+        </p>
+        <div id="dungeon-checkbox-grid" class="dungeon-chip-grid" style="margin-top:12px">
+          <!-- Populated by src/bestiary.js -->
+        </div>
+      </section>
+
+      <!-- Section 3: Stats & Defensive Traits View -->
+      <section class="section-card">
+        <div class="section-title">
+          <span>📊 Computed Combat Summary</span>
+          <label style="font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" id="cr-scaled-toggle"> Apply Systemic CR Scaling
+          </label>
+        </div>
+
+        <div class="stats-grid" id="stats-grid-container">
+          <!-- Populated by src/bestiary.js -->
+        </div>
+
+        <div style="margin-top:16px">
+          <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:6px">ABILITY SCORES & SAVES</div>
+          <div id="ability-scores-container">
+            <!-- Populated by src/bestiary.js -->
+          </div>
+        </div>
+
+        <div style="margin-top:14px" id="defense-traits-container">
+          <!-- Populated by src/bestiary.js -->
+        </div>
+      </section>
+
+      <!-- Section 4: Abilities & Spells Registry -->
+      <section class="section-card">
+        <div class="section-title">
+          <span>⚔️ Abilities & Spells Registry</span>
+        </div>
+
+        <div class="abilities-list" id="monster-abilities-container">
+          <!-- Populated by src/bestiary.js -->
+        </div>
+      </section>
+
+      <!-- Section 5: Monster Notes Workspace -->
+      <section class="section-card">
+        <div class="section-title">
+          <span>📝 Persistent Monster Notes Workspace</span>
+          <span id="notes-save-indicator" style="font-size:11px;color:var(--green);font-weight:500"></span>
+        </div>
+
+        <div class="notes-container">
+          <textarea id="monster-notes" class="notes-textarea" placeholder="Add notes for this monster... e.g., 'Shadows shifted -66 Red, -90 Green, +45 Blue. Preserve luminosity ON. Scale set to 0.85x.'"></textarea>
+          <div class="notes-footer">
+            <span>Notes auto-save as you type per-monster.</span>
+            <button class="btn" id="clear-notes-btn">Clear Note</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- CR Scaling Tab: difficulty tuning for the CR-based monster stat scaling table -->
+  <div id="cr-scaling-view">
+
+    <section class="section-card">
+      <div class="section-title">
+        <span>⚖️ CR Monster Stat Scaling</span>
+        <span id="cr-dirty-indicator" style="font-size:11px;color:var(--amber);font-weight:600"></span>
+      </div>
+
+      <p class="cr-hint">
+        Every monster's statblock is multiplied by the row matching its Challenge Rating:
+        <code>scaled = Math.floor(base × (1 + pct / 100))</code>. A CR that isn't listed uses the
+        nearest lower row. Raise <b>HP %</b> and <b>Atk %</b> to make fights longer and deadlier,
+        raise <b>AC %</b> to make monsters harder to hit, and <b>Stat %</b> to lift ability scores,
+        saves and DCs. Edits apply live to the Bestiary statblocks and the Arena preview;
+        hit <b>Save to Codebase</b> to write them into <code>src/game/cr_scaling.json</code> for the game.
+      </p>
+
+      <div class="cr-toolbar">
+        <div class="cr-tool-group">
+          <span>Global difficulty</span>
+          <input type="range" id="cr-difficulty-slider" min="0.25" max="2" step="0.05" value="1">
+          <b id="cr-difficulty-label" style="color:var(--gold-bright);min-width:42px">1.00×</b>
+          <button class="btn btn-xs" id="cr-difficulty-apply" title="Multiply every percentage in the table by this factor (relative to the saved baseline)">Apply</button>
+        </div>
+
+        <div class="cr-tool-group">
+          <span>Bulk edit</span>
+          <select id="cr-bulk-column">
+            <option value="all">All columns</option>
+            <option value="acPct">AC %</option>
+            <option value="hpPct">HP %</option>
+            <option value="atkPct">Atk %</option>
+            <option value="statPct">Stat %</option>
+          </select>
+          <select id="cr-bulk-op">
+            <option value="add">Add</option>
+            <option value="mul">Multiply ×</option>
+            <option value="set">Set to</option>
+          </select>
+          <input type="number" id="cr-bulk-value" value="10" step="1">
+          <span>from CR</span>
+          <select id="cr-bulk-from"></select>
+          <span>to</span>
+          <select id="cr-bulk-to"></select>
+          <button class="btn btn-xs" id="cr-bulk-apply">Apply</button>
+        </div>
+
+        <div class="cr-tool-group">
+          <label class="flag-checkbox" style="padding:0;background:none;border:none">
+            <input type="checkbox" id="cr-preview-toggle" checked>
+            <span>Show preview</span>
+          </label>
+          <select id="cr-preview-mode" title="Which monster the preview column samples for each CR row">
+            <option value="sample">Sample monster per CR</option>
+            <option value="average">Average of all monsters at CR</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="cr-hint" style="margin-top:14px">
+        <b>Curve tool.</b> Instead of typing 24 rows by hand, sweep one column from a start value at
+        the low CR to an end value at the high CR and let a shape decide what happens in between.
+        <b>Ease in</b> keeps early CRs gentle then ramps hard (good when low-level fights feel
+        punishing); <b>ease out</b> front-loads the difficulty and flattens at the top;
+        <b>S-curve</b> keeps both ends calm and does the work in the middle band. The sweep is
+        spread evenly across the <i>rows</i> in range, not the raw CR numbers, so the fractional
+        CRs at the bottom of the table each get their own step.
+      </p>
+
+      <div class="cr-toolbar">
+        <div class="cr-tool-group">
+          <span>Curve</span>
+          <select id="cr-curve-column" title="Which column the curve writes to">
+            <option value="hpPct">HP %</option>
+            <option value="atkPct">Atk %</option>
+            <option value="acPct">AC %</option>
+            <option value="statPct">Stat %</option>
+          </select>
+          <span>from CR</span>
+          <select id="cr-curve-from"></select>
+          <span>to</span>
+          <select id="cr-curve-to"></select>
+          <span>value</span>
+          <input type="number" id="cr-curve-start" value="0" step="5" style="width:70px">
+          <span>→</span>
+          <input type="number" id="cr-curve-end" value="500" step="5" style="width:70px">
+          <button class="btn btn-xs" id="cr-curve-fit" title="Seed the start/end values from what the table currently holds at those two CRs">Fit to table</button>
+        </div>
+
+        <div class="cr-tool-group">
+          <span>Shape</span>
+          <select id="cr-curve-shape">
+            <option value="linear">Linear</option>
+            <option value="easeIn">Ease in — slow start, hard ramp</option>
+            <option value="easeOut">Ease out — fast start, flat top</option>
+            <option value="sCurve">S-curve — calm ends, steep middle</option>
+            <option value="exp">Exponential</option>
+          </select>
+          <span>strength</span>
+          <input type="range" id="cr-curve-power" min="1.1" max="5" step="0.1" value="2">
+          <b id="cr-curve-power-label" style="color:var(--gold-bright);min-width:28px">2.0</b>
+          <svg id="cr-curve-preview" class="cr-curve-preview" viewBox="0 0 160 44" preserveAspectRatio="none"></svg>
+          <button class="btn btn-xs" id="cr-curve-apply" title="Write the curve into the selected column across the CR range">Apply curve</button>
+        </div>
+      </div>
+
+      <div class="cr-toolbar">
+        <button class="btn btn-success" id="cr-save-btn" title="Write the table to src/game/cr_scaling.json">💾 Save to Codebase (cr_scaling.json)</button>
+        <button class="btn" id="cr-revert-btn" title="Discard unsaved edits and reload the last saved table">↩ Revert Unsaved</button>
+        <button class="btn" id="cr-reset-btn" title="Restore the original factory scaling values">🔄 Reset to Factory Defaults</button>
+        <button class="btn" id="cr-export-btn" title="Download the table as JSON">📥 Export JSON</button>
+        <button class="btn" id="cr-import-btn" title="Load a table from a JSON file">📤 Import JSON</button>
+        <input type="file" id="cr-import-file-input" accept=".json" style="display:none">
+      </div>
+    </section>
+
+    <section class="section-card">
+      <table id="cr-table">
+        <thead>
+          <tr>
+            <th style="width:70px">CR</th>
+            <th style="width:90px">AC %</th>
+            <th style="width:90px">HP %</th>
+            <th style="width:90px">Atk %</th>
+            <th style="width:90px">Stat %</th>
+            <th>Effect Preview</th>
+            <th style="width:70px"></th>
+          </tr>
+        </thead>
+        <tbody id="cr-table-body">
+          <!-- Populated by src/bestiary.js -->
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <!-- Spawn Budget Tab: how much threat a dungeon room may spend, and what each monster tier costs -->
+  <div id="spawn-budget-view">
+
+    <section class="section-card">
+      <div class="section-title">
+        <span>🐾 Room Spawn Budget</span>
+        <span id="sb-dirty-indicator" style="font-size:11px;color:var(--amber);font-weight:600"></span>
+      </div>
+
+      <p class="cr-hint">
+        Every combat/elite/boss room gets a threat budget and then buys monsters with it:
+        <code>budget = baseBudget × questThreatMult × levelCurve[dungeonLevel] × (floor + span × roomDifficulty) × typeMult[roomType]</code>.
+        The generator buys monsters at the price of the CR that dungeon level actually fields
+        (<code>crAnchorLevels</code>: CR 0.25 at level 1, CR 10 at 16+) until the budget runs dry or
+        the spawn cap is hit. Cost follows a continuous curve <code>crToCost(cr)</code>, scaled by a single
+        <code>crCostScale</code> multiplier — so <b>raising the scale thins out every room at every depth</b>,
+        and raising the base budget packs rooms fuller.
+        Room difficulty runs 0 near the entrance to 1 at the deepest room.
+        Hit <b>Save to Codebase</b> to write <code>src/game/spawn_budget.json</code>, then reload the game.
+      </p>
+
+      <div class="cr-toolbar">
+        <div class="cr-tool-group">
+          <span>Global density</span>
+          <input type="range" id="sb-density-slider" min="0.25" max="3" step="0.05" value="1" style="width:180px;accent-color:var(--gold)">
+          <b id="sb-density-label" style="color:var(--gold-bright);min-width:42px">1.00×</b>
+          <button class="btn btn-xs" id="sb-density-apply" title="Scale the base budget by this factor (relative to the saved baseline)">Apply</button>
+        </div>
+
+        <div class="cr-tool-group">
+          <span>CR-cost scale</span>
+          <select id="sb-tier-op">
+            <option value="mul">Multiply ×</option>
+            <option value="add">Add</option>
+            <option value="set">Set to</option>
+          </select>
+          <input type="number" id="sb-tier-value" value="1.1" step="0.1">
+          <button class="btn btn-xs" id="sb-tier-apply" title="Scale the whole CR→cost curve by this factor">Apply to cost curve</button>
+        </div>
+      </div>
+
+      <div class="cr-toolbar">
+        <button class="btn btn-success" id="sb-save-btn" title="Write the levers to src/game/spawn_budget.json">💾 Save to Codebase (spawn_budget.json)</button>
+        <button class="btn" id="sb-revert-btn" title="Discard unsaved edits and reload the last saved values">↩ Revert Unsaved</button>
+        <button class="btn" id="sb-reset-btn" title="Restore the original factory spawn values">🔄 Reset to Factory Defaults</button>
+        <button class="btn" id="sb-export-btn" title="Download the levers as JSON">📥 Export JSON</button>
+        <button class="btn" id="sb-import-btn" title="Load levers from a JSON file">📤 Import JSON</button>
+        <input type="file" id="sb-import-file-input" accept=".json" style="display:none">
+      </div>
+    </section>
+
+    <!-- Budget levers -->
+    <section class="section-card">
+      <div class="section-title"><span>🎚️ Budget Levers</span></div>
+      <div class="sb-knob-grid" id="sb-knob-grid">
+        <!-- Populated by src/bestiary.js -->
+      </div>
+    </section>
+
+    <!-- CR cost curve -->
+    <section class="section-card">
+      <div class="section-title">
+        <span>💰 CR → Cost Curve</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400">Cost charged against the room budget for a monster of that CR — edit a cost to override the formula; revert to put it back</span>
+      </div>
+      <table id="sb-tier-table">
+        <thead>
+          <tr>
+            <th style="width:90px">CR</th>
+            <th style="width:120px">Cost</th>
+            <th style="width:140px">Relative</th>
+            <th style="width:120px">Roster</th>
+            <th>Fits in an average combat room</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody id="sb-tier-table-body">
+          <!-- Populated by src/bestiary.js -->
+        </tbody>
+      </table>
+      <div class="cr-toolbar" style="margin-top:8px">
+        <button class="btn btn-xs" id="sb-tier-overrides-reset-btn">↺ Reset all cost overrides</button>
+        <span style="font-size:10px;color:var(--text-muted);margin-left:8px">Editing a cost creates an override (shown in gold). Revert individual rows with the ↺ button, or reset all here.</span>
+      </div>
+    </section>
+
+    <!-- CR anchor points -->
+    <section class="section-card">
+      <div class="section-title">
+        <span>📈 CR Anchor Points</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400">Controls which CR ratings are possible at each dungeon depth — anchors define the interpolation curve that selects monster tiers</span>
+      </div>
+
+      <p class="cr-hint">
+        Each anchor pairs a dungeon <b>level</b> with a target <b>Challenge Rating</b>. CR at levels between anchors is
+        interpolated linearly; there is also a roll-up chance proportional to how far the level sits between two anchors.
+        The first anchor binds the minimum, the last binds the maximum. <b>Two or more anchors are required</b>.
+      </p>
+
+      <table id="sb-anchor-table" style="margin-top:12px">
+        <thead>
+          <tr>
+            <th style="width:110px">Dungeon Level</th>
+            <th style="width:130px">Challenge Rating</th>
+            <th style="width:150px">Preview (CR fielded)</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody id="sb-anchor-table-body">
+          <!-- Populated by src/bestiary.js -->
+        </tbody>
+      </table>
+
+      <div class="cr-toolbar" style="margin-top:12px">
+        <button class="btn btn-xs" id="sb-anchor-add-btn">+ Add Anchor</button>
+        <button class="btn btn-xs" id="sb-anchor-reset-btn">↺ Reset to defaults</button>
+        <span style="font-size:10px;color:var(--text-muted);margin-left:8px">Anchors are auto-sorted by level; drag mode is not supported here (use the fields).</span>
+      </div>
+    </section>
+
+    <!-- Per dungeon level curve -->
+    <section class="section-card">
+      <div class="section-title">
+        <span>📉 Per-Dungeon-Level Curve</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400">The depth axis: how much of the room budget a dungeon of this level actually gets</span>
+      </div>
+
+      <p class="cr-hint">
+        Room difficulty only ranks rooms <i>within</i> one floor, so without this curve a level 1
+        dungeon's back rooms are packed exactly as hard as a level 20 one's. <b>Budget ×</b> scales
+        that floor's whole spawn budget; <b>Spawn cap</b> is the hard ceiling on monsters per room —
+        it also trims themed squads (swarms, nests, miniboss escorts) and overland clearings, which
+        otherwise ignore the budget entirely.
+      </p>
+
+      <div class="cr-toolbar">
+        <div class="cr-tool-group">
+          <span>Ramp levels</span>
+          <select id="sb-ramp-from"></select>
+          <span>to</span>
+          <select id="sb-ramp-to"></select>
+          <span>budget ×</span>
+          <input type="number" id="sb-ramp-mult-start" value="0.45" step="0.05" min="0.05">
+          <span>→</span>
+          <input type="number" id="sb-ramp-mult-end" value="1" step="0.05" min="0.05">
+          <span>cap</span>
+          <input type="number" id="sb-ramp-cap-start" value="4" step="1" min="1">
+          <span>→</span>
+          <input type="number" id="sb-ramp-cap-end" value="10" step="1" min="1">
+          <button class="btn btn-xs" id="sb-ramp-apply" title="Interpolate both columns linearly across the level range">Apply ramp</button>
+        </div>
+      </div>
+
+      <table id="sb-level-table" style="margin-top:12px">
+        <thead>
+          <tr>
+            <th style="width:90px">Level</th>
+            <th style="width:120px">Budget ×</th>
+            <th style="width:110px">Spawn cap</th>
+            <th style="width:150px">Monster tier</th>
+            <th>Room budgets &amp; sizes at this level</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody id="sb-level-table-body">
+          <!-- Populated by src/bestiary.js -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Live budget preview -->
+    <section class="section-card">
+      <div class="section-title">
+        <span>🔮 Budget Preview</span>
+        <div class="cr-toolbar" style="gap:6px">
+          <div class="cr-tool-group">
+            <span>Dungeon level</span>
+            <input type="number" id="sb-preview-level" value="1" min="1" max="40" step="1" style="width:60px">
+          </div>
+          <div class="cr-tool-group">
+            <span>Room difficulty</span>
+            <input type="range" id="sb-preview-difficulty" min="0" max="1" step="0.05" value="0.5" style="width:140px;accent-color:var(--gold)">
+            <b id="sb-preview-difficulty-label" style="color:var(--gold-bright);min-width:34px">0.50</b>
+          </div>
+          <div class="cr-tool-group">
+            <span>Quest threat ×</span>
+            <input type="number" id="sb-preview-threatmult" value="1" step="0.1" min="0.1">
+          </div>
+        </div>
+      </div>
+      <div class="sb-preview-grid" id="sb-preview-grid">
+        <!-- Populated by src/bestiary.js -->
+      </div>
+      <p class="cr-hint" style="margin-top:12px">
+        Composition is a deterministic sample draw using the current CR curve — the real generator
+        rerolls per room, and themed rooms (swarm, nest, miniboss, killzone…) build fixed squads that
+        still price off the same <code>crToCost</code> curve.
+        <br><br>
+        The two chip rows should now agree: the budget draw is priced at the CR
+        <code>crForDungeonLevel(dungeonLevel)</code> will actually spawn, so a level 1 dungeon prices
+        and fields CR ~0.25 only. They differ only for <code>fixedCR</code> rooms (swarm/nest minions,
+        always low CR) and <code>crOffset</code> rooms (miniboss, juggernaut, duelists, nest queen —
+        shifted ±1 band from the level's CR).
+      </p>
+    </section>
+  </div>
+
+  <!-- Curated Boss Encounters Tab (100 Encounters across 5 themes x 20 levels) -->
+  <div id="boss-encounters-view">
+    <section class="section-card" style="margin-bottom:14px; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h2 style="font-size:20px; font-weight:700; color:var(--gold-bright); display:flex; align-items:center; gap:8px;">
+            <span>⚔️ Curated Boss Encounters (100 Encounters)</span>
+          </h2>
+          <p class="cr-hint" style="margin-top:4px;">
+            Every dungeon theme (<b>Molten, Frost, Verdant, Grim, Ancient</b>) has 20 curated boss encounters (Levels 1–20).
+            The final floor of every dungeon spawns its curated primary boss + escort minions. Edit boss stats, minion counts, and test fights live in the 3D Arena!
+          </p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-success" id="boss-save-all-btn" title="Save updated boss_encounters.json to codebase">💾 Save to Codebase (boss_encounters.json)</button>
+          <button class="btn" id="boss-export-json-btn" title="Export backup JSON of curated boss encounters">📥 Export JSON</button>
+          <button class="btn" id="boss-reset-defaults-btn" title="Reset all boss encounter edits to defaults">🔄 Reset Defaults</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Boss Editor Workspace: Sidebar + Inspector -->
+    <div id="boss-workspace" style="display:flex; gap:16px; min-height:650px;">
+      
+      <!-- Left Sidebar: Boss Encounter Selector -->
+      <aside class="section-card" style="width:340px; display:flex; flex-direction:column; padding:12px; flex-shrink:0;">
+        <div style="font-weight:700; font-size:13px; color:var(--gold-bright); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span>SELECT ENCOUNTER</span>
+          <span class="badge badge-total" id="boss-list-count">100 / 100</span>
+        </div>
+
+        <!-- Theme Filters -->
+        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
+          <button class="btn btn-xs boss-theme-filter active" data-theme="all">All</button>
+          <button class="btn btn-xs boss-theme-filter" data-theme="molten">🔥 Molten</button>
+          <button class="btn btn-xs boss-theme-filter" data-theme="frost">❄️ Frost</button>
+          <button class="btn btn-xs boss-theme-filter" data-theme="verdant">🌿 Verdant</button>
+          <button class="btn btn-xs boss-theme-filter" data-theme="grim">💀 Grim</button>
+          <button class="btn btn-xs boss-theme-filter" data-theme="ancient">🏺 Ancient</button>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+          <input type="text" id="boss-search-input" placeholder="Search boss or title..." style="flex:1; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:12px">
+          <select id="boss-level-select" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px">
+            <option value="all">Levels 1-20</option>
+            <!-- 1 to 20 -->
+          </select>
+        </div>
+
+        <!-- List -->
+        <div id="boss-encounter-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; max-height:600px; padding-right:4px;">
+          <!-- Populated by JavaScript -->
+        </div>
+      </aside>
+
+      <!-- Right Detail Inspector -->
+      <main class="section-card" id="boss-inspector-card" style="flex:1; padding:20px; display:flex; flex-direction:column; gap:16px;">
+        <!-- Header bar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="boss-badge-theme" class="badge" style="background:rgba(217,164,65,0.2); color:var(--gold-bright)">🔥 MOLTEN</span>
+              <span id="boss-badge-level" class="badge" style="background:rgba(59,130,246,0.2); color:#60a5fa">LEVEL 1</span>
+              <span id="boss-id-tag" style="font-family:monospace; font-size:12px; color:var(--text-muted)">molten-l1</span>
+            </div>
+            <h2 id="boss-header-title" style="font-size:22px; font-weight:700; color:#fff; margin-top:4px">Ember Swarm Chieftain</h2>
+          </div>
+          <button class="btn btn-primary" id="boss-test-arena-btn" style="font-size:13px; padding:8px 16px;">⚔️ Test Battle in 3D Arena</button>
+        </div>
+
+        <!-- 2 Column Editor Grid -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          
+          <!-- Column 1: Boss Config -->
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <h3 style="font-size:14px; font-weight:700; color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:4px">👑 Primary Boss</h3>
+            
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Encounter Name</label>
+              <input type="text" id="edit-boss-name" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:13px">
+            </div>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Primary Boss Monster Base</label>
+              <select id="edit-boss-id" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:13px">
+                <!-- Monsters list -->
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Boss Display Title</label>
+              <input type="text" id="edit-boss-title" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:13px">
+            </div>
+
+            <div style="display:flex; gap:12px; align-items:center;">
+              <div style="flex:1;">
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">HP Multiplier (<span id="edit-boss-hpmult-val">1.50x</span>)</label>
+                <input type="range" id="edit-boss-hpmult-slider" min="0.8" max="3.5" step="0.05" value="1.5" style="width:100%; accent-color:var(--gold)">
+              </div>
+              <div style="width:90px;">
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Target CR</label>
+                <input type="number" id="edit-boss-cr-num" step="0.5" min="0.5" max="30" value="1.0" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:4px 8px; border-radius:6px; font-size:12px">
+              </div>
+            </div>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Flavor Description</label>
+              <textarea id="edit-boss-desc" rows="3" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px 10px; border-radius:6px; font-size:12px; resize:vertical"></textarea>
+            </div>
+          </div>
+
+          <!-- Column 2: Escort Minions -->
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:4px">
+              <h3 style="font-size:14px; font-weight:700; color:var(--cyan)">🛡️ Escort Minions</h3>
+              <button class="btn btn-xs btn-primary" id="boss-add-escort-btn">➕ Add Escort</button>
+            </div>
+
+            <div id="boss-escort-rows" style="display:flex; flex-direction:column; gap:8px;">
+              <!-- Dynamic Rows -->
+            </div>
+
+            <!-- Preview Card -->
+            <div style="margin-top:16px; background:var(--bg-card); border:1px solid var(--border); padding:12px; border-radius:8px; display:flex; flex-direction:column; gap:6px;">
+              <div style="font-weight:600; font-size:12px; color:var(--gold)">⚔️ Combat Summary Preview</div>
+              <div style="font-size:12px; color:var(--text-main)" id="boss-summary-text">
+                Primary: <b>Magmin (CR 1.0)</b> with 45 HP<br>
+                Escorts: <b>3x Giant Fire Beetle</b>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Story Quest Curation Tab: per-mission floor mob pools + curated finale -->
+  <div id="story-quests-view">
+    <section class="section-card" style="margin-bottom:14px; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div style="max-width:820px">
+          <h2 style="font-size:20px; font-weight:700; color:var(--gold-bright); display:flex; align-items:center; gap:8px;">
+            <span>📜 Story Quest Curation</span>
+          </h2>
+          <p class="cr-hint" style="margin-top:4px;">
+            Each chapter pins its own cast: a mob pool <b>per floor</b>, a <b>fallback roster</b> for any floor with no pool
+            of its own, and the <b>curated finale</b> — boss creature, display name, HP multiplier and escort minions.
+            A whitelisted floor spawns <b>only</b> from its list: no CR window, no level ceiling, no falling back to the rest
+            of the bestiary. What varies is how much of the cast turns up, governed by that floor's own <b>CR budget</b>.
+            Edits are saved as overrides keyed by mission id, so the authored prose in <code>story.js</code> is never rewritten.
+          </p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-success" id="sq-save-btn" title="Write the overrides to src/game/story_encounters.json">💾 Save to Codebase (story_encounters.json)</button>
+          <button class="btn" id="sq-export-btn" title="Download the override file">📥 Export JSON</button>
+          <button class="btn" id="sq-reset-mission-btn" title="Drop every override on the selected mission, restoring its authored cast">↩ Reset This Mission</button>
+          <button class="btn" id="sq-reset-all-btn" title="Drop every override on every mission">🔄 Reset All</button>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:flex; gap:16px; min-height:650px; align-items:flex-start">
+
+      <!-- Mission picker -->
+      <aside class="section-card" style="width:300px; display:flex; flex-direction:column; padding:12px; flex-shrink:0;">
+        <div style="font-weight:700; font-size:13px; color:var(--gold-bright); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span>STORY MISSIONS</span>
+          <span class="badge badge-total" id="sq-mission-count">0</span>
+        </div>
+        <div id="sq-mission-list" style="display:flex; flex-direction:column; gap:5px;">
+          <!-- populated by JS -->
+        </div>
+      </aside>
+
+      <!-- Inspector -->
+      <main class="section-card" style="flex:1; padding:20px; display:flex; flex-direction:column; gap:16px; min-width:0">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border); padding-bottom:12px; gap:12px; flex-wrap:wrap">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+              <span id="sq-badge-chapter" class="badge" style="background:rgba(139,92,246,0.2); color:#c4b5fd">CHAPTER 1</span>
+              <span id="sq-badge-theme" class="badge" style="background:rgba(217,164,65,0.2); color:var(--gold-bright)">FOREST</span>
+              <span id="sq-badge-level" class="badge" style="background:rgba(59,130,246,0.2); color:#60a5fa">LEVEL 1</span>
+              <span id="sq-badge-floors" class="badge" style="background:rgba(255,255,255,0.06)">5 FLOORS</span>
+              <span id="sq-id-tag" style="font-family:monospace; font-size:12px; color:var(--text-muted)">story_ch1</span>
+            </div>
+            <h2 id="sq-header-title" style="font-size:22px; font-weight:700; color:#fff; margin-top:4px">—</h2>
+            <div id="sq-header-site" style="font-size:12px; color:var(--text-muted)"></div>
+          </div>
+          <button class="btn btn-primary" id="sq-test-arena-btn" style="font-size:13px; padding:8px 16px;">⚔️ Test Boss in 3D Arena</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <!-- Curated finale -->
+          <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+            <h3 style="font-size:14px; font-weight:700; color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:4px">👑 Curated Quest Boss</h3>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Boss Creature</label>
+              <select id="sq-boss-id" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:13px"></select>
+            </div>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">Boss Display Name (shown in the quest log &amp; on the boss bar)</label>
+              <input type="text" id="sq-boss-name" style="width:100%; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:13px">
+            </div>
+
+            <div>
+              <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px">HP Multiplier (<span id="sq-boss-hpmult-val">1.50x</span>)</label>
+              <input type="range" id="sq-boss-hpmult" min="0.8" max="8" step="0.05" value="1.5" style="width:100%; accent-color:var(--gold)">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:4px">
+              <h3 style="font-size:14px; font-weight:700; color:var(--cyan)">🛡️ Boss Escorts</h3>
+              <button class="btn btn-xs btn-primary" id="sq-add-escort-btn">➕ Add Escort</button>
+            </div>
+            <div id="sq-escort-rows" style="display:flex; flex-direction:column; gap:8px;"></div>
+            <div id="sq-escort-hint" class="cr-hint"></div>
+          </div>
+
+          <!-- Fallback roster + validation -->
+          <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+            <h3 style="font-size:14px; font-weight:700; color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:4px">🎲 Fallback Roster</h3>
+            <p class="cr-hint" style="margin:0">
+              Used on any floor that declares no pool of its own. Leave it empty to let those floors fall back to their
+              dungeon theme's roster.
+            </p>
+            <div id="sq-roster-lanes" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+            <h3 style="font-size:14px; font-weight:700; color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:4px; margin-top:6px">🔍 Cast Check</h3>
+            <div id="sq-warnings" class="warn-list"></div>
+          </div>
+        </div>
+
+        <!-- Per-floor pools -->
+        <div>
+          <h3 style="font-size:14px; font-weight:700; color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:4px; margin-bottom:10px">🗺️ Floor Mob Pools</h3>
+          <div id="sq-floor-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dungeon Rosters Tab: which creatures each dungeon theme may spawn -->
+  <div id="dungeon-rosters-view">
+    <section class="section-card" style="margin-bottom:14px; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div style="max-width:820px">
+          <h2 style="font-size:20px; font-weight:700; color:var(--gold-bright); display:flex; align-items:center; gap:8px;">
+            <span>🏰 Dungeon Type Rosters</span>
+          </h2>
+          <p class="cr-hint" style="margin-top:4px;">
+            The roster is the strict whitelist a themed room draws from: a creature spawns in a dungeon type only if it is
+            ticked here. This is the same <code>dungeons</code> field the Bestiary tab edits per creature — inverted, so you
+            can build a theme's whole cast in one pass. Generated quests take their mob list straight from this.
+          </p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-success" id="dr-save-btn" title="Write every roster change back to src/game/monsters.json">💾 Save to Codebase (monsters.json)</button>
+          <button class="btn" id="dr-seed-btn" title="Give every creature with no picks at all the themes its creature-type family maps to">🌱 Seed Unconfigured</button>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:flex; gap:16px; min-height:650px; align-items:flex-start">
+
+      <!-- Dungeon type picker -->
+      <aside class="section-card" style="width:280px; display:flex; flex-direction:column; padding:12px; flex-shrink:0;">
+        <div style="font-weight:700; font-size:13px; color:var(--gold-bright); margin-bottom:8px;">DUNGEON TYPES</div>
+        <div id="dr-theme-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+      </aside>
+
+      <!-- Roster workspace -->
+      <main class="section-card" style="flex:1; padding:20px; display:flex; flex-direction:column; gap:14px; min-width:0">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border); padding-bottom:12px; gap:12px; flex-wrap:wrap">
+          <div>
+            <h2 id="dr-header-title" style="font-size:22px; font-weight:700; color:#fff">—</h2>
+            <div id="dr-header-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px"></div>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center">
+            <select id="dr-copy-from" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px"></select>
+            <button class="btn btn-xs" id="dr-copy-btn" title="Add every creature from the chosen theme's roster to this one">⧉ Merge In</button>
+            <button class="btn btn-xs" id="dr-clear-btn" style="color:var(--red); border-color:rgba(239,68,68,0.3)" title="Remove every creature from this dungeon type">✖ Clear Roster</button>
+          </div>
+        </div>
+
+        <div id="dr-warnings" class="warn-list"></div>
+
+        <div>
+          <div style="font-size:11px; font-weight:700; letter-spacing:0.04em; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px">
+            Roster depth by dungeon level <span style="text-transform:none; font-weight:400">— creatures in the roster whose CR fits that level's spawn ceiling</span>
+          </div>
+          <div id="dr-coverage" class="dr-coverage"></div>
+          <div id="dr-coverage-lvls" class="dr-coverage" style="margin-top:2px"></div>
+        </div>
+
+        <!-- Filters + family bulk actions -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; border-top:1px solid var(--border); padding-top:12px">
+          <input type="text" id="dr-search" placeholder="Search creature..." style="flex:1; min-width:160px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:12px">
+          <select id="dr-family-filter" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px"></select>
+          <select id="dr-membership-filter" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px">
+            <option value="all">All creatures</option>
+            <option value="in">In this roster</option>
+            <option value="out">Not in this roster</option>
+          </select>
+          <label style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px">CR
+            <input type="number" id="dr-cr-min" step="0.25" min="0" placeholder="min" style="width:64px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px">
+            –
+            <input type="number" id="dr-cr-max" step="0.25" min="0" placeholder="max" style="width:64px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px">
+          </label>
+          <span style="flex-basis:100%; height:0"></span>
+          <span style="font-size:11px; color:var(--text-muted)">Bulk on the filtered set:</span>
+          <button class="btn btn-xs" id="dr-bulk-add-btn">✚ Add all shown</button>
+          <button class="btn btn-xs" id="dr-bulk-remove-btn">− Remove all shown</button>
+          <span class="badge badge-total" id="dr-shown-count" style="margin-left:auto">0 shown</span>
+        </div>
+
+        <div id="dr-monster-grid"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Live 3D WebGL Dungeon Combat Room Arena Modal -->
+  <div id="arena-modal" class="arena-modal-overlay" style="display:none">
+    <div class="arena-modal-content">
+      <div class="arena-modal-header">
+        <div class="arena-modal-title">
+          <span style="font-size:22px">🎮</span>
+          <div>
+            <h3 id="arena-monster-name">Adult Red Dragon — 3D WebGL Dungeon Arena</h3>
+            <p id="arena-monster-sub">Real 3D Three.js Game Pipeline: Full orbit camera controls (RMB Rotate, LMB Pan, Scroll Zoom), 3D lighting, spell VFX & combat animations.</p>
+          </div>
+        </div>
+        <div class="arena-header-controls">
+          <button class="btn" id="arena-fullscreen-btn" title="Toggle Fullscreen Arena Expansion">🗖 Fullscreen</button>
+          <button class="btn" id="arena-open-newtab-btn" title="Open 3D Engine in standalone full window">↗ New Window</button>
+          <button class="btn btn-xs" id="arena-close-btn" style="font-size:16px;padding:4px 10px;margin-left:6px">✖</button>
+        </div>
+      </div>
+
+      <div class="arena-viewport-container" style="flex:1;position:relative;background:#090a10">
+        <iframe id="arena-3d-iframe" src="" style="width:100%;height:100%;border:none;display:block"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript App -->
+  <script type="module" src="./src/bestiary.js"></script>
+</body>
+</html>

@@ -15,40 +15,39 @@ const SFX_DIR = 'sounds/';
 const MUSIC_DIR = 'music/';
 const LS_KEY = 'dc_audio_v1';
 
-const SWORD = 'Attacks/Sword Attacks Hits and Blocks/';
-const BOW = 'Attacks/Bow Attacks Hits and Blocks/';
-const DOORS = 'Doors Gates and Chests/';
-const SPELL = 'Spells/';
+/* The whole SFX registry is data — src/game/sounds.json, edited by
+ * sound_editor.html (open it from the game's system menu). It holds:
+ *
+ *   slots       logical sound name → { files, fallback, category, note }
+ *               An EMPTY `files` list means the slot is *declared but
+ *               unrecorded*: the game already asks for it by name and
+ *               playSfx() substitutes `fallback` until real audio lands.
+ *               No fallback + no files = intentionally silent.
+ *   abilities   every spell / class feature / boss spell key → slot
+ *   cantrips    caster classKey → slot (per-class signature cantrip)
+ *   damageTypes damage type → slot, for data-driven monster abilities
+ *               that have no named spell of their own
+ *
+ * audio_coverage.test.js fails the build if an ability has no slot, a slot
+ * name is misspelled, or a listed file is missing from public/sounds. */
+import SOUNDS from './sounds.json' with { type: 'json' };
 
-const SFX = {
-  swordAttack: [SWORD + 'Sword Attack 1.wav', SWORD + 'Sword Attack 2.wav', SWORD + 'Sword Attack 3.wav'],
-  swordHit:    [SWORD + 'Sword Impact Hit 1.wav', SWORD + 'Sword Impact Hit 2.wav', SWORD + 'Sword Impact Hit 3.wav'],
-  swordBlock:  [SWORD + 'Sword Blocked 1.wav', SWORD + 'Sword Blocked 2.wav', SWORD + 'Sword Blocked 3.wav'],
-  swordParry:  [SWORD + 'Sword Parry 1.wav', SWORD + 'Sword Parry 2.wav', SWORD + 'Sword Parry 3.wav'],
-  bowAttack:   [BOW + 'Bow Attack 1.wav', BOW + 'Bow Attack 2.wav'],
-  bowHit:      [BOW + 'Bow Impact Hit 1.wav', BOW + 'Bow Impact Hit 2.wav', BOW + 'Bow Impact Hit 3.wav'],
-  bowBlock:    [BOW + 'Bow Blocked 1.wav', BOW + 'Bow Blocked 2.wav', BOW + 'Bow Blocked 3.wav'],
+const SFX = {};
+const SFX_FALLBACK = {};
+for (const [name, slot] of Object.entries(SOUNDS.slots)) {
+  SFX[name] = slot.files || [];
+  if (slot.fallback) SFX_FALLBACK[name] = slot.fallback;
+}
 
-  chestOpen:   [DOORS + 'Chest Open 1.wav', DOORS + 'Chest Open 2.wav'],
-  doorOpen:    [DOORS + 'Door Open 1.wav', DOORS + 'Door Open 2.wav'],
-  gateOpen:    [DOORS + 'Gate Open.wav'],
-  portcullis:  [DOORS + 'Portcullis Gate.wav'],
-  lockUnlock:  [DOORS + 'Lock Unlock.wav'],
+/** Ability / spell key → SFX slot. */
+export const SPELL_SFX = SOUNDS.abilities;
+const CANTRIP_SFX = SOUNDS.cantrips;
+const DMG_TYPE_SFX = SOUNDS.damageTypes;
 
-  spellFire:      [SPELL + 'Fireball 1.wav', SPELL + 'Fireball 2.wav', SPELL + 'Fireball 3.wav'],
-  spellFireSpray: [SPELL + 'Firespray 1.wav', SPELL + 'Firespray 2.wav'],
-  spellBuff:      [SPELL + 'Firebuff 1.wav', SPELL + 'Firebuff 2.wav'],
-  spellIce:       [SPELL + 'Ice Throw 1.wav', SPELL + 'Ice Throw 2.wav'],
-  spellIceStorm:  [SPELL + 'Ice Barrage 1.wav', SPELL + 'Ice Barrage 2.wav'],
-  spellFreeze:    [SPELL + 'Ice Freeze 1.wav', SPELL + 'Ice Freeze 2.wav'],
-  spellIceWall:   [SPELL + 'Ice Wall 1.wav', SPELL + 'Ice Wall 2.wav'],
-  spellRock:      [SPELL + 'Rock Meteor Throw 1.wav', SPELL + 'Rock Meteor Throw 2.wav'],
-  spellRockStorm: [SPELL + 'Rock Meteor Swarm 1.wav', SPELL + 'Rock Meteor Swarm 2.wav'],
-  spellRockWall:  [SPELL + 'Rock Wall 1.wav', SPELL + 'Rock Wall 2.wav'],
-  spellWater:     [SPELL + 'Waterspray 1.wav', SPELL + 'Waterspray 2.wav'],
-  spellWave:      [SPELL + 'Wave Attack 1.wav', SPELL + 'Wave Attack 2.wav'],
-  spellImpact:    [SPELL + 'Spell Impact 1.wav', SPELL + 'Spell Impact 2.wav', SPELL + 'Spell Impact 3.wav'],
-};
+/* Exposed for audio_coverage.test.js and sound_editor.html so the slot
+ * inventory can be audited without duplicating it. */
+export { SFX as SFX_SLOTS, SFX_FALLBACK, SFX_DIR, CANTRIP_SFX, DMG_TYPE_SFX };
+export const SOUND_META = SOUNDS.slots;
 
 const TRACKS = [
   '1. Dawn of Blades.mp3', '2. Echoes of the Keep.mp3', '3. Twilight March.mp3',
@@ -63,30 +62,23 @@ const TRACKS = [
   '28. Tales of the Hearth.mp3', '29. Arcane Whispers.mp3', '30. The Hidden Glade.mp3',
 ];
 
-/* Ability/spell key (ABILITY_FX in combat.js) → SFX name. Elemental spells
- * get their own sound; anything not listed falls back by feel: heals and
- * buffs whoosh softly, offensive magic lands as a generic arcane impact. */
-const SPELL_SFX = {
-  fireball: 'spellFire', flameStrike: 'spellFire', wallOfFire: 'spellFireSpray',
-  scorchingRay: 'spellFireSpray', dragonBreath: 'spellFireSpray', dragonBreathSpell: 'spellFireSpray',
-  iceStorm: 'spellIceStorm', coneOfCold: 'spellFreeze', moonbeam: 'spellIce',
-  sleep: 'spellFreeze', slow: 'spellFreeze', holdPerson: 'spellFreeze', holdMonster: 'spellFreeze',
-  shatter: 'spellRockStorm', entangle: 'spellRockWall', web: 'spellRockWall', grease: 'spellRockWall',
-  acidArrow: 'spellWater', vampiricTouch: 'spellWater',
-  armsOfHadar: 'spellWave', blight: 'spellWave', fear: 'spellWave',
-};
-const HEAL_BUFF_SFX = new Set([
-  'secondWind', 'actionSurge', 'flurry', 'frenzy', 'rage', 'bearTotem', 'bardic', 'combatSong',
-  'cunningAction', 'remarkableAthlete', 'fastHands', 'wildShape', 'tidesOfChaos', 'indomitable',
-  'lucky', 'layOnHands', 'cureWounds', 'healingWord', 'massHealingWord', 'massCureWounds',
-  'lesserRestoration', 'greaterRestoration', 'preserveLife', 'rallyingCry', 'bless', 'haste',
-  'shield', 'protectionFromEvil', 'deathWard', 'sacredWeapon', 'guidedStrike', 'vowOfEnmity',
-  'huntersMark', 'shadowStep', 'mistyStep', 'feyPresence', 'fiendishBlessing', 'hex', 'faerieFire',
-]);
-
 export function spellSfx(key) {
-  if (SPELL_SFX[key]) return SPELL_SFX[key];
-  if (HEAL_BUFF_SFX.has(key)) return 'spellBuff';
+  return SPELL_SFX[key] || 'spellImpact';
+}
+
+export function cantripSfx(classKey) {
+  return CANTRIP_SFX[classKey] || 'spellArcane';
+}
+
+/** Slot for a monster ability / boss spell. `key` is its BOSS_SPELL_FX or
+ *  SPELLS name when it has one; otherwise the shape of the effect decides. */
+export function abilitySfx(key, fx) {
+  if (key && SPELL_SFX[key]) return SPELL_SFX[key];
+  if (!fx) return 'spellImpact';
+  if (fx.heal) return 'spellHeal';
+  if (fx.dmgType && DMG_TYPE_SFX[fx.dmgType]) return DMG_TYPE_SFX[fx.dmgType];
+  if (fx.buff) return 'warCry';
+  if (fx.effect) return 'spellMind';
   return 'spellImpact';
 }
 
@@ -121,6 +113,27 @@ function ensureCtx() {
 
 /* ── SFX ───────────────────────────────────────────────────────────── */
 
+const warnedSlots = new Set();
+
+/* Walk a slot's fallback chain until one with real audio turns up. Returns
+   null for a slot that is declared but deliberately silent. Exported so the
+   coverage test can assert every slot resolves (or is knowingly silent). */
+export function resolveSfx(name) {
+  const seen = new Set();
+  let n = name;
+  while (n && !seen.has(n)) {
+    seen.add(n);
+    const v = SFX[n];
+    if (v && v.length) return v;
+    if (v === undefined) {                      // typo'd slot name — never plays
+      if (!warnedSlots.has(n)) { warnedSlots.add(n); console.warn('[audio] unknown sfx slot:', n); }
+      return null;
+    }
+    n = SFX_FALLBACK[n];
+  }
+  return null;
+}
+
 export function playSfx(name, { volume = 1, throttleMs = 70 } = {}) {
   if (!unlocked || settings.sfx <= 0) return;
   const c = ensureCtx();
@@ -129,7 +142,7 @@ export function playSfx(name, { volume = 1, throttleMs = 70 } = {}) {
   if (now - (lastPlay.get(name) || -1e9) < throttleMs) return;
   lastPlay.set(name, now);
 
-  const variants = SFX[name];
+  const variants = resolveSfx(name);
   if (!variants) return;
   const path = SFX_DIR + variants[(Math.random() * variants.length) | 0];
 
@@ -161,6 +174,9 @@ const NARR_DIR = SFX_DIR + 'Narration/';
 let narrationQueue = [];   // pending [{id, volume, delay}], played in order
 let narrationGen = 0;      // bumped on interrupt/stop so in-flight loads/timers bail
 let narrationWaiting = false;  // true while a pre-line delay timer is pending
+let narrationLoading = false;  // true while a line's buffer is fetching/decoding
+                               // (without it, a queue call landing in the async
+                               // load window double-pulls and lines overlap)
 
 /* slug() MUST stay byte-for-byte identical to scripts/narration/extract.mjs so
    the id the game asks for matches the recorded filename. */
@@ -173,6 +189,7 @@ export function stopNarration() {
   narrationGen++;               // bumping this makes any pending delay timer bail
   narrationQueue.length = 0;
   narrationWaiting = false;
+  narrationLoading = false;     // stale in-flight loads bail on the gen check
   const src = narrationSrc;
   narrationSrc = null;
   if (src) { src.onended = null; try { src.stop(); } catch { /* already ended */ } }
@@ -194,7 +211,7 @@ function loadNarrationBuffer(c, path) {
    file is skipped (silently advances), so unrecorded lines never stall or break
    the game. Tries .wav then .mp3. */
 function playNextNarration(c) {
-  if (narrationSrc || narrationWaiting || !narrationQueue.length) return;
+  if (narrationSrc || narrationWaiting || narrationLoading || !narrationQueue.length) return;
   const gen = narrationGen;
   const { id, volume, delay = 0 } = narrationQueue.shift();
 
@@ -202,11 +219,17 @@ function playNextNarration(c) {
     narrationWaiting = false;
     if (gen !== narrationGen) return;                         // interrupted during delay
     const base = NARR_DIR + narrationId(id);
+    narrationLoading = true;
     loadNarrationBuffer(c, base + '.wav')
       .then(b => b || loadNarrationBuffer(c, base + '.mp3'))
       .then(b => {
-        if (gen !== narrationGen) return;                     // interrupted mid-load
-        if (!b || !(b instanceof AudioBuffer)) { playNextNarration(c); return; }  // missing → skip
+        if (gen !== narrationGen) return;                     // interrupted mid-load (stop cleared the flag)
+        narrationLoading = false;
+        if (!b || !(b instanceof AudioBuffer)) {              // missing → skip (but say so)
+          console.warn('[narration] no audio for id:', id);
+          playNextNarration(c);
+          return;
+        }
         const src = c.createBufferSource();
         src.buffer = b;
         const g = c.createGain();
@@ -217,11 +240,32 @@ function playNextNarration(c) {
         narrationSrc = src;
         src.start();
       })
-      .catch(() => { if (gen === narrationGen) playNextNarration(c); });
+      .catch(() => {
+        if (gen !== narrationGen) return;
+        narrationLoading = false;
+        playNextNarration(c);
+      });
   };
 
   if (delay > 0) { narrationWaiting = true; setTimeout(begin, delay); }
   else begin();
+}
+
+/* True while any narration is playing, loading, delayed, or queued — lets
+   callers (e.g. the intro crawl) hold a scene open until the voice finishes. */
+export function isNarrationActive() {
+  return !!(narrationSrc || narrationWaiting || narrationLoading || narrationQueue.length);
+}
+
+/* Warm the buffer cache for upcoming lines so chained narration has no
+   fetch/decode gap between them. Fire-and-forget; safe before unlock. */
+export function preloadNarration(ids) {
+  const c = ensureCtx();
+  if (!c) return;
+  for (const id of ids || []) {
+    const base = NARR_DIR + narrationId(id);
+    loadNarrationBuffer(c, base + '.wav');
+  }
 }
 
 /* Play a line now, interrupting whatever is playing/queued (use for a fresh
@@ -320,38 +364,9 @@ function unlock() {
 export function initAudio() {
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
-  initVolumeUI();
+  /* No volume UI here any more: the three sliders moved into the shared Options
+     panel (options_ui.js), which reads/writes them through the getters and
+     setters below. The volumes themselves still live in this module's own
+     storage key — the audio graph owns them. */
 }
 
-function initVolumeUI() {
-  const bar = document.getElementById('topnav');
-  if (!bar || document.getElementById('audio-ctl')) return;
-  const wrap = document.createElement('span');
-  wrap.id = 'audio-ctl';
-  wrap.innerHTML = `
-    <button id="audio-btn" title="Audio volume" aria-label="Audio volume">🔊 <span>Audio</span></button>
-    <div id="audio-pop">
-      <label>🎵 <input id="vol-music" type="range" min="0" max="100" aria-label="Music volume"></label>
-      <label>⚔️ <input id="vol-sfx" type="range" min="0" max="100" aria-label="Sound effects volume"></label>
-      <label>🗣️ <input id="vol-narr" type="range" min="0" max="100" aria-label="Narration volume"></label>
-    </div>`;
-  bar.appendChild(wrap);
-
-  const pop = wrap.querySelector('#audio-pop');
-  const mus = wrap.querySelector('#vol-music');
-  const sfx = wrap.querySelector('#vol-sfx');
-  const narr = wrap.querySelector('#vol-narr');
-  mus.value = Math.round(settings.music * 100);
-  sfx.value = Math.round(settings.sfx * 100);
-  narr.value = Math.round(settings.narration * 100);
-
-  wrap.querySelector('#audio-btn').addEventListener('click', () => pop.classList.toggle('show'));
-  mus.addEventListener('input', () => setMusicVolume(mus.value / 100));
-  sfx.addEventListener('input', () => setSfxVolume(sfx.value / 100));
-  narr.addEventListener('input', () => setNarrationVolume(narr.value / 100));
-  /* audible feedback once the user settles on an SFX level */
-  sfx.addEventListener('change', () => playSfx('swordHit', { throttleMs: 0 }));
-  document.addEventListener('pointerdown', e => {
-    if (!wrap.contains(e.target)) pop.classList.remove('show');
-  });
-}

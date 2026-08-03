@@ -62,6 +62,19 @@ for (let trial = 0; trial < 60; trial++) {
   }
 }
 
+/* ---- 6-quest offering with level-band contract ---- */
+for (let trial = 0; trial < 20; trial++) {
+  const pl = 1 + (trial % 8);
+  const offsets = [-1, 1, 0, 0, 0, 0];
+  const qs = generateQuests(pl, 6, { levelOffsets: offsets });
+  ok(qs.length === 6, 'generates 6 quests');
+  const want = offsets.map(o => Math.max(1, pl + o));
+  ok(qs.every((q, i) => q.level === want[i]), `band contract holds at pl ${pl}: ${qs.map(q => q.level)}`);
+  const locs = new Set(qs.map(q => `${q.mapLocation.x},${q.mapLocation.y}`));
+  ok(locs.size === 6, '6 quests occupy 6 distinct map positions');
+  ok(qs.every(q => !q.isLegendaryReward || q.floors >= 10), 'legendaries only on 10-floor quests');
+}
+
 /* ---- excludePositions ---- */
 {
   const excl = { x: 22, y: 40 };

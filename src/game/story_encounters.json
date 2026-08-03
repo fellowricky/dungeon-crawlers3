@@ -1,0 +1,85 @@
+{
+  "story_ch1": {
+    "floors": {
+      "1": {
+        "monsters": {
+          "1": [
+            "grey-rat",
+            "poisonous-snake",
+            "giant-rat"
+          ],
+          "2": [
+            "goblin"
+          ],
+          "3": [
+            "hobgoblin"
+          ]
+        }
+      },
+      "2": {
+        "monsters": {
+          "1": [
+            "giant-rat",
+            "grey-rat",
+            "giant-weasel",
+            "giant-mosquito"
+          ],
+          "2": [
+            "goblin"
+          ],
+          "3": [
+            "hobgoblin"
+          ]
+        }
+      },
+      "3": {
+        "monsters": {
+          "1": [
+            "wolf",
+            "giant-badger",
+            "grey-rat",
+            "giant-rat",
+            "giant-mosquito"
+          ],
+          "2": [
+            "goblin"
+          ],
+          "3": [
+            "hobgoblin"
+          ]
+        }
+      },
+      "4": {
+        "monsters": {
+          "1": [
+            "goblin",
+            "wolf"
+          ],
+          "2": [
+            "hobgoblin"
+          ],
+          "3": [
+            "bugbear"
+          ]
+        },
+        "crBudget": 150
+      },
+      "5": {
+        "monsters": {
+          "1": [
+            "goblin"
+          ],
+          "2": [
+            "hobgoblin"
+          ],
+          "3": [
+            "bugbear"
+          ],
+          "boss": [
+            "goblin-king"
+          ]
+        }
+      }
+    }
+  }
+}

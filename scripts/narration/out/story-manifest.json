@@ -1,0 +1,2198 @@
+[
+  {
+    "id": "intro_crawl_p0",
+    "text": "A long age of peace is ending. In the borderlands beyond the old kingdoms, the roads grow dangerous, the watchtowers stand empty, and the deep places of the world are stirring once more."
+  },
+  {
+    "id": "intro_crawl_p1",
+    "text": "Monsters out of grandmother-tales now carry off herds and burn farmsteads. The crowns and their armies look inward, squabbling over old borders while the frontier cries for help that never comes."
+  },
+  {
+    "id": "intro_crawl_p2",
+    "text": "Into that silence step the free companies — sellswords, spell-slingers, and fortune-seekers who go where soldiers will not: for coin, for glory, or for reasons all their own."
+  },
+  {
+    "id": "intro_crawl_p3",
+    "text": "Tonight, in a roadside tavern at the edge of the wild, four such souls sign their names to a single charter. The pay is uneven. The work is ugly. And the world, though it would never admit it, is quietly desperate for heroes."
+  },
+  {
+    "id": "story_ch1_desc",
+    "text": "Smoke rises over Greenrise Vale. A goblin warband has raised a palisaded camp in the deep of the forest, and the farms along the treeline are emptying one by one. Follow the forest trails, clear the outlying thickets, and put out the fire at its source: the self-styled Goblin King holding court behind the stakes."
+  },
+  {
+    "id": "story_ch1_embark",
+    "text": "The trail out of the village turns to packed dirt, then to wild grass. Between the trees, far off, a thin column of smoke marks the warcamp. The party walks in."
+  },
+  {
+    "id": "story_ch1_victory",
+    "text": "The palisade gate hangs open and the camp burns behind the party. Greenrise Vale will sleep quietly tonight."
+  },
+  {
+    "id": "story_ch1_brief_root",
+    "text": "So you’re the blades our coin bought. Three farms burned in a fortnight, our herds driven into the deepwood, and now the vermin have a king — or something that calls itself one. Ask what you need to ask. Then go earn your gold."
+  },
+  {
+    "id": "story_ch1_brief_raids",
+    "text": "They come at dusk, always from the north trail, always gone before the militia musters. They aren’t starving raiders — they take tools, rope, whetstones. Someone up there is BUILDING something. That worries me more than the burning."
+  },
+  {
+    "id": "story_ch1_brief_scouts",
+    "text": "Old Fenwick got closest. Before the fever took his tongue he drew this — snare lines across the east clearing, thick as a spider’s web, and a stake-wall ringing their camp with two gates. Take his map. Mind the wires."
+  },
+  {
+    "id": "story_ch1_brief_supplies",
+    "text": "We’re not rich — the goblins saw to that — but the herbalist owes me a favor. Here: a healing draught, brewed strong. Bring my people back some peace and we’ll call it a fair trade."
+  },
+  {
+    "id": "the_burned_farmstead",
+    "text": "A farmhouse stands roofless in the thicket, burned weeks ago. The goblins took the tools and left the pantry — they were provisioning for work, not hunger."
+  },
+  {
+    "id": "the_burned_farmstead_a0_act",
+    "text": "Sweep the ruin"
+  },
+  {
+    "id": "the_burned_farmstead_a0_win",
+    "text": "Under a fallen beam, the family’s medicine chest — scorched, intact, and welcome."
+  },
+  {
+    "id": "the_burned_farmstead_a0_lose",
+    "text": "Ash and nails. Whatever was worth taking went north with the raiders."
+  },
+  {
+    "id": "the_burned_farmstead_a1_act",
+    "text": "Work out what they took"
+  },
+  {
+    "id": "the_burned_farmstead_a1_win",
+    "text": "Saws, rope, hinges, a whetstone — and every drop of lamp oil. Someone up there is building by torchlight, in a hurry."
+  },
+  {
+    "id": "the_burned_farmstead_a1_lose",
+    "text": "The fire ate the evidence along with the roof."
+  },
+  {
+    "id": "the_burned_farmstead_a2_act",
+    "text": "Shift the fallen beams"
+  },
+  {
+    "id": "the_burned_farmstead_a2_win",
+    "text": "The cellar hatch comes clear — preserves, cordial, and the strongbox the goblins never found."
+  },
+  {
+    "id": "the_burned_farmstead_a2_lose",
+    "text": "The chimney stack picks its moment to come down."
+  },
+  {
+    "id": "war_drums",
+    "text": "Inside the stakes, the drums start — deep, ragged, meant to rattle militia. The camp is telling the party what it thinks of visitors."
+  },
+  {
+    "id": "war_drums_a0_act",
+    "text": "Sing over the drums"
+  },
+  {
+    "id": "war_drums_a0_win",
+    "text": "A marching song, loud and off-key and unbothered. The drummers lose the beat first, then their nerve."
+  },
+  {
+    "id": "war_drums_a0_lose",
+    "text": "The drums are louder. The drums were always going to be louder."
+  },
+  {
+    "id": "war_drums_a1_act",
+    "text": "Answer with steel on shields"
+  },
+  {
+    "id": "war_drums_a1_win",
+    "text": "Four blades on four shields, once, together. The drums stop. The silence that follows belongs to the party."
+  },
+  {
+    "id": "war_drums_a1_lose",
+    "text": "The clatter reads as fear. The drumming doubles."
+  },
+  {
+    "id": "war_drums_a2_act",
+    "text": "Find and silence the drummers"
+  },
+  {
+    "id": "war_drums_a2_win",
+    "text": "Three drummers, three quiet endings. The camp’s heartbeat cuts out mid-measure, and the party walks in on the confusion."
+  },
+  {
+    "id": "war_drums_a2_lose",
+    "text": "The fourth drummer sees everything — and beats a very different rhythm."
+  },
+  {
+    "id": "snare_line",
+    "text": "Tripwires and leg-snares web the undergrowth across the trail — goblin work, and fresh. Somewhere past them, a bag of \"toll\" takings hangs from a branch."
+  },
+  {
+    "id": "snare_line_a0_act",
+    "text": "Pick a path around"
+  },
+  {
+    "id": "snare_line_a0_win",
+    "text": "You spot every wire and thread the party through — and cut down the goblins’ toll bag on the way."
+  },
+  {
+    "id": "snare_line_a0_lose",
+    "text": "Too many wires to trust. The party backtracks and loses the light."
+  },
+  {
+    "id": "snare_line_a1_act",
+    "text": "Read the trapper’s pattern"
+  },
+  {
+    "id": "snare_line_a1_win",
+    "text": "Goblin snares repeat like a bad song. You spring them all with a long stick and pocket the takings."
+  },
+  {
+    "id": "snare_line_a1_lose",
+    "text": "The pattern breaks halfway through. A snare snaps shut on empty air — and the party’s nerves."
+  },
+  {
+    "id": "snare_line_a2_act",
+    "text": "Harvest the snares for parts"
+  },
+  {
+    "id": "snare_line_a2_win",
+    "text": "Wire, springs, AND the toll bag — the goblins just restocked your coin purse."
+  },
+  {
+    "id": "snare_line_a2_lose",
+    "text": "A hidden counter-snare whips through the grass and bites deep."
+  },
+  {
+    "id": "the_defaced_waystone",
+    "text": "An old waystone stands in the clearing, smeared with goblin war-paint. Beneath the filth, its blessing still hums."
+  },
+  {
+    "id": "the_defaced_waystone_a0_act",
+    "text": "Speak the old rites"
+  },
+  {
+    "id": "the_defaced_waystone_a0_win",
+    "text": "The words come slowly, then all at once. The paint flakes away and warmth settles over the party."
+  },
+  {
+    "id": "the_defaced_waystone_a0_lose",
+    "text": "Whatever tongue the stone answers to, it isn’t this one."
+  },
+  {
+    "id": "the_defaced_waystone_a1_act",
+    "text": "Scrub it clean with forest herbs"
+  },
+  {
+    "id": "the_defaced_waystone_a1_win",
+    "text": "Crushed silverleaf cuts the war-paint like lye. The stone brightens — and so does the party."
+  },
+  {
+    "id": "the_defaced_waystone_a1_lose",
+    "text": "The paint is mixed with something foul that won’t lift. The stone stays dark."
+  },
+  {
+    "id": "the_defaced_waystone_a2_act",
+    "text": "Force the wards awake"
+  },
+  {
+    "id": "the_defaced_waystone_a2_win",
+    "text": "Power arcs from the stone in a ring. Every blade in the party hums with borrowed light."
+  },
+  {
+    "id": "the_defaced_waystone_a2_lose",
+    "text": "The stone rejects the intrusion with a crack of raw force."
+  },
+  {
+    "id": "the_palisade_gate",
+    "text": "The warcamp’s stake-wall looms ahead, torchlit and crawling with sentries. One good move decides how this assault begins."
+  },
+  {
+    "id": "the_palisade_gate_a0_act",
+    "text": "Slip along the stakes"
+  },
+  {
+    "id": "the_palisade_gate_a0_win",
+    "text": "The party ghosts along the palisade’s shadow and is inside before the first horn blows. Hearts steady, guards up."
+  },
+  {
+    "id": "the_palisade_gate_a0_lose",
+    "text": "A snapped twig, a barked alarm — so much for the quiet way."
+  },
+  {
+    "id": "the_palisade_gate_a1_act",
+    "text": "Bellow a challenge at the gate"
+  },
+  {
+    "id": "the_palisade_gate_a1_win",
+    "text": "Half the sentries flinch off the wall at the sound alone. The party walks in over their nerve."
+  },
+  {
+    "id": "the_palisade_gate_a1_lose",
+    "text": "The goblins jeer back in a hundred voices. It was worth a try."
+  },
+  {
+    "id": "the_palisade_gate_a2_act",
+    "text": "Rush the gate before they rally"
+  },
+  {
+    "id": "the_palisade_gate_a2_win",
+    "text": "Shoulders down, the party hits the gate like a battering ram and is through before the camp can breathe."
+  },
+  {
+    "id": "the_palisade_gate_a2_lose",
+    "text": "The gate holds a heartbeat too long — and every horn in the camp starts screaming."
+  },
+  {
+    "id": "story_ch1_fb1_root",
+    "text": "The trail is clear behind you. But a goblin lies dead in the ferns where no blade put it — sprawled facing the village, away from its own camp. It died running the wrong way."
+  },
+  {
+    "id": "story_ch1_fb1_body",
+    "text": "No wound. No blood. Its hands are torn from clawing through bramble in the dark, and its face is fixed in something that isn’t a warrior’s death. It ran until its heart stopped."
+  },
+  {
+    "id": "story_ch1_fb1_ground",
+    "text": "Only its own tracks, and they come from deeper in — from the camp, from the smoke. It didn’t flee the village. It fled toward it, hard enough to kill itself on the run."
+  },
+  {
+    "id": "ch1_fb1",
+    "text": "A goblin dead of pure terror, pointed the wrong way. Read what it knew that its own war-king does not."
+  },
+  {
+    "id": "ch1_fb1_a0_act",
+    "text": "Backtrack its final run"
+  },
+  {
+    "id": "ch1_fb1_a0_win",
+    "text": "Its trail starts deep — past the camp, past where goblins should den. Something down there emptied even the raiders out."
+  },
+  {
+    "id": "ch1_fb1_a0_lose",
+    "text": "The trail folds into a hundred others. Whatever it saw, it kept to itself."
+  },
+  {
+    "id": "ch1_fb1_a1_act",
+    "text": "Read how it died"
+  },
+  {
+    "id": "ch1_fb1_a1_win",
+    "text": "Nothing killed it but its own body, spent. To run like that, in the dark, a goblin has to be more afraid of what’s behind than what’s ahead."
+  },
+  {
+    "id": "ch1_fb1_a1_lose",
+    "text": "Cold and stiff and telling you nothing you can trust."
+  },
+  {
+    "id": "ch1_fb1_a2_act",
+    "text": "Work out what it carried"
+  },
+  {
+    "id": "ch1_fb1_a2_win",
+    "text": "Deep-stone grit under its nails, the same grey dust that has no business this high. It touched something far below and bolted."
+  },
+  {
+    "id": "ch1_fb1_a2_lose",
+    "text": "You linger too long over a dead thing, and the woods drink your nerve."
+  },
+  {
+    "id": "story_ch1_fb2_root",
+    "text": "The thicket is dead quiet — not the quiet of a cleared floor, the quiet of a place the animals left in a hurry. Nests abandoned mid-clutch. A badger sett dug open from the inside."
+  },
+  {
+    "id": "story_ch1_fb2_sett",
+    "text": "The badger didn’t flee a predator at the mouth — it clawed straight up and out through the roof of its own burrow, as if the danger came from below, through the earth."
+  },
+  {
+    "id": "story_ch1_fb2_trunks",
+    "text": "Claw-marks rake the bark high overhead — squirrels, martens, birds, everything that could climb, gone as high as it could go. Nothing that lives in the ground stayed in the ground."
+  },
+  {
+    "id": "ch1_fb2",
+    "text": "A whole thicket of animals that all fled the same way — up, and out, and away from the ground. Learn what they knew before you have to."
+  },
+  {
+    "id": "ch1_fb2_a0_act",
+    "text": "Read the animals’ panic"
+  },
+  {
+    "id": "ch1_fb2_a0_win",
+    "text": "They didn’t scatter from a wolf. They evacuated — all at once, all upward, the way beasts run from a flood or a quake. From something underneath."
+  },
+  {
+    "id": "ch1_fb2_a0_lose",
+    "text": "Animals spook at everything. You can’t read a story into every empty nest."
+  },
+  {
+    "id": "ch1_fb2_a1_act",
+    "text": "Feel the ground underfoot"
+  },
+  {
+    "id": "ch1_fb2_a1_win",
+    "text": "A faint tremor, so low it’s more felt than heard, comes up through your boots at long intervals. The forest has been feeling it for weeks."
+  },
+  {
+    "id": "ch1_fb2_a1_lose",
+    "text": "Just the wind and your own pulse. If the ground is speaking, it isn’t to you."
+  },
+  {
+    "id": "ch1_fb2_a2_act",
+    "text": "Climb to where they climbed"
+  },
+  {
+    "id": "ch1_fb2_a2_win",
+    "text": "From the high branches you can see it: a long seam of collapsed ground threading toward the camp, as if something ran a furrow under the whole vale."
+  },
+  {
+    "id": "ch1_fb2_a2_lose",
+    "text": "The bough that held a marten’s weight does not hold yours."
+  },
+  {
+    "id": "story_ch1_fb3_root",
+    "text": "The goblins painted their filth over the old waystone — you saw that on the way in. But now, with the clearing quiet, you can see the war-paint isn’t random daubing. It’s copying something."
+  },
+  {
+    "id": "story_ch1_fb3_scrape",
+    "text": "Under the flaking ochre, cut deep into the granite, is a symbol far older than any goblin scrawl — precise, angular, worn smooth by centuries. The goblins painted over it because they’re afraid to touch it."
+  },
+  {
+    "id": "story_ch1_fb3_compare",
+    "text": "The same angular mark repeats on their crude fetishes, clumsily, again and again. They didn’t invent it. They copied it — from somewhere they’ve been, and won’t go back to."
+  },
+  {
+    "id": "ch1_fb3",
+    "text": "A deep-cut sigil under the goblins’ war-paint, older than the kingdom and copied by frightened hands. Name it if you can."
+  },
+  {
+    "id": "ch1_fb3_a0_act",
+    "text": "Place the stonework"
+  },
+  {
+    "id": "ch1_fb3_a0_win",
+    "text": "This is deep-realm masonry — the old binding-craft of the folk who cut the roots of mountains, long before any crown drew a border here."
+  },
+  {
+    "id": "ch1_fb3_a0_lose",
+    "text": "It matches nothing in any chronicle you were ever taught. Which is its own kind of answer."
+  },
+  {
+    "id": "ch1_fb3_a1_act",
+    "text": "Read it as a ward"
+  },
+  {
+    "id": "ch1_fb3_a1_win",
+    "text": "It isn’t a blessing. It’s a seal — a warding-mark meant to keep something shut. And it’s worn from the inside, as if something leaned on it for a very long time."
+  },
+  {
+    "id": "ch1_fb3_a1_lose",
+    "text": "The shape squirms away from meaning. Some marks don’t want to be read."
+  },
+  {
+    "id": "ch1_fb3_a2_act",
+    "text": "Wake the mark’s memory"
+  },
+  {
+    "id": "ch1_fb3_a2_win",
+    "text": "You touch the groove and feel the shape of it — a door-mark, deep and downward, and the goblins are squatting on the porch of something enormous."
+  },
+  {
+    "id": "ch1_fb3_a2_lose",
+    "text": "The sigil answers your prod with a cold that climbs your arm and settles behind your eyes."
+  },
+  {
+    "id": "story_ch1_fb4_root",
+    "text": "The palisade looms just ahead now, torchlit. But here at the outskirts, a fallen section lets you see how it’s built — and the goblins didn’t lash these timbers with rope."
+  },
+  {
+    "id": "story_ch1_fb4_fasten",
+    "text": "Iron chain. Fine, close-forged links, dark and old and precise — smith-work no goblin ever managed. It’s scavenged, hauled up from somewhere, and there is a great deal of it."
+  },
+  {
+    "id": "story_ch1_fb4_run",
+    "text": "The chain runs everywhere — binding stakes, dragging sledges, hung with skulls. They found a hoard of the stuff and use it like rope, without the first idea what they’re handling."
+  },
+  {
+    "id": "ch1_fb4",
+    "text": "Deep-forged iron chain, far too fine for goblin hands, lashing a goblin wall together. Trace where a warband found so much of it."
+  },
+  {
+    "id": "ch1_fb4_a0_act",
+    "text": "Trace the chain to its source"
+  },
+  {
+    "id": "ch1_fb4_a0_win",
+    "text": "Drag-marks haul the chain up out of a raw sinkhole behind the camp — a shaft into dressed stone the goblins broke into, not built."
+  },
+  {
+    "id": "ch1_fb4_a0_lose",
+    "text": "The trail of it vanishes into the camp’s churn. You’ll have to ask the King where he shops."
+  },
+  {
+    "id": "ch1_fb4_a1_act",
+    "text": "Read how they treat it"
+  },
+  {
+    "id": "ch1_fb4_a1_win",
+    "text": "They handle the chain like loot and the King wears the plate like a crown — trophies, not tools. None of them grasp they’ve robbed a tomb that was holding something down."
+  },
+  {
+    "id": "ch1_fb4_a1_lose",
+    "text": "Goblins hoard shiny things. Reading further into it is your own nerves talking."
+  },
+  {
+    "id": "ch1_fb4_a2_act",
+    "text": "Wrench a length free for the assault"
+  },
+  {
+    "id": "ch1_fb4_a2_win",
+    "text": "You lever a whole run of chain loose — and the collapse it opens gives you a clean, quiet way in past the gate."
+  },
+  {
+    "id": "ch1_fb4_a2_lose",
+    "text": "The chain is anchored deeper than you thought. It rings like a bell, and the wall answers."
+  },
+  {
+    "id": "story_ch2_desc",
+    "text": "Greenrise is safe, but its herds never came home. The drove-road climbs out of the treeline onto Longbarrow Moor — open country, good grazing, no cover for a goblin raiding party. Follow the tracks. Find out where four hundred head of cattle were driven, and why the goblins who drove them kept running afterward."
+  },
+  {
+    "id": "story_ch2_embark",
+    "text": "The trees thin, then stop. Grey grass runs to the horizon under a low ceiling of cloud, and the drove-road cuts through it like a scar. Somewhere ahead, carrion birds are circling something that is not moving."
+  },
+  {
+    "id": "story_ch2_victory",
+    "text": "The thing from the sinkhole lies still, and it is nothing anyone on the surface has a name for. The cattle are past saving. The party stands at the lip of the hole a while, looking down, and nobody suggests going deeper."
+  },
+  {
+    "id": "story_ch2_brief_root",
+    "text": "You’re the ones burned out the camp at Greenrise. Good. Then you’ll believe me when I say this isn’t goblin work. I’ve driven cattle over that moor for thirty years. Four hundred head don’t vanish. And goblins don’t run past good grazing without stopping to eat it."
+  },
+  {
+    "id": "story_ch2_brief_ranpast",
+    "text": "I mean the tracks go one way and don’t stop. Past the water. Past the good pasture. Past a walled fold where they could’ve penned the whole herd and taken their time. They went by all of it at a dead run and kept going. That’s not raiding, that’s fleeing."
+  },
+  {
+    "id": "story_ch2_brief_looked",
+    "text": "My nephew went. Came back the same night, which is how I know how far he got. Said there’s a hole in the drove-road wide as a barn, and the sides of it are cut stone. Cut, mind. Nobody built anything on that moor. Here — he drew the pitch of it before his hands went bad."
+  },
+  {
+    "id": "story_ch2_brief_road",
+    "text": "Open the whole way — no cover, but nothing to ambush you from either. Wind’ll cut you in half up top, so take the oilskins, and take this. Brewed for men who’ve been out in it too long. It’ll put your feet back under you."
+  },
+  {
+    "id": "the_shepherd_s_bothy",
+    "text": "A drystone hut on the high pasture, door swinging. The shepherd’s gear is all here. The shepherd is not, and the dog would not have left him."
+  },
+  {
+    "id": "the_shepherd_s_bothy_a0_act",
+    "text": "Read the ground outside"
+  },
+  {
+    "id": "the_shepherd_s_bothy_a0_win",
+    "text": "Man and dog left together, at a run, southbound — alive, then. His stores are honestly abandoned, and honestly useful."
+  },
+  {
+    "id": "the_shepherd_s_bothy_a0_lose",
+    "text": "Sheep-tracks over everything. The moor keeps its secrets."
+  },
+  {
+    "id": "the_shepherd_s_bothy_a1_act",
+    "text": "Check the medicine shelf"
+  },
+  {
+    "id": "the_shepherd_s_bothy_a1_win",
+    "text": "Liniment, feverbark, a sealed draught — shepherds doctor their flocks and themselves. It keeps."
+  },
+  {
+    "id": "the_shepherd_s_bothy_a1_lose",
+    "text": "Damp got the shelf. Everything’s turned."
+  },
+  {
+    "id": "the_shepherd_s_bothy_a2_act",
+    "text": "Read his tally-book by the cold hearth"
+  },
+  {
+    "id": "the_shepherd_s_bothy_a2_win",
+    "text": "Neat counts for thirty years, then the last page: “ground opened by the fold. It sounds like breathing.” Dated nine days ago — forewarned is forearmed."
+  },
+  {
+    "id": "the_shepherd_s_bothy_a2_lose",
+    "text": "The last entry is only a drawing — and you wish he hadn’t been any good at drawing."
+  },
+  {
+    "id": "what_the_cattle_saw",
+    "text": "The bone pit narrows here. Four hundred head came down this passage at a gallop, in the dark, and the walls remember it — horn-scores chest-high in the dressed stone."
+  },
+  {
+    "id": "what_the_cattle_saw_a0_act",
+    "text": "Read the stampede"
+  },
+  {
+    "id": "what_the_cattle_saw_a0_win",
+    "text": "They weren’t driven down — they were TURNED, twice, by something herding them deeper. Knowing how it moves is half an armour."
+  },
+  {
+    "id": "what_the_cattle_saw_a0_lose",
+    "text": "Panic writes badly. The scores tell you nothing but panic."
+  },
+  {
+    "id": "what_the_cattle_saw_a1_act",
+    "text": "Think like the thing below"
+  },
+  {
+    "id": "what_the_cattle_saw_a1_win",
+    "text": "It didn’t eat them all. It stored them. Things that store food defend larders, and larders have blind sides."
+  },
+  {
+    "id": "what_the_cattle_saw_a1_lose",
+    "text": "You cannot make yourself think like it. Perhaps be glad."
+  },
+  {
+    "id": "what_the_cattle_saw_a2_act",
+    "text": "Say words over the herd"
+  },
+  {
+    "id": "what_the_cattle_saw_a2_win",
+    "text": "It is only cattle, and you say the words anyway, and the passage feels wider for it. Steadier hearts going in."
+  },
+  {
+    "id": "what_the_cattle_saw_a2_lose",
+    "text": "Something below answers the rite — in kind, and wrong."
+  },
+  {
+    "id": "drag_marks",
+    "text": "The drove-road is churned to mud for a hundred paces. Hooves, and among them narrower prints, running in the same direction — not behind the herd, but level with it."
+  },
+  {
+    "id": "drag_marks_a0_act",
+    "text": "Read the trail"
+  },
+  {
+    "id": "drag_marks_a0_win",
+    "text": "The herd wasn’t driven — it bolted. And the goblin prints beside it are running flat out, in the same direction, keeping pace out of terror rather than herding anything."
+  },
+  {
+    "id": "drag_marks_a0_lose",
+    "text": "Too much traffic, too much rain. The mud gives up nothing but mud."
+  },
+  {
+    "id": "drag_marks_a1_act",
+    "text": "Count the tracks"
+  },
+  {
+    "id": "drag_marks_a1_win",
+    "text": "Two hundred goblin prints, and not one of them turns back. Whatever they were fleeing, they never once looked over their shoulder to check."
+  },
+  {
+    "id": "drag_marks_a1_lose",
+    "text": "The count comes apart halfway. Prints on prints on prints."
+  },
+  {
+    "id": "drag_marks_a2_act",
+    "text": "Reconstruct the panic"
+  },
+  {
+    "id": "drag_marks_a2_win",
+    "text": "You walk the whole churn backward and put the hour together: the herd and the raiders broke at the same instant, from the same thing, coming up from under the road."
+  },
+  {
+    "id": "drag_marks_a2_lose",
+    "text": "Absorbed in the ground, you miss the gorse-line — and something in it does not miss you."
+  },
+  {
+    "id": "the_abandoned_camp",
+    "text": "A goblin camp, struck in a hurry and never returned to. Cook-fires still ringed with stones. Bedrolls left where they lay. Nobody loots their own camp this badly unless they left at a dead run."
+  },
+  {
+    "id": "the_abandoned_camp_a0_act",
+    "text": "Pick it over quickly"
+  },
+  {
+    "id": "the_abandoned_camp_a0_win",
+    "text": "Whetstones, salt, a stoppered flask of something medicinal. The goblins packed for a long stay and left inside a minute."
+  },
+  {
+    "id": "the_abandoned_camp_a0_lose",
+    "text": "Everything worth taking is spoiled, sodden, or worse."
+  },
+  {
+    "id": "the_abandoned_camp_a1_act",
+    "text": "Salvage what keeps"
+  },
+  {
+    "id": "the_abandoned_camp_a1_win",
+    "text": "Dried meat, a bundle of usable herbs, and — oddly — three days of firewood stacked neat. They meant to be here a week."
+  },
+  {
+    "id": "the_abandoned_camp_a1_lose",
+    "text": "Damp has got into all of it. Not worth the weight."
+  },
+  {
+    "id": "the_abandoned_camp_a2_act",
+    "text": "Haul the whole cache out"
+  },
+  {
+    "id": "the_abandoned_camp_a2_win",
+    "text": "The party carries off the lot, flask and firewood and all. Someone will be glad of it tonight."
+  },
+  {
+    "id": "the_abandoned_camp_a2_lose",
+    "text": "A rotted tent-pole gives under the load and drops the whole stack on somebody’s foot."
+  },
+  {
+    "id": "down_the_throat",
+    "text": "The sinkhole is forty feet across and the cattle are all at the bottom of it, piled and broken. The walls are not earth. They are dressed stone, and the hole did not collapse inward — something came up."
+  },
+  {
+    "id": "down_the_throat_a0_act",
+    "text": "Find the safe ledge"
+  },
+  {
+    "id": "down_the_throat_a0_win",
+    "text": "A shelf of intact masonry rings the pit ten feet down. The party descends to it dry-footed and arrives braced."
+  },
+  {
+    "id": "down_the_throat_a0_lose",
+    "text": "Every ledge you trust crumbles when weighted. The descent will have to be the hard way."
+  },
+  {
+    "id": "down_the_throat_a1_act",
+    "text": "Rope descent"
+  },
+  {
+    "id": "down_the_throat_a1_win",
+    "text": "Pitons into the dressed stone, rope through, down in good order — and everyone reaches the bottom with breath left to fight."
+  },
+  {
+    "id": "down_the_throat_a1_lose",
+    "text": "The rope runs short and the last drop is longer than anybody wanted."
+  },
+  {
+    "id": "down_the_throat_a2_act",
+    "text": "Free-climb the fastest way down"
+  },
+  {
+    "id": "down_the_throat_a2_win",
+    "text": "Hand over hand down the old stonework, quick and quiet, and on the floor of the pit before the thing below registers company."
+  },
+  {
+    "id": "down_the_throat_a2_lose",
+    "text": "A wet handhold, a short fall, and a hard landing among the bones of somebody’s cattle."
+  },
+  {
+    "id": "story_ch2_fb1_root",
+    "text": "Four hundred head of cattle came up this road at a gallop — you can read that much in the churn. But strewn along the verge is something stranger: goblin war-gear, thrown down and abandoned in a running line."
+  },
+  {
+    "id": "story_ch2_fb1_gear",
+    "text": "Shields, spears, a cracked war-horn, a chief’s notched blade — good goblin arms by their standard, all flung aside. They stripped themselves to run lighter. Goblins do not drop their weapons. Not for anything."
+  },
+  {
+    "id": "story_ch2_fb1_line",
+    "text": "The gear falls in a line that runs the same way the cattle ran — uphill, outward, away. The goblins weren’t driving this herd. They were running in it, shoulder to flank with the cows, and losing."
+  },
+  {
+    "id": "ch2_fb1",
+    "text": "A warband’s weapons thrown down in a running line beside the cattle-track. Read what put a whole raiding party to rout without a fight."
+  },
+  {
+    "id": "ch2_fb1_a0_act",
+    "text": "Sort the abandoned arms"
+  },
+  {
+    "id": "ch2_fb1_a0_win",
+    "text": "Not a blade among them is blooded. There was no battle here — only flight. Whatever they fled, they never once turned to face it."
+  },
+  {
+    "id": "ch2_fb1_a0_lose",
+    "text": "Rust and mud and too many hands through it already. It keeps its secret."
+  },
+  {
+    "id": "ch2_fb1_a1_act",
+    "text": "Follow the line to its head"
+  },
+  {
+    "id": "ch2_fb1_a1_win",
+    "text": "The dropped gear thins toward the deep end of the vale and stops at torn ground — they came up out of the earth already running, and never slowed."
+  },
+  {
+    "id": "ch2_fb1_a1_lose",
+    "text": "The trail scatters into the moor. You lose which way panic was pointing."
+  },
+  {
+    "id": "ch2_fb1_a2_act",
+    "text": "Stand where they broke"
+  },
+  {
+    "id": "ch2_fb1_a2_win",
+    "text": "You feel it in the shape of the rout: not an enemy they could fight, but a wrongness that unmade the will to. Even a goblin knew to simply run."
+  },
+  {
+    "id": "ch2_fb1_a2_lose",
+    "text": "You put yourself too well in their skins, and the dread they dropped here finds a new set of shoulders."
+  },
+  {
+    "id": "story_ch2_fb2_root",
+    "text": "The high pasture is a killing-ground with no killer. A whole flock of sheep lies dead across the slope below a low bluff — dozens of them, piled where they fell, and not one has been eaten."
+  },
+  {
+    "id": "story_ch2_fb2_fallen",
+    "text": "Broken necks and broken legs, every one. No bite, no claw, no blood drawn by anything but the fall. They weren’t hunted. They ran off the edge in the dark, in a mass, and kept coming until the pile was this high."
+  },
+  {
+    "id": "story_ch2_fb2_bluff",
+    "text": "The turf at the bluff’s lip is torn to mud by a thousand small hooves, all pointed off the edge. Sheep don’t run off a height. Not unless what’s behind them is worse than the drop."
+  },
+  {
+    "id": "ch2_fb2",
+    "text": "A whole flock run off a bluff in the dark and left to rot. Learn what herds animals to their deaths and never stops to feed."
+  },
+  {
+    "id": "ch2_fb2_a0_act",
+    "text": "Read the wounds"
+  },
+  {
+    "id": "ch2_fb2_a0_win",
+    "text": "Every death is the fall itself — panic, not predation. Whatever moved them wanted them gone, not eaten. That is a colder thing than any wolf."
+  },
+  {
+    "id": "ch2_fb2_a0_lose",
+    "text": "Days dead and days rained on. The bodies have stopped answering questions."
+  },
+  {
+    "id": "ch2_fb2_a1_act",
+    "text": "Reconstruct the stampede"
+  },
+  {
+    "id": "ch2_fb2_a1_win",
+    "text": "One source of terror, low and behind, sweeping the flock off the height in a single surge — exactly the shape of what took the cattle down the throat of the moor."
+  },
+  {
+    "id": "ch2_fb2_a1_lose",
+    "text": "A flock is chaos even when it’s calm. You can’t untangle this one."
+  },
+  {
+    "id": "ch2_fb2_a2_act",
+    "text": "Search the ground they fled"
+  },
+  {
+    "id": "ch2_fb2_a2_win",
+    "text": "Between the bodies, a seam of collapsed earth breathes cold, foul air up from below. The pasture is a lid, and it is beginning to lift."
+  },
+  {
+    "id": "ch2_fb2_a2_lose",
+    "text": "You crouch too long over rot in the wind, and it gets into your chest."
+  },
+  {
+    "id": "story_ch2_fb3_root",
+    "text": "The old drystone sheep-fold should have kept a flock safe. Instead its wall is burst — not fallen inward, but blown outward, its stones flung yards across the grass, as though something inside pushed its way out."
+  },
+  {
+    "id": "story_ch2_fb3_wall",
+    "text": "The stones lie in a fan, outward, the way a dropped melon throws its rind. Nothing got in over this wall. Something came up under it and shouldered the whole fold aside on its way to the open air."
+  },
+  {
+    "id": "story_ch2_fb3_slump",
+    "text": "The turf inside the fold has slumped into a shallow bowl, and through the mud at its centre shows a course of fitted grey stone — dressed, jointed, deliberate. A buried wall, or a shaft, and it is not far down."
+  },
+  {
+    "id": "ch2_fb3",
+    "text": "A stone fold shoved apart from the inside, and dressed masonry surfacing through the mud beneath it. Measure how close the deep has come to the surface."
+  },
+  {
+    "id": "ch2_fb3_a0_act",
+    "text": "Trace the outward blast"
+  },
+  {
+    "id": "ch2_fb3_a0_win",
+    "text": "Every stone points away from one spot at the fold’s heart. Whatever surfaced here chose this weak seam in the ground and simply walked up through it."
+  },
+  {
+    "id": "ch2_fb3_a0_lose",
+    "text": "Tumbled stone is tumbled stone. You can’t swear which way it fell."
+  },
+  {
+    "id": "ch2_fb3_a1_act",
+    "text": "Name the buried stonework"
+  },
+  {
+    "id": "ch2_fb3_a1_win",
+    "text": "The jointing is deep-realm work — the same hidden masonry the whole moor is built over. The shepherds walled their flocks on the roof of something old, and never knew."
+  },
+  {
+    "id": "ch2_fb3_a1_lose",
+    "text": "Old stone under a sheepfold. You can date it no closer than \"before us.\""
+  },
+  {
+    "id": "ch2_fb3_a2_act",
+    "text": "Clear the mud from the shaft"
+  },
+  {
+    "id": "ch2_fb3_a2_win",
+    "text": "You haul the slumped turf back and expose a stair-head of dressed stone descending into dark — the way down, days ahead of where the drove-road will take you."
+  },
+  {
+    "id": "ch2_fb3_a2_lose",
+    "text": "The lip of the bowl gives way under you and drops you hard onto buried stone."
+  },
+  {
+    "id": "story_ch2_fb4_root",
+    "text": "The moor is above you now. Down here the walls are flawless ancient masonry, and at the stairhead a great marker-stone is set into the wall — deep-carved, deliberate, and turned to face upward, toward the surface, toward anyone climbing down."
+  },
+  {
+    "id": "story_ch2_fb4_marker",
+    "text": "No boast, no tomb-name, no welcome. The carving is stark and functional — the deep-realm sign for a threshold that must not be crossed, cut by folk who expected to be obeyed."
+  },
+  {
+    "id": "story_ch2_fb4_facing",
+    "text": "Every tomb faces its dead. This faces the stairs. It wasn’t set to keep robbers out — it was set to be read by anyone coming down from above, and to turn them back. It faces us."
+  },
+  {
+    "id": "ch2_fb4",
+    "text": "A deep-carved warning set to face the surface, meant to turn back anyone descending. Read it before you decide to ignore it."
+  },
+  {
+    "id": "ch2_fb4_a0_act",
+    "text": "Place the marker’s makers"
+  },
+  {
+    "id": "ch2_fb4_a0_win",
+    "text": "The same hands that cut the sigil on Greenrise’s waystone cut this — an order that walled the deep places shut and posted signs for a world that has forgotten how to read them."
+  },
+  {
+    "id": "ch2_fb4_a0_lose",
+    "text": "Ancient, authoritative, and utterly beyond your histories."
+  },
+  {
+    "id": "ch2_fb4_a1_act",
+    "text": "Read the threshold rite"
+  },
+  {
+    "id": "ch2_fb4_a1_win",
+    "text": "It is a consecrated boundary — a line drawn between the living country above and something the makers judged must never come up. The consecration is old, and it is failing."
+  },
+  {
+    "id": "ch2_fb4_a1_lose",
+    "text": "The rite is real but its meaning has rotted with its keepers."
+  },
+  {
+    "id": "ch2_fb4_a2_act",
+    "text": "Sound the marker’s ward"
+  },
+  {
+    "id": "ch2_fb4_a2_win",
+    "text": "The stone still hums with a binding-charge, thin as a held breath. Whatever it seals has been leaning on it from below for a very long time — and the herds felt the seam give."
+  },
+  {
+    "id": "ch2_fb4_a2_lose",
+    "text": "You press the ward for an answer and it presses back, cold and patient, into your marrow."
+  },
+  {
+    "id": "story_ch3_desc",
+    "text": "The watchtowers along the old frontier stand empty — every crown blames every other crown for the pay that stopped coming. Wardstone Watch is different. Its garrison was paid, provisioned, and at full strength, and it is still empty. Find out where sixteen soldiers went. The answer is under the tower, down a stair that no watchtower in the world was built with."
+  },
+  {
+    "id": "story_ch3_embark",
+    "text": "Wardstone Watch stands alone on the moor with its gate open and its banner still flying. No bodies. No blood. No sign of a fight anywhere on the grounds. The party walks in through a door that nobody barred."
+  },
+  {
+    "id": "story_ch3_victory",
+    "text": "Captain Vane goes down still wearing the livery of a crown that stopped paying her four years ago. Her people are laid out in the dark below in neat rows, facing the same direction — down. The party climbs back into daylight with more questions than it brought."
+  },
+  {
+    "id": "story_ch3_brief_root",
+    "text": "Sixteen of mine at Wardstone. Paid on time, victualled through winter, no complaints on record. Then nothing — four years of nothing, and the crown won’t send anyone to look because looking costs money and the tower’s already written off. So I’m paying you out of my own purse. Ask what you like."
+  },
+  {
+    "id": "story_ch3_brief_captain",
+    "text": "Aldis Vane. Twenty-two years, never lost a post, never lost a soldier she didn’t bury herself. If Vane walked her garrison off that tower she had a reason, and if she had a reason it was a good one. That’s what frightens me. Not that they left. That she led them."
+  },
+  {
+    "id": "story_ch3_brief_deserters",
+    "text": "Deserters take their boots. Deserters take their PAY. There’s four years of unclaimed silver in that strongroom and the door’s not even forced. Whatever they went to do, they didn’t think they’d need money for it. Take the tower key — save you breaking anything."
+  },
+  {
+    "id": "story_ch3_brief_under",
+    "text": "Nothing’s under it. That’s the point — I signed the build order myself, nineteen years back. Fieldstone tower, timber floor, root cellar eight foot deep. If you find a stair down there, then somebody dug it after, or it was there before the tower and we put a watchtower on top of it without knowing. I don’t like either answer. Here — you’ll want the light."
+  },
+  {
+    "id": "the_mess_table",
+    "text": "Down in the garrison deep, a long table laid for sixteen — plates, cups, a game of cards paused mid-hand. Four years of dust and not one chair knocked over."
+  },
+  {
+    "id": "the_mess_table_a0_act",
+    "text": "Read the table"
+  },
+  {
+    "id": "the_mess_table_a0_win",
+    "text": "They ate, they stacked their plates, they pushed in their chairs, they walked down. Orderly to the last — and the mess fund is still in its tin."
+  },
+  {
+    "id": "the_mess_table_a0_lose",
+    "text": "Dust says nothing except how long. You already knew how long."
+  },
+  {
+    "id": "the_mess_table_a1_act",
+    "text": "Read the card hands"
+  },
+  {
+    "id": "the_mess_table_a1_win",
+    "text": "The dealer was winning and left the pot. Nobody leaves a winning pot for a bad reason — they went down GLAD. That pot pays for the party’s trouble."
+  },
+  {
+    "id": "the_mess_table_a1_lose",
+    "text": "Cards are cards. The pot is pewter buttons."
+  },
+  {
+    "id": "the_mess_table_a2_act",
+    "text": "Check under the table"
+  },
+  {
+    "id": "the_mess_table_a2_win",
+    "text": "A strongbox strapped under the boards — the serjeant’s discretionary fund, untouched by whatever discretion took them."
+  },
+  {
+    "id": "the_mess_table_a2_lose",
+    "text": "The strap was a wire. The wire was a bell. The dark takes notice."
+  },
+  {
+    "id": "the_roll_of_sixteen",
+    "text": "The last landing. Sixteen sets of kit, folded and stacked against the wall with parade precision. They undressed for something. Vane’s captain’s sash lies on top."
+  },
+  {
+    "id": "the_roll_of_sixteen_a0_act",
+    "text": "Name each of the sixteen"
+  },
+  {
+    "id": "the_roll_of_sixteen_a0_win",
+    "text": "You read each name-tape aloud, once, into the dark. Whatever is left of them down here hears its name in a living voice — and the dark feels less hungry for it."
+  },
+  {
+    "id": "the_roll_of_sixteen_a0_lose",
+    "text": "Half the tapes are rotted. A half-called roll is worse than none."
+  },
+  {
+    "id": "the_roll_of_sixteen_a1_act",
+    "text": "Piece together the order they went"
+  },
+  {
+    "id": "the_roll_of_sixteen_a1_win",
+    "text": "Youngest first, officers last, Vane at the very end — she watched every one of her people through before she followed. Whatever waits below still thinks like a soldier."
+  },
+  {
+    "id": "the_roll_of_sixteen_a1_lose",
+    "text": "The stack order tells you nothing you can use."
+  },
+  {
+    "id": "the_roll_of_sixteen_a2_act",
+    "text": "Speak to Vane before you see her"
+  },
+  {
+    "id": "the_roll_of_sixteen_a2_win",
+    "text": "You say what you came to say to the empty sash — that her serjeant paid for this, that somebody still musters her name. The thing wearing her rank will hear it differently. Every edge helps."
+  },
+  {
+    "id": "the_roll_of_sixteen_a2_lose",
+    "text": "The dark says her words back to you, in her voice, before you’ve finished. You were not ready for that."
+  },
+  {
+    "id": "the_unbarred_door",
+    "text": "The tower gate stands open from the inside. Sixteen bunks, sixteen kits, boots still under the beds. Whatever happened here, nobody packed and nobody fought."
+  },
+  {
+    "id": "the_unbarred_door_a0_act",
+    "text": "Count the beds"
+  },
+  {
+    "id": "the_unbarred_door_a0_win",
+    "text": "Sixteen bunks, sixteen kits, and every weapon still on its peg. They went down unarmed. That takes trust, or orders."
+  },
+  {
+    "id": "the_unbarred_door_a0_lose",
+    "text": "The barracks has been picked over by weather and birds. Nothing reads clean."
+  },
+  {
+    "id": "the_unbarred_door_a1_act",
+    "text": "Read the duty roster"
+  },
+  {
+    "id": "the_unbarred_door_a1_win",
+    "text": "The roster runs unbroken for four years, then stops mid-week — no desertions, no gaps. The last entry is in the captain’s hand and it just says: RELIEVED."
+  },
+  {
+    "id": "the_unbarred_door_a1_lose",
+    "text": "Damp has taken the ledger. The pages come apart in your fingers."
+  },
+  {
+    "id": "the_unbarred_door_a2_act",
+    "text": "Read the shrine-offerings"
+  },
+  {
+    "id": "the_unbarred_door_a2_win",
+    "text": "They left offerings before they went — all sixteen, all the same rite, all for safe passage DOWNWARD. They knew exactly where they were going, and they went anyway."
+  },
+  {
+    "id": "the_unbarred_door_a2_lose",
+    "text": "You get far enough into the rite to feel what answered it, and wish you hadn’t."
+  },
+  {
+    "id": "the_wrong_stair",
+    "text": "Under the tower cellar, the flagstones give way to a spiral stair — and the masonry changes. The tower is fieldstone and mortar. This is dressed ashlar, cut to a tolerance nobody on this frontier can manage, and it goes down a long way."
+  },
+  {
+    "id": "the_wrong_stair_a0_act",
+    "text": "The masonry isn’t local"
+  },
+  {
+    "id": "the_wrong_stair_a0_win",
+    "text": "No tool marks, no seams, no settling in a thousand years. This stair was not built into the ground — the ground was built around it."
+  },
+  {
+    "id": "the_wrong_stair_a0_lose",
+    "text": "Stone is stone. Whatever’s strange about it stays strange."
+  },
+  {
+    "id": "the_wrong_stair_a1_act",
+    "text": "Which way was it built to carry?"
+  },
+  {
+    "id": "the_wrong_stair_a1_win",
+    "text": "The treads are worn — but only on the leading edge, and only going UP. Whatever used this stair for a thousand years was climbing."
+  },
+  {
+    "id": "the_wrong_stair_a1_lose",
+    "text": "The wear is too even to read anything into."
+  },
+  {
+    "id": "the_wrong_stair_a2_act",
+    "text": "Force the jammed landing-door"
+  },
+  {
+    "id": "the_wrong_stair_a2_win",
+    "text": "The door gives at the third shoulder and opens onto a landing that shortcuts half the descent."
+  },
+  {
+    "id": "the_wrong_stair_a2_lose",
+    "text": "The door doesn’t give. Your shoulder does."
+  },
+  {
+    "id": "garrison_shrine_still_lit",
+    "text": "Four years on, the garrison’s shrine-lamp is still burning. There is no oil in the reservoir. There has not been oil in it for a long time."
+  },
+  {
+    "id": "garrison_shrine_still_lit_a0_act",
+    "text": "Finish the rite they left unfinished"
+  },
+  {
+    "id": "garrison_shrine_still_lit_a0_win",
+    "text": "You speak the closing words nobody stayed to say. The lamp gutters, gratefully, and goes out — and something in the tower relaxes for the first time in four years."
+  },
+  {
+    "id": "garrison_shrine_still_lit_a0_lose",
+    "text": "The rite is a soldier’s rite, in a soldier’s shorthand, and you are not a soldier."
+  },
+  {
+    "id": "garrison_shrine_still_lit_a1_act",
+    "text": "Examine what they left behind"
+  },
+  {
+    "id": "garrison_shrine_still_lit_a1_win",
+    "text": "The blood on the altar-cloth is four years old and was given a drop at a time, by sixteen people, in turn. Payment, not sacrifice. They were buying something."
+  },
+  {
+    "id": "garrison_shrine_still_lit_a1_lose",
+    "text": "Too old and too degraded to tell you anything you can trust."
+  },
+  {
+    "id": "garrison_shrine_still_lit_a2_act",
+    "text": "Trace what the lamp is drawing on"
+  },
+  {
+    "id": "garrison_shrine_still_lit_a2_win",
+    "text": "The flame is fed from below — a thin thread of something running down the stair and out of sight. Follow it far enough and you would find whatever is on the other end. The party takes the thread’s measure and comes away armed with it."
+  },
+  {
+    "id": "garrison_shrine_still_lit_a2_lose",
+    "text": "You put your hand into the current to feel where it runs, and it pulls back harder than you do."
+  },
+  {
+    "id": "story_ch3_fb1_root",
+    "text": "No bodies, no graves, no sign of a fight anywhere on the approach. But the mud of the muster-ground outside the gate holds the whole story in bootprints — and it is not the story of a garrison overrun."
+  },
+  {
+    "id": "story_ch3_fb1_ranks",
+    "text": "Sixteen sets of prints, formed into ordered files, dressed and even. They stood parade here, in step, unhurried — and then marched. Nobody was dragged. Nobody broke ranks. They left the way soldiers march to inspection."
+  },
+  {
+    "id": "story_ch3_fb1_dirs",
+    "text": "Every print leads inward, through their own open gate, toward the tower. Not one set comes back out. Sixteen soldiers walked in good order into a place they never walked out of, and barred nothing behind them."
+  },
+  {
+    "id": "ch3_fb1",
+    "text": "A full garrison that formed up and marched inward in good order, and never marched out. Read what could command soldiers to do that willingly."
+  },
+  {
+    "id": "ch3_fb1_a0_act",
+    "text": "Read the formation"
+  },
+  {
+    "id": "ch3_fb1_a0_win",
+    "text": "Discipline, not panic — a drill order, cleanly executed. They were told to muster and go, and every one of them obeyed as if it were a lawful command."
+  },
+  {
+    "id": "ch3_fb1_a0_lose",
+    "text": "Rain has softened the prints to guesswork. You can’t swear to the order of it."
+  },
+  {
+    "id": "ch3_fb1_a1_act",
+    "text": "Track the last man"
+  },
+  {
+    "id": "ch3_fb1_a1_win",
+    "text": "The rearmost prints pause at the threshold — one soldier stopped, turned once to look back at the daylight, and then went in after the rest anyway."
+  },
+  {
+    "id": "ch3_fb1_a1_lose",
+    "text": "The trail dissolves at the gate. Whatever the last man felt, the mud won’t say."
+  },
+  {
+    "id": "ch3_fb1_a2_act",
+    "text": "Feel the shape of the order"
+  },
+  {
+    "id": "ch3_fb1_a2_win",
+    "text": "This wasn’t a rout or a spell of terror. It was summons — a pull they answered like duty, the way a charter is honoured. Something down there called in a debt."
+  },
+  {
+    "id": "ch3_fb1_a2_lose",
+    "text": "You reach for what moved them and touch the edge of it, and it is patient, and it notices you."
+  },
+  {
+    "id": "story_ch3_fb2_root",
+    "text": "Everything in the tower is squared away — bunks made, kits stowed, a meal left half-eaten and gone to dust. And in the floor of the guardroom, where no watchtower has any business having one, is a stair going down."
+  },
+  {
+    "id": "story_ch3_fb2_stair",
+    "text": "The steps are dressed stone, older than the mortar of the tower above, and their centres are worn into smooth hollows — by many feet, over long years, going down. The wear on the up-side of each step is almost none."
+  },
+  {
+    "id": "story_ch3_fb2_fit",
+    "text": "The tower doesn’t own this stair — it was built on top of it. Someone raised a garrison here specifically to sit over this hole, to watch it, or to feed it. The watchtower was always the lid."
+  },
+  {
+    "id": "ch3_fb2",
+    "text": "A worn descending stair the watchtower was built to cover, its steps hollowed by feet that only ever went down. Work out what the garrison was really posted here to do."
+  },
+  {
+    "id": "ch3_fb2_a0_act",
+    "text": "Read the wear on the steps"
+  },
+  {
+    "id": "ch3_fb2_a0_win",
+    "text": "Every hollow is worn on the descending edge. Whatever this garrison’s duty was, it was measured in journeys down — and almost none back up."
+  },
+  {
+    "id": "ch3_fb2_a0_lose",
+    "text": "Stone wears how it wears. You can’t make the steps confess."
+  },
+  {
+    "id": "ch3_fb2_a1_act",
+    "text": "Date the buried stair"
+  },
+  {
+    "id": "ch3_fb2_a1_win",
+    "text": "The stair predates the kingdom that manned it. Crown after crown inherited this post, paid it, and never wrote down what it was actually guarding."
+  },
+  {
+    "id": "ch3_fb2_a1_lose",
+    "text": "No chronicle you know admits this stair exists. Which tells you something by itself."
+  },
+  {
+    "id": "ch3_fb2_a2_act",
+    "text": "Sound the depth below"
+  },
+  {
+    "id": "ch3_fb2_a2_win",
+    "text": "A dropped stone falls a long, long time before it lands. This isn’t a cellar. It’s a throat, and the garrison went all the way down it."
+  },
+  {
+    "id": "ch3_fb2_a2_lose",
+    "text": "You lean too far into the dark to listen, and the worn stone nearly takes you down with your answer."
+  },
+  {
+    "id": "story_ch3_fb3_root",
+    "text": "The stair goes down through stone older than any kingdom, and the garrison marked its passage — not with blood, but with belongings. Their kit lies laid aside on the steps, in order, deeper and deeper down."
+  },
+  {
+    "id": "story_ch3_fb3_order",
+    "text": "Weapons first, near the top — swords, spears, bows, set down neatly against the wall. Then, further down, armour: mail, helms, greaves, unbuckled and stacked. Then boots. They shed their soldiering step by step as they descended."
+  },
+  {
+    "id": "story_ch3_fb3_left",
+    "text": "Nothing is thrown or dropped. Everything is placed — squared to the wall, laid out with care, the way you set down what you won’t need where someone tidy will find it. They disarmed the way pilgrims do at a threshold."
+  },
+  {
+    "id": "ch3_fb3",
+    "text": "A garrison’s arms and armour laid aside in careful order down a descending stair, each soldier shedding their soldiering the deeper they went. Understand what asks that of the living."
+  },
+  {
+    "id": "ch3_fb3_a0_act",
+    "text": "Examine the laid-aside kit"
+  },
+  {
+    "id": "ch3_fb3_a0_win",
+    "text": "No blood on any of it, no haste in the placing. These were healthy soldiers who calmly decided their weapons were no longer the point of the journey."
+  },
+  {
+    "id": "ch3_fb3_a0_lose",
+    "text": "Dust and old leather. It tells you nothing a frightened mind won’t invent."
+  },
+  {
+    "id": "ch3_fb3_a1_act",
+    "text": "Read it as a rite"
+  },
+  {
+    "id": "ch3_fb3_a1_win",
+    "text": "This is a divestment — the shedding of worldly office before an altar. They went down not as a garrison but as supplicants, offering the only thing soldiers have: themselves."
+  },
+  {
+    "id": "ch3_fb3_a1_lose",
+    "text": "The shape of a rite is here, but its god is one no scripture of yours would name."
+  },
+  {
+    "id": "ch3_fb3_a2_act",
+    "text": "Walk it as they walked it"
+  },
+  {
+    "id": "ch3_fb3_a2_win",
+    "text": "Step by step you feel the pull that unarmed them — a certainty, warm and terrible, that where they were going, resistance would be not just useless but rude. It nearly convinces you too."
+  },
+  {
+    "id": "ch3_fb3_a2_lose",
+    "text": "You put yourself on their steps and their calm reaches up for you, and for a moment your own hands want to set your sword down."
+  },
+  {
+    "id": "story_ch3_fb4_root",
+    "text": "At the bottom of the long descent, before the last dark, the sixteen left one thing more. Not their bodies — those lie further in, in rows, facing down. Here on the landing they left their pay, stacked with care."
+  },
+  {
+    "id": "story_ch3_fb4_pay",
+    "text": "Coin in neat towers. Service-rings threaded on a cord. Bronze muster-tokens, a captain’s seal, four years of a garrison’s unspent wages — all placed deliberately at the threshold like coins laid on a temple step."
+  },
+  {
+    "id": "story_ch3_fb4_why",
+    "text": "Nobody robbed them. Nobody had to. They brought their pay down here and set it out as an offering — the price of admission to whatever is below, rendered gladly, as if the wage was always meant to end up here."
+  },
+  {
+    "id": "ch3_fb4",
+    "text": "A garrison’s four years of unspent wages, stacked as a willing offering at the threshold of the dark. Read what bargain a crown’s soldiers thought they were settling."
+  },
+  {
+    "id": "ch3_fb4_a0_act",
+    "text": "Tally the offering"
+  },
+  {
+    "id": "ch3_fb4_a0_win",
+    "text": "Every token accounted for — this is a full garrison’s worth, to the last coin, rendered complete. Whatever they were paying for, they paid it in full and thought it fair."
+  },
+  {
+    "id": "ch3_fb4_a0_lose",
+    "text": "You can price the metal but not the meaning. The sum stays senseless."
+  },
+  {
+    "id": "ch3_fb4_a1_act",
+    "text": "Read the offering-rite"
+  },
+  {
+    "id": "ch3_fb4_a1_win",
+    "text": "A toll, laid the way the old rites lay a coin for a crossing. They believed they owed this — that their service, and now their coin, and now themselves, were a debt coming due at the bottom of the stair."
+  },
+  {
+    "id": "ch3_fb4_a1_lose",
+    "text": "The rite’s shape is here but you can’t hear who it was addressed to."
+  },
+  {
+    "id": "ch3_fb4_a2_act",
+    "text": "Ask the dead what they bought"
+  },
+  {
+    "id": "ch3_fb4_a2_win",
+    "text": "You speak the old words over the offering, and the shape of the bargain comes clear: a seal, fed on service, and a garrison who were told their deaths would hold something shut. They went gladly. That is the horror of it."
+  },
+  {
+    "id": "ch3_fb4_a2_lose",
+    "text": "You call on the dead for terms, and something at the bottom of the stair answers in their place."
+  },
+  {
+    "id": "story_ch4_desc",
+    "text": "Word travels. A company that clears a warcamp, walks Longbarrow Moor, and comes back from Wardstone with an answer is a company worth having on the books — and the Adventurers’ Charter would like your names on theirs. There is a ceremony. There is a proving-bout, for the crowd. There is a contract, and it is very long, and nobody expects you to read it."
+  },
+  {
+    "id": "story_ch4_embark",
+    "text": "Charterhall is the first place in a month with walls that aren’t falling down. Banners, a cook-fire the size of a cottage, and two hundred people who want to buy the company a drink. Somebody has already chalked your names on the board."
+  },
+  {
+    "id": "story_ch4_victory",
+    "text": "The bout is won, the crowd is loud, and the ink is dry. The company is Chartered. Somewhere in the hall behind the cheering, a clerk files a fresh page into a ledger, in a room where the lamps burn without oil."
+  },
+  {
+    "id": "story_ch4_brief_root",
+    "text": "Four jobs, four returns, no losses. Do you know how rare that is? I have watched two hundred companies sign this book and I have watched most of them come off it inside a year. The Charter would like you on the rolls — proper pay, proper resupply, proper standing. Ask me anything. I have all afternoon and none of it is more important than you."
+  },
+  {
+    "id": "story_ch4_brief_whatfor",
+    "text": "Contracts, principally. The crowns won’t garrison the frontier but they’ll pay a fee to say it’s handled, and we hand the work to companies like yours and take a cut. It is not romantic. It has kept the borderlands from going under for four hundred years, which I’d argue is better than romantic."
+  },
+  {
+    "id": "story_ch4_brief_generous",
+    "text": "Because you are worth it and because I would rather you took our coin than someone else’s. There are — other arrangements available to a company of your quality, and I would prefer you didn’t go looking for them. Here. Hazard advance, on account, before you’ve done anything to earn it. Call it faith."
+  },
+  {
+    "id": "story_ch4_brief_wardstone",
+    "text": "…Vane. Yes. That was a bad business and I won’t pretend otherwise. She was Chartered, you know — nearly twenty years on our books. Whatever she went down there to do, she did it as one of ours. Which is why I would rather the next company that goes into a hole like that goes with our backing, our supply, and our people knowing where they are. Take this. It was hers."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet",
+    "text": "Between rounds, the Charter’s quartermaster runs a sideshow: a stocked kit-wagon, and any company that can get a hand on it keeps what it grabs. There is, of course, a catch per axle."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a0_act",
+    "text": "Thread the rigged course"
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a0_win",
+    "text": "Buckets, ropes, and one indignant goose later, a hand lands flat on the wagon rail. The quartermaster pays up with professional respect."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a0_lose",
+    "text": "The goose wins. The crowd will be retelling this for years."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a1_act",
+    "text": "Palm something mid-fumble"
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a1_win",
+    "text": "You trip theatrically, apologise handsomely, and stand up richer. The quartermaster saw — and pays double for the artistry."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a1_lose",
+    "text": "The quartermaster has watched ten thousand pickpockets. You are not the exception."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a2_act",
+    "text": "Go straight over the top"
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a2_win",
+    "text": "Over the barrels, through the tarp, onto the wagon bed — the direct approach, executed directly."
+  },
+  {
+    "id": "the_quartermaster_s_gauntlet_a2_lose",
+    "text": "The tarp was the trap. The barrels were also the trap. Everything was the trap."
+  },
+  {
+    "id": "the_betting_ring",
+    "text": "The odds-board by the fourth yard lists tomorrow’s bout. The company’s name is there — at odds that say the bookmakers know something about the owlbear that the handlers aren’t saying."
+  },
+  {
+    "id": "the_betting_ring_a0_act",
+    "text": "Read the bookmakers"
+  },
+  {
+    "id": "the_betting_ring_a0_win",
+    "text": "The odds aren’t about the beast at all — they’re about how companies FREEZE when the cage opens. Forewarned, and a modest bet on yourselves pays nicely."
+  },
+  {
+    "id": "the_betting_ring_a0_lose",
+    "text": "Professional faces. The odds keep their secret."
+  },
+  {
+    "id": "the_betting_ring_a1_act",
+    "text": "Talk to the beast’s handlers"
+  },
+  {
+    "id": "the_betting_ring_a1_win",
+    "text": "Ale in, truth out: the owlbear is blind on the left side and hates the smell of pitch. The handlers bet on you; so do you."
+  },
+  {
+    "id": "the_betting_ring_a1_lose",
+    "text": "The handlers are paid in Charter coin and stay bought."
+  },
+  {
+    "id": "the_betting_ring_a2_act",
+    "text": "Feign a limp and move the odds"
+  },
+  {
+    "id": "the_betting_ring_a2_win",
+    "text": "The company hobbles past the board looking half-dead, the odds lengthen beautifully, and the wager lands at the last window. Theatre pays."
+  },
+  {
+    "id": "the_betting_ring_a2_lose",
+    "text": "A Charter officer watches the limp switch legs mid-yard. There will be a note in a margin about this."
+  },
+  {
+    "id": "the_signing",
+    "text": "Nine pages of close-set clerk-hand, a pot of ink, and a smiling factor who has already dipped the pen for you. The crowd outside is chanting the company’s name. It would be very easy to sign."
+  },
+  {
+    "id": "the_signing_a0_act",
+    "text": "Negotiate the terms"
+  },
+  {
+    "id": "the_signing_a0_win",
+    "text": "You talk the factor up two grades of hazard pay and a resupply clause. He concedes it all instantly and without checking, which is either generosity or indifference to the cost."
+  },
+  {
+    "id": "the_signing_a0_lose",
+    "text": "He is charming, immovable, and somehow you end up thanking him."
+  },
+  {
+    "id": "the_signing_a1_act",
+    "text": "Actually read it"
+  },
+  {
+    "id": "the_signing_a1_win",
+    "text": "Page seven, clause forty-one, in the same hand as the rest: the signatory pledges \"service in the deep places, in perpetuity, the term surviving the person.\" Surviving the person. You read it twice. The factor waits, still smiling, and does not stop you."
+  },
+  {
+    "id": "the_signing_a1_lose",
+    "text": "The hand is deliberately dense and the crowd is deliberately loud. You get four pages in before the factor gently takes it back to \"save you the trouble.\""
+  },
+  {
+    "id": "the_signing_a2_act",
+    "text": "Demand to see what else you’re signing"
+  },
+  {
+    "id": "the_signing_a2_win",
+    "text": "You put a hand flat on the page and ask what the other copy is for. For half a heartbeat the factor’s smile is not there at all. Then it is back, and he tells you — a filing copy, for the vault at Marrowfen."
+  },
+  {
+    "id": "the_signing_a2_lose",
+    "text": "You make a scene. The crowd loves it. The factor makes a small note in the margin that is not about the crowd."
+  },
+  {
+    "id": "the_long_roll",
+    "text": "The memorial wall of the Charter: every company that ever signed, cut into slate, going back further than the Charter is supposed to be old. The list of the honoured dead is longer than the list of the living by a factor of about forty."
+  },
+  {
+    "id": "the_long_roll_a0_act",
+    "text": "Stand the remembrance"
+  },
+  {
+    "id": "the_long_roll_a0_win",
+    "text": "You stand the full rite with the Charter’s own priests. Whatever else this place is, the grief in it is real, and the party goes to the bout steadier for it."
+  },
+  {
+    "id": "the_long_roll_a0_lose",
+    "text": "The rite is long, the day is hot, and the words don’t land."
+  },
+  {
+    "id": "the_long_roll_a1_act",
+    "text": "Read back through the names"
+  },
+  {
+    "id": "the_long_roll_a1_win",
+    "text": "The oldest names on the wall predate the Charter’s founding by two centuries. Somebody was signing companies into the deep long before there was a Guild to do the signing."
+  },
+  {
+    "id": "the_long_roll_a1_lose",
+    "text": "The early slate is worn past reading, which is convenient."
+  },
+  {
+    "id": "the_long_roll_a2_act",
+    "text": "Look for the pattern in the dates"
+  },
+  {
+    "id": "the_long_roll_a2_win",
+    "text": "Company losses per year, cut in slate across four hundred years, and the number barely moves. Not a trend. Not a war. A quota — held level, year on year, like something is being paid."
+  },
+  {
+    "id": "the_long_roll_a2_lose",
+    "text": "You stare at four hundred years of dead adventurers until the numbers swim, and get nothing from it but the weight."
+  },
+  {
+    "id": "the_proving_bout",
+    "text": "A roped ring, a packed gallery, and something big and unhappy in a cage on the far side. This is not a fight. It is a performance, and the crowd has paid."
+  },
+  {
+    "id": "the_proving_bout_a0_act",
+    "text": "Give the crowd its money’s worth"
+  },
+  {
+    "id": "the_proving_bout_a0_win",
+    "text": "You play to the gallery, and the gallery roars, and the company fights the whole bout on a wave of noise."
+  },
+  {
+    "id": "the_proving_bout_a0_lose",
+    "text": "The flourish lands badly and the front row laughs. Fine. Do it the plain way."
+  },
+  {
+    "id": "the_proving_bout_a1_act",
+    "text": "Read the beast before the cage opens"
+  },
+  {
+    "id": "the_proving_bout_a1_win",
+    "text": "Half-starved, over-baited, and terrified — it will charge the loudest thing in the ring, and you know exactly where that is going to be."
+  },
+  {
+    "id": "the_proving_bout_a1_lose",
+    "text": "It is too worked-up to read. It will do whatever it does."
+  },
+  {
+    "id": "the_proving_bout_a2_act",
+    "text": "Watch the gallery instead of the ring"
+  },
+  {
+    "id": "the_proving_bout_a2_win",
+    "text": "While everyone else watches the beast, you watch the Charter’s officers watching YOU — not cheering, not betting. Assessing. One of them writes something down each time the party takes a hit."
+  },
+  {
+    "id": "the_proving_bout_a2_lose",
+    "text": "You take your eyes off a very large animal to look at a balcony. It costs you."
+  },
+  {
+    "id": "story_ch4_fb1_root",
+    "text": "The yard is all warmth and noise — your names chalked huge on the board of new companies, cups pressed into your hands. But you catch a clerk at the board doing something quiet: wiping an old company’s name away to make room for yours."
+  },
+  {
+    "id": "story_ch4_fb1_clerk",
+    "text": "No ceremony to it. A damp rag, a practised wipe, a fresh company chalked in the same spot before the old letters have finished smearing. He’s done it a thousand times. The board only ever holds so many living names."
+  },
+  {
+    "id": "story_ch4_fb1_name",
+    "text": "Under your bright new letters, the ghost of the last company still shows — a good name, signed with pride not long ago, gone now with no black border and no toast. Just space, cleared, for the next."
+  },
+  {
+    "id": "ch4_fb1",
+    "text": "A roster board where the dead are wiped without ceremony to make room for the newly signed. Read what the Charter actually keeps count of."
+  },
+  {
+    "id": "ch4_fb1_a0_act",
+    "text": "Study the board’s turnover"
+  },
+  {
+    "id": "ch4_fb1_a0_win",
+    "text": "The board is a ledger of churn: names in, names wiped, at a steady rate that has nothing to do with the celebration and everything to do with a business that expects most of its signatories not to last."
+  },
+  {
+    "id": "ch4_fb1_a0_lose",
+    "text": "It’s a busy board at a busy party. You can’t read doom into a bit of chalk."
+  },
+  {
+    "id": "ch4_fb1_a1_act",
+    "text": "Watch how the Charter men treat it"
+  },
+  {
+    "id": "ch4_fb1_a1_win",
+    "text": "The officers glance at the board the way a farmer glances at stock — fondly, and without illusion. To them the wiping isn’t grief. It’s just the turn of the season."
+  },
+  {
+    "id": "ch4_fb1_a1_lose",
+    "text": "Everyone here is drunk and delighted, including, probably, you. Nothing reads as sinister."
+  },
+  {
+    "id": "ch4_fb1_a2_act",
+    "text": "Ask a clerk where the old names go"
+  },
+  {
+    "id": "ch4_fb1_a2_win",
+    "text": "A cup and a warm word, and the clerk says it plainly, cheerfully: \"Oh, they go in the great roll downstairs, love. Every name we ever signed. None of them ever come off THAT one.\" He means it kindly."
+  },
+  {
+    "id": "ch4_fb1_a2_lose",
+    "text": "You press a little hard, a little sober, and the clerk’s smile cools. Word gets around that your company asks odd questions."
+  },
+  {
+    "id": "story_ch4_fb2_root",
+    "text": "The memorial wall runs the length of the hall — every company the Charter ever lost, cut into slate, going back absurdly far. A mason is at work on it now, chisel tapping, adding fresh names to the honoured dead."
+  },
+  {
+    "id": "story_ch4_fb2_mason",
+    "text": "He works from a list, unhurried, cutting names into the death-wall with the calm of a man filling in a form. He doesn’t wait for word that these companies have died. He’s simply been given the names, and the dates, ahead of time."
+  },
+  {
+    "id": "story_ch4_fb2_match",
+    "text": "One name he’s halfway through carving belongs to a company you just watched toasting in the yard — alive, loud, whole. Their place on the death-wall is being prepared while they drink to their signing."
+  },
+  {
+    "id": "ch4_fb2",
+    "text": "A memorial wall being carved with the names of companies that are still alive. Work out how the Charter knows who to grieve before they die."
+  },
+  {
+    "id": "ch4_fb2_a0_act",
+    "text": "Read the mason’s worklist"
+  },
+  {
+    "id": "ch4_fb2_a0_win",
+    "text": "Names and dates, in a neat clerkly hand, weeks and months out. He isn’t recording deaths. He’s working through a schedule of them, and the ink is barely dry on the signings."
+  },
+  {
+    "id": "ch4_fb2_a0_lose",
+    "text": "He shields the list, or you can’t make it out. Either way it stays his business."
+  },
+  {
+    "id": "ch4_fb2_a1_act",
+    "text": "Read the wall’s true age"
+  },
+  {
+    "id": "ch4_fb2_a1_win",
+    "text": "The wall goes back further than the Charter is supposed to exist, and the death-rate cut into it is horribly steady — a constant harvest, century upon century, dressed up as remembrance."
+  },
+  {
+    "id": "ch4_fb2_a1_lose",
+    "text": "Old slate and a lot of names. You can’t make it mean more than sorrow."
+  },
+  {
+    "id": "ch4_fb2_a2_act",
+    "text": "Ask the mason how he knows"
+  },
+  {
+    "id": "ch4_fb2_a2_win",
+    "text": "He shrugs, kind and tired: \"They give me the names when they sign, not when they fall. Saves a second trip.\" He thinks that’s efficiency. It is the whole horror of the Charter in one sentence."
+  },
+  {
+    "id": "ch4_fb2_a2_lose",
+    "text": "The mason marks you for the sort who upsets the guests, and sets down his chisel until you leave."
+  },
+  {
+    "id": "story_ch4_fb3_root",
+    "text": "The Charter’s generosity keeps coming — fine gear pressed on the company across the outfitter’s tables, \"with our compliments.\" But every gift is weighed, tallied, and written into a great ledger before it’s handed over."
+  },
+  {
+    "id": "story_ch4_fb3_ledger",
+    "text": "Every item is entered against your company’s name — not as a gift at all, but as an advance, charged at a generous valuation, to be settled out of earnings you haven’t made yet. You’re being outfitted into debt, warmly."
+  },
+  {
+    "id": "story_ch4_fb3_gift",
+    "text": "Good steel, honest make — and stamped, like everything here, with the Charter sigil. It isn’t yours. It’s issued to you, on the books, and the books belong to them. You’ll carry their mark into the dark and owe them for the privilege."
+  },
+  {
+    "id": "ch4_fb3",
+    "text": "Lavish \"gifts\" of gear, each quietly entered as a debt against earnings not yet made. Read the true terms of the Charter’s open hand."
+  },
+  {
+    "id": "ch4_fb3_a0_act",
+    "text": "Total the company’s account"
+  },
+  {
+    "id": "ch4_fb3_a0_win",
+    "text": "Between gear, lodging and the fee for signing itself, your company is already deep in the Charter’s debt before its first chartered step — a debt only dangerous work can ever clear."
+  },
+  {
+    "id": "ch4_fb3_a0_lose",
+    "text": "The columns are dense and the wine is good. The sum slips away from you."
+  },
+  {
+    "id": "ch4_fb3_a1_act",
+    "text": "Read the quartermaster’s smile"
+  },
+  {
+    "id": "ch4_fb3_a1_win",
+    "text": "He’s not cheating you — that’s the point. It’s all above board, all generous, all designed so a company must keep taking Charter work to stay ahead of Charter kindness. The trap is the arithmetic, not the man."
+  },
+  {
+    "id": "ch4_fb3_a1_lose",
+    "text": "He’s so pleasant and so helpful that suspicion feels like bad manners."
+  },
+  {
+    "id": "ch4_fb3_a2_act",
+    "text": "Copy a page of the ledger"
+  },
+  {
+    "id": "ch4_fb3_a2_win",
+    "text": "You palm a torn page: the standard terms, in black and white — advances, valuations, the interest of simply being alive on the Charter’s books. Evidence, for when someone finally wants it."
+  },
+  {
+    "id": "ch4_fb3_a2_lose",
+    "text": "A clerk sees your hand where it shouldn’t be. Nothing is said. Everything is noted."
+  },
+  {
+    "id": "story_ch4_fb4_root",
+    "text": "The proving-ring draws a roaring crowd and a brisk trade in wagers. But standing at the odds-board a moment, you start to see the shape of it — and the house is not gambling. The house never gambles."
+  },
+  {
+    "id": "story_ch4_fb4_odds",
+    "text": "The odds are set so the crowd always half-wins and always half-pays, and the Charter clips every wager either way. Nobody in the ring is meant to die and nobody is meant to walk away clean. It’s calibrated. It’s a mill."
+  },
+  {
+    "id": "story_ch4_fb4_handlers",
+    "text": "The handlers pick the proving-beasts with care — big enough to scar and terrify, chosen NOT to kill. A company must survive the bout to keep signing, keep earning, keep betting. Even the danger is managed to keep you in the machine."
+  },
+  {
+    "id": "ch4_fb4",
+    "text": "A proving-ring calibrated so companies are scarred but survive, and the house clips every wager. Read what the whole cheerful spectacle is really for."
+  },
+  {
+    "id": "ch4_fb4_a0_act",
+    "text": "Track the money’s flow"
+  },
+  {
+    "id": "ch4_fb4_a0_win",
+    "text": "Every coin bet, won or lost, leaves a clip in the Charter’s hand. The crowd thinks it’s the players. It’s the stakes. The whole roaring room is quietly feeding one account."
+  },
+  {
+    "id": "ch4_fb4_a0_lose",
+    "text": "Too much noise, too many hands, too fast. The flow blurs."
+  },
+  {
+    "id": "ch4_fb4_a1_act",
+    "text": "Read the spectacle’s purpose"
+  },
+  {
+    "id": "ch4_fb4_a1_win",
+    "text": "It’s theatre with a ledger behind it: glory enough to keep companies signing, danger enough to keep them earning, mercy enough to keep them alive to do it again. A managed appetite, dressed as a festival."
+  },
+  {
+    "id": "ch4_fb4_a1_lose",
+    "text": "It reads as exactly what it pretends to be — a grand, generous, harmless good time."
+  },
+  {
+    "id": "ch4_fb4_a2_act",
+    "text": "Get a bookmaker talking"
+  },
+  {
+    "id": "ch4_fb4_a2_win",
+    "text": "A drink loosens him: \"Kill a company and you lose a customer, don’t you? We don’t want you dead, friend. We want you BACK.\" He laughs. It is the kindest, worst thing anyone says to you all night."
+  },
+  {
+    "id": "ch4_fb4_a2_lose",
+    "text": "He clams up and flags a steward. Your company is getting a reputation before it’s earned one."
+  },
+  {
+    "id": "story_ch5_desc",
+    "text": "Your first Chartered contract, and it is a simple retrieval: a sealed case, held in a Charter vault under the drowned country at Marrowfen, to be brought back unopened. The fee is four times what Greenrise paid. The instruction not to open it is repeated three times in a one-page brief. Everything else about the job is described in a single sentence."
+  },
+  {
+    "id": "story_ch5_embark",
+    "text": "The causeway to Marrowfen is a foot under black water and has been for a century. The party wades in a line, poling for the stones, while the mist closes up behind them like a door."
+  },
+  {
+    "id": "story_ch5_victory",
+    "text": "The Warden falls apart around a breastplate stamped with a Charter sigil, and the case comes open in the party’s hands because there was never a lock on it — only an instruction. Inside is no relic. It is a ledger: companies, dates, and a figure beside each name. Yours is already entered. The date is not today’s. It is later."
+  },
+  {
+    "id": "story_ch5_brief_root",
+    "text": "Simple work, well paid — the sort of contract a Chartered company gets and a free one doesn’t. There is a case in our vault under Marrowfen. Bring it to me. Do not open it. That last part is not a test and it is not superstition; it is a filing matter and it is above both of us."
+  },
+  {
+    "id": "story_ch5_brief_inside",
+    "text": "Records. I am being honest with you, which I would like noted: it is a box of paper. It is worth nothing to anyone outside the Charter and a great deal to us, and if you open it you will not find treasure, you will find bookkeeping. I would simply rather you didn’t. Please."
+  },
+  {
+    "id": "story_ch5_brief_why",
+    "text": "Because a fen doesn’t burn, doesn’t get raided, and doesn’t get built over. We have eleven of them. You put the records you cannot afford to lose where nobody will ever casually go, and then you pay people like me to make sure nobody goes casually. Take the vault key. Third turn, then left."
+  },
+  {
+    "id": "story_ch5_brief_guard",
+    "text": "A Warden. Ours — was ours. I’ll not dress it up for you: the Charter used to post volunteers to long vaults under an old arrangement we don’t use any more, and some of those postings never ended. If it comes at you, it isn’t malice. It’s a soldier at a door who was never told to stand down. Take the draught. And be quick about it, for its sake as much as yours."
+  },
+  {
+    "id": "the_sunken_bell",
+    "text": "A chapel drowned to its rafters, and in the reeds beside it, its bell — mouth-up, full of black water, still consecrated under the slime."
+  },
+  {
+    "id": "the_sunken_bell_a0_act",
+    "text": "Ring it once, properly"
+  },
+  {
+    "id": "the_sunken_bell_a0_win",
+    "text": "Struck through the water, the note comes out low and whole and rolls across the whole fen. Everything sacred left in Marrowfen wakes up on the party’s side."
+  },
+  {
+    "id": "the_sunken_bell_a0_lose",
+    "text": "The clapper is rusted fast. The bell keeps its silence."
+  },
+  {
+    "id": "the_sunken_bell_a1_act",
+    "text": "Read the founding blessing"
+  },
+  {
+    "id": "the_sunken_bell_a1_win",
+    "text": "The consecration was cut into the bronze, and bronze doesn’t rot. You trace the old words and they take hold of every blade present."
+  },
+  {
+    "id": "the_sunken_bell_a1_lose",
+    "text": "The inscription circles the bell — the last third is buried in peat."
+  },
+  {
+    "id": "the_sunken_bell_a2_act",
+    "text": "Right the bell and hang it"
+  },
+  {
+    "id": "the_sunken_bell_a2_win",
+    "text": "Half a ton of bronze, four sets of shoulders, one improvised gallows of causeway timber — and Marrowfen has a bell again. It sounds like defiance."
+  },
+  {
+    "id": "the_sunken_bell_a2_lose",
+    "text": "The peat gives. The bell decides to visit the bottom of the fen after all."
+  },
+  {
+    "id": "the_archivist_s_door",
+    "text": "The outer vault’s service door, bricked over from the inside — sloppily, in haste, by someone using file-boxes as bricks. Somebody once wanted very much not to be followed through here."
+  },
+  {
+    "id": "the_archivist_s_door_a0_act",
+    "text": "Find the weak course"
+  },
+  {
+    "id": "the_archivist_s_door_a0_win",
+    "text": "Paper is not masonry. You find the box the whole bodge leans on, slide it free, and the wall unstacks itself politely."
+  },
+  {
+    "id": "the_archivist_s_door_a0_lose",
+    "text": "Whoever built it panicked THOROUGHLY. It holds."
+  },
+  {
+    "id": "the_archivist_s_door_a1_act",
+    "text": "Read the file-boxes first"
+  },
+  {
+    "id": "the_archivist_s_door_a1_win",
+    "text": "The bricked-up boxes are sixty years of vault rosters — including who was posted here, and who stopped being relieved. The way through, and a why."
+  },
+  {
+    "id": "the_archivist_s_door_a1_lose",
+    "text": "Mould took the labels. The wall stays a wall."
+  },
+  {
+    "id": "the_archivist_s_door_a2_act",
+    "text": "Put a shoulder through it"
+  },
+  {
+    "id": "the_archivist_s_door_a2_win",
+    "text": "One hit, a cloud of sixty-year-old paperwork, and a corridor that skips the long way round."
+  },
+  {
+    "id": "the_archivist_s_door_a2_lose",
+    "text": "The crash rolls down every corridor in the vault, and the vault rolls something back."
+  },
+  {
+    "id": "the_drowned_causeway",
+    "text": "Somewhere under the black water is a road. Off the road is peat deep enough to take a horse. The mist gives you about nine feet of warning about anything."
+  },
+  {
+    "id": "the_drowned_causeway_a0_act",
+    "text": "Pole for the stones"
+  },
+  {
+    "id": "the_drowned_causeway_a0_win",
+    "text": "Slow, cold, and correct. The party finds the road by feel and stays on it — and finds a century of dropped purses in the silt alongside."
+  },
+  {
+    "id": "the_drowned_causeway_a0_lose",
+    "text": "You lose the line twice and spend an hour finding it again."
+  },
+  {
+    "id": "the_drowned_causeway_a1_act",
+    "text": "Read the reeds"
+  },
+  {
+    "id": "the_drowned_causeway_a1_win",
+    "text": "Reeds grow thin over stone and thick over peat. The road is legible from fifty paces once you know that, and so are the places travellers went in."
+  },
+  {
+    "id": "the_drowned_causeway_a1_lose",
+    "text": "The reeds are uniform, dense, and unhelpful in every direction."
+  },
+  {
+    "id": "the_drowned_causeway_a2_act",
+    "text": "Wade it straight"
+  },
+  {
+    "id": "the_drowned_causeway_a2_win",
+    "text": "Straight across, chest-deep, in half the time — and half the fen’s lost valuables come up on the way."
+  },
+  {
+    "id": "the_drowned_causeway_a2_lose",
+    "text": "Straight across means through the leech beds. The party arrives fast, and sick."
+  },
+  {
+    "id": "the_sealed_case",
+    "text": "The case sits alone on a plinth in a dry vault under a drowned fen. Iron-bound, unmarked, and heavier than it looks. The brief said three times: do not open it."
+  },
+  {
+    "id": "the_sealed_case_a0_act",
+    "text": "Examine it without touching"
+  },
+  {
+    "id": "the_sealed_case_a0_win",
+    "text": "The case is old. The wax seal on it is not — it is this season’s, and it carries Factor Sallow’s own sigil. Somebody sealed this AFTER the party took the contract."
+  },
+  {
+    "id": "the_sealed_case_a0_lose",
+    "text": "Iron, wood, wax. It gives you nothing standing there."
+  },
+  {
+    "id": "the_sealed_case_a1_act",
+    "text": "Sense what’s inside"
+  },
+  {
+    "id": "the_sealed_case_a1_win",
+    "text": "No wards, no curse, no power in it at all. Whatever is in this box, it is not magical and it is not dangerous. It is just something they do not want read."
+  },
+  {
+    "id": "the_sealed_case_a1_lose",
+    "text": "The vault’s ambient sourness drowns out anything finer."
+  },
+  {
+    "id": "the_sealed_case_a2_act",
+    "text": "Open it and reseal it clean"
+  },
+  {
+    "id": "the_sealed_case_a2_win",
+    "text": "The seal lifts whole, the case opens, and there is no relic inside — only a ledger, and the company’s own name partway down a page, entered in a hand nobody has written yet. You close it. You reseal it. You say nothing, and the walk out is very quiet."
+  },
+  {
+    "id": "the_sealed_case_a2_lose",
+    "text": "The wax cracks across the sigil. It cannot be made to look untouched — and something in the dark below has been told."
+  },
+  {
+    "id": "the_vault_warden",
+    "text": "It was a person. The breastplate is Charter-issue, three sizes of dent in it, and the sigil at the collar is the same one on the wax. It has been standing at this door a long time and it has not been relieved."
+  },
+  {
+    "id": "the_vault_warden_a0_act",
+    "text": "Name what it used to be"
+  },
+  {
+    "id": "the_vault_warden_a0_win",
+    "text": "You give it the closing words of the Charter’s own funeral rite. It does not stop. But it hesitates — and a Warden that hesitates is a Warden the party can take."
+  },
+  {
+    "id": "the_vault_warden_a0_lose",
+    "text": "The rite means nothing to whatever is left in there."
+  },
+  {
+    "id": "the_vault_warden_a1_act",
+    "text": "Read the livery"
+  },
+  {
+    "id": "the_vault_warden_a1_win",
+    "text": "Fourth Company of the Charter, struck from the rolls sixty years ago with full honours. Honoured, memorialised in slate at Charterhall — and posted down here ever since."
+  },
+  {
+    "id": "the_vault_warden_a1_lose",
+    "text": "The livery is too corroded to place."
+  },
+  {
+    "id": "the_vault_warden_a2_act",
+    "text": "Take the door before it turns"
+  },
+  {
+    "id": "the_vault_warden_a2_win",
+    "text": "The party is past it and through the vault door in the dark, and only has to fight it on the way out — with the case already in hand and the way already known."
+  },
+  {
+    "id": "the_vault_warden_a2_lose",
+    "text": "It was never asleep. It has not been asleep for sixty years."
+  },
+  {
+    "id": "story_ch5_fb1_root",
+    "text": "The causeway has been a foot under black water for a century, the brief said — a forgotten road to a forgotten vault. But the marker-posts that keep you on the stones are not a century old. They are new, and they are stamped."
+  },
+  {
+    "id": "story_ch5_fb1_post",
+    "text": "Fresh-cut timber, iron-shod, driven deep — and burned into each one, the Charter sigil. The same mark on your contract, your gear, your gifts. Someone from the guild has been out here recently, tending the way to a place they told you no one goes."
+  },
+  {
+    "id": "story_ch5_fb1_upkeep",
+    "text": "The road is drowned but the route is immaculate — posts replaced, a snapped one lying where it was swapped out last season. This \"forgotten\" causeway is maintained on a schedule. The Charter comes here. Often."
+  },
+  {
+    "id": "ch5_fb1",
+    "text": "Fresh Charter-stamped markers keeping a \"forgotten\" century-drowned road passable. Read how often the guild really comes to Marrowfen."
+  },
+  {
+    "id": "ch5_fb1_a0_act",
+    "text": "Read the posts’ ages"
+  },
+  {
+    "id": "ch5_fb1_a0_win",
+    "text": "The posts run new to old down the causeway, replaced in sequence over years. This is a route walked again and again — a supply line to somewhere the Charter would rather you believed was abandoned."
+  },
+  {
+    "id": "ch5_fb1_a0_lose",
+    "text": "Bog eats timber at its own pace. You can’t date the posts you can see."
+  },
+  {
+    "id": "ch5_fb1_a1_act",
+    "text": "Count how many have come this way"
+  },
+  {
+    "id": "ch5_fb1_a1_win",
+    "text": "Old rope-scars on the posts, worn boot-stones set into the mud at intervals — this road has carried company after company out to the vault, and the traffic is all one direction: out."
+  },
+  {
+    "id": "ch5_fb1_a1_lose",
+    "text": "The mist and the water have scrubbed the count away."
+  },
+  {
+    "id": "ch5_fb1_a2_act",
+    "text": "Read the far bank for returns"
+  },
+  {
+    "id": "ch5_fb1_a2_win",
+    "text": "Every trail leads to the vault. None of the old paths lead back. Whatever the Charter sends down this tended road, the road only ever takes it one way."
+  },
+  {
+    "id": "ch5_fb1_a2_lose",
+    "text": "You wade off the stones to read the reeds and the black peat closes cold around your legs."
+  },
+  {
+    "id": "story_ch5_fb2_root",
+    "text": "Off the causeway, in the black water and the tall dead reeds, you find the ones who came before. A company’s worth of drowned dead, sunk in the mire, and every scrap they wear carries the Charter’s mark."
+  },
+  {
+    "id": "story_ch5_fb2_drowned",
+    "text": "Charter-issue gear, Charter-stamped steel, the same generous outfitting your own company was given at Charterhall. They were sent, exactly as you were sent, on a simple retrieval. They are still here."
+  },
+  {
+    "id": "story_ch5_fb2_carried",
+    "text": "One of them still clutches it: an iron-bound case, unmarked, sealed with red wax — identical to the one you were sent to bring back unopened. They fetched theirs. They died in the reeds a mile from the vault, holding it."
+  },
+  {
+    "id": "ch5_fb2",
+    "text": "A drowned company in Charter gear, one still clutching a sealed case exactly like your errand. Read what happened to the last hands sent to do this job."
+  },
+  {
+    "id": "ch5_fb2_a0_act",
+    "text": "Read how they died"
+  },
+  {
+    "id": "ch5_fb2_a0_win",
+    "text": "They drowned in flight, in the dark, scattering off the safe stones — the same blind panic that took the herds and the flock. Something out here unmakes the nerve to walk a straight road."
+  },
+  {
+    "id": "ch5_fb2_a0_lose",
+    "text": "A century of bog has left too little to question."
+  },
+  {
+    "id": "ch5_fb2_a1_act",
+    "text": "Reconstruct their errand"
+  },
+  {
+    "id": "ch5_fb2_a1_win",
+    "text": "Same brief, same case, same route as yours, a lifetime ago. They retrieved it and never made it home. The Charter simply signed another company and sent them for the same thing again."
+  },
+  {
+    "id": "ch5_fb2_a1_lose",
+    "text": "The evidence is drowned past reading. Only the shape of it remains."
+  },
+  {
+    "id": "ch5_fb2_a2_act",
+    "text": "Understand why they were expendable"
+  },
+  {
+    "id": "ch5_fb2_a2_win",
+    "text": "It lands cold: the retrieval was never the point. Sending companies out here IS the point — the errand is a way to spend them, and their deaths, on something the guild needs paid down here."
+  },
+  {
+    "id": "ch5_fb2_a2_lose",
+    "text": "You grasp the whole shape of your own expendability, and it sits in your chest like the cold water."
+  },
+  {
+    "id": "story_ch5_fb3_root",
+    "text": "You reach dry stone at last — the outer vault, its great door shut for a hundred years. Except the seal across the door is not a hundred years old. The wax is bright, sharp-edged, fresh. Newer than everything it guards."
+  },
+  {
+    "id": "story_ch5_fb3_seal",
+    "text": "Charter wax, cleanly stamped, laid within the year over a scar of old wax, over another, over another — a whole history of reseals stacked at the join. This door is opened and closed again on a schedule, and made to look untouched each time."
+  },
+  {
+    "id": "story_ch5_fb3_door",
+    "text": "The threshold stone is worn by a century of comings and goings the fresh seal is meant to deny. They open this vault, take what they take, seal it new, and let each company believe it is the first through in a hundred years."
+  },
+  {
+    "id": "ch5_fb3",
+    "text": "A \"century-sealed\" vault whose wax was stamped within the year, over layers of older reseals. Read how routinely the Charter really opens this door."
+  },
+  {
+    "id": "ch5_fb3_a0_act",
+    "text": "Count the layers of wax"
+  },
+  {
+    "id": "ch5_fb3_a0_win",
+    "text": "Reseal on reseal on reseal, stacked at the door’s edge — a decade of openings at least, each one dressed up as the first. The forgotten vault is on a maintenance rota."
+  },
+  {
+    "id": "ch5_fb3_a0_lose",
+    "text": "The wax is a smeared mess. You can’t number the reseals."
+  },
+  {
+    "id": "ch5_fb3_a1_act",
+    "text": "Test the seal’s making"
+  },
+  {
+    "id": "ch5_fb3_a1_win",
+    "text": "The binding worked into the wax is guild-craft, recent and competent — not a relic ward but a fresh lock, re-set by someone who knew exactly what they were shutting back in each time."
+  },
+  {
+    "id": "ch5_fb3_a1_lose",
+    "text": "The ward resists your reading, sullen and cold."
+  },
+  {
+    "id": "ch5_fb3_a2_act",
+    "text": "Find the reseal records"
+  },
+  {
+    "id": "ch5_fb3_a2_win",
+    "text": "Scratched tallies beside the door, a clerk’s habit — dates of opening, going back and back, at steady intervals. The Charter has been drawing on this vault, quietly, for generations."
+  },
+  {
+    "id": "ch5_fb3_a2_lose",
+    "text": "You pry at the door’s secret and something set to guard the secret stirs against you."
+  },
+  {
+    "id": "story_ch5_fb4_root",
+    "text": "The vault is not a treasury. It is an archive. Rank on rank of shelves hold hundreds of iron-bound cases exactly like the one you were sent to fetch — each tagged with a company’s name and a single date."
+  },
+  {
+    "id": "story_ch5_fb4_tags",
+    "text": "Company names you half-know, each beside a date. Some dates are long past — companies you could look up in the death-wall’s slate. But the shelves run on, and the dates run on, into months and years that have not happened yet."
+  },
+  {
+    "id": "story_ch5_fb4_ours",
+    "text": "There is a gap on a near shelf, dusted and ready, tagged with a name you signed only days ago: your own company. Beside it, a date. It is not today’s. It is later. The case for it has not been filed. Not yet."
+  },
+  {
+    "id": "ch5_fb4",
+    "text": "An archive of sealed cases tagged with companies and dates — many of the dates still in the future, one shelf waiting with your own company’s name. Read what the Charter is really keeping down here."
+  },
+  {
+    "id": "ch5_fb4_a0_act",
+    "text": "Work out the filing system"
+  },
+  {
+    "id": "ch5_fb4_a0_win",
+    "text": "One case per company, one date per case: the day the Charter expects that company to be spent. The past shelves are full and closed. The future shelves are labelled and waiting. It is a ledger of scheduled deaths."
+  },
+  {
+    "id": "ch5_fb4_a0_lose",
+    "text": "The system is vast and lightless and you cannot hold its shape."
+  },
+  {
+    "id": "ch5_fb4_a1_act",
+    "text": "Cross the dates against the dead"
+  },
+  {
+    "id": "ch5_fb4_a1_win",
+    "text": "Every past date matches a name on Charterhall’s memorial to the day. The wall doesn’t mourn the fallen — it confirms the schedule kept. The future dates are simply appointments not yet come."
+  },
+  {
+    "id": "ch5_fb4_a1_lose",
+    "text": "You can’t hold enough of the record at once to prove the pattern."
+  },
+  {
+    "id": "ch5_fb4_a2_act",
+    "text": "Understand what the cases feed"
+  },
+  {
+    "id": "ch5_fb4_a2_win",
+    "text": "Each case is a life’s worth of service, sealed and filed and rendered down to feed the thing the whole order exists to keep bound. Your company’s empty shelf is a promise the Charter has already made on your behalf."
+  },
+  {
+    "id": "ch5_fb4_a2_lose",
+    "text": "You reach for the purpose of the place and the purpose reaches back, and it knows your company’s name."
+  }
+]

@@ -1,0 +1,20 @@
+Audited 2225 exported symbols across 268 files.
+EXPORTS WITH 0 EXTERNAL USAGE ACROSS ALL REPO FILES (INC. TESTS, SIMS, HTML, TOOLS): 8
+
+src/game/entities.js:
+  - makeTurnHighlight (function) [Internal occurrences in file: 3]
+  - spawnImpactBurst (function) [Internal occurrences in file: 3]
+
+src/game/srd.js:
+  - applyCRScalingToMonster (function) [Internal occurrences in file: 2]
+
+src/game/turn_engine.js:
+  - DEFAULT_SPEED_FT (variable) [Internal occurrences in file: 2]
+
+src/game/ui.js:
+  - setLogGameInstance (function) [Internal occurrences in file: 2]
+  - updateManualCombatBar (function) [Internal occurrences in file: 6]
+
+src/render/dungeon_scene.js:
+  - writeInstancesAll (function) [Internal occurrences in file: 3]
+  - heroLight (variable) [Internal occurrences in file: 8]

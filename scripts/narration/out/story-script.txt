@@ -1,0 +1,2199 @@
+Dungeon Crawlers — story-mode narration script (crawl + missions + briefings + story challenges)
+549 lines.
+========================================================================
+
+  1. [Opening crawl ¶1]
+     save as:  public/sounds/Narration/intro_crawl_p0.wav
+     narrate:  A long age of peace is ending. In the borderlands beyond the old kingdoms, the roads grow dangerous, the watchtowers stand empty, and the deep places of the world are stirring once more.
+
+  2. [Opening crawl ¶2]
+     save as:  public/sounds/Narration/intro_crawl_p1.wav
+     narrate:  Monsters out of grandmother-tales now carry off herds and burn farmsteads. The crowns and their armies look inward, squabbling over old borders while the frontier cries for help that never comes.
+
+  3. [Opening crawl ¶3]
+     save as:  public/sounds/Narration/intro_crawl_p2.wav
+     narrate:  Into that silence step the free companies — sellswords, spell-slingers, and fortune-seekers who go where soldiers will not: for coin, for glory, or for reasons all their own.
+
+  4. [Opening crawl ¶4]
+     save as:  public/sounds/Narration/intro_crawl_p3.wav
+     narrate:  Tonight, in a roadside tavern at the edge of the wild, four such souls sign their names to a single charter. The pay is uneven. The work is ugly. And the world, though it would never admit it, is quietly desperate for heroes.
+
+  5. [Embers over Greenrise — description]
+     save as:  public/sounds/Narration/story_ch1_desc.wav
+     narrate:  Smoke rises over Greenrise Vale. A goblin warband has raised a palisaded camp in the deep of the forest, and the farms along the treeline are emptying one by one. Follow the forest trails, clear the outlying thickets, and put out the fire at its source: the self-styled Goblin King holding court behind the stakes.
+
+  6. [Embers over Greenrise — embark]
+     save as:  public/sounds/Narration/story_ch1_embark.wav
+     narrate:  The trail out of the village turns to packed dirt, then to wild grass. Between the trees, far off, a thin column of smoke marks the warcamp. The party walks in.
+
+  7. [Embers over Greenrise — victory]
+     save as:  public/sounds/Narration/story_ch1_victory.wav
+     narrate:  The palisade gate hangs open and the camp burns behind the party. Greenrise Vale will sleep quietly tonight.
+
+  8. [Embers over Greenrise — briefing:root]
+     save as:  public/sounds/Narration/story_ch1_brief_root.wav
+     narrate:  So you’re the blades our coin bought. Three farms burned in a fortnight, our herds driven into the deepwood, and now the vermin have a king — or something that calls itself one. Ask what you need to ask. Then go earn your gold.
+
+  9. [Embers over Greenrise — briefing:raids]
+     save as:  public/sounds/Narration/story_ch1_brief_raids.wav
+     narrate:  They come at dusk, always from the north trail, always gone before the militia musters. They aren’t starving raiders — they take tools, rope, whetstones. Someone up there is BUILDING something. That worries me more than the burning.
+
+ 10. [Embers over Greenrise — briefing:scouts]
+     save as:  public/sounds/Narration/story_ch1_brief_scouts.wav
+     narrate:  Old Fenwick got closest. Before the fever took his tongue he drew this — snare lines across the east clearing, thick as a spider’s web, and a stake-wall ringing their camp with two gates. Take his map. Mind the wires.
+
+ 11. [Embers over Greenrise — briefing:supplies]
+     save as:  public/sounds/Narration/story_ch1_brief_supplies.wav
+     narrate:  We’re not rich — the goblins saw to that — but the herbalist owes me a favor. Here: a healing draught, brewed strong. Bring my people back some peace and we’ll call it a fair trade.
+
+ 12. [The Burned Farmstead]
+     save as:  public/sounds/Narration/the_burned_farmstead.wav
+     narrate:  A farmhouse stands roofless in the thicket, burned weeks ago. The goblins took the tools and left the pantry — they were provisioning for work, not hunger.
+
+ 13. [The Burned Farmstead — Sweep the ruin]
+     save as:  public/sounds/Narration/the_burned_farmstead_a0_act.wav
+     narrate:  Sweep the ruin
+
+ 14. [The Burned Farmstead — Sweep the ruin (success)]
+     save as:  public/sounds/Narration/the_burned_farmstead_a0_win.wav
+     narrate:  Under a fallen beam, the family’s medicine chest — scorched, intact, and welcome.
+
+ 15. [The Burned Farmstead — Sweep the ruin (failure)]
+     save as:  public/sounds/Narration/the_burned_farmstead_a0_lose.wav
+     narrate:  Ash and nails. Whatever was worth taking went north with the raiders.
+
+ 16. [The Burned Farmstead — Work out what they took]
+     save as:  public/sounds/Narration/the_burned_farmstead_a1_act.wav
+     narrate:  Work out what they took
+
+ 17. [The Burned Farmstead — Work out what they took (success)]
+     save as:  public/sounds/Narration/the_burned_farmstead_a1_win.wav
+     narrate:  Saws, rope, hinges, a whetstone — and every drop of lamp oil. Someone up there is building by torchlight, in a hurry.
+
+ 18. [The Burned Farmstead — Work out what they took (failure)]
+     save as:  public/sounds/Narration/the_burned_farmstead_a1_lose.wav
+     narrate:  The fire ate the evidence along with the roof.
+
+ 19. [The Burned Farmstead — Shift the fallen beams]
+     save as:  public/sounds/Narration/the_burned_farmstead_a2_act.wav
+     narrate:  Shift the fallen beams
+
+ 20. [The Burned Farmstead — Shift the fallen beams (success)]
+     save as:  public/sounds/Narration/the_burned_farmstead_a2_win.wav
+     narrate:  The cellar hatch comes clear — preserves, cordial, and the strongbox the goblins never found.
+
+ 21. [The Burned Farmstead — Shift the fallen beams (failure)]
+     save as:  public/sounds/Narration/the_burned_farmstead_a2_lose.wav
+     narrate:  The chimney stack picks its moment to come down.
+
+ 22. [War-Drums]
+     save as:  public/sounds/Narration/war_drums.wav
+     narrate:  Inside the stakes, the drums start — deep, ragged, meant to rattle militia. The camp is telling the party what it thinks of visitors.
+
+ 23. [War-Drums — Sing over the drums]
+     save as:  public/sounds/Narration/war_drums_a0_act.wav
+     narrate:  Sing over the drums
+
+ 24. [War-Drums — Sing over the drums (success)]
+     save as:  public/sounds/Narration/war_drums_a0_win.wav
+     narrate:  A marching song, loud and off-key and unbothered. The drummers lose the beat first, then their nerve.
+
+ 25. [War-Drums — Sing over the drums (failure)]
+     save as:  public/sounds/Narration/war_drums_a0_lose.wav
+     narrate:  The drums are louder. The drums were always going to be louder.
+
+ 26. [War-Drums — Answer with steel on shields]
+     save as:  public/sounds/Narration/war_drums_a1_act.wav
+     narrate:  Answer with steel on shields
+
+ 27. [War-Drums — Answer with steel on shields (success)]
+     save as:  public/sounds/Narration/war_drums_a1_win.wav
+     narrate:  Four blades on four shields, once, together. The drums stop. The silence that follows belongs to the party.
+
+ 28. [War-Drums — Answer with steel on shields (failure)]
+     save as:  public/sounds/Narration/war_drums_a1_lose.wav
+     narrate:  The clatter reads as fear. The drumming doubles.
+
+ 29. [War-Drums — Find and silence the drummers]
+     save as:  public/sounds/Narration/war_drums_a2_act.wav
+     narrate:  Find and silence the drummers
+
+ 30. [War-Drums — Find and silence the drummers (success)]
+     save as:  public/sounds/Narration/war_drums_a2_win.wav
+     narrate:  Three drummers, three quiet endings. The camp’s heartbeat cuts out mid-measure, and the party walks in on the confusion.
+
+ 31. [War-Drums — Find and silence the drummers (failure)]
+     save as:  public/sounds/Narration/war_drums_a2_lose.wav
+     narrate:  The fourth drummer sees everything — and beats a very different rhythm.
+
+ 32. [Snare Line]
+     save as:  public/sounds/Narration/snare_line.wav
+     narrate:  Tripwires and leg-snares web the undergrowth across the trail — goblin work, and fresh. Somewhere past them, a bag of "toll" takings hangs from a branch.
+
+ 33. [Snare Line — Pick a path around]
+     save as:  public/sounds/Narration/snare_line_a0_act.wav
+     narrate:  Pick a path around
+
+ 34. [Snare Line — Pick a path around (success)]
+     save as:  public/sounds/Narration/snare_line_a0_win.wav
+     narrate:  You spot every wire and thread the party through — and cut down the goblins’ toll bag on the way.
+
+ 35. [Snare Line — Pick a path around (failure)]
+     save as:  public/sounds/Narration/snare_line_a0_lose.wav
+     narrate:  Too many wires to trust. The party backtracks and loses the light.
+
+ 36. [Snare Line — Read the trapper’s pattern]
+     save as:  public/sounds/Narration/snare_line_a1_act.wav
+     narrate:  Read the trapper’s pattern
+
+ 37. [Snare Line — Read the trapper’s pattern (success)]
+     save as:  public/sounds/Narration/snare_line_a1_win.wav
+     narrate:  Goblin snares repeat like a bad song. You spring them all with a long stick and pocket the takings.
+
+ 38. [Snare Line — Read the trapper’s pattern (failure)]
+     save as:  public/sounds/Narration/snare_line_a1_lose.wav
+     narrate:  The pattern breaks halfway through. A snare snaps shut on empty air — and the party’s nerves.
+
+ 39. [Snare Line — Harvest the snares for parts]
+     save as:  public/sounds/Narration/snare_line_a2_act.wav
+     narrate:  Harvest the snares for parts
+
+ 40. [Snare Line — Harvest the snares for parts (success)]
+     save as:  public/sounds/Narration/snare_line_a2_win.wav
+     narrate:  Wire, springs, AND the toll bag — the goblins just restocked your coin purse.
+
+ 41. [Snare Line — Harvest the snares for parts (failure)]
+     save as:  public/sounds/Narration/snare_line_a2_lose.wav
+     narrate:  A hidden counter-snare whips through the grass and bites deep.
+
+ 42. [The Defaced Waystone]
+     save as:  public/sounds/Narration/the_defaced_waystone.wav
+     narrate:  An old waystone stands in the clearing, smeared with goblin war-paint. Beneath the filth, its blessing still hums.
+
+ 43. [The Defaced Waystone — Speak the old rites]
+     save as:  public/sounds/Narration/the_defaced_waystone_a0_act.wav
+     narrate:  Speak the old rites
+
+ 44. [The Defaced Waystone — Speak the old rites (success)]
+     save as:  public/sounds/Narration/the_defaced_waystone_a0_win.wav
+     narrate:  The words come slowly, then all at once. The paint flakes away and warmth settles over the party.
+
+ 45. [The Defaced Waystone — Speak the old rites (failure)]
+     save as:  public/sounds/Narration/the_defaced_waystone_a0_lose.wav
+     narrate:  Whatever tongue the stone answers to, it isn’t this one.
+
+ 46. [The Defaced Waystone — Scrub it clean with forest herbs]
+     save as:  public/sounds/Narration/the_defaced_waystone_a1_act.wav
+     narrate:  Scrub it clean with forest herbs
+
+ 47. [The Defaced Waystone — Scrub it clean with forest herbs (success)]
+     save as:  public/sounds/Narration/the_defaced_waystone_a1_win.wav
+     narrate:  Crushed silverleaf cuts the war-paint like lye. The stone brightens — and so does the party.
+
+ 48. [The Defaced Waystone — Scrub it clean with forest herbs (failure)]
+     save as:  public/sounds/Narration/the_defaced_waystone_a1_lose.wav
+     narrate:  The paint is mixed with something foul that won’t lift. The stone stays dark.
+
+ 49. [The Defaced Waystone — Force the wards awake]
+     save as:  public/sounds/Narration/the_defaced_waystone_a2_act.wav
+     narrate:  Force the wards awake
+
+ 50. [The Defaced Waystone — Force the wards awake (success)]
+     save as:  public/sounds/Narration/the_defaced_waystone_a2_win.wav
+     narrate:  Power arcs from the stone in a ring. Every blade in the party hums with borrowed light.
+
+ 51. [The Defaced Waystone — Force the wards awake (failure)]
+     save as:  public/sounds/Narration/the_defaced_waystone_a2_lose.wav
+     narrate:  The stone rejects the intrusion with a crack of raw force.
+
+ 52. [The Palisade Gate]
+     save as:  public/sounds/Narration/the_palisade_gate.wav
+     narrate:  The warcamp’s stake-wall looms ahead, torchlit and crawling with sentries. One good move decides how this assault begins.
+
+ 53. [The Palisade Gate — Slip along the stakes]
+     save as:  public/sounds/Narration/the_palisade_gate_a0_act.wav
+     narrate:  Slip along the stakes
+
+ 54. [The Palisade Gate — Slip along the stakes (success)]
+     save as:  public/sounds/Narration/the_palisade_gate_a0_win.wav
+     narrate:  The party ghosts along the palisade’s shadow and is inside before the first horn blows. Hearts steady, guards up.
+
+ 55. [The Palisade Gate — Slip along the stakes (failure)]
+     save as:  public/sounds/Narration/the_palisade_gate_a0_lose.wav
+     narrate:  A snapped twig, a barked alarm — so much for the quiet way.
+
+ 56. [The Palisade Gate — Bellow a challenge at the gate]
+     save as:  public/sounds/Narration/the_palisade_gate_a1_act.wav
+     narrate:  Bellow a challenge at the gate
+
+ 57. [The Palisade Gate — Bellow a challenge at the gate (success)]
+     save as:  public/sounds/Narration/the_palisade_gate_a1_win.wav
+     narrate:  Half the sentries flinch off the wall at the sound alone. The party walks in over their nerve.
+
+ 58. [The Palisade Gate — Bellow a challenge at the gate (failure)]
+     save as:  public/sounds/Narration/the_palisade_gate_a1_lose.wav
+     narrate:  The goblins jeer back in a hundred voices. It was worth a try.
+
+ 59. [The Palisade Gate — Rush the gate before they rally]
+     save as:  public/sounds/Narration/the_palisade_gate_a2_act.wav
+     narrate:  Rush the gate before they rally
+
+ 60. [The Palisade Gate — Rush the gate before they rally (success)]
+     save as:  public/sounds/Narration/the_palisade_gate_a2_win.wav
+     narrate:  Shoulders down, the party hits the gate like a battering ram and is through before the camp can breathe.
+
+ 61. [The Palisade Gate — Rush the gate before they rally (failure)]
+     save as:  public/sounds/Narration/the_palisade_gate_a2_lose.wav
+     narrate:  The gate holds a heartbeat too long — and every horn in the camp starts screaming.
+
+ 62. [Embers over Greenrise — floor 1:root]
+     save as:  public/sounds/Narration/story_ch1_fb1_root.wav
+     narrate:  The trail is clear behind you. But a goblin lies dead in the ferns where no blade put it — sprawled facing the village, away from its own camp. It died running the wrong way.
+
+ 63. [Embers over Greenrise — floor 1:body]
+     save as:  public/sounds/Narration/story_ch1_fb1_body.wav
+     narrate:  No wound. No blood. Its hands are torn from clawing through bramble in the dark, and its face is fixed in something that isn’t a warrior’s death. It ran until its heart stopped.
+
+ 64. [Embers over Greenrise — floor 1:ground]
+     save as:  public/sounds/Narration/story_ch1_fb1_ground.wav
+     narrate:  Only its own tracks, and they come from deeper in — from the camp, from the smoke. It didn’t flee the village. It fled toward it, hard enough to kill itself on the run.
+
+ 65. [What the Goblin Fled]
+     save as:  public/sounds/Narration/ch1_fb1.wav
+     narrate:  A goblin dead of pure terror, pointed the wrong way. Read what it knew that its own war-king does not.
+
+ 66. [What the Goblin Fled — Backtrack its final run]
+     save as:  public/sounds/Narration/ch1_fb1_a0_act.wav
+     narrate:  Backtrack its final run
+
+ 67. [What the Goblin Fled — Backtrack its final run (success)]
+     save as:  public/sounds/Narration/ch1_fb1_a0_win.wav
+     narrate:  Its trail starts deep — past the camp, past where goblins should den. Something down there emptied even the raiders out.
+
+ 68. [What the Goblin Fled — Backtrack its final run (failure)]
+     save as:  public/sounds/Narration/ch1_fb1_a0_lose.wav
+     narrate:  The trail folds into a hundred others. Whatever it saw, it kept to itself.
+
+ 69. [What the Goblin Fled — Read how it died]
+     save as:  public/sounds/Narration/ch1_fb1_a1_act.wav
+     narrate:  Read how it died
+
+ 70. [What the Goblin Fled — Read how it died (success)]
+     save as:  public/sounds/Narration/ch1_fb1_a1_win.wav
+     narrate:  Nothing killed it but its own body, spent. To run like that, in the dark, a goblin has to be more afraid of what’s behind than what’s ahead.
+
+ 71. [What the Goblin Fled — Read how it died (failure)]
+     save as:  public/sounds/Narration/ch1_fb1_a1_lose.wav
+     narrate:  Cold and stiff and telling you nothing you can trust.
+
+ 72. [What the Goblin Fled — Work out what it carried]
+     save as:  public/sounds/Narration/ch1_fb1_a2_act.wav
+     narrate:  Work out what it carried
+
+ 73. [What the Goblin Fled — Work out what it carried (success)]
+     save as:  public/sounds/Narration/ch1_fb1_a2_win.wav
+     narrate:  Deep-stone grit under its nails, the same grey dust that has no business this high. It touched something far below and bolted.
+
+ 74. [What the Goblin Fled — Work out what it carried (failure)]
+     save as:  public/sounds/Narration/ch1_fb1_a2_lose.wav
+     narrate:  You linger too long over a dead thing, and the woods drink your nerve.
+
+ 75. [Embers over Greenrise — floor 2:root]
+     save as:  public/sounds/Narration/story_ch1_fb2_root.wav
+     narrate:  The thicket is dead quiet — not the quiet of a cleared floor, the quiet of a place the animals left in a hurry. Nests abandoned mid-clutch. A badger sett dug open from the inside.
+
+ 76. [Embers over Greenrise — floor 2:sett]
+     save as:  public/sounds/Narration/story_ch1_fb2_sett.wav
+     narrate:  The badger didn’t flee a predator at the mouth — it clawed straight up and out through the roof of its own burrow, as if the danger came from below, through the earth.
+
+ 77. [Embers over Greenrise — floor 2:trunks]
+     save as:  public/sounds/Narration/story_ch1_fb2_trunks.wav
+     narrate:  Claw-marks rake the bark high overhead — squirrels, martens, birds, everything that could climb, gone as high as it could go. Nothing that lives in the ground stayed in the ground.
+
+ 78. [The Wrong Marks]
+     save as:  public/sounds/Narration/ch1_fb2.wav
+     narrate:  A whole thicket of animals that all fled the same way — up, and out, and away from the ground. Learn what they knew before you have to.
+
+ 79. [The Wrong Marks — Read the animals’ panic]
+     save as:  public/sounds/Narration/ch1_fb2_a0_act.wav
+     narrate:  Read the animals’ panic
+
+ 80. [The Wrong Marks — Read the animals’ panic (success)]
+     save as:  public/sounds/Narration/ch1_fb2_a0_win.wav
+     narrate:  They didn’t scatter from a wolf. They evacuated — all at once, all upward, the way beasts run from a flood or a quake. From something underneath.
+
+ 81. [The Wrong Marks — Read the animals’ panic (failure)]
+     save as:  public/sounds/Narration/ch1_fb2_a0_lose.wav
+     narrate:  Animals spook at everything. You can’t read a story into every empty nest.
+
+ 82. [The Wrong Marks — Feel the ground underfoot]
+     save as:  public/sounds/Narration/ch1_fb2_a1_act.wav
+     narrate:  Feel the ground underfoot
+
+ 83. [The Wrong Marks — Feel the ground underfoot (success)]
+     save as:  public/sounds/Narration/ch1_fb2_a1_win.wav
+     narrate:  A faint tremor, so low it’s more felt than heard, comes up through your boots at long intervals. The forest has been feeling it for weeks.
+
+ 84. [The Wrong Marks — Feel the ground underfoot (failure)]
+     save as:  public/sounds/Narration/ch1_fb2_a1_lose.wav
+     narrate:  Just the wind and your own pulse. If the ground is speaking, it isn’t to you.
+
+ 85. [The Wrong Marks — Climb to where they climbed]
+     save as:  public/sounds/Narration/ch1_fb2_a2_act.wav
+     narrate:  Climb to where they climbed
+
+ 86. [The Wrong Marks — Climb to where they climbed (success)]
+     save as:  public/sounds/Narration/ch1_fb2_a2_win.wav
+     narrate:  From the high branches you can see it: a long seam of collapsed ground threading toward the camp, as if something ran a furrow under the whole vale.
+
+ 87. [The Wrong Marks — Climb to where they climbed (failure)]
+     save as:  public/sounds/Narration/ch1_fb2_a2_lose.wav
+     narrate:  The bough that held a marten’s weight does not hold yours.
+
+ 88. [Embers over Greenrise — floor 3:root]
+     save as:  public/sounds/Narration/story_ch1_fb3_root.wav
+     narrate:  The goblins painted their filth over the old waystone — you saw that on the way in. But now, with the clearing quiet, you can see the war-paint isn’t random daubing. It’s copying something.
+
+ 89. [Embers over Greenrise — floor 3:scrape]
+     save as:  public/sounds/Narration/story_ch1_fb3_scrape.wav
+     narrate:  Under the flaking ochre, cut deep into the granite, is a symbol far older than any goblin scrawl — precise, angular, worn smooth by centuries. The goblins painted over it because they’re afraid to touch it.
+
+ 90. [Embers over Greenrise — floor 3:compare]
+     save as:  public/sounds/Narration/story_ch1_fb3_compare.wav
+     narrate:  The same angular mark repeats on their crude fetishes, clumsily, again and again. They didn’t invent it. They copied it — from somewhere they’ve been, and won’t go back to.
+
+ 91. [Under the Paint]
+     save as:  public/sounds/Narration/ch1_fb3.wav
+     narrate:  A deep-cut sigil under the goblins’ war-paint, older than the kingdom and copied by frightened hands. Name it if you can.
+
+ 92. [Under the Paint — Place the stonework]
+     save as:  public/sounds/Narration/ch1_fb3_a0_act.wav
+     narrate:  Place the stonework
+
+ 93. [Under the Paint — Place the stonework (success)]
+     save as:  public/sounds/Narration/ch1_fb3_a0_win.wav
+     narrate:  This is deep-realm masonry — the old binding-craft of the folk who cut the roots of mountains, long before any crown drew a border here.
+
+ 94. [Under the Paint — Place the stonework (failure)]
+     save as:  public/sounds/Narration/ch1_fb3_a0_lose.wav
+     narrate:  It matches nothing in any chronicle you were ever taught. Which is its own kind of answer.
+
+ 95. [Under the Paint — Read it as a ward]
+     save as:  public/sounds/Narration/ch1_fb3_a1_act.wav
+     narrate:  Read it as a ward
+
+ 96. [Under the Paint — Read it as a ward (success)]
+     save as:  public/sounds/Narration/ch1_fb3_a1_win.wav
+     narrate:  It isn’t a blessing. It’s a seal — a warding-mark meant to keep something shut. And it’s worn from the inside, as if something leaned on it for a very long time.
+
+ 97. [Under the Paint — Read it as a ward (failure)]
+     save as:  public/sounds/Narration/ch1_fb3_a1_lose.wav
+     narrate:  The shape squirms away from meaning. Some marks don’t want to be read.
+
+ 98. [Under the Paint — Wake the mark’s memory]
+     save as:  public/sounds/Narration/ch1_fb3_a2_act.wav
+     narrate:  Wake the mark’s memory
+
+ 99. [Under the Paint — Wake the mark’s memory (success)]
+     save as:  public/sounds/Narration/ch1_fb3_a2_win.wav
+     narrate:  You touch the groove and feel the shape of it — a door-mark, deep and downward, and the goblins are squatting on the porch of something enormous.
+
+100. [Under the Paint — Wake the mark’s memory (failure)]
+     save as:  public/sounds/Narration/ch1_fb3_a2_lose.wav
+     narrate:  The sigil answers your prod with a cold that climbs your arm and settles behind your eyes.
+
+101. [Embers over Greenrise — floor 4:root]
+     save as:  public/sounds/Narration/story_ch1_fb4_root.wav
+     narrate:  The palisade looms just ahead now, torchlit. But here at the outskirts, a fallen section lets you see how it’s built — and the goblins didn’t lash these timbers with rope.
+
+102. [Embers over Greenrise — floor 4:fasten]
+     save as:  public/sounds/Narration/story_ch1_fb4_fasten.wav
+     narrate:  Iron chain. Fine, close-forged links, dark and old and precise — smith-work no goblin ever managed. It’s scavenged, hauled up from somewhere, and there is a great deal of it.
+
+103. [Embers over Greenrise — floor 4:run]
+     save as:  public/sounds/Narration/story_ch1_fb4_run.wav
+     narrate:  The chain runs everywhere — binding stakes, dragging sledges, hung with skulls. They found a hoard of the stuff and use it like rope, without the first idea what they’re handling.
+
+104. [Iron Where There Should Be Rope]
+     save as:  public/sounds/Narration/ch1_fb4.wav
+     narrate:  Deep-forged iron chain, far too fine for goblin hands, lashing a goblin wall together. Trace where a warband found so much of it.
+
+105. [Iron Where There Should Be Rope — Trace the chain to its source]
+     save as:  public/sounds/Narration/ch1_fb4_a0_act.wav
+     narrate:  Trace the chain to its source
+
+106. [Iron Where There Should Be Rope — Trace the chain to its source (success)]
+     save as:  public/sounds/Narration/ch1_fb4_a0_win.wav
+     narrate:  Drag-marks haul the chain up out of a raw sinkhole behind the camp — a shaft into dressed stone the goblins broke into, not built.
+
+107. [Iron Where There Should Be Rope — Trace the chain to its source (failure)]
+     save as:  public/sounds/Narration/ch1_fb4_a0_lose.wav
+     narrate:  The trail of it vanishes into the camp’s churn. You’ll have to ask the King where he shops.
+
+108. [Iron Where There Should Be Rope — Read how they treat it]
+     save as:  public/sounds/Narration/ch1_fb4_a1_act.wav
+     narrate:  Read how they treat it
+
+109. [Iron Where There Should Be Rope — Read how they treat it (success)]
+     save as:  public/sounds/Narration/ch1_fb4_a1_win.wav
+     narrate:  They handle the chain like loot and the King wears the plate like a crown — trophies, not tools. None of them grasp they’ve robbed a tomb that was holding something down.
+
+110. [Iron Where There Should Be Rope — Read how they treat it (failure)]
+     save as:  public/sounds/Narration/ch1_fb4_a1_lose.wav
+     narrate:  Goblins hoard shiny things. Reading further into it is your own nerves talking.
+
+111. [Iron Where There Should Be Rope — Wrench a length free for the assault]
+     save as:  public/sounds/Narration/ch1_fb4_a2_act.wav
+     narrate:  Wrench a length free for the assault
+
+112. [Iron Where There Should Be Rope — Wrench a length free for the assault (success)]
+     save as:  public/sounds/Narration/ch1_fb4_a2_win.wav
+     narrate:  You lever a whole run of chain loose — and the collapse it opens gives you a clean, quiet way in past the gate.
+
+113. [Iron Where There Should Be Rope — Wrench a length free for the assault (failure)]
+     save as:  public/sounds/Narration/ch1_fb4_a2_lose.wav
+     narrate:  The chain is anchored deeper than you thought. It rings like a bell, and the wall answers.
+
+114. [What the Herds Fled — description]
+     save as:  public/sounds/Narration/story_ch2_desc.wav
+     narrate:  Greenrise is safe, but its herds never came home. The drove-road climbs out of the treeline onto Longbarrow Moor — open country, good grazing, no cover for a goblin raiding party. Follow the tracks. Find out where four hundred head of cattle were driven, and why the goblins who drove them kept running afterward.
+
+115. [What the Herds Fled — embark]
+     save as:  public/sounds/Narration/story_ch2_embark.wav
+     narrate:  The trees thin, then stop. Grey grass runs to the horizon under a low ceiling of cloud, and the drove-road cuts through it like a scar. Somewhere ahead, carrion birds are circling something that is not moving.
+
+116. [What the Herds Fled — victory]
+     save as:  public/sounds/Narration/story_ch2_victory.wav
+     narrate:  The thing from the sinkhole lies still, and it is nothing anyone on the surface has a name for. The cattle are past saving. The party stands at the lip of the hole a while, looking down, and nobody suggests going deeper.
+
+117. [What the Herds Fled — briefing:root]
+     save as:  public/sounds/Narration/story_ch2_brief_root.wav
+     narrate:  You’re the ones burned out the camp at Greenrise. Good. Then you’ll believe me when I say this isn’t goblin work. I’ve driven cattle over that moor for thirty years. Four hundred head don’t vanish. And goblins don’t run past good grazing without stopping to eat it.
+
+118. [What the Herds Fled — briefing:ranpast]
+     save as:  public/sounds/Narration/story_ch2_brief_ranpast.wav
+     narrate:  I mean the tracks go one way and don’t stop. Past the water. Past the good pasture. Past a walled fold where they could’ve penned the whole herd and taken their time. They went by all of it at a dead run and kept going. That’s not raiding, that’s fleeing.
+
+119. [What the Herds Fled — briefing:looked]
+     save as:  public/sounds/Narration/story_ch2_brief_looked.wav
+     narrate:  My nephew went. Came back the same night, which is how I know how far he got. Said there’s a hole in the drove-road wide as a barn, and the sides of it are cut stone. Cut, mind. Nobody built anything on that moor. Here — he drew the pitch of it before his hands went bad.
+
+120. [What the Herds Fled — briefing:road]
+     save as:  public/sounds/Narration/story_ch2_brief_road.wav
+     narrate:  Open the whole way — no cover, but nothing to ambush you from either. Wind’ll cut you in half up top, so take the oilskins, and take this. Brewed for men who’ve been out in it too long. It’ll put your feet back under you.
+
+121. [The Shepherd’s Bothy]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy.wav
+     narrate:  A drystone hut on the high pasture, door swinging. The shepherd’s gear is all here. The shepherd is not, and the dog would not have left him.
+
+122. [The Shepherd’s Bothy — Read the ground outside]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a0_act.wav
+     narrate:  Read the ground outside
+
+123. [The Shepherd’s Bothy — Read the ground outside (success)]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a0_win.wav
+     narrate:  Man and dog left together, at a run, southbound — alive, then. His stores are honestly abandoned, and honestly useful.
+
+124. [The Shepherd’s Bothy — Read the ground outside (failure)]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a0_lose.wav
+     narrate:  Sheep-tracks over everything. The moor keeps its secrets.
+
+125. [The Shepherd’s Bothy — Check the medicine shelf]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a1_act.wav
+     narrate:  Check the medicine shelf
+
+126. [The Shepherd’s Bothy — Check the medicine shelf (success)]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a1_win.wav
+     narrate:  Liniment, feverbark, a sealed draught — shepherds doctor their flocks and themselves. It keeps.
+
+127. [The Shepherd’s Bothy — Check the medicine shelf (failure)]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a1_lose.wav
+     narrate:  Damp got the shelf. Everything’s turned.
+
+128. [The Shepherd’s Bothy — Read his tally-book by the cold hearth]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a2_act.wav
+     narrate:  Read his tally-book by the cold hearth
+
+129. [The Shepherd’s Bothy — Read his tally-book by the cold hearth (success)]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a2_win.wav
+     narrate:  Neat counts for thirty years, then the last page: “ground opened by the fold. It sounds like breathing.” Dated nine days ago — forewarned is forearmed.
+
+130. [The Shepherd’s Bothy — Read his tally-book by the cold hearth (failure)]
+     save as:  public/sounds/Narration/the_shepherd_s_bothy_a2_lose.wav
+     narrate:  The last entry is only a drawing — and you wish he hadn’t been any good at drawing.
+
+131. [What the Cattle Saw]
+     save as:  public/sounds/Narration/what_the_cattle_saw.wav
+     narrate:  The bone pit narrows here. Four hundred head came down this passage at a gallop, in the dark, and the walls remember it — horn-scores chest-high in the dressed stone.
+
+132. [What the Cattle Saw — Read the stampede]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a0_act.wav
+     narrate:  Read the stampede
+
+133. [What the Cattle Saw — Read the stampede (success)]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a0_win.wav
+     narrate:  They weren’t driven down — they were TURNED, twice, by something herding them deeper. Knowing how it moves is half an armour.
+
+134. [What the Cattle Saw — Read the stampede (failure)]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a0_lose.wav
+     narrate:  Panic writes badly. The scores tell you nothing but panic.
+
+135. [What the Cattle Saw — Think like the thing below]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a1_act.wav
+     narrate:  Think like the thing below
+
+136. [What the Cattle Saw — Think like the thing below (success)]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a1_win.wav
+     narrate:  It didn’t eat them all. It stored them. Things that store food defend larders, and larders have blind sides.
+
+137. [What the Cattle Saw — Think like the thing below (failure)]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a1_lose.wav
+     narrate:  You cannot make yourself think like it. Perhaps be glad.
+
+138. [What the Cattle Saw — Say words over the herd]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a2_act.wav
+     narrate:  Say words over the herd
+
+139. [What the Cattle Saw — Say words over the herd (success)]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a2_win.wav
+     narrate:  It is only cattle, and you say the words anyway, and the passage feels wider for it. Steadier hearts going in.
+
+140. [What the Cattle Saw — Say words over the herd (failure)]
+     save as:  public/sounds/Narration/what_the_cattle_saw_a2_lose.wav
+     narrate:  Something below answers the rite — in kind, and wrong.
+
+141. [Drag Marks]
+     save as:  public/sounds/Narration/drag_marks.wav
+     narrate:  The drove-road is churned to mud for a hundred paces. Hooves, and among them narrower prints, running in the same direction — not behind the herd, but level with it.
+
+142. [Drag Marks — Read the trail]
+     save as:  public/sounds/Narration/drag_marks_a0_act.wav
+     narrate:  Read the trail
+
+143. [Drag Marks — Read the trail (success)]
+     save as:  public/sounds/Narration/drag_marks_a0_win.wav
+     narrate:  The herd wasn’t driven — it bolted. And the goblin prints beside it are running flat out, in the same direction, keeping pace out of terror rather than herding anything.
+
+144. [Drag Marks — Read the trail (failure)]
+     save as:  public/sounds/Narration/drag_marks_a0_lose.wav
+     narrate:  Too much traffic, too much rain. The mud gives up nothing but mud.
+
+145. [Drag Marks — Count the tracks]
+     save as:  public/sounds/Narration/drag_marks_a1_act.wav
+     narrate:  Count the tracks
+
+146. [Drag Marks — Count the tracks (success)]
+     save as:  public/sounds/Narration/drag_marks_a1_win.wav
+     narrate:  Two hundred goblin prints, and not one of them turns back. Whatever they were fleeing, they never once looked over their shoulder to check.
+
+147. [Drag Marks — Count the tracks (failure)]
+     save as:  public/sounds/Narration/drag_marks_a1_lose.wav
+     narrate:  The count comes apart halfway. Prints on prints on prints.
+
+148. [Drag Marks — Reconstruct the panic]
+     save as:  public/sounds/Narration/drag_marks_a2_act.wav
+     narrate:  Reconstruct the panic
+
+149. [Drag Marks — Reconstruct the panic (success)]
+     save as:  public/sounds/Narration/drag_marks_a2_win.wav
+     narrate:  You walk the whole churn backward and put the hour together: the herd and the raiders broke at the same instant, from the same thing, coming up from under the road.
+
+150. [Drag Marks — Reconstruct the panic (failure)]
+     save as:  public/sounds/Narration/drag_marks_a2_lose.wav
+     narrate:  Absorbed in the ground, you miss the gorse-line — and something in it does not miss you.
+
+151. [The Abandoned Camp]
+     save as:  public/sounds/Narration/the_abandoned_camp.wav
+     narrate:  A goblin camp, struck in a hurry and never returned to. Cook-fires still ringed with stones. Bedrolls left where they lay. Nobody loots their own camp this badly unless they left at a dead run.
+
+152. [The Abandoned Camp — Pick it over quickly]
+     save as:  public/sounds/Narration/the_abandoned_camp_a0_act.wav
+     narrate:  Pick it over quickly
+
+153. [The Abandoned Camp — Pick it over quickly (success)]
+     save as:  public/sounds/Narration/the_abandoned_camp_a0_win.wav
+     narrate:  Whetstones, salt, a stoppered flask of something medicinal. The goblins packed for a long stay and left inside a minute.
+
+154. [The Abandoned Camp — Pick it over quickly (failure)]
+     save as:  public/sounds/Narration/the_abandoned_camp_a0_lose.wav
+     narrate:  Everything worth taking is spoiled, sodden, or worse.
+
+155. [The Abandoned Camp — Salvage what keeps]
+     save as:  public/sounds/Narration/the_abandoned_camp_a1_act.wav
+     narrate:  Salvage what keeps
+
+156. [The Abandoned Camp — Salvage what keeps (success)]
+     save as:  public/sounds/Narration/the_abandoned_camp_a1_win.wav
+     narrate:  Dried meat, a bundle of usable herbs, and — oddly — three days of firewood stacked neat. They meant to be here a week.
+
+157. [The Abandoned Camp — Salvage what keeps (failure)]
+     save as:  public/sounds/Narration/the_abandoned_camp_a1_lose.wav
+     narrate:  Damp has got into all of it. Not worth the weight.
+
+158. [The Abandoned Camp — Haul the whole cache out]
+     save as:  public/sounds/Narration/the_abandoned_camp_a2_act.wav
+     narrate:  Haul the whole cache out
+
+159. [The Abandoned Camp — Haul the whole cache out (success)]
+     save as:  public/sounds/Narration/the_abandoned_camp_a2_win.wav
+     narrate:  The party carries off the lot, flask and firewood and all. Someone will be glad of it tonight.
+
+160. [The Abandoned Camp — Haul the whole cache out (failure)]
+     save as:  public/sounds/Narration/the_abandoned_camp_a2_lose.wav
+     narrate:  A rotted tent-pole gives under the load and drops the whole stack on somebody’s foot.
+
+161. [Down the Throat]
+     save as:  public/sounds/Narration/down_the_throat.wav
+     narrate:  The sinkhole is forty feet across and the cattle are all at the bottom of it, piled and broken. The walls are not earth. They are dressed stone, and the hole did not collapse inward — something came up.
+
+162. [Down the Throat — Find the safe ledge]
+     save as:  public/sounds/Narration/down_the_throat_a0_act.wav
+     narrate:  Find the safe ledge
+
+163. [Down the Throat — Find the safe ledge (success)]
+     save as:  public/sounds/Narration/down_the_throat_a0_win.wav
+     narrate:  A shelf of intact masonry rings the pit ten feet down. The party descends to it dry-footed and arrives braced.
+
+164. [Down the Throat — Find the safe ledge (failure)]
+     save as:  public/sounds/Narration/down_the_throat_a0_lose.wav
+     narrate:  Every ledge you trust crumbles when weighted. The descent will have to be the hard way.
+
+165. [Down the Throat — Rope descent]
+     save as:  public/sounds/Narration/down_the_throat_a1_act.wav
+     narrate:  Rope descent
+
+166. [Down the Throat — Rope descent (success)]
+     save as:  public/sounds/Narration/down_the_throat_a1_win.wav
+     narrate:  Pitons into the dressed stone, rope through, down in good order — and everyone reaches the bottom with breath left to fight.
+
+167. [Down the Throat — Rope descent (failure)]
+     save as:  public/sounds/Narration/down_the_throat_a1_lose.wav
+     narrate:  The rope runs short and the last drop is longer than anybody wanted.
+
+168. [Down the Throat — Free-climb the fastest way down]
+     save as:  public/sounds/Narration/down_the_throat_a2_act.wav
+     narrate:  Free-climb the fastest way down
+
+169. [Down the Throat — Free-climb the fastest way down (success)]
+     save as:  public/sounds/Narration/down_the_throat_a2_win.wav
+     narrate:  Hand over hand down the old stonework, quick and quiet, and on the floor of the pit before the thing below registers company.
+
+170. [Down the Throat — Free-climb the fastest way down (failure)]
+     save as:  public/sounds/Narration/down_the_throat_a2_lose.wav
+     narrate:  A wet handhold, a short fall, and a hard landing among the bones of somebody’s cattle.
+
+171. [What the Herds Fled — floor 1:root]
+     save as:  public/sounds/Narration/story_ch2_fb1_root.wav
+     narrate:  Four hundred head of cattle came up this road at a gallop — you can read that much in the churn. But strewn along the verge is something stranger: goblin war-gear, thrown down and abandoned in a running line.
+
+172. [What the Herds Fled — floor 1:gear]
+     save as:  public/sounds/Narration/story_ch2_fb1_gear.wav
+     narrate:  Shields, spears, a cracked war-horn, a chief’s notched blade — good goblin arms by their standard, all flung aside. They stripped themselves to run lighter. Goblins do not drop their weapons. Not for anything.
+
+173. [What the Herds Fled — floor 1:line]
+     save as:  public/sounds/Narration/story_ch2_fb1_line.wav
+     narrate:  The gear falls in a line that runs the same way the cattle ran — uphill, outward, away. The goblins weren’t driving this herd. They were running in it, shoulder to flank with the cows, and losing.
+
+174. [The Dropped Spears]
+     save as:  public/sounds/Narration/ch2_fb1.wav
+     narrate:  A warband’s weapons thrown down in a running line beside the cattle-track. Read what put a whole raiding party to rout without a fight.
+
+175. [The Dropped Spears — Sort the abandoned arms]
+     save as:  public/sounds/Narration/ch2_fb1_a0_act.wav
+     narrate:  Sort the abandoned arms
+
+176. [The Dropped Spears — Sort the abandoned arms (success)]
+     save as:  public/sounds/Narration/ch2_fb1_a0_win.wav
+     narrate:  Not a blade among them is blooded. There was no battle here — only flight. Whatever they fled, they never once turned to face it.
+
+177. [The Dropped Spears — Sort the abandoned arms (failure)]
+     save as:  public/sounds/Narration/ch2_fb1_a0_lose.wav
+     narrate:  Rust and mud and too many hands through it already. It keeps its secret.
+
+178. [The Dropped Spears — Follow the line to its head]
+     save as:  public/sounds/Narration/ch2_fb1_a1_act.wav
+     narrate:  Follow the line to its head
+
+179. [The Dropped Spears — Follow the line to its head (success)]
+     save as:  public/sounds/Narration/ch2_fb1_a1_win.wav
+     narrate:  The dropped gear thins toward the deep end of the vale and stops at torn ground — they came up out of the earth already running, and never slowed.
+
+180. [The Dropped Spears — Follow the line to its head (failure)]
+     save as:  public/sounds/Narration/ch2_fb1_a1_lose.wav
+     narrate:  The trail scatters into the moor. You lose which way panic was pointing.
+
+181. [The Dropped Spears — Stand where they broke]
+     save as:  public/sounds/Narration/ch2_fb1_a2_act.wav
+     narrate:  Stand where they broke
+
+182. [The Dropped Spears — Stand where they broke (success)]
+     save as:  public/sounds/Narration/ch2_fb1_a2_win.wav
+     narrate:  You feel it in the shape of the rout: not an enemy they could fight, but a wrongness that unmade the will to. Even a goblin knew to simply run.
+
+183. [The Dropped Spears — Stand where they broke (failure)]
+     save as:  public/sounds/Narration/ch2_fb1_a2_lose.wav
+     narrate:  You put yourself too well in their skins, and the dread they dropped here finds a new set of shoulders.
+
+184. [What the Herds Fled — floor 2:root]
+     save as:  public/sounds/Narration/story_ch2_fb2_root.wav
+     narrate:  The high pasture is a killing-ground with no killer. A whole flock of sheep lies dead across the slope below a low bluff — dozens of them, piled where they fell, and not one has been eaten.
+
+185. [What the Herds Fled — floor 2:fallen]
+     save as:  public/sounds/Narration/story_ch2_fb2_fallen.wav
+     narrate:  Broken necks and broken legs, every one. No bite, no claw, no blood drawn by anything but the fall. They weren’t hunted. They ran off the edge in the dark, in a mass, and kept coming until the pile was this high.
+
+186. [What the Herds Fled — floor 2:bluff]
+     save as:  public/sounds/Narration/story_ch2_fb2_bluff.wav
+     narrate:  The turf at the bluff’s lip is torn to mud by a thousand small hooves, all pointed off the edge. Sheep don’t run off a height. Not unless what’s behind them is worse than the drop.
+
+187. [The Uneaten Flock]
+     save as:  public/sounds/Narration/ch2_fb2.wav
+     narrate:  A whole flock run off a bluff in the dark and left to rot. Learn what herds animals to their deaths and never stops to feed.
+
+188. [The Uneaten Flock — Read the wounds]
+     save as:  public/sounds/Narration/ch2_fb2_a0_act.wav
+     narrate:  Read the wounds
+
+189. [The Uneaten Flock — Read the wounds (success)]
+     save as:  public/sounds/Narration/ch2_fb2_a0_win.wav
+     narrate:  Every death is the fall itself — panic, not predation. Whatever moved them wanted them gone, not eaten. That is a colder thing than any wolf.
+
+190. [The Uneaten Flock — Read the wounds (failure)]
+     save as:  public/sounds/Narration/ch2_fb2_a0_lose.wav
+     narrate:  Days dead and days rained on. The bodies have stopped answering questions.
+
+191. [The Uneaten Flock — Reconstruct the stampede]
+     save as:  public/sounds/Narration/ch2_fb2_a1_act.wav
+     narrate:  Reconstruct the stampede
+
+192. [The Uneaten Flock — Reconstruct the stampede (success)]
+     save as:  public/sounds/Narration/ch2_fb2_a1_win.wav
+     narrate:  One source of terror, low and behind, sweeping the flock off the height in a single surge — exactly the shape of what took the cattle down the throat of the moor.
+
+193. [The Uneaten Flock — Reconstruct the stampede (failure)]
+     save as:  public/sounds/Narration/ch2_fb2_a1_lose.wav
+     narrate:  A flock is chaos even when it’s calm. You can’t untangle this one.
+
+194. [The Uneaten Flock — Search the ground they fled]
+     save as:  public/sounds/Narration/ch2_fb2_a2_act.wav
+     narrate:  Search the ground they fled
+
+195. [The Uneaten Flock — Search the ground they fled (success)]
+     save as:  public/sounds/Narration/ch2_fb2_a2_win.wav
+     narrate:  Between the bodies, a seam of collapsed earth breathes cold, foul air up from below. The pasture is a lid, and it is beginning to lift.
+
+196. [The Uneaten Flock — Search the ground they fled (failure)]
+     save as:  public/sounds/Narration/ch2_fb2_a2_lose.wav
+     narrate:  You crouch too long over rot in the wind, and it gets into your chest.
+
+197. [What the Herds Fled — floor 3:root]
+     save as:  public/sounds/Narration/story_ch2_fb3_root.wav
+     narrate:  The old drystone sheep-fold should have kept a flock safe. Instead its wall is burst — not fallen inward, but blown outward, its stones flung yards across the grass, as though something inside pushed its way out.
+
+198. [What the Herds Fled — floor 3:wall]
+     save as:  public/sounds/Narration/story_ch2_fb3_wall.wav
+     narrate:  The stones lie in a fan, outward, the way a dropped melon throws its rind. Nothing got in over this wall. Something came up under it and shouldered the whole fold aside on its way to the open air.
+
+199. [What the Herds Fled — floor 3:slump]
+     save as:  public/sounds/Narration/story_ch2_fb3_slump.wav
+     narrate:  The turf inside the fold has slumped into a shallow bowl, and through the mud at its centre shows a course of fitted grey stone — dressed, jointed, deliberate. A buried wall, or a shaft, and it is not far down.
+
+200. [The Fold That Burst]
+     save as:  public/sounds/Narration/ch2_fb3.wav
+     narrate:  A stone fold shoved apart from the inside, and dressed masonry surfacing through the mud beneath it. Measure how close the deep has come to the surface.
+
+201. [The Fold That Burst — Trace the outward blast]
+     save as:  public/sounds/Narration/ch2_fb3_a0_act.wav
+     narrate:  Trace the outward blast
+
+202. [The Fold That Burst — Trace the outward blast (success)]
+     save as:  public/sounds/Narration/ch2_fb3_a0_win.wav
+     narrate:  Every stone points away from one spot at the fold’s heart. Whatever surfaced here chose this weak seam in the ground and simply walked up through it.
+
+203. [The Fold That Burst — Trace the outward blast (failure)]
+     save as:  public/sounds/Narration/ch2_fb3_a0_lose.wav
+     narrate:  Tumbled stone is tumbled stone. You can’t swear which way it fell.
+
+204. [The Fold That Burst — Name the buried stonework]
+     save as:  public/sounds/Narration/ch2_fb3_a1_act.wav
+     narrate:  Name the buried stonework
+
+205. [The Fold That Burst — Name the buried stonework (success)]
+     save as:  public/sounds/Narration/ch2_fb3_a1_win.wav
+     narrate:  The jointing is deep-realm work — the same hidden masonry the whole moor is built over. The shepherds walled their flocks on the roof of something old, and never knew.
+
+206. [The Fold That Burst — Name the buried stonework (failure)]
+     save as:  public/sounds/Narration/ch2_fb3_a1_lose.wav
+     narrate:  Old stone under a sheepfold. You can date it no closer than "before us."
+
+207. [The Fold That Burst — Clear the mud from the shaft]
+     save as:  public/sounds/Narration/ch2_fb3_a2_act.wav
+     narrate:  Clear the mud from the shaft
+
+208. [The Fold That Burst — Clear the mud from the shaft (success)]
+     save as:  public/sounds/Narration/ch2_fb3_a2_win.wav
+     narrate:  You haul the slumped turf back and expose a stair-head of dressed stone descending into dark — the way down, days ahead of where the drove-road will take you.
+
+209. [The Fold That Burst — Clear the mud from the shaft (failure)]
+     save as:  public/sounds/Narration/ch2_fb3_a2_lose.wav
+     narrate:  The lip of the bowl gives way under you and drops you hard onto buried stone.
+
+210. [What the Herds Fled — floor 4:root]
+     save as:  public/sounds/Narration/story_ch2_fb4_root.wav
+     narrate:  The moor is above you now. Down here the walls are flawless ancient masonry, and at the stairhead a great marker-stone is set into the wall — deep-carved, deliberate, and turned to face upward, toward the surface, toward anyone climbing down.
+
+211. [What the Herds Fled — floor 4:marker]
+     save as:  public/sounds/Narration/story_ch2_fb4_marker.wav
+     narrate:  No boast, no tomb-name, no welcome. The carving is stark and functional — the deep-realm sign for a threshold that must not be crossed, cut by folk who expected to be obeyed.
+
+212. [What the Herds Fled — floor 4:facing]
+     save as:  public/sounds/Narration/story_ch2_fb4_facing.wav
+     narrate:  Every tomb faces its dead. This faces the stairs. It wasn’t set to keep robbers out — it was set to be read by anyone coming down from above, and to turn them back. It faces us.
+
+213. [The Marker Facing Up]
+     save as:  public/sounds/Narration/ch2_fb4.wav
+     narrate:  A deep-carved warning set to face the surface, meant to turn back anyone descending. Read it before you decide to ignore it.
+
+214. [The Marker Facing Up — Place the marker’s makers]
+     save as:  public/sounds/Narration/ch2_fb4_a0_act.wav
+     narrate:  Place the marker’s makers
+
+215. [The Marker Facing Up — Place the marker’s makers (success)]
+     save as:  public/sounds/Narration/ch2_fb4_a0_win.wav
+     narrate:  The same hands that cut the sigil on Greenrise’s waystone cut this — an order that walled the deep places shut and posted signs for a world that has forgotten how to read them.
+
+216. [The Marker Facing Up — Place the marker’s makers (failure)]
+     save as:  public/sounds/Narration/ch2_fb4_a0_lose.wav
+     narrate:  Ancient, authoritative, and utterly beyond your histories.
+
+217. [The Marker Facing Up — Read the threshold rite]
+     save as:  public/sounds/Narration/ch2_fb4_a1_act.wav
+     narrate:  Read the threshold rite
+
+218. [The Marker Facing Up — Read the threshold rite (success)]
+     save as:  public/sounds/Narration/ch2_fb4_a1_win.wav
+     narrate:  It is a consecrated boundary — a line drawn between the living country above and something the makers judged must never come up. The consecration is old, and it is failing.
+
+219. [The Marker Facing Up — Read the threshold rite (failure)]
+     save as:  public/sounds/Narration/ch2_fb4_a1_lose.wav
+     narrate:  The rite is real but its meaning has rotted with its keepers.
+
+220. [The Marker Facing Up — Sound the marker’s ward]
+     save as:  public/sounds/Narration/ch2_fb4_a2_act.wav
+     narrate:  Sound the marker’s ward
+
+221. [The Marker Facing Up — Sound the marker’s ward (success)]
+     save as:  public/sounds/Narration/ch2_fb4_a2_win.wav
+     narrate:  The stone still hums with a binding-charge, thin as a held breath. Whatever it seals has been leaning on it from below for a very long time — and the herds felt the seam give.
+
+222. [The Marker Facing Up — Sound the marker’s ward (failure)]
+     save as:  public/sounds/Narration/ch2_fb4_a2_lose.wav
+     narrate:  You press the ward for an answer and it presses back, cold and patient, into your marrow.
+
+223. [The Empty Watchtower — description]
+     save as:  public/sounds/Narration/story_ch3_desc.wav
+     narrate:  The watchtowers along the old frontier stand empty — every crown blames every other crown for the pay that stopped coming. Wardstone Watch is different. Its garrison was paid, provisioned, and at full strength, and it is still empty. Find out where sixteen soldiers went. The answer is under the tower, down a stair that no watchtower in the world was built with.
+
+224. [The Empty Watchtower — embark]
+     save as:  public/sounds/Narration/story_ch3_embark.wav
+     narrate:  Wardstone Watch stands alone on the moor with its gate open and its banner still flying. No bodies. No blood. No sign of a fight anywhere on the grounds. The party walks in through a door that nobody barred.
+
+225. [The Empty Watchtower — victory]
+     save as:  public/sounds/Narration/story_ch3_victory.wav
+     narrate:  Captain Vane goes down still wearing the livery of a crown that stopped paying her four years ago. Her people are laid out in the dark below in neat rows, facing the same direction — down. The party climbs back into daylight with more questions than it brought.
+
+226. [The Empty Watchtower — briefing:root]
+     save as:  public/sounds/Narration/story_ch3_brief_root.wav
+     narrate:  Sixteen of mine at Wardstone. Paid on time, victualled through winter, no complaints on record. Then nothing — four years of nothing, and the crown won’t send anyone to look because looking costs money and the tower’s already written off. So I’m paying you out of my own purse. Ask what you like.
+
+227. [The Empty Watchtower — briefing:captain]
+     save as:  public/sounds/Narration/story_ch3_brief_captain.wav
+     narrate:  Aldis Vane. Twenty-two years, never lost a post, never lost a soldier she didn’t bury herself. If Vane walked her garrison off that tower she had a reason, and if she had a reason it was a good one. That’s what frightens me. Not that they left. That she led them.
+
+228. [The Empty Watchtower — briefing:deserters]
+     save as:  public/sounds/Narration/story_ch3_brief_deserters.wav
+     narrate:  Deserters take their boots. Deserters take their PAY. There’s four years of unclaimed silver in that strongroom and the door’s not even forced. Whatever they went to do, they didn’t think they’d need money for it. Take the tower key — save you breaking anything.
+
+229. [The Empty Watchtower — briefing:under]
+     save as:  public/sounds/Narration/story_ch3_brief_under.wav
+     narrate:  Nothing’s under it. That’s the point — I signed the build order myself, nineteen years back. Fieldstone tower, timber floor, root cellar eight foot deep. If you find a stair down there, then somebody dug it after, or it was there before the tower and we put a watchtower on top of it without knowing. I don’t like either answer. Here — you’ll want the light.
+
+230. [The Mess Table]
+     save as:  public/sounds/Narration/the_mess_table.wav
+     narrate:  Down in the garrison deep, a long table laid for sixteen — plates, cups, a game of cards paused mid-hand. Four years of dust and not one chair knocked over.
+
+231. [The Mess Table — Read the table]
+     save as:  public/sounds/Narration/the_mess_table_a0_act.wav
+     narrate:  Read the table
+
+232. [The Mess Table — Read the table (success)]
+     save as:  public/sounds/Narration/the_mess_table_a0_win.wav
+     narrate:  They ate, they stacked their plates, they pushed in their chairs, they walked down. Orderly to the last — and the mess fund is still in its tin.
+
+233. [The Mess Table — Read the table (failure)]
+     save as:  public/sounds/Narration/the_mess_table_a0_lose.wav
+     narrate:  Dust says nothing except how long. You already knew how long.
+
+234. [The Mess Table — Read the card hands]
+     save as:  public/sounds/Narration/the_mess_table_a1_act.wav
+     narrate:  Read the card hands
+
+235. [The Mess Table — Read the card hands (success)]
+     save as:  public/sounds/Narration/the_mess_table_a1_win.wav
+     narrate:  The dealer was winning and left the pot. Nobody leaves a winning pot for a bad reason — they went down GLAD. That pot pays for the party’s trouble.
+
+236. [The Mess Table — Read the card hands (failure)]
+     save as:  public/sounds/Narration/the_mess_table_a1_lose.wav
+     narrate:  Cards are cards. The pot is pewter buttons.
+
+237. [The Mess Table — Check under the table]
+     save as:  public/sounds/Narration/the_mess_table_a2_act.wav
+     narrate:  Check under the table
+
+238. [The Mess Table — Check under the table (success)]
+     save as:  public/sounds/Narration/the_mess_table_a2_win.wav
+     narrate:  A strongbox strapped under the boards — the serjeant’s discretionary fund, untouched by whatever discretion took them.
+
+239. [The Mess Table — Check under the table (failure)]
+     save as:  public/sounds/Narration/the_mess_table_a2_lose.wav
+     narrate:  The strap was a wire. The wire was a bell. The dark takes notice.
+
+240. [The Roll of Sixteen]
+     save as:  public/sounds/Narration/the_roll_of_sixteen.wav
+     narrate:  The last landing. Sixteen sets of kit, folded and stacked against the wall with parade precision. They undressed for something. Vane’s captain’s sash lies on top.
+
+241. [The Roll of Sixteen — Name each of the sixteen]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a0_act.wav
+     narrate:  Name each of the sixteen
+
+242. [The Roll of Sixteen — Name each of the sixteen (success)]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a0_win.wav
+     narrate:  You read each name-tape aloud, once, into the dark. Whatever is left of them down here hears its name in a living voice — and the dark feels less hungry for it.
+
+243. [The Roll of Sixteen — Name each of the sixteen (failure)]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a0_lose.wav
+     narrate:  Half the tapes are rotted. A half-called roll is worse than none.
+
+244. [The Roll of Sixteen — Piece together the order they went]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a1_act.wav
+     narrate:  Piece together the order they went
+
+245. [The Roll of Sixteen — Piece together the order they went (success)]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a1_win.wav
+     narrate:  Youngest first, officers last, Vane at the very end — she watched every one of her people through before she followed. Whatever waits below still thinks like a soldier.
+
+246. [The Roll of Sixteen — Piece together the order they went (failure)]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a1_lose.wav
+     narrate:  The stack order tells you nothing you can use.
+
+247. [The Roll of Sixteen — Speak to Vane before you see her]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a2_act.wav
+     narrate:  Speak to Vane before you see her
+
+248. [The Roll of Sixteen — Speak to Vane before you see her (success)]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a2_win.wav
+     narrate:  You say what you came to say to the empty sash — that her serjeant paid for this, that somebody still musters her name. The thing wearing her rank will hear it differently. Every edge helps.
+
+249. [The Roll of Sixteen — Speak to Vane before you see her (failure)]
+     save as:  public/sounds/Narration/the_roll_of_sixteen_a2_lose.wav
+     narrate:  The dark says her words back to you, in her voice, before you’ve finished. You were not ready for that.
+
+250. [The Unbarred Door]
+     save as:  public/sounds/Narration/the_unbarred_door.wav
+     narrate:  The tower gate stands open from the inside. Sixteen bunks, sixteen kits, boots still under the beds. Whatever happened here, nobody packed and nobody fought.
+
+251. [The Unbarred Door — Count the beds]
+     save as:  public/sounds/Narration/the_unbarred_door_a0_act.wav
+     narrate:  Count the beds
+
+252. [The Unbarred Door — Count the beds (success)]
+     save as:  public/sounds/Narration/the_unbarred_door_a0_win.wav
+     narrate:  Sixteen bunks, sixteen kits, and every weapon still on its peg. They went down unarmed. That takes trust, or orders.
+
+253. [The Unbarred Door — Count the beds (failure)]
+     save as:  public/sounds/Narration/the_unbarred_door_a0_lose.wav
+     narrate:  The barracks has been picked over by weather and birds. Nothing reads clean.
+
+254. [The Unbarred Door — Read the duty roster]
+     save as:  public/sounds/Narration/the_unbarred_door_a1_act.wav
+     narrate:  Read the duty roster
+
+255. [The Unbarred Door — Read the duty roster (success)]
+     save as:  public/sounds/Narration/the_unbarred_door_a1_win.wav
+     narrate:  The roster runs unbroken for four years, then stops mid-week — no desertions, no gaps. The last entry is in the captain’s hand and it just says: RELIEVED.
+
+256. [The Unbarred Door — Read the duty roster (failure)]
+     save as:  public/sounds/Narration/the_unbarred_door_a1_lose.wav
+     narrate:  Damp has taken the ledger. The pages come apart in your fingers.
+
+257. [The Unbarred Door — Read the shrine-offerings]
+     save as:  public/sounds/Narration/the_unbarred_door_a2_act.wav
+     narrate:  Read the shrine-offerings
+
+258. [The Unbarred Door — Read the shrine-offerings (success)]
+     save as:  public/sounds/Narration/the_unbarred_door_a2_win.wav
+     narrate:  They left offerings before they went — all sixteen, all the same rite, all for safe passage DOWNWARD. They knew exactly where they were going, and they went anyway.
+
+259. [The Unbarred Door — Read the shrine-offerings (failure)]
+     save as:  public/sounds/Narration/the_unbarred_door_a2_lose.wav
+     narrate:  You get far enough into the rite to feel what answered it, and wish you hadn’t.
+
+260. [The Wrong Stair]
+     save as:  public/sounds/Narration/the_wrong_stair.wav
+     narrate:  Under the tower cellar, the flagstones give way to a spiral stair — and the masonry changes. The tower is fieldstone and mortar. This is dressed ashlar, cut to a tolerance nobody on this frontier can manage, and it goes down a long way.
+
+261. [The Wrong Stair — The masonry isn’t local]
+     save as:  public/sounds/Narration/the_wrong_stair_a0_act.wav
+     narrate:  The masonry isn’t local
+
+262. [The Wrong Stair — The masonry isn’t local (success)]
+     save as:  public/sounds/Narration/the_wrong_stair_a0_win.wav
+     narrate:  No tool marks, no seams, no settling in a thousand years. This stair was not built into the ground — the ground was built around it.
+
+263. [The Wrong Stair — The masonry isn’t local (failure)]
+     save as:  public/sounds/Narration/the_wrong_stair_a0_lose.wav
+     narrate:  Stone is stone. Whatever’s strange about it stays strange.
+
+264. [The Wrong Stair — Which way was it built to carry?]
+     save as:  public/sounds/Narration/the_wrong_stair_a1_act.wav
+     narrate:  Which way was it built to carry?
+
+265. [The Wrong Stair — Which way was it built to carry? (success)]
+     save as:  public/sounds/Narration/the_wrong_stair_a1_win.wav
+     narrate:  The treads are worn — but only on the leading edge, and only going UP. Whatever used this stair for a thousand years was climbing.
+
+266. [The Wrong Stair — Which way was it built to carry? (failure)]
+     save as:  public/sounds/Narration/the_wrong_stair_a1_lose.wav
+     narrate:  The wear is too even to read anything into.
+
+267. [The Wrong Stair — Force the jammed landing-door]
+     save as:  public/sounds/Narration/the_wrong_stair_a2_act.wav
+     narrate:  Force the jammed landing-door
+
+268. [The Wrong Stair — Force the jammed landing-door (success)]
+     save as:  public/sounds/Narration/the_wrong_stair_a2_win.wav
+     narrate:  The door gives at the third shoulder and opens onto a landing that shortcuts half the descent.
+
+269. [The Wrong Stair — Force the jammed landing-door (failure)]
+     save as:  public/sounds/Narration/the_wrong_stair_a2_lose.wav
+     narrate:  The door doesn’t give. Your shoulder does.
+
+270. [Garrison Shrine, Still Lit]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit.wav
+     narrate:  Four years on, the garrison’s shrine-lamp is still burning. There is no oil in the reservoir. There has not been oil in it for a long time.
+
+271. [Garrison Shrine, Still Lit — Finish the rite they left unfinished]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a0_act.wav
+     narrate:  Finish the rite they left unfinished
+
+272. [Garrison Shrine, Still Lit — Finish the rite they left unfinished (success)]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a0_win.wav
+     narrate:  You speak the closing words nobody stayed to say. The lamp gutters, gratefully, and goes out — and something in the tower relaxes for the first time in four years.
+
+273. [Garrison Shrine, Still Lit — Finish the rite they left unfinished (failure)]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a0_lose.wav
+     narrate:  The rite is a soldier’s rite, in a soldier’s shorthand, and you are not a soldier.
+
+274. [Garrison Shrine, Still Lit — Examine what they left behind]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a1_act.wav
+     narrate:  Examine what they left behind
+
+275. [Garrison Shrine, Still Lit — Examine what they left behind (success)]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a1_win.wav
+     narrate:  The blood on the altar-cloth is four years old and was given a drop at a time, by sixteen people, in turn. Payment, not sacrifice. They were buying something.
+
+276. [Garrison Shrine, Still Lit — Examine what they left behind (failure)]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a1_lose.wav
+     narrate:  Too old and too degraded to tell you anything you can trust.
+
+277. [Garrison Shrine, Still Lit — Trace what the lamp is drawing on]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a2_act.wav
+     narrate:  Trace what the lamp is drawing on
+
+278. [Garrison Shrine, Still Lit — Trace what the lamp is drawing on (success)]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a2_win.wav
+     narrate:  The flame is fed from below — a thin thread of something running down the stair and out of sight. Follow it far enough and you would find whatever is on the other end. The party takes the thread’s measure and comes away armed with it.
+
+279. [Garrison Shrine, Still Lit — Trace what the lamp is drawing on (failure)]
+     save as:  public/sounds/Narration/garrison_shrine_still_lit_a2_lose.wav
+     narrate:  You put your hand into the current to feel where it runs, and it pulls back harder than you do.
+
+280. [The Empty Watchtower — floor 1:root]
+     save as:  public/sounds/Narration/story_ch3_fb1_root.wav
+     narrate:  No bodies, no graves, no sign of a fight anywhere on the approach. But the mud of the muster-ground outside the gate holds the whole story in bootprints — and it is not the story of a garrison overrun.
+
+281. [The Empty Watchtower — floor 1:ranks]
+     save as:  public/sounds/Narration/story_ch3_fb1_ranks.wav
+     narrate:  Sixteen sets of prints, formed into ordered files, dressed and even. They stood parade here, in step, unhurried — and then marched. Nobody was dragged. Nobody broke ranks. They left the way soldiers march to inspection.
+
+282. [The Empty Watchtower — floor 1:dirs]
+     save as:  public/sounds/Narration/story_ch3_fb1_dirs.wav
+     narrate:  Every print leads inward, through their own open gate, toward the tower. Not one set comes back out. Sixteen soldiers walked in good order into a place they never walked out of, and barred nothing behind them.
+
+283. [The Ordered March]
+     save as:  public/sounds/Narration/ch3_fb1.wav
+     narrate:  A full garrison that formed up and marched inward in good order, and never marched out. Read what could command soldiers to do that willingly.
+
+284. [The Ordered March — Read the formation]
+     save as:  public/sounds/Narration/ch3_fb1_a0_act.wav
+     narrate:  Read the formation
+
+285. [The Ordered March — Read the formation (success)]
+     save as:  public/sounds/Narration/ch3_fb1_a0_win.wav
+     narrate:  Discipline, not panic — a drill order, cleanly executed. They were told to muster and go, and every one of them obeyed as if it were a lawful command.
+
+286. [The Ordered March — Read the formation (failure)]
+     save as:  public/sounds/Narration/ch3_fb1_a0_lose.wav
+     narrate:  Rain has softened the prints to guesswork. You can’t swear to the order of it.
+
+287. [The Ordered March — Track the last man]
+     save as:  public/sounds/Narration/ch3_fb1_a1_act.wav
+     narrate:  Track the last man
+
+288. [The Ordered March — Track the last man (success)]
+     save as:  public/sounds/Narration/ch3_fb1_a1_win.wav
+     narrate:  The rearmost prints pause at the threshold — one soldier stopped, turned once to look back at the daylight, and then went in after the rest anyway.
+
+289. [The Ordered March — Track the last man (failure)]
+     save as:  public/sounds/Narration/ch3_fb1_a1_lose.wav
+     narrate:  The trail dissolves at the gate. Whatever the last man felt, the mud won’t say.
+
+290. [The Ordered March — Feel the shape of the order]
+     save as:  public/sounds/Narration/ch3_fb1_a2_act.wav
+     narrate:  Feel the shape of the order
+
+291. [The Ordered March — Feel the shape of the order (success)]
+     save as:  public/sounds/Narration/ch3_fb1_a2_win.wav
+     narrate:  This wasn’t a rout or a spell of terror. It was summons — a pull they answered like duty, the way a charter is honoured. Something down there called in a debt.
+
+292. [The Ordered March — Feel the shape of the order (failure)]
+     save as:  public/sounds/Narration/ch3_fb1_a2_lose.wav
+     narrate:  You reach for what moved them and touch the edge of it, and it is patient, and it notices you.
+
+293. [The Empty Watchtower — floor 2:root]
+     save as:  public/sounds/Narration/story_ch3_fb2_root.wav
+     narrate:  Everything in the tower is squared away — bunks made, kits stowed, a meal left half-eaten and gone to dust. And in the floor of the guardroom, where no watchtower has any business having one, is a stair going down.
+
+294. [The Empty Watchtower — floor 2:stair]
+     save as:  public/sounds/Narration/story_ch3_fb2_stair.wav
+     narrate:  The steps are dressed stone, older than the mortar of the tower above, and their centres are worn into smooth hollows — by many feet, over long years, going down. The wear on the up-side of each step is almost none.
+
+295. [The Empty Watchtower — floor 2:fit]
+     save as:  public/sounds/Narration/story_ch3_fb2_fit.wav
+     narrate:  The tower doesn’t own this stair — it was built on top of it. Someone raised a garrison here specifically to sit over this hole, to watch it, or to feed it. The watchtower was always the lid.
+
+296. [The Stair Beneath the Tower]
+     save as:  public/sounds/Narration/ch3_fb2.wav
+     narrate:  A worn descending stair the watchtower was built to cover, its steps hollowed by feet that only ever went down. Work out what the garrison was really posted here to do.
+
+297. [The Stair Beneath the Tower — Read the wear on the steps]
+     save as:  public/sounds/Narration/ch3_fb2_a0_act.wav
+     narrate:  Read the wear on the steps
+
+298. [The Stair Beneath the Tower — Read the wear on the steps (success)]
+     save as:  public/sounds/Narration/ch3_fb2_a0_win.wav
+     narrate:  Every hollow is worn on the descending edge. Whatever this garrison’s duty was, it was measured in journeys down — and almost none back up.
+
+299. [The Stair Beneath the Tower — Read the wear on the steps (failure)]
+     save as:  public/sounds/Narration/ch3_fb2_a0_lose.wav
+     narrate:  Stone wears how it wears. You can’t make the steps confess.
+
+300. [The Stair Beneath the Tower — Date the buried stair]
+     save as:  public/sounds/Narration/ch3_fb2_a1_act.wav
+     narrate:  Date the buried stair
+
+301. [The Stair Beneath the Tower — Date the buried stair (success)]
+     save as:  public/sounds/Narration/ch3_fb2_a1_win.wav
+     narrate:  The stair predates the kingdom that manned it. Crown after crown inherited this post, paid it, and never wrote down what it was actually guarding.
+
+302. [The Stair Beneath the Tower — Date the buried stair (failure)]
+     save as:  public/sounds/Narration/ch3_fb2_a1_lose.wav
+     narrate:  No chronicle you know admits this stair exists. Which tells you something by itself.
+
+303. [The Stair Beneath the Tower — Sound the depth below]
+     save as:  public/sounds/Narration/ch3_fb2_a2_act.wav
+     narrate:  Sound the depth below
+
+304. [The Stair Beneath the Tower — Sound the depth below (success)]
+     save as:  public/sounds/Narration/ch3_fb2_a2_win.wav
+     narrate:  A dropped stone falls a long, long time before it lands. This isn’t a cellar. It’s a throat, and the garrison went all the way down it.
+
+305. [The Stair Beneath the Tower — Sound the depth below (failure)]
+     save as:  public/sounds/Narration/ch3_fb2_a2_lose.wav
+     narrate:  You lean too far into the dark to listen, and the worn stone nearly takes you down with your answer.
+
+306. [The Empty Watchtower — floor 3:root]
+     save as:  public/sounds/Narration/story_ch3_fb3_root.wav
+     narrate:  The stair goes down through stone older than any kingdom, and the garrison marked its passage — not with blood, but with belongings. Their kit lies laid aside on the steps, in order, deeper and deeper down.
+
+307. [The Empty Watchtower — floor 3:order]
+     save as:  public/sounds/Narration/story_ch3_fb3_order.wav
+     narrate:  Weapons first, near the top — swords, spears, bows, set down neatly against the wall. Then, further down, armour: mail, helms, greaves, unbuckled and stacked. Then boots. They shed their soldiering step by step as they descended.
+
+308. [The Empty Watchtower — floor 3:left]
+     save as:  public/sounds/Narration/story_ch3_fb3_left.wav
+     narrate:  Nothing is thrown or dropped. Everything is placed — squared to the wall, laid out with care, the way you set down what you won’t need where someone tidy will find it. They disarmed the way pilgrims do at a threshold.
+
+309. [What They Set Down]
+     save as:  public/sounds/Narration/ch3_fb3.wav
+     narrate:  A garrison’s arms and armour laid aside in careful order down a descending stair, each soldier shedding their soldiering the deeper they went. Understand what asks that of the living.
+
+310. [What They Set Down — Examine the laid-aside kit]
+     save as:  public/sounds/Narration/ch3_fb3_a0_act.wav
+     narrate:  Examine the laid-aside kit
+
+311. [What They Set Down — Examine the laid-aside kit (success)]
+     save as:  public/sounds/Narration/ch3_fb3_a0_win.wav
+     narrate:  No blood on any of it, no haste in the placing. These were healthy soldiers who calmly decided their weapons were no longer the point of the journey.
+
+312. [What They Set Down — Examine the laid-aside kit (failure)]
+     save as:  public/sounds/Narration/ch3_fb3_a0_lose.wav
+     narrate:  Dust and old leather. It tells you nothing a frightened mind won’t invent.
+
+313. [What They Set Down — Read it as a rite]
+     save as:  public/sounds/Narration/ch3_fb3_a1_act.wav
+     narrate:  Read it as a rite
+
+314. [What They Set Down — Read it as a rite (success)]
+     save as:  public/sounds/Narration/ch3_fb3_a1_win.wav
+     narrate:  This is a divestment — the shedding of worldly office before an altar. They went down not as a garrison but as supplicants, offering the only thing soldiers have: themselves.
+
+315. [What They Set Down — Read it as a rite (failure)]
+     save as:  public/sounds/Narration/ch3_fb3_a1_lose.wav
+     narrate:  The shape of a rite is here, but its god is one no scripture of yours would name.
+
+316. [What They Set Down — Walk it as they walked it]
+     save as:  public/sounds/Narration/ch3_fb3_a2_act.wav
+     narrate:  Walk it as they walked it
+
+317. [What They Set Down — Walk it as they walked it (success)]
+     save as:  public/sounds/Narration/ch3_fb3_a2_win.wav
+     narrate:  Step by step you feel the pull that unarmed them — a certainty, warm and terrible, that where they were going, resistance would be not just useless but rude. It nearly convinces you too.
+
+318. [What They Set Down — Walk it as they walked it (failure)]
+     save as:  public/sounds/Narration/ch3_fb3_a2_lose.wav
+     narrate:  You put yourself on their steps and their calm reaches up for you, and for a moment your own hands want to set your sword down.
+
+319. [The Empty Watchtower — floor 4:root]
+     save as:  public/sounds/Narration/story_ch3_fb4_root.wav
+     narrate:  At the bottom of the long descent, before the last dark, the sixteen left one thing more. Not their bodies — those lie further in, in rows, facing down. Here on the landing they left their pay, stacked with care.
+
+320. [The Empty Watchtower — floor 4:pay]
+     save as:  public/sounds/Narration/story_ch3_fb4_pay.wav
+     narrate:  Coin in neat towers. Service-rings threaded on a cord. Bronze muster-tokens, a captain’s seal, four years of a garrison’s unspent wages — all placed deliberately at the threshold like coins laid on a temple step.
+
+321. [The Empty Watchtower — floor 4:why]
+     save as:  public/sounds/Narration/story_ch3_fb4_why.wav
+     narrate:  Nobody robbed them. Nobody had to. They brought their pay down here and set it out as an offering — the price of admission to whatever is below, rendered gladly, as if the wage was always meant to end up here.
+
+322. [The Toll They Paid]
+     save as:  public/sounds/Narration/ch3_fb4.wav
+     narrate:  A garrison’s four years of unspent wages, stacked as a willing offering at the threshold of the dark. Read what bargain a crown’s soldiers thought they were settling.
+
+323. [The Toll They Paid — Tally the offering]
+     save as:  public/sounds/Narration/ch3_fb4_a0_act.wav
+     narrate:  Tally the offering
+
+324. [The Toll They Paid — Tally the offering (success)]
+     save as:  public/sounds/Narration/ch3_fb4_a0_win.wav
+     narrate:  Every token accounted for — this is a full garrison’s worth, to the last coin, rendered complete. Whatever they were paying for, they paid it in full and thought it fair.
+
+325. [The Toll They Paid — Tally the offering (failure)]
+     save as:  public/sounds/Narration/ch3_fb4_a0_lose.wav
+     narrate:  You can price the metal but not the meaning. The sum stays senseless.
+
+326. [The Toll They Paid — Read the offering-rite]
+     save as:  public/sounds/Narration/ch3_fb4_a1_act.wav
+     narrate:  Read the offering-rite
+
+327. [The Toll They Paid — Read the offering-rite (success)]
+     save as:  public/sounds/Narration/ch3_fb4_a1_win.wav
+     narrate:  A toll, laid the way the old rites lay a coin for a crossing. They believed they owed this — that their service, and now their coin, and now themselves, were a debt coming due at the bottom of the stair.
+
+328. [The Toll They Paid — Read the offering-rite (failure)]
+     save as:  public/sounds/Narration/ch3_fb4_a1_lose.wav
+     narrate:  The rite’s shape is here but you can’t hear who it was addressed to.
+
+329. [The Toll They Paid — Ask the dead what they bought]
+     save as:  public/sounds/Narration/ch3_fb4_a2_act.wav
+     narrate:  Ask the dead what they bought
+
+330. [The Toll They Paid — Ask the dead what they bought (success)]
+     save as:  public/sounds/Narration/ch3_fb4_a2_win.wav
+     narrate:  You speak the old words over the offering, and the shape of the bargain comes clear: a seal, fed on service, and a garrison who were told their deaths would hold something shut. They went gladly. That is the horror of it.
+
+331. [The Toll They Paid — Ask the dead what they bought (failure)]
+     save as:  public/sounds/Narration/ch3_fb4_a2_lose.wav
+     narrate:  You call on the dead for terms, and something at the bottom of the stair answers in their place.
+
+332. [Charter and Seal — description]
+     save as:  public/sounds/Narration/story_ch4_desc.wav
+     narrate:  Word travels. A company that clears a warcamp, walks Longbarrow Moor, and comes back from Wardstone with an answer is a company worth having on the books — and the Adventurers’ Charter would like your names on theirs. There is a ceremony. There is a proving-bout, for the crowd. There is a contract, and it is very long, and nobody expects you to read it.
+
+333. [Charter and Seal — embark]
+     save as:  public/sounds/Narration/story_ch4_embark.wav
+     narrate:  Charterhall is the first place in a month with walls that aren’t falling down. Banners, a cook-fire the size of a cottage, and two hundred people who want to buy the company a drink. Somebody has already chalked your names on the board.
+
+334. [Charter and Seal — victory]
+     save as:  public/sounds/Narration/story_ch4_victory.wav
+     narrate:  The bout is won, the crowd is loud, and the ink is dry. The company is Chartered. Somewhere in the hall behind the cheering, a clerk files a fresh page into a ledger, in a room where the lamps burn without oil.
+
+335. [Charter and Seal — briefing:root]
+     save as:  public/sounds/Narration/story_ch4_brief_root.wav
+     narrate:  Four jobs, four returns, no losses. Do you know how rare that is? I have watched two hundred companies sign this book and I have watched most of them come off it inside a year. The Charter would like you on the rolls — proper pay, proper resupply, proper standing. Ask me anything. I have all afternoon and none of it is more important than you.
+
+336. [Charter and Seal — briefing:whatfor]
+     save as:  public/sounds/Narration/story_ch4_brief_whatfor.wav
+     narrate:  Contracts, principally. The crowns won’t garrison the frontier but they’ll pay a fee to say it’s handled, and we hand the work to companies like yours and take a cut. It is not romantic. It has kept the borderlands from going under for four hundred years, which I’d argue is better than romantic.
+
+337. [Charter and Seal — briefing:generous]
+     save as:  public/sounds/Narration/story_ch4_brief_generous.wav
+     narrate:  Because you are worth it and because I would rather you took our coin than someone else’s. There are — other arrangements available to a company of your quality, and I would prefer you didn’t go looking for them. Here. Hazard advance, on account, before you’ve done anything to earn it. Call it faith.
+
+338. [Charter and Seal — briefing:wardstone]
+     save as:  public/sounds/Narration/story_ch4_brief_wardstone.wav
+     narrate:  …Vane. Yes. That was a bad business and I won’t pretend otherwise. She was Chartered, you know — nearly twenty years on our books. Whatever she went down there to do, she did it as one of ours. Which is why I would rather the next company that goes into a hole like that goes with our backing, our supply, and our people knowing where they are. Take this. It was hers.
+
+339. [The Quartermaster’s Gauntlet]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet.wav
+     narrate:  Between rounds, the Charter’s quartermaster runs a sideshow: a stocked kit-wagon, and any company that can get a hand on it keeps what it grabs. There is, of course, a catch per axle.
+
+340. [The Quartermaster’s Gauntlet — Thread the rigged course]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a0_act.wav
+     narrate:  Thread the rigged course
+
+341. [The Quartermaster’s Gauntlet — Thread the rigged course (success)]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a0_win.wav
+     narrate:  Buckets, ropes, and one indignant goose later, a hand lands flat on the wagon rail. The quartermaster pays up with professional respect.
+
+342. [The Quartermaster’s Gauntlet — Thread the rigged course (failure)]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a0_lose.wav
+     narrate:  The goose wins. The crowd will be retelling this for years.
+
+343. [The Quartermaster’s Gauntlet — Palm something mid-fumble]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a1_act.wav
+     narrate:  Palm something mid-fumble
+
+344. [The Quartermaster’s Gauntlet — Palm something mid-fumble (success)]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a1_win.wav
+     narrate:  You trip theatrically, apologise handsomely, and stand up richer. The quartermaster saw — and pays double for the artistry.
+
+345. [The Quartermaster’s Gauntlet — Palm something mid-fumble (failure)]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a1_lose.wav
+     narrate:  The quartermaster has watched ten thousand pickpockets. You are not the exception.
+
+346. [The Quartermaster’s Gauntlet — Go straight over the top]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a2_act.wav
+     narrate:  Go straight over the top
+
+347. [The Quartermaster’s Gauntlet — Go straight over the top (success)]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a2_win.wav
+     narrate:  Over the barrels, through the tarp, onto the wagon bed — the direct approach, executed directly.
+
+348. [The Quartermaster’s Gauntlet — Go straight over the top (failure)]
+     save as:  public/sounds/Narration/the_quartermaster_s_gauntlet_a2_lose.wav
+     narrate:  The tarp was the trap. The barrels were also the trap. Everything was the trap.
+
+349. [The Betting Ring]
+     save as:  public/sounds/Narration/the_betting_ring.wav
+     narrate:  The odds-board by the fourth yard lists tomorrow’s bout. The company’s name is there — at odds that say the bookmakers know something about the owlbear that the handlers aren’t saying.
+
+350. [The Betting Ring — Read the bookmakers]
+     save as:  public/sounds/Narration/the_betting_ring_a0_act.wav
+     narrate:  Read the bookmakers
+
+351. [The Betting Ring — Read the bookmakers (success)]
+     save as:  public/sounds/Narration/the_betting_ring_a0_win.wav
+     narrate:  The odds aren’t about the beast at all — they’re about how companies FREEZE when the cage opens. Forewarned, and a modest bet on yourselves pays nicely.
+
+352. [The Betting Ring — Read the bookmakers (failure)]
+     save as:  public/sounds/Narration/the_betting_ring_a0_lose.wav
+     narrate:  Professional faces. The odds keep their secret.
+
+353. [The Betting Ring — Talk to the beast’s handlers]
+     save as:  public/sounds/Narration/the_betting_ring_a1_act.wav
+     narrate:  Talk to the beast’s handlers
+
+354. [The Betting Ring — Talk to the beast’s handlers (success)]
+     save as:  public/sounds/Narration/the_betting_ring_a1_win.wav
+     narrate:  Ale in, truth out: the owlbear is blind on the left side and hates the smell of pitch. The handlers bet on you; so do you.
+
+355. [The Betting Ring — Talk to the beast’s handlers (failure)]
+     save as:  public/sounds/Narration/the_betting_ring_a1_lose.wav
+     narrate:  The handlers are paid in Charter coin and stay bought.
+
+356. [The Betting Ring — Feign a limp and move the odds]
+     save as:  public/sounds/Narration/the_betting_ring_a2_act.wav
+     narrate:  Feign a limp and move the odds
+
+357. [The Betting Ring — Feign a limp and move the odds (success)]
+     save as:  public/sounds/Narration/the_betting_ring_a2_win.wav
+     narrate:  The company hobbles past the board looking half-dead, the odds lengthen beautifully, and the wager lands at the last window. Theatre pays.
+
+358. [The Betting Ring — Feign a limp and move the odds (failure)]
+     save as:  public/sounds/Narration/the_betting_ring_a2_lose.wav
+     narrate:  A Charter officer watches the limp switch legs mid-yard. There will be a note in a margin about this.
+
+359. [The Signing]
+     save as:  public/sounds/Narration/the_signing.wav
+     narrate:  Nine pages of close-set clerk-hand, a pot of ink, and a smiling factor who has already dipped the pen for you. The crowd outside is chanting the company’s name. It would be very easy to sign.
+
+360. [The Signing — Negotiate the terms]
+     save as:  public/sounds/Narration/the_signing_a0_act.wav
+     narrate:  Negotiate the terms
+
+361. [The Signing — Negotiate the terms (success)]
+     save as:  public/sounds/Narration/the_signing_a0_win.wav
+     narrate:  You talk the factor up two grades of hazard pay and a resupply clause. He concedes it all instantly and without checking, which is either generosity or indifference to the cost.
+
+362. [The Signing — Negotiate the terms (failure)]
+     save as:  public/sounds/Narration/the_signing_a0_lose.wav
+     narrate:  He is charming, immovable, and somehow you end up thanking him.
+
+363. [The Signing — Actually read it]
+     save as:  public/sounds/Narration/the_signing_a1_act.wav
+     narrate:  Actually read it
+
+364. [The Signing — Actually read it (success)]
+     save as:  public/sounds/Narration/the_signing_a1_win.wav
+     narrate:  Page seven, clause forty-one, in the same hand as the rest: the signatory pledges "service in the deep places, in perpetuity, the term surviving the person." Surviving the person. You read it twice. The factor waits, still smiling, and does not stop you.
+
+365. [The Signing — Actually read it (failure)]
+     save as:  public/sounds/Narration/the_signing_a1_lose.wav
+     narrate:  The hand is deliberately dense and the crowd is deliberately loud. You get four pages in before the factor gently takes it back to "save you the trouble."
+
+366. [The Signing — Demand to see what else you’re signing]
+     save as:  public/sounds/Narration/the_signing_a2_act.wav
+     narrate:  Demand to see what else you’re signing
+
+367. [The Signing — Demand to see what else you’re signing (success)]
+     save as:  public/sounds/Narration/the_signing_a2_win.wav
+     narrate:  You put a hand flat on the page and ask what the other copy is for. For half a heartbeat the factor’s smile is not there at all. Then it is back, and he tells you — a filing copy, for the vault at Marrowfen.
+
+368. [The Signing — Demand to see what else you’re signing (failure)]
+     save as:  public/sounds/Narration/the_signing_a2_lose.wav
+     narrate:  You make a scene. The crowd loves it. The factor makes a small note in the margin that is not about the crowd.
+
+369. [The Long Roll]
+     save as:  public/sounds/Narration/the_long_roll.wav
+     narrate:  The memorial wall of the Charter: every company that ever signed, cut into slate, going back further than the Charter is supposed to be old. The list of the honoured dead is longer than the list of the living by a factor of about forty.
+
+370. [The Long Roll — Stand the remembrance]
+     save as:  public/sounds/Narration/the_long_roll_a0_act.wav
+     narrate:  Stand the remembrance
+
+371. [The Long Roll — Stand the remembrance (success)]
+     save as:  public/sounds/Narration/the_long_roll_a0_win.wav
+     narrate:  You stand the full rite with the Charter’s own priests. Whatever else this place is, the grief in it is real, and the party goes to the bout steadier for it.
+
+372. [The Long Roll — Stand the remembrance (failure)]
+     save as:  public/sounds/Narration/the_long_roll_a0_lose.wav
+     narrate:  The rite is long, the day is hot, and the words don’t land.
+
+373. [The Long Roll — Read back through the names]
+     save as:  public/sounds/Narration/the_long_roll_a1_act.wav
+     narrate:  Read back through the names
+
+374. [The Long Roll — Read back through the names (success)]
+     save as:  public/sounds/Narration/the_long_roll_a1_win.wav
+     narrate:  The oldest names on the wall predate the Charter’s founding by two centuries. Somebody was signing companies into the deep long before there was a Guild to do the signing.
+
+375. [The Long Roll — Read back through the names (failure)]
+     save as:  public/sounds/Narration/the_long_roll_a1_lose.wav
+     narrate:  The early slate is worn past reading, which is convenient.
+
+376. [The Long Roll — Look for the pattern in the dates]
+     save as:  public/sounds/Narration/the_long_roll_a2_act.wav
+     narrate:  Look for the pattern in the dates
+
+377. [The Long Roll — Look for the pattern in the dates (success)]
+     save as:  public/sounds/Narration/the_long_roll_a2_win.wav
+     narrate:  Company losses per year, cut in slate across four hundred years, and the number barely moves. Not a trend. Not a war. A quota — held level, year on year, like something is being paid.
+
+378. [The Long Roll — Look for the pattern in the dates (failure)]
+     save as:  public/sounds/Narration/the_long_roll_a2_lose.wav
+     narrate:  You stare at four hundred years of dead adventurers until the numbers swim, and get nothing from it but the weight.
+
+379. [The Proving-Bout]
+     save as:  public/sounds/Narration/the_proving_bout.wav
+     narrate:  A roped ring, a packed gallery, and something big and unhappy in a cage on the far side. This is not a fight. It is a performance, and the crowd has paid.
+
+380. [The Proving-Bout — Give the crowd its money’s worth]
+     save as:  public/sounds/Narration/the_proving_bout_a0_act.wav
+     narrate:  Give the crowd its money’s worth
+
+381. [The Proving-Bout — Give the crowd its money’s worth (success)]
+     save as:  public/sounds/Narration/the_proving_bout_a0_win.wav
+     narrate:  You play to the gallery, and the gallery roars, and the company fights the whole bout on a wave of noise.
+
+382. [The Proving-Bout — Give the crowd its money’s worth (failure)]
+     save as:  public/sounds/Narration/the_proving_bout_a0_lose.wav
+     narrate:  The flourish lands badly and the front row laughs. Fine. Do it the plain way.
+
+383. [The Proving-Bout — Read the beast before the cage opens]
+     save as:  public/sounds/Narration/the_proving_bout_a1_act.wav
+     narrate:  Read the beast before the cage opens
+
+384. [The Proving-Bout — Read the beast before the cage opens (success)]
+     save as:  public/sounds/Narration/the_proving_bout_a1_win.wav
+     narrate:  Half-starved, over-baited, and terrified — it will charge the loudest thing in the ring, and you know exactly where that is going to be.
+
+385. [The Proving-Bout — Read the beast before the cage opens (failure)]
+     save as:  public/sounds/Narration/the_proving_bout_a1_lose.wav
+     narrate:  It is too worked-up to read. It will do whatever it does.
+
+386. [The Proving-Bout — Watch the gallery instead of the ring]
+     save as:  public/sounds/Narration/the_proving_bout_a2_act.wav
+     narrate:  Watch the gallery instead of the ring
+
+387. [The Proving-Bout — Watch the gallery instead of the ring (success)]
+     save as:  public/sounds/Narration/the_proving_bout_a2_win.wav
+     narrate:  While everyone else watches the beast, you watch the Charter’s officers watching YOU — not cheering, not betting. Assessing. One of them writes something down each time the party takes a hit.
+
+388. [The Proving-Bout — Watch the gallery instead of the ring (failure)]
+     save as:  public/sounds/Narration/the_proving_bout_a2_lose.wav
+     narrate:  You take your eyes off a very large animal to look at a balcony. It costs you.
+
+389. [Charter and Seal — floor 1:root]
+     save as:  public/sounds/Narration/story_ch4_fb1_root.wav
+     narrate:  The yard is all warmth and noise — your names chalked huge on the board of new companies, cups pressed into your hands. But you catch a clerk at the board doing something quiet: wiping an old company’s name away to make room for yours.
+
+390. [Charter and Seal — floor 1:clerk]
+     save as:  public/sounds/Narration/story_ch4_fb1_clerk.wav
+     narrate:  No ceremony to it. A damp rag, a practised wipe, a fresh company chalked in the same spot before the old letters have finished smearing. He’s done it a thousand times. The board only ever holds so many living names.
+
+391. [Charter and Seal — floor 1:name]
+     save as:  public/sounds/Narration/story_ch4_fb1_name.wav
+     narrate:  Under your bright new letters, the ghost of the last company still shows — a good name, signed with pride not long ago, gone now with no black border and no toast. Just space, cleared, for the next.
+
+392. [The Cleared Board]
+     save as:  public/sounds/Narration/ch4_fb1.wav
+     narrate:  A roster board where the dead are wiped without ceremony to make room for the newly signed. Read what the Charter actually keeps count of.
+
+393. [The Cleared Board — Study the board’s turnover]
+     save as:  public/sounds/Narration/ch4_fb1_a0_act.wav
+     narrate:  Study the board’s turnover
+
+394. [The Cleared Board — Study the board’s turnover (success)]
+     save as:  public/sounds/Narration/ch4_fb1_a0_win.wav
+     narrate:  The board is a ledger of churn: names in, names wiped, at a steady rate that has nothing to do with the celebration and everything to do with a business that expects most of its signatories not to last.
+
+395. [The Cleared Board — Study the board’s turnover (failure)]
+     save as:  public/sounds/Narration/ch4_fb1_a0_lose.wav
+     narrate:  It’s a busy board at a busy party. You can’t read doom into a bit of chalk.
+
+396. [The Cleared Board — Watch how the Charter men treat it]
+     save as:  public/sounds/Narration/ch4_fb1_a1_act.wav
+     narrate:  Watch how the Charter men treat it
+
+397. [The Cleared Board — Watch how the Charter men treat it (success)]
+     save as:  public/sounds/Narration/ch4_fb1_a1_win.wav
+     narrate:  The officers glance at the board the way a farmer glances at stock — fondly, and without illusion. To them the wiping isn’t grief. It’s just the turn of the season.
+
+398. [The Cleared Board — Watch how the Charter men treat it (failure)]
+     save as:  public/sounds/Narration/ch4_fb1_a1_lose.wav
+     narrate:  Everyone here is drunk and delighted, including, probably, you. Nothing reads as sinister.
+
+399. [The Cleared Board — Ask a clerk where the old names go]
+     save as:  public/sounds/Narration/ch4_fb1_a2_act.wav
+     narrate:  Ask a clerk where the old names go
+
+400. [The Cleared Board — Ask a clerk where the old names go (success)]
+     save as:  public/sounds/Narration/ch4_fb1_a2_win.wav
+     narrate:  A cup and a warm word, and the clerk says it plainly, cheerfully: "Oh, they go in the great roll downstairs, love. Every name we ever signed. None of them ever come off THAT one." He means it kindly.
+
+401. [The Cleared Board — Ask a clerk where the old names go (failure)]
+     save as:  public/sounds/Narration/ch4_fb1_a2_lose.wav
+     narrate:  You press a little hard, a little sober, and the clerk’s smile cools. Word gets around that your company asks odd questions.
+
+402. [Charter and Seal — floor 2:root]
+     save as:  public/sounds/Narration/story_ch4_fb2_root.wav
+     narrate:  The memorial wall runs the length of the hall — every company the Charter ever lost, cut into slate, going back absurdly far. A mason is at work on it now, chisel tapping, adding fresh names to the honoured dead.
+
+403. [Charter and Seal — floor 2:mason]
+     save as:  public/sounds/Narration/story_ch4_fb2_mason.wav
+     narrate:  He works from a list, unhurried, cutting names into the death-wall with the calm of a man filling in a form. He doesn’t wait for word that these companies have died. He’s simply been given the names, and the dates, ahead of time.
+
+404. [Charter and Seal — floor 2:match]
+     save as:  public/sounds/Narration/story_ch4_fb2_match.wav
+     narrate:  One name he’s halfway through carving belongs to a company you just watched toasting in the yard — alive, loud, whole. Their place on the death-wall is being prepared while they drink to their signing.
+
+405. [The Wall That Waits]
+     save as:  public/sounds/Narration/ch4_fb2.wav
+     narrate:  A memorial wall being carved with the names of companies that are still alive. Work out how the Charter knows who to grieve before they die.
+
+406. [The Wall That Waits — Read the mason’s worklist]
+     save as:  public/sounds/Narration/ch4_fb2_a0_act.wav
+     narrate:  Read the mason’s worklist
+
+407. [The Wall That Waits — Read the mason’s worklist (success)]
+     save as:  public/sounds/Narration/ch4_fb2_a0_win.wav
+     narrate:  Names and dates, in a neat clerkly hand, weeks and months out. He isn’t recording deaths. He’s working through a schedule of them, and the ink is barely dry on the signings.
+
+408. [The Wall That Waits — Read the mason’s worklist (failure)]
+     save as:  public/sounds/Narration/ch4_fb2_a0_lose.wav
+     narrate:  He shields the list, or you can’t make it out. Either way it stays his business.
+
+409. [The Wall That Waits — Read the wall’s true age]
+     save as:  public/sounds/Narration/ch4_fb2_a1_act.wav
+     narrate:  Read the wall’s true age
+
+410. [The Wall That Waits — Read the wall’s true age (success)]
+     save as:  public/sounds/Narration/ch4_fb2_a1_win.wav
+     narrate:  The wall goes back further than the Charter is supposed to exist, and the death-rate cut into it is horribly steady — a constant harvest, century upon century, dressed up as remembrance.
+
+411. [The Wall That Waits — Read the wall’s true age (failure)]
+     save as:  public/sounds/Narration/ch4_fb2_a1_lose.wav
+     narrate:  Old slate and a lot of names. You can’t make it mean more than sorrow.
+
+412. [The Wall That Waits — Ask the mason how he knows]
+     save as:  public/sounds/Narration/ch4_fb2_a2_act.wav
+     narrate:  Ask the mason how he knows
+
+413. [The Wall That Waits — Ask the mason how he knows (success)]
+     save as:  public/sounds/Narration/ch4_fb2_a2_win.wav
+     narrate:  He shrugs, kind and tired: "They give me the names when they sign, not when they fall. Saves a second trip." He thinks that’s efficiency. It is the whole horror of the Charter in one sentence.
+
+414. [The Wall That Waits — Ask the mason how he knows (failure)]
+     save as:  public/sounds/Narration/ch4_fb2_a2_lose.wav
+     narrate:  The mason marks you for the sort who upsets the guests, and sets down his chisel until you leave.
+
+415. [Charter and Seal — floor 3:root]
+     save as:  public/sounds/Narration/story_ch4_fb3_root.wav
+     narrate:  The Charter’s generosity keeps coming — fine gear pressed on the company across the outfitter’s tables, "with our compliments." But every gift is weighed, tallied, and written into a great ledger before it’s handed over.
+
+416. [Charter and Seal — floor 3:ledger]
+     save as:  public/sounds/Narration/story_ch4_fb3_ledger.wav
+     narrate:  Every item is entered against your company’s name — not as a gift at all, but as an advance, charged at a generous valuation, to be settled out of earnings you haven’t made yet. You’re being outfitted into debt, warmly.
+
+417. [Charter and Seal — floor 3:gift]
+     save as:  public/sounds/Narration/story_ch4_fb3_gift.wav
+     narrate:  Good steel, honest make — and stamped, like everything here, with the Charter sigil. It isn’t yours. It’s issued to you, on the books, and the books belong to them. You’ll carry their mark into the dark and owe them for the privilege.
+
+418. [The Generous Ledger]
+     save as:  public/sounds/Narration/ch4_fb3.wav
+     narrate:  Lavish "gifts" of gear, each quietly entered as a debt against earnings not yet made. Read the true terms of the Charter’s open hand.
+
+419. [The Generous Ledger — Total the company’s account]
+     save as:  public/sounds/Narration/ch4_fb3_a0_act.wav
+     narrate:  Total the company’s account
+
+420. [The Generous Ledger — Total the company’s account (success)]
+     save as:  public/sounds/Narration/ch4_fb3_a0_win.wav
+     narrate:  Between gear, lodging and the fee for signing itself, your company is already deep in the Charter’s debt before its first chartered step — a debt only dangerous work can ever clear.
+
+421. [The Generous Ledger — Total the company’s account (failure)]
+     save as:  public/sounds/Narration/ch4_fb3_a0_lose.wav
+     narrate:  The columns are dense and the wine is good. The sum slips away from you.
+
+422. [The Generous Ledger — Read the quartermaster’s smile]
+     save as:  public/sounds/Narration/ch4_fb3_a1_act.wav
+     narrate:  Read the quartermaster’s smile
+
+423. [The Generous Ledger — Read the quartermaster’s smile (success)]
+     save as:  public/sounds/Narration/ch4_fb3_a1_win.wav
+     narrate:  He’s not cheating you — that’s the point. It’s all above board, all generous, all designed so a company must keep taking Charter work to stay ahead of Charter kindness. The trap is the arithmetic, not the man.
+
+424. [The Generous Ledger — Read the quartermaster’s smile (failure)]
+     save as:  public/sounds/Narration/ch4_fb3_a1_lose.wav
+     narrate:  He’s so pleasant and so helpful that suspicion feels like bad manners.
+
+425. [The Generous Ledger — Copy a page of the ledger]
+     save as:  public/sounds/Narration/ch4_fb3_a2_act.wav
+     narrate:  Copy a page of the ledger
+
+426. [The Generous Ledger — Copy a page of the ledger (success)]
+     save as:  public/sounds/Narration/ch4_fb3_a2_win.wav
+     narrate:  You palm a torn page: the standard terms, in black and white — advances, valuations, the interest of simply being alive on the Charter’s books. Evidence, for when someone finally wants it.
+
+427. [The Generous Ledger — Copy a page of the ledger (failure)]
+     save as:  public/sounds/Narration/ch4_fb3_a2_lose.wav
+     narrate:  A clerk sees your hand where it shouldn’t be. Nothing is said. Everything is noted.
+
+428. [Charter and Seal — floor 4:root]
+     save as:  public/sounds/Narration/story_ch4_fb4_root.wav
+     narrate:  The proving-ring draws a roaring crowd and a brisk trade in wagers. But standing at the odds-board a moment, you start to see the shape of it — and the house is not gambling. The house never gambles.
+
+429. [Charter and Seal — floor 4:odds]
+     save as:  public/sounds/Narration/story_ch4_fb4_odds.wav
+     narrate:  The odds are set so the crowd always half-wins and always half-pays, and the Charter clips every wager either way. Nobody in the ring is meant to die and nobody is meant to walk away clean. It’s calibrated. It’s a mill.
+
+430. [Charter and Seal — floor 4:handlers]
+     save as:  public/sounds/Narration/story_ch4_fb4_handlers.wav
+     narrate:  The handlers pick the proving-beasts with care — big enough to scar and terrify, chosen NOT to kill. A company must survive the bout to keep signing, keep earning, keep betting. Even the danger is managed to keep you in the machine.
+
+431. [The House Never Loses]
+     save as:  public/sounds/Narration/ch4_fb4.wav
+     narrate:  A proving-ring calibrated so companies are scarred but survive, and the house clips every wager. Read what the whole cheerful spectacle is really for.
+
+432. [The House Never Loses — Track the money’s flow]
+     save as:  public/sounds/Narration/ch4_fb4_a0_act.wav
+     narrate:  Track the money’s flow
+
+433. [The House Never Loses — Track the money’s flow (success)]
+     save as:  public/sounds/Narration/ch4_fb4_a0_win.wav
+     narrate:  Every coin bet, won or lost, leaves a clip in the Charter’s hand. The crowd thinks it’s the players. It’s the stakes. The whole roaring room is quietly feeding one account.
+
+434. [The House Never Loses — Track the money’s flow (failure)]
+     save as:  public/sounds/Narration/ch4_fb4_a0_lose.wav
+     narrate:  Too much noise, too many hands, too fast. The flow blurs.
+
+435. [The House Never Loses — Read the spectacle’s purpose]
+     save as:  public/sounds/Narration/ch4_fb4_a1_act.wav
+     narrate:  Read the spectacle’s purpose
+
+436. [The House Never Loses — Read the spectacle’s purpose (success)]
+     save as:  public/sounds/Narration/ch4_fb4_a1_win.wav
+     narrate:  It’s theatre with a ledger behind it: glory enough to keep companies signing, danger enough to keep them earning, mercy enough to keep them alive to do it again. A managed appetite, dressed as a festival.
+
+437. [The House Never Loses — Read the spectacle’s purpose (failure)]
+     save as:  public/sounds/Narration/ch4_fb4_a1_lose.wav
+     narrate:  It reads as exactly what it pretends to be — a grand, generous, harmless good time.
+
+438. [The House Never Loses — Get a bookmaker talking]
+     save as:  public/sounds/Narration/ch4_fb4_a2_act.wav
+     narrate:  Get a bookmaker talking
+
+439. [The House Never Loses — Get a bookmaker talking (success)]
+     save as:  public/sounds/Narration/ch4_fb4_a2_win.wav
+     narrate:  A drink loosens him: "Kill a company and you lose a customer, don’t you? We don’t want you dead, friend. We want you BACK." He laughs. It is the kindest, worst thing anyone says to you all night.
+
+440. [The House Never Loses — Get a bookmaker talking (failure)]
+     save as:  public/sounds/Narration/ch4_fb4_a2_lose.wav
+     narrate:  He clams up and flags a steward. Your company is getting a reputation before it’s earned one.
+
+441. [The Vault at Marrowfen — description]
+     save as:  public/sounds/Narration/story_ch5_desc.wav
+     narrate:  Your first Chartered contract, and it is a simple retrieval: a sealed case, held in a Charter vault under the drowned country at Marrowfen, to be brought back unopened. The fee is four times what Greenrise paid. The instruction not to open it is repeated three times in a one-page brief. Everything else about the job is described in a single sentence.
+
+442. [The Vault at Marrowfen — embark]
+     save as:  public/sounds/Narration/story_ch5_embark.wav
+     narrate:  The causeway to Marrowfen is a foot under black water and has been for a century. The party wades in a line, poling for the stones, while the mist closes up behind them like a door.
+
+443. [The Vault at Marrowfen — victory]
+     save as:  public/sounds/Narration/story_ch5_victory.wav
+     narrate:  The Warden falls apart around a breastplate stamped with a Charter sigil, and the case comes open in the party’s hands because there was never a lock on it — only an instruction. Inside is no relic. It is a ledger: companies, dates, and a figure beside each name. Yours is already entered. The date is not today’s. It is later.
+
+444. [The Vault at Marrowfen — briefing:root]
+     save as:  public/sounds/Narration/story_ch5_brief_root.wav
+     narrate:  Simple work, well paid — the sort of contract a Chartered company gets and a free one doesn’t. There is a case in our vault under Marrowfen. Bring it to me. Do not open it. That last part is not a test and it is not superstition; it is a filing matter and it is above both of us.
+
+445. [The Vault at Marrowfen — briefing:inside]
+     save as:  public/sounds/Narration/story_ch5_brief_inside.wav
+     narrate:  Records. I am being honest with you, which I would like noted: it is a box of paper. It is worth nothing to anyone outside the Charter and a great deal to us, and if you open it you will not find treasure, you will find bookkeeping. I would simply rather you didn’t. Please.
+
+446. [The Vault at Marrowfen — briefing:why]
+     save as:  public/sounds/Narration/story_ch5_brief_why.wav
+     narrate:  Because a fen doesn’t burn, doesn’t get raided, and doesn’t get built over. We have eleven of them. You put the records you cannot afford to lose where nobody will ever casually go, and then you pay people like me to make sure nobody goes casually. Take the vault key. Third turn, then left.
+
+447. [The Vault at Marrowfen — briefing:guard]
+     save as:  public/sounds/Narration/story_ch5_brief_guard.wav
+     narrate:  A Warden. Ours — was ours. I’ll not dress it up for you: the Charter used to post volunteers to long vaults under an old arrangement we don’t use any more, and some of those postings never ended. If it comes at you, it isn’t malice. It’s a soldier at a door who was never told to stand down. Take the draught. And be quick about it, for its sake as much as yours.
+
+448. [The Sunken Bell]
+     save as:  public/sounds/Narration/the_sunken_bell.wav
+     narrate:  A chapel drowned to its rafters, and in the reeds beside it, its bell — mouth-up, full of black water, still consecrated under the slime.
+
+449. [The Sunken Bell — Ring it once, properly]
+     save as:  public/sounds/Narration/the_sunken_bell_a0_act.wav
+     narrate:  Ring it once, properly
+
+450. [The Sunken Bell — Ring it once, properly (success)]
+     save as:  public/sounds/Narration/the_sunken_bell_a0_win.wav
+     narrate:  Struck through the water, the note comes out low and whole and rolls across the whole fen. Everything sacred left in Marrowfen wakes up on the party’s side.
+
+451. [The Sunken Bell — Ring it once, properly (failure)]
+     save as:  public/sounds/Narration/the_sunken_bell_a0_lose.wav
+     narrate:  The clapper is rusted fast. The bell keeps its silence.
+
+452. [The Sunken Bell — Read the founding blessing]
+     save as:  public/sounds/Narration/the_sunken_bell_a1_act.wav
+     narrate:  Read the founding blessing
+
+453. [The Sunken Bell — Read the founding blessing (success)]
+     save as:  public/sounds/Narration/the_sunken_bell_a1_win.wav
+     narrate:  The consecration was cut into the bronze, and bronze doesn’t rot. You trace the old words and they take hold of every blade present.
+
+454. [The Sunken Bell — Read the founding blessing (failure)]
+     save as:  public/sounds/Narration/the_sunken_bell_a1_lose.wav
+     narrate:  The inscription circles the bell — the last third is buried in peat.
+
+455. [The Sunken Bell — Right the bell and hang it]
+     save as:  public/sounds/Narration/the_sunken_bell_a2_act.wav
+     narrate:  Right the bell and hang it
+
+456. [The Sunken Bell — Right the bell and hang it (success)]
+     save as:  public/sounds/Narration/the_sunken_bell_a2_win.wav
+     narrate:  Half a ton of bronze, four sets of shoulders, one improvised gallows of causeway timber — and Marrowfen has a bell again. It sounds like defiance.
+
+457. [The Sunken Bell — Right the bell and hang it (failure)]
+     save as:  public/sounds/Narration/the_sunken_bell_a2_lose.wav
+     narrate:  The peat gives. The bell decides to visit the bottom of the fen after all.
+
+458. [The Archivist’s Door]
+     save as:  public/sounds/Narration/the_archivist_s_door.wav
+     narrate:  The outer vault’s service door, bricked over from the inside — sloppily, in haste, by someone using file-boxes as bricks. Somebody once wanted very much not to be followed through here.
+
+459. [The Archivist’s Door — Find the weak course]
+     save as:  public/sounds/Narration/the_archivist_s_door_a0_act.wav
+     narrate:  Find the weak course
+
+460. [The Archivist’s Door — Find the weak course (success)]
+     save as:  public/sounds/Narration/the_archivist_s_door_a0_win.wav
+     narrate:  Paper is not masonry. You find the box the whole bodge leans on, slide it free, and the wall unstacks itself politely.
+
+461. [The Archivist’s Door — Find the weak course (failure)]
+     save as:  public/sounds/Narration/the_archivist_s_door_a0_lose.wav
+     narrate:  Whoever built it panicked THOROUGHLY. It holds.
+
+462. [The Archivist’s Door — Read the file-boxes first]
+     save as:  public/sounds/Narration/the_archivist_s_door_a1_act.wav
+     narrate:  Read the file-boxes first
+
+463. [The Archivist’s Door — Read the file-boxes first (success)]
+     save as:  public/sounds/Narration/the_archivist_s_door_a1_win.wav
+     narrate:  The bricked-up boxes are sixty years of vault rosters — including who was posted here, and who stopped being relieved. The way through, and a why.
+
+464. [The Archivist’s Door — Read the file-boxes first (failure)]
+     save as:  public/sounds/Narration/the_archivist_s_door_a1_lose.wav
+     narrate:  Mould took the labels. The wall stays a wall.
+
+465. [The Archivist’s Door — Put a shoulder through it]
+     save as:  public/sounds/Narration/the_archivist_s_door_a2_act.wav
+     narrate:  Put a shoulder through it
+
+466. [The Archivist’s Door — Put a shoulder through it (success)]
+     save as:  public/sounds/Narration/the_archivist_s_door_a2_win.wav
+     narrate:  One hit, a cloud of sixty-year-old paperwork, and a corridor that skips the long way round.
+
+467. [The Archivist’s Door — Put a shoulder through it (failure)]
+     save as:  public/sounds/Narration/the_archivist_s_door_a2_lose.wav
+     narrate:  The crash rolls down every corridor in the vault, and the vault rolls something back.
+
+468. [The Drowned Causeway]
+     save as:  public/sounds/Narration/the_drowned_causeway.wav
+     narrate:  Somewhere under the black water is a road. Off the road is peat deep enough to take a horse. The mist gives you about nine feet of warning about anything.
+
+469. [The Drowned Causeway — Pole for the stones]
+     save as:  public/sounds/Narration/the_drowned_causeway_a0_act.wav
+     narrate:  Pole for the stones
+
+470. [The Drowned Causeway — Pole for the stones (success)]
+     save as:  public/sounds/Narration/the_drowned_causeway_a0_win.wav
+     narrate:  Slow, cold, and correct. The party finds the road by feel and stays on it — and finds a century of dropped purses in the silt alongside.
+
+471. [The Drowned Causeway — Pole for the stones (failure)]
+     save as:  public/sounds/Narration/the_drowned_causeway_a0_lose.wav
+     narrate:  You lose the line twice and spend an hour finding it again.
+
+472. [The Drowned Causeway — Read the reeds]
+     save as:  public/sounds/Narration/the_drowned_causeway_a1_act.wav
+     narrate:  Read the reeds
+
+473. [The Drowned Causeway — Read the reeds (success)]
+     save as:  public/sounds/Narration/the_drowned_causeway_a1_win.wav
+     narrate:  Reeds grow thin over stone and thick over peat. The road is legible from fifty paces once you know that, and so are the places travellers went in.
+
+474. [The Drowned Causeway — Read the reeds (failure)]
+     save as:  public/sounds/Narration/the_drowned_causeway_a1_lose.wav
+     narrate:  The reeds are uniform, dense, and unhelpful in every direction.
+
+475. [The Drowned Causeway — Wade it straight]
+     save as:  public/sounds/Narration/the_drowned_causeway_a2_act.wav
+     narrate:  Wade it straight
+
+476. [The Drowned Causeway — Wade it straight (success)]
+     save as:  public/sounds/Narration/the_drowned_causeway_a2_win.wav
+     narrate:  Straight across, chest-deep, in half the time — and half the fen’s lost valuables come up on the way.
+
+477. [The Drowned Causeway — Wade it straight (failure)]
+     save as:  public/sounds/Narration/the_drowned_causeway_a2_lose.wav
+     narrate:  Straight across means through the leech beds. The party arrives fast, and sick.
+
+478. [The Sealed Case]
+     save as:  public/sounds/Narration/the_sealed_case.wav
+     narrate:  The case sits alone on a plinth in a dry vault under a drowned fen. Iron-bound, unmarked, and heavier than it looks. The brief said three times: do not open it.
+
+479. [The Sealed Case — Examine it without touching]
+     save as:  public/sounds/Narration/the_sealed_case_a0_act.wav
+     narrate:  Examine it without touching
+
+480. [The Sealed Case — Examine it without touching (success)]
+     save as:  public/sounds/Narration/the_sealed_case_a0_win.wav
+     narrate:  The case is old. The wax seal on it is not — it is this season’s, and it carries Factor Sallow’s own sigil. Somebody sealed this AFTER the party took the contract.
+
+481. [The Sealed Case — Examine it without touching (failure)]
+     save as:  public/sounds/Narration/the_sealed_case_a0_lose.wav
+     narrate:  Iron, wood, wax. It gives you nothing standing there.
+
+482. [The Sealed Case — Sense what’s inside]
+     save as:  public/sounds/Narration/the_sealed_case_a1_act.wav
+     narrate:  Sense what’s inside
+
+483. [The Sealed Case — Sense what’s inside (success)]
+     save as:  public/sounds/Narration/the_sealed_case_a1_win.wav
+     narrate:  No wards, no curse, no power in it at all. Whatever is in this box, it is not magical and it is not dangerous. It is just something they do not want read.
+
+484. [The Sealed Case — Sense what’s inside (failure)]
+     save as:  public/sounds/Narration/the_sealed_case_a1_lose.wav
+     narrate:  The vault’s ambient sourness drowns out anything finer.
+
+485. [The Sealed Case — Open it and reseal it clean]
+     save as:  public/sounds/Narration/the_sealed_case_a2_act.wav
+     narrate:  Open it and reseal it clean
+
+486. [The Sealed Case — Open it and reseal it clean (success)]
+     save as:  public/sounds/Narration/the_sealed_case_a2_win.wav
+     narrate:  The seal lifts whole, the case opens, and there is no relic inside — only a ledger, and the company’s own name partway down a page, entered in a hand nobody has written yet. You close it. You reseal it. You say nothing, and the walk out is very quiet.
+
+487. [The Sealed Case — Open it and reseal it clean (failure)]
+     save as:  public/sounds/Narration/the_sealed_case_a2_lose.wav
+     narrate:  The wax cracks across the sigil. It cannot be made to look untouched — and something in the dark below has been told.
+
+488. [The Vault Warden]
+     save as:  public/sounds/Narration/the_vault_warden.wav
+     narrate:  It was a person. The breastplate is Charter-issue, three sizes of dent in it, and the sigil at the collar is the same one on the wax. It has been standing at this door a long time and it has not been relieved.
+
+489. [The Vault Warden — Name what it used to be]
+     save as:  public/sounds/Narration/the_vault_warden_a0_act.wav
+     narrate:  Name what it used to be
+
+490. [The Vault Warden — Name what it used to be (success)]
+     save as:  public/sounds/Narration/the_vault_warden_a0_win.wav
+     narrate:  You give it the closing words of the Charter’s own funeral rite. It does not stop. But it hesitates — and a Warden that hesitates is a Warden the party can take.
+
+491. [The Vault Warden — Name what it used to be (failure)]
+     save as:  public/sounds/Narration/the_vault_warden_a0_lose.wav
+     narrate:  The rite means nothing to whatever is left in there.
+
+492. [The Vault Warden — Read the livery]
+     save as:  public/sounds/Narration/the_vault_warden_a1_act.wav
+     narrate:  Read the livery
+
+493. [The Vault Warden — Read the livery (success)]
+     save as:  public/sounds/Narration/the_vault_warden_a1_win.wav
+     narrate:  Fourth Company of the Charter, struck from the rolls sixty years ago with full honours. Honoured, memorialised in slate at Charterhall — and posted down here ever since.
+
+494. [The Vault Warden — Read the livery (failure)]
+     save as:  public/sounds/Narration/the_vault_warden_a1_lose.wav
+     narrate:  The livery is too corroded to place.
+
+495. [The Vault Warden — Take the door before it turns]
+     save as:  public/sounds/Narration/the_vault_warden_a2_act.wav
+     narrate:  Take the door before it turns
+
+496. [The Vault Warden — Take the door before it turns (success)]
+     save as:  public/sounds/Narration/the_vault_warden_a2_win.wav
+     narrate:  The party is past it and through the vault door in the dark, and only has to fight it on the way out — with the case already in hand and the way already known.
+
+497. [The Vault Warden — Take the door before it turns (failure)]
+     save as:  public/sounds/Narration/the_vault_warden_a2_lose.wav
+     narrate:  It was never asleep. It has not been asleep for sixty years.
+
+498. [The Vault at Marrowfen — floor 1:root]
+     save as:  public/sounds/Narration/story_ch5_fb1_root.wav
+     narrate:  The causeway has been a foot under black water for a century, the brief said — a forgotten road to a forgotten vault. But the marker-posts that keep you on the stones are not a century old. They are new, and they are stamped.
+
+499. [The Vault at Marrowfen — floor 1:post]
+     save as:  public/sounds/Narration/story_ch5_fb1_post.wav
+     narrate:  Fresh-cut timber, iron-shod, driven deep — and burned into each one, the Charter sigil. The same mark on your contract, your gear, your gifts. Someone from the guild has been out here recently, tending the way to a place they told you no one goes.
+
+500. [The Vault at Marrowfen — floor 1:upkeep]
+     save as:  public/sounds/Narration/story_ch5_fb1_upkeep.wav
+     narrate:  The road is drowned but the route is immaculate — posts replaced, a snapped one lying where it was swapped out last season. This "forgotten" causeway is maintained on a schedule. The Charter comes here. Often.
+
+501. [The Tended Road]
+     save as:  public/sounds/Narration/ch5_fb1.wav
+     narrate:  Fresh Charter-stamped markers keeping a "forgotten" century-drowned road passable. Read how often the guild really comes to Marrowfen.
+
+502. [The Tended Road — Read the posts’ ages]
+     save as:  public/sounds/Narration/ch5_fb1_a0_act.wav
+     narrate:  Read the posts’ ages
+
+503. [The Tended Road — Read the posts’ ages (success)]
+     save as:  public/sounds/Narration/ch5_fb1_a0_win.wav
+     narrate:  The posts run new to old down the causeway, replaced in sequence over years. This is a route walked again and again — a supply line to somewhere the Charter would rather you believed was abandoned.
+
+504. [The Tended Road — Read the posts’ ages (failure)]
+     save as:  public/sounds/Narration/ch5_fb1_a0_lose.wav
+     narrate:  Bog eats timber at its own pace. You can’t date the posts you can see.
+
+505. [The Tended Road — Count how many have come this way]
+     save as:  public/sounds/Narration/ch5_fb1_a1_act.wav
+     narrate:  Count how many have come this way
+
+506. [The Tended Road — Count how many have come this way (success)]
+     save as:  public/sounds/Narration/ch5_fb1_a1_win.wav
+     narrate:  Old rope-scars on the posts, worn boot-stones set into the mud at intervals — this road has carried company after company out to the vault, and the traffic is all one direction: out.
+
+507. [The Tended Road — Count how many have come this way (failure)]
+     save as:  public/sounds/Narration/ch5_fb1_a1_lose.wav
+     narrate:  The mist and the water have scrubbed the count away.
+
+508. [The Tended Road — Read the far bank for returns]
+     save as:  public/sounds/Narration/ch5_fb1_a2_act.wav
+     narrate:  Read the far bank for returns
+
+509. [The Tended Road — Read the far bank for returns (success)]
+     save as:  public/sounds/Narration/ch5_fb1_a2_win.wav
+     narrate:  Every trail leads to the vault. None of the old paths lead back. Whatever the Charter sends down this tended road, the road only ever takes it one way.
+
+510. [The Tended Road — Read the far bank for returns (failure)]
+     save as:  public/sounds/Narration/ch5_fb1_a2_lose.wav
+     narrate:  You wade off the stones to read the reeds and the black peat closes cold around your legs.
+
+511. [The Vault at Marrowfen — floor 2:root]
+     save as:  public/sounds/Narration/story_ch5_fb2_root.wav
+     narrate:  Off the causeway, in the black water and the tall dead reeds, you find the ones who came before. A company’s worth of drowned dead, sunk in the mire, and every scrap they wear carries the Charter’s mark.
+
+512. [The Vault at Marrowfen — floor 2:drowned]
+     save as:  public/sounds/Narration/story_ch5_fb2_drowned.wav
+     narrate:  Charter-issue gear, Charter-stamped steel, the same generous outfitting your own company was given at Charterhall. They were sent, exactly as you were sent, on a simple retrieval. They are still here.
+
+513. [The Vault at Marrowfen — floor 2:carried]
+     save as:  public/sounds/Narration/story_ch5_fb2_carried.wav
+     narrate:  One of them still clutches it: an iron-bound case, unmarked, sealed with red wax — identical to the one you were sent to bring back unopened. They fetched theirs. They died in the reeds a mile from the vault, holding it.
+
+514. [The Company Before]
+     save as:  public/sounds/Narration/ch5_fb2.wav
+     narrate:  A drowned company in Charter gear, one still clutching a sealed case exactly like your errand. Read what happened to the last hands sent to do this job.
+
+515. [The Company Before — Read how they died]
+     save as:  public/sounds/Narration/ch5_fb2_a0_act.wav
+     narrate:  Read how they died
+
+516. [The Company Before — Read how they died (success)]
+     save as:  public/sounds/Narration/ch5_fb2_a0_win.wav
+     narrate:  They drowned in flight, in the dark, scattering off the safe stones — the same blind panic that took the herds and the flock. Something out here unmakes the nerve to walk a straight road.
+
+517. [The Company Before — Read how they died (failure)]
+     save as:  public/sounds/Narration/ch5_fb2_a0_lose.wav
+     narrate:  A century of bog has left too little to question.
+
+518. [The Company Before — Reconstruct their errand]
+     save as:  public/sounds/Narration/ch5_fb2_a1_act.wav
+     narrate:  Reconstruct their errand
+
+519. [The Company Before — Reconstruct their errand (success)]
+     save as:  public/sounds/Narration/ch5_fb2_a1_win.wav
+     narrate:  Same brief, same case, same route as yours, a lifetime ago. They retrieved it and never made it home. The Charter simply signed another company and sent them for the same thing again.
+
+520. [The Company Before — Reconstruct their errand (failure)]
+     save as:  public/sounds/Narration/ch5_fb2_a1_lose.wav
+     narrate:  The evidence is drowned past reading. Only the shape of it remains.
+
+521. [The Company Before — Understand why they were expendable]
+     save as:  public/sounds/Narration/ch5_fb2_a2_act.wav
+     narrate:  Understand why they were expendable
+
+522. [The Company Before — Understand why they were expendable (success)]
+     save as:  public/sounds/Narration/ch5_fb2_a2_win.wav
+     narrate:  It lands cold: the retrieval was never the point. Sending companies out here IS the point — the errand is a way to spend them, and their deaths, on something the guild needs paid down here.
+
+523. [The Company Before — Understand why they were expendable (failure)]
+     save as:  public/sounds/Narration/ch5_fb2_a2_lose.wav
+     narrate:  You grasp the whole shape of your own expendability, and it sits in your chest like the cold water.
+
+524. [The Vault at Marrowfen — floor 3:root]
+     save as:  public/sounds/Narration/story_ch5_fb3_root.wav
+     narrate:  You reach dry stone at last — the outer vault, its great door shut for a hundred years. Except the seal across the door is not a hundred years old. The wax is bright, sharp-edged, fresh. Newer than everything it guards.
+
+525. [The Vault at Marrowfen — floor 3:seal]
+     save as:  public/sounds/Narration/story_ch5_fb3_seal.wav
+     narrate:  Charter wax, cleanly stamped, laid within the year over a scar of old wax, over another, over another — a whole history of reseals stacked at the join. This door is opened and closed again on a schedule, and made to look untouched each time.
+
+526. [The Vault at Marrowfen — floor 3:door]
+     save as:  public/sounds/Narration/story_ch5_fb3_door.wav
+     narrate:  The threshold stone is worn by a century of comings and goings the fresh seal is meant to deny. They open this vault, take what they take, seal it new, and let each company believe it is the first through in a hundred years.
+
+527. [The Fresh Seal]
+     save as:  public/sounds/Narration/ch5_fb3.wav
+     narrate:  A "century-sealed" vault whose wax was stamped within the year, over layers of older reseals. Read how routinely the Charter really opens this door.
+
+528. [The Fresh Seal — Count the layers of wax]
+     save as:  public/sounds/Narration/ch5_fb3_a0_act.wav
+     narrate:  Count the layers of wax
+
+529. [The Fresh Seal — Count the layers of wax (success)]
+     save as:  public/sounds/Narration/ch5_fb3_a0_win.wav
+     narrate:  Reseal on reseal on reseal, stacked at the door’s edge — a decade of openings at least, each one dressed up as the first. The forgotten vault is on a maintenance rota.
+
+530. [The Fresh Seal — Count the layers of wax (failure)]
+     save as:  public/sounds/Narration/ch5_fb3_a0_lose.wav
+     narrate:  The wax is a smeared mess. You can’t number the reseals.
+
+531. [The Fresh Seal — Test the seal’s making]
+     save as:  public/sounds/Narration/ch5_fb3_a1_act.wav
+     narrate:  Test the seal’s making
+
+532. [The Fresh Seal — Test the seal’s making (success)]
+     save as:  public/sounds/Narration/ch5_fb3_a1_win.wav
+     narrate:  The binding worked into the wax is guild-craft, recent and competent — not a relic ward but a fresh lock, re-set by someone who knew exactly what they were shutting back in each time.
+
+533. [The Fresh Seal — Test the seal’s making (failure)]
+     save as:  public/sounds/Narration/ch5_fb3_a1_lose.wav
+     narrate:  The ward resists your reading, sullen and cold.
+
+534. [The Fresh Seal — Find the reseal records]
+     save as:  public/sounds/Narration/ch5_fb3_a2_act.wav
+     narrate:  Find the reseal records
+
+535. [The Fresh Seal — Find the reseal records (success)]
+     save as:  public/sounds/Narration/ch5_fb3_a2_win.wav
+     narrate:  Scratched tallies beside the door, a clerk’s habit — dates of opening, going back and back, at steady intervals. The Charter has been drawing on this vault, quietly, for generations.
+
+536. [The Fresh Seal — Find the reseal records (failure)]
+     save as:  public/sounds/Narration/ch5_fb3_a2_lose.wav
+     narrate:  You pry at the door’s secret and something set to guard the secret stirs against you.
+
+537. [The Vault at Marrowfen — floor 4:root]
+     save as:  public/sounds/Narration/story_ch5_fb4_root.wav
+     narrate:  The vault is not a treasury. It is an archive. Rank on rank of shelves hold hundreds of iron-bound cases exactly like the one you were sent to fetch — each tagged with a company’s name and a single date.
+
+538. [The Vault at Marrowfen — floor 4:tags]
+     save as:  public/sounds/Narration/story_ch5_fb4_tags.wav
+     narrate:  Company names you half-know, each beside a date. Some dates are long past — companies you could look up in the death-wall’s slate. But the shelves run on, and the dates run on, into months and years that have not happened yet.
+
+539. [The Vault at Marrowfen — floor 4:ours]
+     save as:  public/sounds/Narration/story_ch5_fb4_ours.wav
+     narrate:  There is a gap on a near shelf, dusted and ready, tagged with a name you signed only days ago: your own company. Beside it, a date. It is not today’s. It is later. The case for it has not been filed. Not yet.
+
+540. [The Shelf With Your Name]
+     save as:  public/sounds/Narration/ch5_fb4.wav
+     narrate:  An archive of sealed cases tagged with companies and dates — many of the dates still in the future, one shelf waiting with your own company’s name. Read what the Charter is really keeping down here.
+
+541. [The Shelf With Your Name — Work out the filing system]
+     save as:  public/sounds/Narration/ch5_fb4_a0_act.wav
+     narrate:  Work out the filing system
+
+542. [The Shelf With Your Name — Work out the filing system (success)]
+     save as:  public/sounds/Narration/ch5_fb4_a0_win.wav
+     narrate:  One case per company, one date per case: the day the Charter expects that company to be spent. The past shelves are full and closed. The future shelves are labelled and waiting. It is a ledger of scheduled deaths.
+
+543. [The Shelf With Your Name — Work out the filing system (failure)]
+     save as:  public/sounds/Narration/ch5_fb4_a0_lose.wav
+     narrate:  The system is vast and lightless and you cannot hold its shape.
+
+544. [The Shelf With Your Name — Cross the dates against the dead]
+     save as:  public/sounds/Narration/ch5_fb4_a1_act.wav
+     narrate:  Cross the dates against the dead
+
+545. [The Shelf With Your Name — Cross the dates against the dead (success)]
+     save as:  public/sounds/Narration/ch5_fb4_a1_win.wav
+     narrate:  Every past date matches a name on Charterhall’s memorial to the day. The wall doesn’t mourn the fallen — it confirms the schedule kept. The future dates are simply appointments not yet come.
+
+546. [The Shelf With Your Name — Cross the dates against the dead (failure)]
+     save as:  public/sounds/Narration/ch5_fb4_a1_lose.wav
+     narrate:  You can’t hold enough of the record at once to prove the pattern.
+
+547. [The Shelf With Your Name — Understand what the cases feed]
+     save as:  public/sounds/Narration/ch5_fb4_a2_act.wav
+     narrate:  Understand what the cases feed
+
+548. [The Shelf With Your Name — Understand what the cases feed (success)]
+     save as:  public/sounds/Narration/ch5_fb4_a2_win.wav
+     narrate:  Each case is a life’s worth of service, sealed and filed and rendered down to feed the thing the whole order exists to keep bound. Your company’s empty shelf is a promise the Charter has already made on your behalf.
+
+549. [The Shelf With Your Name — Understand what the cases feed (failure)]
+     save as:  public/sounds/Narration/ch5_fb4_a2_lose.wav
+     narrate:  You reach for the purpose of the place and the purpose reaches back, and it knows your company’s name.

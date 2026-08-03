@@ -8,7 +8,29 @@
  *
  * Saving throws and type-based condition immunities are also handled
  * here so every apply call can check them automatically.
+ *
+ * ── TIME BASE: the combat clock, not the wall clock ──────────────────
+ * Every `duration:` in this codebase is expressed in **5e seconds**, where
+ * one round = `ROUND_SECONDS` (6). `duration:60` means "1 minute" = 10 rounds,
+ * `duration:6` means "1 round".
+ *
+ * Those numbers are measured against `game.fxNow` — the *combat clock* owned
+ * by initiative.js — and **never** against `game.elapsed` (real seconds).
+ * `fxNow` advances only while an initiative order is running, by
+ * `ROUND_SECONDS / order.length` per spotlight, so one full pass of the
+ * turn order = exactly one round = 6 fx-seconds regardless of how fast the
+ * turn-based engine actually resolves those turns in real time.
+ *
+ * Two consequences that the game design leans on:
+ *   1. Out of combat the clock is frozen, so a buff earned from a skill
+ *      challenge does not burn down while the party walks around — its timer
+ *      starts at the top of the next fight.
+ *   2. `clearCombatEffects` wipes everything at the end of a fight, so
+ *      nothing but the explicitly `persist`-flagged effects survive a combat.
  */
+
+/** 5e round length in "in-game" seconds — the unit every `duration:` uses. */
+export const ROUND_SECONDS = 6;
 
 /* ── tiny dice helpers (avoid srd.js import to prevent circular deps) ── */
 function roll(count, sides, bonus = 0) {
@@ -34,8 +56,10 @@ function roll(count, sides, bonus = 0) {
        cantAttackSource             cannot attack the charmer (effect.source)
        abilityDisadvantage          disadv on ability checks
        dexDisadvantage             disadv on DEX saves
-       dotData / dotTickTimer       DoT handled outside getEffectMods
+       dotData                      DoT handled outside getEffectMods
        wildShapeDmg / sacredDice / hexEffect / markEffect  special flags
+     Lifetime:
+       persist                      survives clearCombatEffects (until a rest)
    ================================================================ */
 export const EFFECTS = {
   /* ── 5e Core Conditions (debuffs) ── */
@@ -131,8 +155,8 @@ export const EFFECTS = {
   inspired: {
     label:'Inspired', category:'buff', color:0xe8a8ff, float:'#e8a8ff',
     acBonus:0, speedMul:1, dmgMul:1,
-    blessDice:true,
-    desc:'+1d4 to attack rolls (Bless / inspiration).'
+    atkAdvantage:1, consumeOnAttack:true,
+    desc:'Advantage on next attack roll.'
   },
   shielded: {
     label:'Shielded', category:'buff', color:0x88aaff, float:'#88aaff',
@@ -166,6 +190,28 @@ export const EFFECTS = {
     label:'Phase Step', category:'buff', color:0x8fd4e8, float:'#8fd4e8',
     acBonus:4, speedMul:1, dmgMul:1,
     desc:'+4 AC.'
+  },
+  shieldOfFaith: {
+    label:'Shield of Faith', category:'buff', color:0xa0c0ff, float:'#a0c0ff',
+    acBonus:2, speedMul:1, dmgMul:1,
+    desc:'+2 AC (shimmering shield of protective energy).'
+  },
+  /* Monk Patient Defense — the Dodge action. This game has no "attackers roll
+     with disadvantage" channel, so Dodge is abstracted as a strong short AC
+     buff (harder to hit for a beat), consistent with Bear Totem / Phase Step. */
+  patientDefense: {
+    label:'Dodge', category:'buff', color:0xa0c0ff, float:'#a0c0ff',
+    acBonus:5, speedMul:1, dmgMul:1,
+    desc:'Dodging: +5 AC until your next turn.'
+  },
+  /* Monster enrage / killbuff buff (gnoll Rampage, flesh-golem Berserk,
+     orc-warlord Bloodlust). Pure offense: no AC change so it doesn't
+     double as a defensive cooldown. */
+  bloodlust: {
+    label:'Bloodlust', category:'buff', color:0xff5040, float:'#ff5040',
+    acBonus:0, speedMul:1.3, dmgMul:1,
+    dmgBonus:2,
+    desc:'+30% speed. +2 damage.'
   },
 
   /* ── Spell-dealt debuffs ── */
@@ -214,6 +260,33 @@ export const EFFECTS = {
     dotData:true,
     desc:'Bleeding: loses HP each second.'
   },
+  magicWeapon: {
+    label:'Magic Weapon', category:'buff', color:0xb08cff, float:'#b08cff',
+    acBonus:0, atkBonus:1, dmgBonus:1, speedMul:1, dmgMul:1,
+    magicWeapon:true,
+    desc:'Weapon is magical: +1 to hit/damage, bypasses nonmagical resistance.'
+  },
+  barkskin: {
+    label:'Barkskin', category:'buff', color:0x6aaa4a, float:'#6aaa4a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    acFloor:16,
+    desc:'AC cannot go below 16.'
+  },
+
+  /* ── Monster-ability debuffs (persist until a rest — applied with no
+        duration + tag:'rest'; cleared in rest.js partyShortRest/LongRest) ── */
+  drained: {
+    label:'Drained', category:'debuff', color:0x6a3080, float:'#b070d0',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    stacking:true, maxHpDrainPerStack:5, persist:true,
+    desc:'Life force drained: -5 max HP per stack until a rest.'
+  },
+  corroded: {
+    label:'Corroded', category:'debuff', color:0xc08040, float:'#d0a060',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    stacking:true, acPenaltyPerStack:1, persist:true,
+    desc:'Armor corroded: -1 AC per stack until a rest.'
+  },
 };
 
 /* ================================================================
@@ -241,7 +314,18 @@ export const TYPE_IMMUNITIES = {
    Public API
    ================================================================ */
 
-/** Apply an effect to an entity.  Returns false if immune. */
+/**
+ * Apply an effect to an entity.  Returns false if immune.
+ *
+ * @param {object} e     hero/monster wrapper
+ * @param {string} key   EFFECTS key
+ * @param {object} opts
+ *   duration  lifetime in 5e seconds (6 = one round). Omit for indefinite.
+ *   elapsed   **combat-clock** reading to measure `duration` from — pass
+ *             `game.fxNow`, never `game.elapsed`. See the time-base note at
+ *             the top of this file.
+ *   source, tag, repeatSave, dotDmg  as before.
+ */
 export function applyEffect(e, key, opts = {}) {
   if (!e || !EFFECTS[key]) return false;
 
@@ -249,13 +333,26 @@ export function applyEffect(e, key, opts = {}) {
   const dt = e.data || e;
   if (dt.type && _typeImm(dt.type, key)) return false;
   if (dt.tags && dt.tags.some(t => _typeImm(t, key))) return false;
+  /* per-monster statblock condition immunity (case-insensitive match against
+     the monster's condImmune array — e.g. skeleton carries "Poisoned"). */
+  const condImmune = dt.statblock?.condImmune;
+  if (condImmune && condImmune.length && condImmune.some(ci => ci.toLowerCase() === key)) return false;
 
   e._effects = e._effects || {};
   const dur = opts.duration || null;
   const until = dur != null ? (opts.elapsed || 0) + dur : null;
 
-  /* prefer longer duration if already active */
+  /* stacking effects (corroded / drained): re-application adds a stack */
   const existing = e._effects[key];
+  if (EFFECTS[key].stacking && existing) {
+    existing.stacks = (existing.stacks || 1) + 1;
+    if (until != null && (existing.until == null || until > existing.until)) existing.until = until;
+    e._effectCache = null;
+    if (e.data) e.data._effects = e._effects;
+    return true;
+  }
+
+  /* prefer longer duration if already active */
   if (existing && existing.until != null && until != null && until <= existing.until)
     return true;
 
@@ -264,6 +361,7 @@ export function applyEffect(e, key, opts = {}) {
     until,
     source: opts.source || null,
     tag: opts.tag || null,
+    stacks: EFFECTS[key].stacking ? 1 : undefined,
   };
   /* 5e repeat save: target re-rolls the save every `every` seconds ("at the
      end of each of its turns") and shakes the effect off on a success. */
@@ -271,10 +369,14 @@ export function applyEffect(e, key, opts = {}) {
     e._effects[key].repeatSave = opts.repeatSave;   // { ability, dc, every }
     e._effects[key].nextSave = (opts.elapsed || 0) + (opts.repeatSave.every || 6);
   }
-  if (EFFECTS[key].dotData && opts.dotDmg != null) {
+  /* any effect can carry a DoT payload (burning, wounded, poison bites,
+     swallow/engulf acid on restrained…) — ticked by tickHeroDots (heroes) */
+  if (opts.dotDmg != null) {
     e._effects[key].dotDmg = opts.dotDmg;
     e._effects[key].dotSrc = opts.source || null;
-    e._effects[key].dotTick = 0;
+    /* dotClock = combat-clock reading of the last pulse; tickHeroDots fires one
+       pulse per ROUND_SECONDS from here. */
+    e._effects[key].dotClock = opts.elapsed || 0;
   }
   if (e.data) e.data._effects = e._effects;
   e._effectCache = null;
@@ -317,19 +419,52 @@ export function clearEffectsByTag(e, tag) {
   }
 }
 
-/** Expire timed effects and roll repeat saves.  Call once per frame per active entity. */
-export function tickEffects(e, elapsed) {
+/**
+ * Wipe every combat-scoped effect from an entity — the end-of-fight reset.
+ *
+ * Buffs and debuffs live for one encounter and one encounter only: whatever
+ * the party banked from a skill challenge, whatever a caster stacked up, and
+ * whatever the monsters landed on the party all evaporate when the last
+ * aggroed monster dies. Only effects flagged `persist` in the registry
+ * (drained / corroded — "until a rest" monster abilities) or explicitly
+ * tagged `'rest'` survive; those are rest.js's business.
+ *
+ * Returns the number of effects removed.
+ */
+export function clearCombatEffects(e) {
+  if (!e || !e._effects) return 0;
+  let n = 0;
+  for (const k of Object.keys(e._effects)) {
+    if (EFFECTS[k]?.persist || e._effects[k].tag === 'rest') continue;
+    delete e._effects[k];
+    n++;
+  }
+  if (n) {
+    if (e.data) e.data._effects = e._effects;
+    e._effectCache = null;
+  }
+  return n;
+}
+
+/** Expire timed effects and roll repeat saves.  Call once per frame per active entity.
+ *
+ *  `now` is the **combat clock** (`game.fxNow`), not the wall clock. Because
+ *  that clock is frozen outside combat, this is a no-op between fights — which
+ *  is what keeps a skill-challenge boon banked until the next encounter. No
+ *  separate "pause" bookkeeping is needed (an earlier `opts.combatActive` flag
+ *  did that job against the wall clock and has been removed). */
+export function tickEffects(e, now) {
   if (!e || !e._effects) return;
   let ch = false;
   for (const k of Object.keys(e._effects)) {
     const eff = e._effects[k];
-    if (eff.until != null && elapsed >= eff.until) {
+    if (eff.until != null && now >= eff.until) {
       delete e._effects[k];
       ch = true;
       continue;
     }
-    if (eff.repeatSave && elapsed >= eff.nextSave) {
-      eff.nextSave = elapsed + (eff.repeatSave.every || 6);
+    if (eff.repeatSave && now >= eff.nextSave) {
+      eff.nextSave = now + (eff.repeatSave.every || ROUND_SECONDS);
       if (rollSave(e, eff.repeatSave.ability, eff.repeatSave.dc, { magic: true })) {
         delete e._effects[k];
         ch = true;
@@ -349,22 +484,27 @@ export function getEffectMods(e) {
     acBonus:0, atkBonus:0, dmgBonus:0,
     speedMul:1, dmgTakenMul:1, dmgDealtMul:1,
     incapacitated:false, defAdvantage:false,
-    atkDisadvantage:false, autoCritMelee:false,
+    atkDisadvantage:false, atkAdvantage:0, autoCritMelee:false,
     wildShapeDmg:false, sacredDice:false, blessDice:false,
-    cantAttackSource:null,
+    cantAttackSource:null, acFloor:0, magicWeapon:false,
   };
   if (!e._effects) { e._effectCache = m; return m; }
   for (const [k, eff] of Object.entries(e._effects)) {
     const d = EFFECTS[k]; if (!d) continue;
+    /* stacking penalties (corroded: -1 AC per stack) */
+    if (d.acPenaltyPerStack) m.acBonus -= d.acPenaltyPerStack * (eff.stacks || 1);
     m.acBonus += (d.acBonus||0) - (d.acPenalty||0);
     m.atkBonus += (d.atkBonus||0) - (d.atkPenalty||0);
     m.dmgBonus += d.dmgBonus||0;
     m.speedMul *= d.speedMul!=null ? d.speedMul : 1;
     m.dmgTakenMul *= d.dmgTakenMul!=null ? d.dmgTakenMul : 1;
     m.dmgDealtMul *= d.dmgMul!=null ? d.dmgMul : 1;
+    if (d.acFloor) m.acFloor = Math.max(m.acFloor, d.acFloor);
+    if (d.magicWeapon) m.magicWeapon = true;
     if (d.incapacitated) m.incapacitated = true;
     if (d.defAdvantage) m.defAdvantage = true;
     if (d.atkDisadvantage) m.atkDisadvantage = true;
+    if (d.atkAdvantage) m.atkAdvantage += d.atkAdvantage;
     if (d.autoCritMelee) m.autoCritMelee = true;
     if (d.wildShapeDmg) m.wildShapeDmg = true;
     if (d.sacredDice) m.sacredDice = true;
@@ -386,14 +526,20 @@ export function getEffectMods(e) {
  *
  * opts: { adv: +1/-1/0, magic: true when the save is against a spell }
  */
-export function rollSave(entity, ability, dc, opts = {}) {
+/* Full roll breakdown — the raw d20, the save modifier, and the total — so the
+   combat log can show "DEX save: 14 vs DC 15 — fail". rollSave wraps this and
+   returns just the pass/fail boolean for the many call sites that only need it. */
+export function rollSaveDetail(entity, ability, dc, opts = {}) {
   const data = entity.data || entity;
   let m = 0;
-  if (data.saves && data.saves[ability] != null) {
-    /* stat-block save proficiency: total bonus (ability mod + proficiency) */
+  if (data.effStats && data.effStats[ability] != null) {
+    const statMod = Math.floor((data.effStats[ability] - 10) / 2);
+    const prof = data.statblock?.prof || Math.max(2, Math.floor((data.cr || 1) / 4) + 2);
+    const isProf = (data.saves && data.saves[ability] != null && data.saves[ability] > statMod) || (data.statblock?.saves && data.statblock.saves.includes(ability));
+    m = statMod + (isProf ? prof : 0);
+    if (data.saves && data.saves[ability] != null) m = Math.max(m, data.saves[ability]);
+  } else if (data.saves && data.saves[ability] != null) {
     m = data.saves[ability];
-  } else if (data.effStats && data.effStats[ability] != null) {
-    m = Math.floor((data.effStats[ability] - 10) / 2);
   } else if (data.cr != null) {
     m = Math.max(0, Math.min(8, Math.floor(data.cr / 2)));
   }
@@ -407,6 +553,8 @@ export function rollSave(entity, ability, dc, opts = {}) {
   if (opts.magic && data.raceKey === 'gnome' && ['int', 'wis', 'cha'].includes(ability)) {
     adv += 1;
   }
+  /* Magic Resistance (SRD trait): advantage on saving throws vs spells & magic */
+  if (opts.magic && data.magicResistance) adv += 1;
 
   const a = roll(1, 20);
   let d20 = a;
@@ -414,7 +562,12 @@ export function rollSave(entity, ability, dc, opts = {}) {
     const b = roll(1, 20);
     d20 = adv > 0 ? Math.max(a, b) : Math.min(a, b);
   }
-  return d20 + m >= dc;
+  const total = d20 + m;
+  return { saved: total >= dc, d20, mod: m, total, dc };
+}
+
+export function rollSave(entity, ability, dc, opts = {}) {
+  return rollSaveDetail(entity, ability, dc, opts).saved;
 }
 
 /* ---------- Internals ---------- */

@@ -9,7 +9,7 @@
  */
 import * as THREE from 'three';
 import { FLOOR, WALL, POOL } from './constants.js';
-import { log } from './ui.js';
+import { log, showBanner } from './ui.js';
 import { playSfx } from './audio.js';
 
 const FRONTIER_DIM = 0.35;
@@ -91,9 +91,10 @@ export const fogMethods = {
 
   _writeInstanceMatrix(mesh, i) {
     const s = mesh.userData.set;
+    const hidden = s.py[i] <= -500;
     _q.setFromEuler(_E.set(s.rx[i], s.ry[i], s.rz[i]));
     _p.set(s.px[i], s.py[i], s.pz[i]);
-    _s.set(s.sx[i], s.sy[i], s.sz[i]);
+    _s.set(hidden ? 0 : s.sx[i], hidden ? 0 : s.sy[i], hidden ? 0 : s.sz[i]);
     _m.compose(_p, _q, _s);
     mesh.setMatrixAt(i, _m);
     if (mesh.instanceMatrix) mesh.instanceMatrix.needsUpdate = true;
@@ -122,9 +123,13 @@ export const fogMethods = {
 
   revealCell(c) {
     if (this.revealed[c]) return;
-    // Never auto-reveal cells in unvisited rooms — recalculateFog owns their dim level
-    const rid = this.D && this.D.roomId ? this.D.roomId[c] : -1;
-    if (rid >= 0 && !this.visitedRooms[rid]) return;
+    // Never auto-reveal cells in unvisited rooms — recalculateFog owns their dim
+    // level. Overland maps are the exception: every cell brightens by proximity,
+    // so a clearing lights up as the party approaches, before it's "visited".
+    if (!(this.D && this.D.overland)) {
+      const rid = this.D && this.D.roomId ? this.D.roomId[c] : -1;
+      if (rid >= 0 && !this.visitedRooms[rid]) return;
+    }
     this.showCell(c);
     this.revealed[c] = 1;
     const { floor, wall, wallCap } = this.engine.getMeshes();
@@ -168,15 +173,28 @@ export const fogMethods = {
     // Raise props, arches, and standalones for this room immediately
     this.recalculateFog(this);
     if (silent) return;
-    const flavor = {
-      combat: 'The party presses on.',
-      elite: '⚠ An elite guard room! Steel yourselves.',
-      treasure: '✨ A treasure vault glitters ahead!',
-      shrine: '🔮 A shrine hums with restorative magic.',
-      boss: '💀 The boss lair. This is it.',
-      entrance: ''
-    }[r.type];
-    if (flavor) log(flavor, r.type);
+    if (r.banner) {
+      showBanner(r.banner.title, r.banner.subtitle, 'banner-' + (r.banner.style || 'special'));
+      log(`⚔️ Special Room: ${r.banner.title} — ${r.banner.subtitle}`, r.type);
+    } else if (r.type === 'treasure') {
+      showBanner('SECRET VAULT', 'Ancient treasures and forgotten loot lie within.', 'banner-treasure');
+      log('✨ A treasure vault glitters ahead!', r.type);
+    } else if (r.type === 'shrine') {
+      showBanner('DIVINE SANCTUARY', 'A sacred shrine radiates mystical power.', 'banner-shrine');
+      log('🔮 A shrine hums with restorative magic.', r.type);
+    } else if (r.type === 'elite') {
+      showBanner('ELITE CONFRONTATION', 'A deadly encounter tests your party\'s strength.', 'banner-elite');
+      log('⚠ An elite guard room! Steel yourselves.', r.type);
+    } else if (r.type === 'boss') {
+      showBanner('BOSS LAIR', 'The ruler of these depths awaits!', 'banner-boss');
+      log('💀 The boss lair. This is it.', r.type);
+    } else {
+      const flavor = {
+        combat: 'The party presses on.',
+        entrance: ''
+      }[r.type];
+      if (flavor) log(flavor, r.type);
+    }
     if (r.type === 'boss') playSfx('portcullis', { volume: 0.8 });
     else if (r.type === 'treasure') playSfx('lockUnlock', { volume: 0.6 });
   },
@@ -194,6 +212,10 @@ export const fogMethods = {
 
   recalculateFog(game) {
     if (!this.D) return;
+    // Overland maps: shrouded-map fog. Nothing is ever sunk to black; the whole
+    // map sits at dim-grey and cells brighten permanently once the party has
+    // been near them (this.revealed[c], set by revealAround / visitRoom).
+    if (this.D.overland) { this._recalcOverlandFog(); return; }
     const { rooms, edges } = this.D;
     const N = rooms.length;
 
@@ -236,6 +258,47 @@ export const fogMethods = {
   },
 
   /**
+   * Overland fog: grey the whole map, never sink. Terrain the party hasn't been
+   * near (revealed[c] === 0) is held at FRONTIER_DIM; revealed cells keep the
+   * full brightness revealCell gave them. Props/particles/lights/standalone are
+   * all shown so the landscape reads through the shroud.
+   */
+  _recalcOverlandFog() {
+    const { W, H, grid, lakeMask } = this.D;
+    const n = W * H;
+    for (let c = 0; c < n; c++) {
+      if (this.revealed[c]) continue;                    // near party — stays lit
+      const isFloor = grid[c] === FLOOR && !lakeMask[c];
+      if (isFloor || this.wallInst[c] >= 0) this.setCellBrightness(c, FRONTIER_DIM);
+    }
+    this._showAllObjects();
+  },
+
+  /** Raise/show every fog-managed object (overland has no per-room hiding). */
+  _showAllObjects() {
+    const meshes = this.engine.getMeshes();
+    for (const key in meshes) {
+      const mesh = meshes[key];
+      const roomIds = mesh.userData && mesh.userData.roomIds;
+      if (!roomIds || !roomIds.length) continue;
+      for (let i = 0; i < roomIds.length; i++) this._raiseInstance(mesh, i);
+    }
+    const lights = this.engine.getLights && this.engine.getLights();
+    if (lights) for (const L of lights) { if (L.userData.roomId !== undefined) L.userData.fogMult = 1; }
+    const parts = this.engine.getParticles && this.engine.getParticles();
+    if (parts && parts.userData.fogCells) {
+      const oy = parts.userData.origY, pos = parts.geometry.getAttribute('position');
+      for (let i = 0; i < parts.userData.fogCells.length; i++) pos.array[i * 3 + 1] = oy[i];
+      pos.needsUpdate = true;
+    }
+    const standalone = this.engine.getStandalone && this.engine.getStandalone();
+    if (standalone) for (const s of standalone) {
+      s.mesh.userData.fogVisible = true;
+      s.mesh.visible = s.mesh.userData.layerVisible !== false;
+    }
+  },
+
+  /**
    * A wall is visible iff something visible stands next to it: brightness =
    * max over its 8 neighbours (visited room floor 1.0, frontier room /
    * reachable corridor 0.35, else 0). POOL neighbours count via the pool's
@@ -243,28 +306,40 @@ export const fogMethods = {
    */
   _applyWallFog(visState, seen) {
     const { W, H, grid, roomId } = this.D;
-    const tierOf = c => {
-      const rid = roomId[c];
-      if (rid >= 0) return visState[rid] === 2 ? 1.0 : (visState[rid] === 1 ? FRONTIER_DIM : 0);
-      return seen[c] ? FRONTIER_DIM : 0;
-    };
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const c = y * W + x;
       if (this.wallInst[c] < 0) continue;
+
+      const rid = roomId[c];
+      if (rid >= 0) {
+        const st = visState[rid];
+        const b = st === 2 ? 1.0 : (st === 1 ? FRONTIER_DIM : 0);
+        this.setCellBrightness(c, b);
+        continue;
+      }
+
       let b = 0;
       for (let oy = -1; oy <= 1 && b < 1; oy++) for (let ox = -1; ox <= 1; ox++) {
         if (!ox && !oy) continue;
         const nx = x + ox, ny = y + oy;
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const nc = ny * W + nx;
-        if (grid[nc] === FLOOR) { const t = tierOf(nc); if (t > b) b = t; }
-        else if (grid[nc] === POOL) {
+        if (grid[nc] === FLOOR) {
+          const nrid = roomId[nc];
+          const isRev = !!(this.revealed && this.revealed[nc]);
+          const t = isRev ? 1.0 : (nrid >= 0 ? (visState[nrid] === 2 ? 1.0 : (visState[nrid] === 1 ? FRONTIER_DIM : 0)) : (seen && seen[nc] ? FRONTIER_DIM : 0));
+          if (t > b) b = t;
+        } else if (grid[nc] === POOL) {
           for (const d4 of [1, -1, W, -W]) {
             const pc = nc + d4;
-            if (pc >= 0 && pc < W * H && grid[pc] === FLOOR) { const t = tierOf(pc); if (t > b) b = t; }
+            if (pc >= 0 && pc < W * H && grid[pc] === FLOOR) {
+              const prid = roomId[pc];
+              const isRev = !!(this.revealed && this.revealed[pc]);
+              const t = isRev ? 1.0 : (prid >= 0 ? (visState[prid] === 2 ? 1.0 : (visState[prid] === 1 ? FRONTIER_DIM : 0)) : (seen && seen[pc] ? FRONTIER_DIM : 0));
+              if (t > b) b = t;
+            }
           }
         }
-        if (b >= 1) break;
       }
       this.setCellBrightness(c, b);
     }
@@ -275,16 +350,16 @@ export const fogMethods = {
     const seen = new Uint8Array(W * H);
     const q = new Int32Array(W * H); let qh = 0, qt = 0;
 
-    // Seed BFS from cells in visited / frontier rooms
+    // Seed BFS from cells in VISITED rooms ONLY
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const c = y * W + x;
         const rid = roomId[c];
-        if (rid >= 0 && visState[rid] > 0 && grid[c] === FLOOR) { seen[c] = 1; q[qt++] = c; }
+        if (rid >= 0 && visState[rid] === 2 && grid[c] === FLOOR) { seen[c] = 1; q[qt++] = c; }
       }
     }
 
-    // BFS through floor cells; stop at hidden rooms
+    // BFS through floor cells; stop at unvisited rooms
     while (qh < qt) {
       const c = q[qh++], cx = c % W, cy = (c / W) | 0;
       for (const [nx, ny] of [[cx-1,cy],[cx+1,cy],[cx,cy-1],[cx,cy+1]]) {
@@ -292,17 +367,19 @@ export const fogMethods = {
         const nc = ny * W + nx;
         if (seen[nc] || grid[nc] !== FLOOR) continue;
         const nrid = roomId[nc];
-        if (nrid >= 0 && visState[nrid] <= 0) continue; // don't enter hidden rooms
+        if (nrid >= 0 && visState[nrid] < 2) continue; // don't enter unvisited rooms
         seen[nc] = 1; q[qt++] = nc;
       }
     }
 
-    // Sink unreachable floor cells, show reachable corridor cells at frontier dim
+    // Sink unreachable floor cells, show reachable corridor cells at frontier dim, keep revealed cells at 1.0
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const c = y * W + x;
         if (grid[c] !== FLOOR || roomId[c] >= 0) continue; // only corridor cells
-        if (seen[c]) {
+        if (this.revealed && this.revealed[c]) {
+          this.setCellBrightness(c, 1.0);
+        } else if (seen[c]) {
           this.setCellBrightness(c, FRONTIER_DIM);
         } else {
           this.setCellBrightness(c, 0); // Sink
@@ -318,14 +395,58 @@ export const fogMethods = {
       const mesh = meshes[key];
       const roomIds = mesh.userData && mesh.userData.roomIds;
       if (!roomIds || !roomIds.length) continue;
+      const set = mesh.userData.set;
       for (let i = 0; i < roomIds.length; i++) {
-        // roomIds encoding: >=0 room id · -1 unfogged · <=-2 cell-anchored
+        // roomIds encoding: >=0 room id · -1 unfogged/wall-anchored · <=-2 cell-anchored
         // (arches, pool rims): grid cell (-2 - rid) follows corridor BFS
         const rid = roomIds[i];
-        let visible;
-        if (rid >= 0) visible = visState[rid] > 0;
-        else if (rid <= -2 && seen) visible = !!seen[-2 - rid];
-        else continue;
+        let visible = false;
+        if (rid >= 0) {
+          visible = visState[rid] === 2;
+        } else if (rid <= -2) {
+          const cell = -2 - rid;
+          const { W, H, roomId } = this.D || {};
+          let isAdjacentRoomRevealed = false;
+          if (roomId && W && H && cell >= 0 && cell < W * H) {
+            const x = cell % W, y = (cell / W) | 0;
+            for (let oy = -1; oy <= 1 && !isAdjacentRoomRevealed; oy++) {
+              for (let ox = -1; ox <= 1; ox++) {
+                const nx = x + ox, ny = y + oy;
+                if (nx >= 0 && ny >= 0 && nx < W && ny < H) {
+                  const nc = ny * W + nx;
+                  const r = roomId[nc];
+                  if (r >= 0 && visState[r] === 2) {
+                    isAdjacentRoomRevealed = true;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          visible = isAdjacentRoomRevealed || !!(this.revealed && this.revealed[cell]) || !!(seen && seen[cell]);
+        } else if (rid === -1 && set && set.px && set.pz) {
+          const c = typeof this.cellOf === 'function' ? this.cellOf(set.px[i], set.pz[i]) : -1;
+          if (c >= 0) {
+            const { W, H, roomId } = this.D || {};
+            let isAdjVis = false;
+            if (roomId && W && H) {
+              const x = c % W, y = (c / W) | 0;
+              for (let oy = -1; oy <= 1 && !isAdjVis; oy++) {
+                for (let ox = -1; ox <= 1; ox++) {
+                  const nx = x + ox, ny = y + oy;
+                  if (nx >= 0 && ny >= 0 && nx < W && ny < H) {
+                    const r = roomId[ny * W + nx];
+                    if (r >= 0 && visState[r] === 2) { isAdjVis = true; break; }
+                  }
+                }
+              }
+            }
+            visible = isAdjVis || !!(this.revealed && this.revealed[c]) || !!(seen && seen[c]);
+          } else {
+            visible = false;
+          }
+        }
+
         if (visible) this._raiseInstance(mesh, i);
         else this._sinkInstance(mesh, i);
       }
@@ -335,11 +456,15 @@ export const fogMethods = {
     if (lights) {
       for (const L of lights) {
         const rid = L.userData.roomId;
-        let vis;
+        let vis = false;
         if (rid === undefined) continue;
-        if (rid >= 0) vis = visState[rid] > 0;
-        else if (rid <= -2 && seen) vis = !!seen[-2 - rid];
-        else continue;
+        if (rid >= 0) vis = visState[rid] === 2;
+        else if (rid <= -2) {
+          const cell = -2 - rid;
+          const cellRid = this.D && this.D.roomId ? this.D.roomId[cell] : -1;
+          if (cellRid >= 0) vis = visState[cellRid] === 2;
+          else vis = !!(this.revealed && this.revealed[cell]);
+        }
         L.userData.fogMult = vis ? 1 : 0;
       }
     }
@@ -366,7 +491,7 @@ export const fogMethods = {
           vis = false;
           if (seen) for (const c of s.cells) { if (seen[c]) { vis = true; break; } }
         } else if (s.rid >= 0) {
-          vis = visState[s.rid] > 0;
+          vis = visState[s.rid] === 2;
         } else continue;
         s.mesh.userData.fogVisible = vis;
         s.mesh.visible = vis && s.mesh.userData.layerVisible !== false;

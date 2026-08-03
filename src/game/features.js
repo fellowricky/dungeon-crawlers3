@@ -12,9 +12,17 @@
 
 /* Intentionally no import from srd.js — that module imports us (avoid cycles). */
 import { SPELLS, SPELL_POOLS } from './spells.js';
+/* srd.js imports this module back — the cycle is fine because CLASSES is only
+   read inside functions, never at module evaluation. Without this import the
+   reference below resolves only by accident inside the bundled build and
+   throws a ReferenceError under native ESM (dev server, tests). */
+import { CLASSES, WILD_SHAPE_FORMS, profBonus } from './srd.js';
 const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const ABILITY_LABEL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
 const MELEE_CLASSES = new Set(['fighter', 'barbarian', 'monk', 'paladin', 'rogue', 'bard']);
+/* Skill points banked per level-up, spent on the 5e skill checks (see SKILLS in
+   srd.js, which re-exports this). Defined here because srd.js imports us. */
+export const SKILL_POINTS_PER_LEVEL = 2;
 
 /* ================================================================
    Fighting styles (Fighter L1, Ranger L2, Paladin L2, etc.)
@@ -97,8 +105,345 @@ export const FEATS = {
     label: 'Durable',
     desc: '+6 max HP and Second Wind-style grit (+1 AC).',
     pb: { hp: 6, ac: 1 }
+  },
+
+  /* ---- Equipment-proficiency feats ------------------------------------
+     These GRANT the ability to equip gear otherwise locked by class. The
+     armor line is a ladder: each rung is only offered once you already have
+     the tier below it (see buildAsiFeatOptions / equipmentGrants), so a
+     wizard climbs light → medium → heavy across three separate feat picks. */
+  lightlyArmored: {
+    label: 'Lightly Armored',
+    desc: 'Gain proficiency with light armor. (+1 DEX)',
+    pb: { dex: 1 },
+    grantArmor: 'light'
+  },
+  moderatelyArmored: {
+    label: 'Moderately Armored',
+    desc: 'Gain proficiency with medium armor and shields. (+1 STR)',
+    pb: { str: 1 },
+    grantArmor: 'medium',
+    grantShield: true
+  },
+  heavilyArmored: {
+    label: 'Heavily Armored',
+    desc: 'Gain proficiency with heavy armor. (+1 STR)',
+    pb: { str: 1 },
+    grantArmor: 'heavy'
+  },
+  martialTraining: {
+    label: 'Martial Weapon Training',
+    desc: 'Gain proficiency with all martial weapons. (+1 STR)',
+    pb: { str: 1 },
+    grantWeapon: 'martial'
+  },
+
+  /* ---- Offensive combat feats -----------------------------------------
+     Combat.js reads the typed hooks below (bonusDmg / extraAttack / onHit)
+     through the feat* helpers further down — feats stay pure data. */
+  greatWeaponMaster: {
+    label: 'Great Weapon Master',
+    desc: 'Heavy two-handed swings hit harder (+1 damage per 2 levels).',
+    pb: {}, meleeOnly: true,
+    bonusDmg: { when: 'twoHanded', perLevel: 0.5 }
+  },
+  sharpshooter: {
+    label: 'Sharpshooter',
+    desc: '+3 damage on ranged weapon attacks.',
+    pb: {}, rangedOnly: true,
+    bonusDmg: { when: 'ranged', flat: 3 }
+  },
+  crossbowExpert: {
+    label: 'Crossbow Expert',
+    desc: 'Ranged weapons: a chance at a bonus shot each turn.',
+    pb: {}, rangedOnly: true,
+    extraAttack: { when: 'ranged', chance: 0.35 }
+  },
+  polearmMaster: {
+    label: 'Polearm Master',
+    desc: 'Polearms: a chance at a bonus butt-end strike each turn.',
+    pb: {}, meleeOnly: true,
+    extraAttack: { when: 'polearm', chance: 0.40 }
+  },
+  charger: {
+    label: 'Charger',
+    desc: 'Your opening strike on a fresh foe deals +1 damage per level.',
+    pb: {}, meleeOnly: true,
+    bonusDmg: { when: 'firstStrike', perLevel: 1 }
+  },
+  sentinel: {
+    label: 'Sentinel',
+    desc: 'Melee hits have a chance to root the foe in place.',
+    pb: {}, meleeOnly: true,
+    onHit: { when: 'melee', effect: 'slowed', chance: 0.25, duration: 3 }
+  },
+  shieldMaster: {
+    label: 'Shield Master',
+    desc: '+1 AC; with a shield equipped, melee hits can shove foes prone.',
+    pb: { ac: 1 }, meleeOnly: true,
+    onHit: { when: 'shield', effect: 'prone', chance: 0.20, duration: 4 }
+  },
+  grappler: {
+    label: 'Grappler',
+    desc: '+1 STR. On-hit chance to grapple (slow); +2 damage vs slowed or prone foes.',
+    pb: { str: 1 }, meleeOnly: true,
+    onHit: { when: 'melee', effect: 'slowed', chance: 0.20, duration: 2.5 },
+    bonusDmg: { when: 'vsImpaired', flat: 2 }
+  },
+  tavernBrawler: {
+    label: 'Tavern Brawler',
+    desc: '+1 STR; your blows can stagger (slow) foes.',
+    pb: { str: 1 },
+    onHit: { when: 'melee', effect: 'slowed', chance: 0.15, duration: 2 }
+  },
+  martialAdept: {
+    label: 'Martial Adept',
+    desc: 'Critical hits unleash a maneuver: bonus damage and knock the foe prone.',
+    pb: {},
+    onHit: { when: 'crit', effect: 'prone', chance: 1, duration: 3, dmg: [1, 8] }
+  },
+  mountedCombatant: {
+    label: 'Mounted Combatant',
+    desc: 'Charging momentum: +1 damage per level vs elites and bosses.',
+    pb: {},
+    bonusDmg: { when: 'vsElite', perLevel: 1 }
+  },
+  spellSniper: {
+    label: 'Spell Sniper',
+    desc: 'Casters: +2 spell damage and your spells crit more easily.',
+    pb: { crit: 1 }, castersOnly: true,
+    bonusDmg: { when: 'spell', flat: 2 }
+  },
+  skulker: {
+    label: 'Skulker',
+    desc: '+1 DEX. Ranged: your opening shot deals +1 damage per level.',
+    pb: { dex: 1 }, rangedOnly: true,
+    bonusDmg: { when: 'firstStrikeRanged', perLevel: 1 }
+  },
+
+  /* ---- Defensive feats ------------------------------------------------ */
+  heavyArmorMaster: {
+    label: 'Heavy Armor Master',
+    desc: '+1 STR. While in heavy armor, reduce all incoming damage by 3.',
+    pb: { str: 1 },
+    incomingDR: { flat: 3, when: 'heavyArmor' }
+  },
+  mediumArmorMaster: {
+    label: 'Medium Armor Master',
+    desc: '+1 DEX and +1 AC while wearing medium armor.',
+    pb: { dex: 1 },
+    acBonus: { flat: 1, when: 'mediumArmor' }
+  },
+  dualWielder: {
+    label: 'Dual Wielder',
+    desc: '+1 AC while wielding two weapons, and you can dual-wield heavier weapons.',
+    pb: {},
+    acBonus: { flat: 1, when: 'dualWield' },
+    dualWield: true
+  },
+  defensiveDuelist: {
+    label: 'Defensive Duelist',
+    desc: '+3 AC while wielding a finesse weapon (parrying stance).',
+    pb: {},
+    acBonus: { flat: 3, when: 'finesse' }
+  },
+  inspiringLeader: {
+    label: 'Inspiring Leader',
+    desc: '+1 CHA. At the start of each fight, the whole party gains temporary HP.',
+    pb: { cha: 1 },
+    combatStart: { partyTempHp: { perLevel: 1, plusMod: 'cha' } }
+  },
+
+  /* ---- Utility half-feats --------------------------------------------- */
+  athlete: {
+    label: 'Athlete',
+    desc: '+1 STR and quicker on your feet.',
+    pb: { str: 1, speed: 0.1 }
+  },
+  observant: {
+    label: 'Observant',
+    desc: '+1 WIS and a keen edge on skill challenges.',
+    pb: { wis: 1 },
+    skillBonus: 2
+  },
+  skilled: {
+    label: 'Skilled',
+    desc: 'Broad training: a solid bonus to every skill challenge.',
+    pb: {},
+    skillBonus: 3
+  },
+  actor: {
+    label: 'Actor',
+    desc: '+1 CHA and a silver tongue on social skill challenges.',
+    pb: { cha: 1 },
+    skillBonus: 1
+  },
+  keenMind: {
+    label: 'Keen Mind',
+    desc: '+1 INT and a sharp eye for weak points (+1 spell damage).',
+    pb: { int: 1 },
+    bonusDmg: { when: 'spell', flat: 1 }
+  },
+  linguist: {
+    label: 'Linguist',
+    desc: '+1 INT and a knack for lore-based skill challenges.',
+    pb: { int: 1 },
+    skillBonus: 1
+  },
+  dungeonDelver: {
+    label: 'Dungeon Delver',
+    desc: 'Ever-watchful: quicker on your feet and sharper on skill challenges.',
+    pb: { speed: 0.1 },
+    skillBonus: 1
   }
 };
+
+/* Equipment proficiencies granted purely by feats (class grants are handled
+   separately in canEquip). Returns the best armor rank, martial-weapon flag,
+   and shield flag the hero's feats confer. */
+const ARMOR_GRANT_RANK = { light: 1, medium: 2, heavy: 3 };
+export function equipmentGrants(h) {
+  let armorRank = 0, weaponMartial = false, shield = false;
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f) continue;
+    if (f.grantArmor) armorRank = Math.max(armorRank, ARMOR_GRANT_RANK[f.grantArmor] || 0);
+    if (f.grantWeapon === 'martial') weaponMartial = true;
+    if (f.grantShield) shield = true;
+  }
+  return { armorRank, weaponMartial, shield };
+}
+
+/* ================================================================
+   Feat combat hooks — pure functions. Combat.js supplies the live
+   context (profile, foe state) and applies any returned effects, so
+   features.js never needs to import combat/effect code.
+   ================================================================ */
+const _dsum = (n, s) => { let t = 0; for (let i = 0; i < n; i++) t += 1 + Math.floor(Math.random() * s); return t; };
+
+/** Conditional bonus damage from feats for one landed attack.
+ *  ctx = { profile, weapon, foeElite, foeFullHp, foeImpaired } */
+export function featBonusDamage(h, ctx) {
+  const p = ctx.profile || {};
+  const wpn = ctx.weapon;
+  const lvl = h.level || 1;
+  const ranged = p.source === 'weapon' && p.melee === false;
+  const spell = p.source === 'cantrip';
+  let bonus = 0;
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f || !f.bonusDmg) continue;
+    const bd = f.bonusDmg;
+    const amt = (bd.flat || 0) + Math.floor((bd.perLevel || 0) * lvl);
+    switch (bd.when) {
+      case 'twoHanded':         if (p.melee && wpn && wpn.twoHanded) bonus += amt; break;
+      case 'ranged':            if (ranged) bonus += amt; break;
+      case 'spell':             if (spell) bonus += amt; break;
+      case 'vsElite':           if (ctx.foeElite) bonus += amt; break;
+      case 'vsImpaired':        if (ctx.foeImpaired) bonus += amt; break;
+      case 'firstStrike':       if (p.melee && ctx.foeFullHp) bonus += amt; break;
+      case 'firstStrikeRanged': if (ranged && ctx.foeFullHp) bonus += amt; break;
+    }
+  }
+  return bonus;
+}
+
+/** How many bonus attacks feats grant this swing (rolled here). */
+export function featExtraAttacks(h) {
+  const wpn = h.equipment && h.equipment.weapon;
+  const vw = (wpn && wpn.visualWeapon) || '';
+  let count = 0;
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f || !f.extraAttack) continue;
+    const ea = f.extraAttack;
+    let ok = false;
+    if (ea.when === 'polearm') ok = vw.startsWith('polearm/');
+    else if (ea.when === 'ranged') ok = !!wpn && wpn.melee === false;
+    if (ok && Math.random() < ea.chance) count++;
+  }
+  return count;
+}
+
+/** On-hit riders (status effects + bonus damage) for a landed hit.
+ *  ctx = { melee, crit, hasShield }. Returns effect descriptors for
+ *  combat.js to apply, plus any bonus damage total. */
+export function featOnHit(h, ctx) {
+  const out = { effects: [], bonusDmg: 0 };
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f || !f.onHit) continue;
+    const oh = f.onHit;
+    if (oh.when === 'melee'  && !ctx.melee) continue;
+    if (oh.when === 'shield' && !(ctx.melee && ctx.hasShield)) continue;
+    if (oh.when === 'crit'   && !ctx.crit) continue;
+    if (Math.random() >= (oh.chance == null ? 1 : oh.chance)) continue;
+    if (oh.effect) out.effects.push({ key: oh.effect, duration: oh.duration || 3 });
+    if (oh.dmg) out.bonusDmg += _dsum(oh.dmg[0], oh.dmg[1]);
+  }
+  return out;
+}
+
+/** Reduce incoming damage by feat flat DR (Heavy Armor Master). */
+export function featIncomingDamage(h, dmg) {
+  let d = dmg;
+  const armor = h.equipment && h.equipment.armor;
+  const heavy = !!armor && armor.prof === 'heavy';
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f || !f.incomingDR) continue;
+    if (f.incomingDR.when === 'heavyArmor' && !heavy) continue;
+    d -= (f.incomingDR.flat || 0);
+  }
+  return Math.max(0, d);
+}
+
+/** Conditional AC from feats (Dual Wielder / Medium Armor Master / Defensive Duelist). */
+export function featACBonus(h) {
+  const eqp = h.equipment || {};
+  const armor = eqp.armor;
+  const twoWeapons = !!(eqp.weapon && eqp.offhand && eqp.offhand.slot === 'weapon');
+  const finesse = !!(eqp.weapon && eqp.weapon.finesse);
+  let ac = 0;
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f || !f.acBonus) continue;
+    const w = f.acBonus.when;
+    if (w === 'mediumArmor' && !(armor && armor.prof === 'medium')) continue;
+    if (w === 'dualWield' && !twoWeapons) continue;
+    if (w === 'finesse' && !finesse) continue;
+    ac += f.acBonus.flat || 0;
+  }
+  return ac;
+}
+
+/** Temp HP this hero contributes to the party at start of combat (Inspiring Leader). */
+export function featCombatStartTempHp(h) {
+  let best = 0;
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (!f || !f.combatStart || !f.combatStart.partyTempHp) continue;
+    const t = f.combatStart.partyTempHp;
+    const abilMod = t.plusMod ? Math.floor(((h.effStats?.[t.plusMod] ?? 10) - 10) / 2) : 0;
+    best = Math.max(best, Math.max(1, (h.level || 1) * (t.perLevel || 0) + abilMod));
+  }
+  return best;
+}
+
+/** Flat bonus to skill-challenge rolls (Observant / Skilled / …). */
+export function featSkillBonus(h) {
+  let b = 0;
+  for (const key of h.feats || []) {
+    const f = FEATS[key];
+    if (f && f.skillBonus) b += f.skillBonus;
+  }
+  return b;
+}
+
+/** Whether the hero's feats relax the two-weapon-fighting light requirement. */
+export function hasDualWielder(h) {
+  return (h.feats || []).includes('dualWielder');
+}
 
 
 /* ================================================================
@@ -212,12 +557,12 @@ export const FEATURES = {
   },
   bardicInspiration: {
     label: 'Bardic Inspiration',
-    desc: 'Once per short rest, grant all allies +2 to hit for 8s.',
+    desc: 'Once per short rest, grant all allies advantage on their next attack (does not expire).',
     combat: 'bardicInspiration'
   },
   songOfRest: {
     label: 'Song of Rest',
-    desc: 'When the party takes a short rest, allies heal a little extra.',
+    desc: 'Passive: the party heals 10% of max HP at the end of each fight.',
     combat: 'songOfRest'
   },
   wildShapeClass: {
@@ -242,8 +587,23 @@ export const FEATURES = {
   },
   agonizingBlast: {
     label: 'Agonizing Blast',
-    desc: 'Add CHA mod to Eldritch Blast damage.',
+    desc: 'Add CHA mod to Eldritch Blast damage for each beam that hits.',
     combat: 'agonizingBlast'
+  },
+  repellingBlast: {
+    label: 'Repelling Blast',
+    desc: 'Eldritch Blast pushes target 10 feet back on hit.',
+    combat: 'repellingBlast'
+  },
+  graspOfHadar: {
+    label: 'Grasp of Hadar',
+    desc: 'Eldritch Blast pulls target 10 feet closer on hit.',
+    combat: 'graspOfHadar'
+  },
+  lanceOfLethargy: {
+    label: 'Lance of Lethargy',
+    desc: 'Eldritch Blast reduces target speed by 10 ft on hit.',
+    combat: 'lanceOfLethargy'
   },
   arcaneRecovery: {
     label: 'Arcane Recovery',
@@ -583,7 +943,6 @@ const FS_MELEE = ['defense', 'dueling', 'greatWeapon', 'twoWeapon'];
 const FS_RANGED = ['archery', 'defense', 'dueling'];
 
 function auto(feature) { return { type: 'auto', feature }; }
-function skillPoint() { return { type: 'skillPoint' }; }
 function subclass() { return { type: 'subclass' }; }
 function asi(level) {
   return { type: 'choice', pick: 'asiOrFeat', id: `asi_${level}`, title: `Level ${level}: ASI or Feat` };
@@ -594,6 +953,9 @@ function fightingStyle(id, styles) {
 function learnSpell(id, classKey, tier, title) {
   return { type: 'choice', pick: 'spell', id, title: title || `Learn a spell`, classKey, tier };
 }
+function wildShapeFormChoice() {
+  return { type: 'choice', pick: 'wildShapeForm', id: 'wild_shape_form', title: 'Choose Wild Shape Form' };
+}
 function milestone(level) {
   return { type: 'subclassMilestone', level };
 }
@@ -601,267 +963,267 @@ function milestone(level) {
 export const CLASS_PROGRESSION = {
   fighter: {
     1: [auto('secondWind'), fightingStyle('fs_fighter', FS_MARTIAL)],
-    2: [auto('actionSurgeClass'), skillPoint()],
+    2: [auto('actionSurgeClass')],
     3: [subclass()],
     4: [asi(4)],
     5: [auto('extraAttack')],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [auto('indomitable')],
     8: [asi(8)],
-      9: [skillPoint()],
+      9: [],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), auto('extraAttack2')],
+      11: [auto('extraAttack2')],
       12: [asi(12)],
-      13: [skillPoint(), auto('indomitable2')],
+      13: [auto('indomitable2')],
       14: [asi(14), milestone(14)],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint(), auto('actionSurge2')],
+      17: [auto('actionSurge2')],
       18: [asi(18), milestone(18)],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('extraAttack3')]
   },
   rogue: {
     1: [auto('sneakAttack')],
-    2: [auto('cunningActionClass'), skillPoint()],
+    2: [auto('cunningActionClass')],
     3: [subclass()],
     4: [asi(4)],
     5: [auto('uncannyDodge')],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
      7: [auto('evasion')],
      8: [asi(8)],
-      9: [skillPoint()],
+      9: [],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), auto('reliableTalent')],
+      11: [auto('reliableTalent')],
       12: [asi(12)],
-      13: [skillPoint()],
+      13: [],
       14: [asi(14), milestone(14), auto('blindsense')],
-      15: [skillPoint(), auto('slipperyMind')],
+      15: [auto('slipperyMind')],
       16: [asi(16)],
-      17: [skillPoint()],
+      17: [],
       18: [asi(18), milestone(18), auto('elusive')],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('strokeOfLuck')]
   },
   cleric: {
     1: [learnSpell('cleric_sp1', 'cleric', 1, 'Domain spell')],
-    2: [auto('channelDivinity'), skillPoint()],
+    2: [auto('channelDivinity')],
     3: [subclass(), learnSpell('cleric_sp2', 'cleric', 2)],
     4: [asi(4)],
     5: [learnSpell('cleric_sp3', 'cleric', 3)],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [learnSpell('cleric_sp4', 'cleric', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [skillPoint(), learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
+     9: [learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), learnSpell('cleric_sp4b', 'cleric', 4, 'Additional domain spell')],
+      11: [learnSpell('cleric_sp4b', 'cleric', 4, 'Additional domain spell')],
       12: [asi(12)],
-      13: [skillPoint(), learnSpell('cleric_sp5b', 'cleric', 5, 'Higher-tier spell')],
+      13: [learnSpell('cleric_sp5b', 'cleric', 5, 'Higher-tier spell')],
       14: [asi(14), milestone(14), auto('destroyUndeadGreater')],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint(), learnSpell('cleric_sp5c', 'cleric', 5, 'Mastery spell')],
+      17: [learnSpell('cleric_sp5c', 'cleric', 5, 'Mastery spell')],
       18: [asi(18), milestone(18)],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('divineInterventionImproved')]
   },
   wizard: {
     1: [learnSpell('wiz_sp1', 'wizard', 1, 'Learn a 1st-level spell'), auto('arcaneRecovery')],
-    2: [skillPoint(), learnSpell('wiz_sp1b', 'wizard', 1, 'Learn another spell')],
+    2: [learnSpell('wiz_sp1b', 'wizard', 1, 'Learn another spell')],
     3: [subclass(), learnSpell('wiz_sp2', 'wizard', 2)],
     4: [asi(4)],
     5: [learnSpell('wiz_sp3', 'wizard', 3)],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [learnSpell('wiz_sp4', 'wizard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [skillPoint(), learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
+     9: [learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), learnSpell('wiz_sp4b', 'wizard', 4, 'Additional spell')],
+      11: [learnSpell('wiz_sp4b', 'wizard', 4, 'Additional spell')],
       12: [asi(12)],
-      13: [skillPoint(), learnSpell('wiz_sp5b', 'wizard', 5, 'Higher-tier spell')],
+      13: [learnSpell('wiz_sp5b', 'wizard', 5, 'Higher-tier spell')],
       14: [asi(14), milestone(14)],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint(), learnSpell('wiz_sp5c', 'wizard', 5, 'Mastery spell')],
+      17: [learnSpell('wiz_sp5c', 'wizard', 5, 'Mastery spell')],
       18: [asi(18), milestone(18), auto('spellMastery')],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('signatureSpells')]
   },
   barbarian: {
     1: [auto('rage')],
-    2: [auto('recklessAttack'), skillPoint()],
+    2: [auto('recklessAttack')],
     3: [subclass()],
     4: [asi(4)],
     5: [auto('extraAttack')],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [auto('brutalCritical')],
     8: [asi(8)],
-       9: [skillPoint()],
+       9: [],
        10: [asi(10), milestone(10)],
-       11: [skillPoint(), learnSpell('wlk_sp4b', 'warlock', 4, 'Mystic Arcanum')],
+       11: [auto('relentlessRage')],
        12: [asi(12)],
-       13: [skillPoint(), learnSpell('wlk_mystic7', 'warlock', 5, 'Mystic Arcanum (7th)')],
+       13: [auto('brutalCritical2')],
        14: [asi(14), milestone(14)],
-       15: [skillPoint(), learnSpell('wlk_mystic8', 'warlock', 5, 'Mystic Arcanum (8th)')],
+       15: [auto('persistentRage')],
        16: [asi(16)],
-       17: [skillPoint(), learnSpell('wlk_mystic9', 'warlock', 5, 'Mystic Arcanum (9th)')],
-       18: [asi(18), milestone(18)],
-       19: [skillPoint()],
-       20: [asi(20), auto('eldritchMaster')]
+       17: [auto('brutalCritical3')],
+       18: [asi(18), auto('indomitableMight'), milestone(18)],
+       19: [],
+       20: [asi(20), auto('primalChampion')]
   },
   bard: {
     1: [auto('bardicInspiration'), learnSpell('bard_sp1', 'bard', 1)],
-    2: [auto('jackOfAllTrades'), auto('songOfRest'), skillPoint()],
+    2: [auto('jackOfAllTrades'), auto('songOfRest')],
     3: [subclass(), learnSpell('bard_sp2', 'bard', 2)],
     4: [asi(4)],
     5: [learnSpell('bard_sp3', 'bard', 3)],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [learnSpell('bard_sp4', 'bard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [skillPoint(), learnSpell('bard_sp5', 'bard', 5, 'Learn a 5th-level spell')],
+     9: [learnSpell('bard_sp5', 'bard', 5, 'Learn a 5th-level spell')],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), learnSpell('bard_sp4b', 'bard', 4, 'Additional spell')],
+      11: [learnSpell('bard_sp4b', 'bard', 4, 'Additional spell')],
       12: [asi(12)],
-      13: [skillPoint(), learnSpell('bard_sp5b', 'bard', 5, 'Higher-tier spell')],
+      13: [learnSpell('bard_sp5b', 'bard', 5, 'Higher-tier spell')],
       14: [asi(14), milestone(14)],
-      15: [skillPoint(), auto('inspiredPerformance')],
+      15: [auto('inspiredPerformance')],
       16: [asi(16)],
-      17: [skillPoint()],
+      17: [],
       18: [asi(18), milestone(18)],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('superiorInspiration')]
   },
   druid: {
-    1: [learnSpell('druid_sp1', 'druid', 1)],
-    2: [auto('wildShapeClass'), skillPoint()],
+    1: [wildShapeFormChoice(), learnSpell('druid_sp1', 'druid', 1)],
+    2: [auto('wildShapeClass')],
     3: [subclass(), learnSpell('druid_sp2', 'druid', 2)],
     4: [asi(4)],
     5: [learnSpell('druid_sp3', 'druid', 3)],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [learnSpell('druid_sp4', 'druid', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [skillPoint(), learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
+     9: [learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), learnSpell('druid_sp4b', 'druid', 4, 'Additional spell')],
+      11: [learnSpell('druid_sp4b', 'druid', 4, 'Additional spell')],
       12: [asi(12)],
-      13: [skillPoint(), learnSpell('druid_sp5b', 'druid', 5, 'Higher-tier spell')],
+      13: [learnSpell('druid_sp5b', 'druid', 5, 'Higher-tier spell')],
       14: [asi(14), milestone(14)],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint()],
+      17: [],
       18: [asi(18), milestone(18), auto('beastSpells')],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('archdruid')]
   },
   monk: {
     1: [auto('martialArts'), auto('ki')],
-    2: [auto('flurryOfBlows'), skillPoint()],
+    2: [auto('flurryOfBlows')],
     3: [subclass()],
     4: [asi(4)],
     5: [auto('extraAttack')],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [auto('stillMind')],
     8: [asi(8)],
-      9: [skillPoint()],
+      9: [],
       10: [asi(10), milestone(10)],
-      11: [skillPoint()],
+      11: [],
       12: [asi(12)],
-      13: [skillPoint(), auto('tongueSunMoon')],
+      13: [auto('tongueSunMoon')],
       14: [asi(14), milestone(14), auto('diamondSoul')],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint()],
+      17: [],
       18: [asi(18), milestone(18), auto('emptyBody')],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('perfectSelf')]
   },
   paladin: {
     1: [auto('divineSmite'), auto('layOnHands')],
-    2: [fightingStyle('fs_paladin', FS_MELEE), skillPoint(), learnSpell('pal_sp1', 'paladin', 1)],
+    2: [fightingStyle('fs_paladin', FS_MELEE), learnSpell('pal_sp1', 'paladin', 1)],
     3: [subclass()],
     4: [asi(4)],
     5: [auto('extraAttack')],
-    6: [auto('auraProtection'), skillPoint(), milestone(6)],
+    6: [auto('auraProtection'), milestone(6)],
     7: [auto('divineHealth')],
     8: [asi(8)],
-      9: [skillPoint(), learnSpell('pal_sp2', 'paladin', 2)],
+      9: [learnSpell('pal_sp2', 'paladin', 2)],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), auto('improvedDivineSmite'), learnSpell('pal_sp3', 'paladin', 3, 'Higher prayer')],
+      11: [auto('improvedDivineSmite'), learnSpell('pal_sp3', 'paladin', 3, 'Higher prayer')],
       12: [asi(12)],
-      13: [skillPoint()],
+      13: [],
       14: [asi(14), milestone(14), auto('cleansingTouch')],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint()],
+      17: [],
       18: [asi(18), milestone(18), auto('auraImproved')],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('oathCapstone')]
   },
   ranger: {
     1: [auto('favoredEnemy'), auto('naturalExplorer')],
-    2: [fightingStyle('fs_ranger', FS_RANGED), skillPoint(), learnSpell('rng_sp1', 'ranger', 1)],
+    2: [fightingStyle('fs_ranger', FS_RANGED), learnSpell('rng_sp1', 'ranger', 1)],
     3: [subclass()],
     4: [asi(4)],
     5: [auto('extraAttack')],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [auto('primevalAwareness')],
     8: [asi(8)],
-      9: [skillPoint(), learnSpell('rng_sp2', 'ranger', 2)],
+      9: [learnSpell('rng_sp2', 'ranger', 2)],
       10: [asi(10), milestone(10), auto('colossusSlayerClass')],
-      11: [skillPoint()],
+      11: [],
       12: [asi(12)],
-      13: [skillPoint()],
+      13: [],
       14: [asi(14), milestone(14), auto('vanish')],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint()],
+      17: [],
       18: [asi(18), milestone(18), auto('feralSenses')],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('foeSlayer')]
   },
   sorcerer: {
     1: [learnSpell('sorc_sp1', 'sorcerer', 1), auto('tidesOfChaos')],
-    2: [auto('fontOfMagic'), skillPoint()],
+    2: [auto('fontOfMagic')],
     3: [subclass(), auto('metamagic'), learnSpell('sorc_sp2', 'sorcerer', 2)],
     4: [asi(4)],
     5: [learnSpell('sorc_sp3', 'sorcerer', 3)],
-    6: [skillPoint(), milestone(6)],
+    6: [milestone(6)],
     7: [learnSpell('sorc_sp4', 'sorcerer', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-      9: [skillPoint(), learnSpell('sorc_sp5', 'sorcerer', 5, 'Learn a 5th-level spell')],
+      9: [learnSpell('sorc_sp5', 'sorcerer', 5, 'Learn a 5th-level spell')],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), learnSpell('sorc_sp4b', 'sorcerer', 4, 'Additional spell')],
+      11: [learnSpell('sorc_sp4b', 'sorcerer', 4, 'Additional spell')],
       12: [asi(12)],
-      13: [skillPoint(), learnSpell('sorc_sp5b', 'sorcerer', 5, 'Higher-tier spell')],
+      13: [learnSpell('sorc_sp5b', 'sorcerer', 5, 'Higher-tier spell')],
       14: [asi(14), milestone(14)],
-      15: [skillPoint()],
+      15: [],
       16: [asi(16)],
-      17: [skillPoint(), auto('metamagicExpert')],
+      17: [auto('metamagicExpert')],
       18: [asi(18), milestone(18)],
-      19: [skillPoint()],
+      19: [],
       20: [asi(20), auto('sorcerousRestoration')]
   },
   warlock: {
     1: [auto('pactMagic'), auto('eldritchBlast'), learnSpell('wlk_sp1', 'warlock', 1)],
-    2: [auto('agonizingBlast'), skillPoint()],
+    2: [auto('agonizingBlast')],
     3: [subclass(), learnSpell('wlk_sp2', 'warlock', 2)],
     4: [asi(4)],
-    5: [learnSpell('wlk_sp3', 'warlock', 3)],
-    6: [skillPoint(), milestone(6)],
-     7: [learnSpell('wlk_sp4', 'warlock', 4, 'Learn a 4th-level spell')],
-     8: [asi(8)],
-      9: [skillPoint()],
+    5: [auto('repellingBlast'), learnSpell('wlk_sp3', 'warlock', 3)],
+    6: [milestone(6)],
+    7: [auto('graspOfHadar'), learnSpell('wlk_sp4', 'warlock', 4, 'Learn a 4th-level spell')],
+    8: [asi(8)],
+    9: [auto('lanceOfLethargy')],
       10: [asi(10), milestone(10)],
-      11: [skillPoint(), auto('relentlessRage')],
+      11: [learnSpell('wlk_sp4b', 'warlock', 4, 'Mystic Arcanum')],
       12: [asi(12)],
-      13: [skillPoint(), auto('brutalCritical2')],
+      13: [learnSpell('wlk_mystic7', 'warlock', 5, 'Mystic Arcanum (7th)')],
       14: [asi(14), milestone(14)],
-      15: [skillPoint(), auto('persistentRage')],
+      15: [learnSpell('wlk_mystic8', 'warlock', 5, 'Mystic Arcanum (8th)')],
       16: [asi(16)],
-      17: [skillPoint(), auto('brutalCritical3')],
-      18: [asi(18), auto('indomitableMight'), milestone(18)],
-      19: [skillPoint()],
-      20: [asi(20), auto('primalChampion')]
+      17: [learnSpell('wlk_mystic9', 'warlock', 5, 'Mystic Arcanum (9th)')],
+      18: [asi(18), milestone(18)],
+      19: [],
+      20: [asi(20), auto('eldritchMaster')]
   }
 };
 
@@ -977,15 +1339,98 @@ export function isCasterClass(classKey) {
   return totalSlots(spellSlotsFor(classKey, 20)) > 0;
 }
 
+/* ── per-feature charge pools ──────────────────────────────────────────────
+   Every limited-use feature owns a pool keyed by its feature key, stored on
+   h.charges. Before this, all short-rest features shared a single
+   `abilityUsed.short` boolean, so a druid who Wild Shaped also greyed out
+   Flurry, Bardic Inspiration and every short-rest spell — the HUD drew N
+   independent-looking icons for what was really one charge.
+
+   Anything not listed defaults to one use per short rest, which is what the
+   old shared flag already promised per feature. */
+const CHARGE_DEFS = {
+  rage:           { max: 'pb', recharge: 'long' },
+  wildShapeClass: { max: 'pb', recharge: 'short' },
+  /* Flurry of Blows and Patient Defense deliberately share one pool — the
+     game's simplified ki model (see runCombatReflexes in combat.js). */
+  flurryOfBlows:  { max: 'pb', recharge: 'short' },
+  indomitable:    { max: 1, recharge: 'long' },
+  rallyingCry:    { max: 1, recharge: 'long' },
+  preserveLife:   { max: 1, recharge: 'long' }
+};
+
+const DEFAULT_CHARGE = { max: 'pb', recharge: 'short' };
+
+/** Pool shape for a charge key. `spell:<key>` inherits the spell's recharge. */
+export function chargeDef(key, hero) {
+  const level = hero ? (hero.level || (hero.data && hero.data.level) || 1) : 1;
+  const pb = profBonus(level);
+
+  let def = CHARGE_DEFS[key];
+  if (!def) {
+    if (typeof key === 'string' && key.startsWith('spell:')) {
+      const sp = SPELLS[key.slice(6)];
+      const long = sp && (sp.recharge === 'long' || sp.recharge === 'day');
+      return { max: long ? 1 : pb, recharge: long ? 'long' : 'short' };
+    }
+    def = DEFAULT_CHARGE;
+  }
+
+  const max = def.max === 'pb' ? pb : (typeof def.max === 'number' ? def.max : pb);
+  return { max, recharge: def.recharge };
+}
+
+export function chargeMax(key, hero) {
+  return chargeDef(key, hero).max;
+}
+
+/** Remaining charges, lazily seeding the pool at full on first read. */
+export function chargesLeft(h, key) {
+  if (!h) return 0;
+  const d = h.data || h;
+  if (!d.charges) d.charges = {};
+  const max = chargeMax(key, d);
+  if (d.charges[key] === undefined) d.charges[key] = max;
+  return Math.max(0, Math.min(d.charges[key], max));
+}
+
+export function hasCharge(h, key) {
+  return chargesLeft(h, key) > 0;
+}
+
+/** Spend one charge. Returns false (and spends nothing) when the pool is dry. */
+export function spendCharge(h, key) {
+  if (!h) return false;
+  const d = h.data || h;
+  if (!hasCharge(d, key)) return false;
+  d.charges[key]--;
+  return true;
+}
+
+/** Refill pools on rest: a short rest refills short pools, a long rest all. */
+export function restoreCharges(h, bucket) {
+  if (!h) return;
+  const d = h.data || h;
+  if (!d.charges) { d.charges = {}; return; }
+  for (const key of Object.keys(d.charges)) {
+    const def = chargeDef(key, d);
+    if (bucket === 'long' || def.recharge === 'short') d.charges[key] = def.max;
+  }
+}
+
 /* ================================================================
    Hero helpers
    ================================================================ */
 export function hasFeature(h, key) {
-  return !!(h.features && h.features.includes(key));
+  if (!h) return false;
+  const d = h.data || h;
+  return !!((d.features && d.features.includes(key)) || (d.invocations && d.invocations.includes(key)));
 }
 
 export function hasFeat(h, key) {
-  return !!(h.feats && h.feats.includes(key));
+  if (!h) return false;
+  const d = h.data || h;
+  return !!(d.feats && d.feats.includes(key));
 }
 
 /** Aggregate passive bonuses from features, feats, fighting style, subclass milestones. */
@@ -1025,7 +1470,25 @@ export function initProgressionFields(h) {
   if (!h.subclassMilestones) h.subclassMilestones = [];
   if (h.fightingStyle === undefined) h.fightingStyle = null;
   if (h.spellCd === undefined) h.spellCd = {};
+  if (!h.skillRanks) h.skillRanks = {};
+  if (h.pendingSkillRank === undefined) h.pendingSkillRank = 0;
+  if (h.pendingSkill === undefined) h.pendingSkill = 0;
   if (h.progressionVersion === undefined) h.progressionVersion = 0;
+  if (!h.charges) h.charges = {};
+  grantHealerCureWounds(h);
+}
+
+/* Healer classes know Cure Wounds for free from level 1. It used to be a
+   bespoke `healSlots` pool (WIS-mod casts, spent in its own combat branch)
+   running alongside the identically-named level-1 slot spell — two Cure
+   Wounds on two currencies, which is what made the HUD counts disagree. Now
+   there is only the spell, so healers must actually start with it rather than
+   waiting to draw it from a choice pool. queueChoice already filters out
+   known spells, so this costs them no pick. */
+export function grantHealerCureWounds(h) {
+  if (!h || !CLASSES[h.classKey]?.healer) return;
+  if (!h.knownSpells) h.knownSpells = [];
+  if (!h.knownSpells.includes('cureWounds')) h.knownSpells.push('cureWounds');
 }
 
 function unlockFeature(h, key, log) {
@@ -1061,29 +1524,45 @@ function queueChoice(h, grant) {
       }));
     /* if nothing left to learn, skip */
     if (choice.options.length === 0) return;
+  } else if (grant.pick === 'wildShapeForm') {
+    choice.options = Object.values(WILD_SHAPE_FORMS).map(wf => ({
+      key: wf.key,
+      label: `${wf.icon} ${wf.label}`,
+      desc: wf.desc
+    }));
   }
   h.pendingChoices.push(choice);
 }
 
 function buildAsiFeatOptions(h) {
   const opts = [];
-  for (const ab of ABILITIES) {
-    if (h.stats[ab] >= 20) continue;
-    const room = 20 - h.stats[ab];
-    const bump = Math.min(2, room);
+  /* Single ASI option: banks 2 ability points the player allots however they
+     like on the character sheet's stat tab (the existing pendingAbility UI).
+     Only offered while at least one stat is still below the cap of 20. */
+  if (ABILITIES.some(ab => h.stats[ab] < 20)) {
     opts.push({
-      key: `asi_${ab}`,
-      label: `+${bump} ${ABILITY_LABEL[ab]}`,
-      desc: `Raise ${ABILITY_LABEL[ab]} by ${bump} (cap 20).`,
+      key: 'asi',
+      label: 'Ability Score Improvement',
+      desc: 'Gain 2 ability points to allot among your stats (cap 20).',
       kind: 'asi',
-      ability: ab,
-      amount: bump
+      amount: 2
     });
   }
+  /* Effective equipment tiers = best of class (stamped on the hero in recalc)
+     and any feats already taken. Used to gate the proficiency-feat ladder. */
+  const grants = equipmentGrants(h);
+  const effArmor = Math.max(h._baseArmorRank || 0, grants.armorRank);
+  const effMartial = !!h._baseWeaponMartial || grants.weaponMartial;
+
   for (const [key, feat] of Object.entries(FEATS)) {
     if (h.feats.includes(key)) continue;
     if (feat.castersOnly && !isCasterClass(h.classKey)) continue;
     if (feat.meleeOnly && !MELEE_CLASSES.has(h.classKey)) continue;
+    /* Armor ladder: only offer the rung exactly one above the current tier
+       (none→light→medium→heavy), so it can never be redundant or skipped. */
+    if (feat.grantArmor && ARMOR_GRANT_RANK[feat.grantArmor] !== effArmor + 1) continue;
+    /* Weapon proficiency: only offer if not already martial-proficient. */
+    if (feat.grantWeapon === 'martial' && effMartial) continue;
     opts.push({
       key: `feat_${key}`,
       label: feat.label,
@@ -1116,14 +1595,28 @@ function applySubclassMilestone(h, level, log) {
 export function applyLevelGrants(h, level, log = null, opts = {}) {
   initProgressionFields(h);
   const table = CLASS_PROGRESSION[h.classKey];
-  if (!table || !table[level]) return;
-  for (const grant of table[level]) {
+  const grants = (table && table[level]) || [];
+
+  /* Every level-up (not initial creation at level 1) grants skill points for the
+     5e skill checks — Athletics, Investigation, Animal Handling, … — regardless
+     of class. Migration/re-apply must not double-bank points. */
+  if (level > 1 && !opts.autosOnly) {
+    h.pendingSkillRank = (h.pendingSkillRank || 0) + SKILL_POINTS_PER_LEVEL;
+    if (log) log(`📘 ${h.name} gained ${SKILL_POINTS_PER_LEVEL} skill points.`, 'level');
+  }
+
+  /* Class talents are the stopgap for dead levels: if this level's progression
+     table is empty, the level would otherwise grant nothing, so bank a talent
+     point instead. (Fighter 9/15/19, rogue 9/13/17/19, and so on.) */
+  if (level > 1 && !opts.autosOnly && grants.length === 0) {
+    h.pendingSkill = (h.pendingSkill || 0) + 1;
+    if (log) log(`⭐ ${h.name} gained a talent point.`, 'level');
+  }
+
+  if (!grants.length) return;
+  for (const grant of grants) {
     if (grant.type === 'auto') {
       unlockFeature(h, grant.feature, log);
-    } else if (grant.type === 'skillPoint') {
-      if (opts.autosOnly) continue; // migration / re-apply must not double-bank points
-      h.pendingSkill = (h.pendingSkill || 0) + 1;
-      if (log) log(`📘 ${h.name} gained a class skill point.`, 'level');
     } else if (grant.type === 'subclass') {
       /* handled by needsSubclass / pickSubclass — just notify */
       if (log && !h.subclass && !opts.autosOnly) log(`🌟 ${h.name} may choose a subclass!`, 'level');
@@ -1178,7 +1671,7 @@ export function resolveChoice(h, choiceId, optionKey) {
 
   if (choice.pick === 'asiOrFeat') {
     if (opt.kind === 'asi') {
-      h.stats[opt.ability] = Math.min(20, h.stats[opt.ability] + opt.amount);
+      h.pendingAbility = (h.pendingAbility || 0) + opt.amount;
     } else if (opt.kind === 'feat') {
       if (!h.feats.includes(opt.feat)) h.feats.push(opt.feat);
     }
@@ -1186,6 +1679,8 @@ export function resolveChoice(h, choiceId, optionKey) {
     h.fightingStyle = opt.key;
   } else if (choice.pick === 'spell') {
     if (!h.knownSpells.includes(opt.key)) h.knownSpells.push(opt.key);
+  } else if (choice.pick === 'wildShapeForm') {
+    h.wildShapeForm = opt.key;
   } else {
     return { ok: false, reason: 'Unknown choice type.' };
   }

@@ -1,100 +1,155 @@
+  /* ===== Dungeon Crawlers — dark fantasy base theme =====
+     Typefaces: Cinzel (display, roman-inscription caps) + Alegreya (body serif).
+     Self-hosted variable fonts — no network dependency. */
+  @font-face{
+    font-family:'Cinzel';
+    src:url('./fonts/cinzel.woff2') format('woff2');
+    font-weight:400 900; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'Alegreya';
+    src:url('./fonts/alegreya.woff2') format('woff2');
+    font-weight:400 900; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'Alegreya';
+    src:url('./fonts/alegreya-italic.woff2') format('woff2');
+    font-weight:400 900; font-style:italic; font-display:swap;
+  }
+  /* Pixel typefaces — used by the pixel-styled World Map (proof-of-concept).
+     Press Start 2P = chunky display; VT323 = legible pixel body text. */
+  @font-face{
+    font-family:'Press Start 2P';
+    src:url('./fonts/press-start-2p.woff2') format('woff2');
+    font-weight:400; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'VT323';
+    src:url('./fonts/vt323.woff2') format('woff2');
+    font-weight:400; font-style:normal; font-display:swap;
+  }
+
   :root{
-    --bg:#07080d; --panel:#0d0f16f2; --line:#232634; --ink:#c9cedb; --dim:#6d7386;
-    --ember:#e8973f; --teal:#3fd0bb; --gold:#d9a441; --violet:#9b6cf0; --blood:#d8433a; --blue:#5a8fe8;
+    /* warm dark-fantasy palette: charred oak, aged bronze, parchment, ember */
+    --bg:#0a0806; --panel:#15100bf7; --line:#3a2c1a; --ink:#e8dcc0; --dim:#a3947a;
+    --ember:#e8973f; --teal:#6fbf9a; --gold:#d9a441; --violet:#9b6cf0; --blood:#c04434; --blue:#7d9cc8;
     --mono:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;
-    --serif:Georgia,'Times New Roman',serif;
+    /* PIXEL THEME: VT323 as the readable body/base; Press Start 2P applied
+       surgically to big headings/buttons/tabs via the pixel override block. */
+    --serif:'VT323',ui-monospace,monospace;
+    --display:'VT323',ui-monospace,monospace;
+    /* forged chrome shared by buttons/inputs — now flat pixel fills */
+    --iron:#2b2115;
+    --iron-hover:#3a2c17;
+    --iron-line:#12100a;
+    --iron-line-hover:#12100a;
+    --bevel:inset -2px -2px 0 rgba(0,0,0,.4),inset 2px 2px 0 rgba(255,255,255,.09);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:12px}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:18px}
+  /* VT323 has a compact metric — nudge inline body text up a hair for legibility */
+  body{ -webkit-font-smoothing:none; font-smooth:never; }
   canvas{display:block}
-  button{font-family:var(--mono)}
+  button{font-family:inherit}
 
   #panel{
     position:fixed;top:16px;left:16px;width:308px;max-height:calc(100% - 32px);
-    background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    backdrop-filter:blur(10px);overflow-y:auto;z-index:10;
-    box-shadow:0 12px 40px #000c;
+    background:linear-gradient(180deg,#181209,#0f0b07) ;
+    border:1px solid var(--line);border-radius:4px;
+    overflow-y:auto;z-index:10;
+    box-shadow:inset 0 0 0 1px rgba(217,164,65,.10),inset 0 0 42px rgba(0,0,0,.45),0 12px 40px #000d;
   }
   #panel::-webkit-scrollbar{width:6px}
-  #panel::-webkit-scrollbar-thumb{background:#2b2f40;border-radius:3px}
+  #panel::-webkit-scrollbar-thumb{background:#3a2c1a;border-radius:3px}
 
   .head{padding:14px 52px 12px 16px;border-bottom:1px solid var(--line)}
-  .brand{display:flex;justify-content:space-between;align-items:center;letter-spacing:.22em;font-size:10px;color:var(--ember)}
-  .brand span:last-child{color:var(--dim);letter-spacing:.08em}
-  #dname{font-family:var(--serif);font-size:21px;font-weight:400;line-height:1.2;color:#eef0f6;margin-top:9px}
-  #dsub{margin-top:5px;color:var(--dim);font-size:11px;letter-spacing:.04em}
+  .brand{display:flex;justify-content:space-between;align-items:center;letter-spacing:.22em;font-size:13px;color:var(--gold);font-family:var(--display);font-weight:600}
+  .brand span:last-child{color:var(--dim);letter-spacing:.08em;font-family:var(--serif)}
+  #dname{font-family:var(--display);font-size:26px;font-weight:600;line-height:1.25;color:#f2e7c8;margin-top:9px;text-shadow:0 1px 3px #000}
+  #dsub{margin-top:5px;color:var(--dim);font-size:16px;letter-spacing:.04em;font-style:italic}
   #dsub .ok{color:var(--teal)}
   #dsub .bad{color:var(--blood)}
 
   .pipe{display:flex;gap:4px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;
     overflow:hidden;max-height:160px;transition:max-height .3s ease,opacity .22s ease,padding .3s ease,border-color .3s ease}
-  .pipe li{list-style:none;font-size:9px;letter-spacing:.1em;padding:3px 7px;border-radius:4px;
-    color:#4a4f61;border:1px solid #1c1f2b;transition:color .2s,border-color .2s,background .2s}
-  .pipe li.active{color:var(--ember);border-color:color-mix(in srgb,var(--ember) 48%,#141724);background:color-mix(in srgb,var(--ember) 10%,transparent)}
-  .pipe li.done{color:#8f96ab;border-color:#2b2f40}
+  .pipe li{list-style:none;font-size:12px;letter-spacing:.1em;padding:3px 7px;border-radius:2px;
+    color:#6f6350;border:1px solid #2b2115;font-family:var(--mono);
+    transition:color .2s,border-color .2s,background .2s}
+  .pipe li.active{color:var(--ember);border-color:color-mix(in srgb,var(--ember) 48%,#1c130a);background:color-mix(in srgb,var(--ember) 10%,transparent)}
+  .pipe li.done{color:#a3947a;border-color:#3a2c1a}
 
   .sec{padding:12px 16px;border-bottom:1px solid var(--line);
     overflow:hidden;max-height:640px;transition:max-height .3s ease,opacity .22s ease,padding .3s ease,border-color .3s ease}
   .row{display:flex;gap:8px;align-items:center}
   label{display:block}
-  .lab{display:flex;justify-content:space-between;color:var(--dim);font-size:10px;letter-spacing:.08em;margin-bottom:5px}
+  .lab{display:flex;justify-content:space-between;color:var(--dim);font-size:13px;letter-spacing:.1em;margin-bottom:5px;font-family:var(--display);font-weight:600}
   .lab b{color:var(--ink);font-weight:400}
   input[type=number]{
-    flex:1;min-width:0;background:#12141f;border:1px solid var(--line);border-radius:6px;
-    color:var(--ink);padding:8px 10px;font-family:var(--mono);font-size:12px;
+    flex:1;min-width:0;background:#100c08;border:1px solid var(--line);border-radius:3px;
+    color:var(--ink);padding:8px 10px;font-family:var(--mono);font-size:16px;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.5);
   }
   input:focus-visible,button:focus-visible{outline:2px solid var(--ember);outline-offset:1px}
   .btn{
-    background:#171a26;border:1px solid #2c3042;border-radius:6px;color:var(--ink);
-    padding:8px 12px;cursor:pointer;font-size:12px;min-height:34px;transition:background .12s,border-color .12s;
+    background:var(--iron);border:1px solid var(--iron-line);border-radius:3px;color:var(--ink);
+    padding:8px 12px;cursor:pointer;font-size:17px;min-height:34px;
+    box-shadow:var(--bevel);
+    transition:background .12s,border-color .12s,box-shadow .15s;
   }
-  .btn:hover{background:#1e2231;border-color:#3a3f56}
-  .btn.primary{background:color-mix(in srgb,var(--ember) 80%,#1a0d02);border-color:var(--ember);color:#12090a;font-weight:700;letter-spacing:.06em}
-  .btn.primary:hover{background:var(--ember)}
+  .btn:hover{background:var(--iron-hover);border-color:var(--iron-line-hover);box-shadow:var(--bevel),0 0 9px rgba(232,151,63,.14)}
+  .btn.primary{
+    background:linear-gradient(180deg,#d98c3a,#9c5c1c);border-color:#e8a851;color:#1c0f04;
+    font-family:var(--display);font-weight:700;letter-spacing:.08em;
+    text-shadow:0 1px 0 rgba(255,224,170,.4);
+    box-shadow:inset 0 1px 0 rgba(255,230,180,.35),inset 0 -1px 0 rgba(60,28,4,.5),0 0 14px rgba(232,151,63,.18);
+  }
+  .btn.primary:hover{background:linear-gradient(180deg,#e89c46,#b06a22);box-shadow:inset 0 1px 0 rgba(255,230,180,.4),inset 0 -1px 0 rgba(60,28,4,.5),0 0 20px rgba(232,151,63,.32)}
 
   .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
   .chip{
-    flex:1 0 30%;padding:6px 4px;font-size:9px;letter-spacing:.09em;text-align:center;
-    background:#12141f;border:1px solid var(--line);border-radius:5px;color:var(--dim);
-    cursor:pointer;transition:color .12s,border-color .12s,background .12s;
+    flex:1 0 30%;padding:6px 4px;font-size:12px;letter-spacing:.09em;text-align:center;
+    background:#100c08;border:1px solid var(--line);border-radius:2px;color:var(--dim);
+    cursor:pointer;font-family:var(--mono);
+    transition:color .12s,border-color .12s,background .12s;
   }
-  .chip:hover{color:var(--ink);border-color:#3a3f56}
-  .chip.on{color:var(--ember);border-color:color-mix(in srgb,var(--ember) 55%,#141724);background:color-mix(in srgb,var(--ember) 12%,transparent)}
+  .chip:hover{color:var(--ink);border-color:var(--iron-line-hover)}
+  .chip.on{color:var(--ember);border-color:color-mix(in srgb,var(--ember) 55%,#1c130a);background:color-mix(in srgb,var(--ember) 12%,transparent)}
   input[type=range]{width:100%;accent-color:var(--ember);height:22px;cursor:pointer}
   .sl{margin-top:10px}
   .sl:first-child{margin-top:0}
 
   .togs{display:flex;flex-direction:column;gap:7px}
-  .tog{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink);font-size:11px}
+  .tog{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--ink);font-size:16px}
   .tog input{accent-color:var(--ember);width:14px;height:14px;cursor:pointer}
-  .tog .key{margin-left:auto;color:#565b6e;font-size:9px;border:1px solid #262a3a;padding:1px 5px;border-radius:3px}
+  .tog .key{margin-left:auto;color:#7d6f58;font-size:12px;border:1px solid #33271a;padding:1px 5px;border-radius:2px;font-family:var(--mono)}
 
   .legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px}
-  .lg{display:flex;align-items:center;gap:7px;color:#9aa0b4;font-size:10.5px}
+  .lg{display:flex;align-items:center;gap:7px;color:#b3a385;font-size:14px}
   .dot{width:9px;height:9px;border-radius:2px;flex:none}
 
   .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .st{background:#10121b;border:1px solid #1d2130;border-radius:6px;padding:7px 8px}
-  .st i{display:block;font-style:normal;color:var(--dim);font-size:8.5px;letter-spacing:.1em;margin-bottom:3px}
-  .st b{font-weight:400;font-size:13px;color:#e8eaf2}
+  .st{background:#110d08;border:1px solid #29200f;border-radius:3px;padding:7px 8px;box-shadow:inset 0 1px 4px rgba(0,0,0,.4)}
+  .st i{display:block;font-style:normal;color:var(--dim);font-size:11px;letter-spacing:.1em;margin-bottom:3px;font-family:var(--mono)}
+  .st b{font-weight:400;font-size:17px;color:#efe4c6;font-family:var(--mono)}
   .st b.hi{color:var(--ember)}
 
   #hints{
     position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
-    color:#525871;font-size:10px;letter-spacing:.06em;z-index:5;text-align:center;
-    background:#0a0c12cc;padding:6px 14px;border-radius:20px;border:1px solid #1a1d2a;
+    color:#75664e;font-size:14px;letter-spacing:.06em;z-index:5;text-align:center;
+    background:#0d0906d9;padding:6px 14px;border-radius:3px;border:1px solid #29200f;
   }
-  #hints b{color:#8d93a8;font-weight:400}
+  #hints b{color:#b3a385;font-weight:400}
   /* Collapse control — a real button with a comfortable hit area, present on
      desktop and mobile alike. */
   #collapse{
     position:absolute;top:11px;right:11px;z-index:2;
     width:30px;height:30px;display:flex;align-items:center;justify-content:center;
-    background:#171a26;border:1px solid #2c3042;border-radius:7px;
-    color:var(--dim);cursor:pointer;font-size:15px;line-height:1;padding:0;
+    background:var(--iron);border:1px solid var(--iron-line);border-radius:3px;
+    color:var(--dim);cursor:pointer;font-size:20px;line-height:1;padding:0;
+    box-shadow:var(--bevel);
     transition:background .12s,color .12s,border-color .12s;
   }
-  #collapse:hover{background:#1e2231;color:var(--ink);border-color:#3a3f56}
+  #collapse:hover{background:var(--iron-hover);color:var(--ink);border-color:var(--iron-line-hover)}
 
   /* Collapsed: the header stays as a compact bar; everything else animates away
      so the dungeon is visible behind it (essential on phones). */
@@ -103,10 +158,10 @@
 
   /* Touch devices: enlarge every interactive target to a finger-friendly size. */
   @media (pointer:coarse){
-    #collapse{width:38px;height:38px;top:9px;right:9px;font-size:17px}
+    #collapse{width:38px;height:38px;top:9px;right:9px;font-size:22px}
     .btn{min-height:42px}
-    .chip{padding:10px 4px;font-size:9.5px}
-    input[type=number]{padding:11px 10px;font-size:13px}
+    .chip{padding:10px 4px;font-size:12px}
+    input[type=number]{padding:11px 10px;font-size:17px}
     input[type=range]{height:34px}
     .tog{padding:5px 0}
     .tog input{width:18px;height:18px}
@@ -117,7 +172,7 @@
   @media (max-width:640px){
     #panel{width:calc(100% - 20px);left:10px;top:10px;max-height:calc(100% - 20px)}
     .head{padding:12px 50px 10px 14px}
-    #dname{font-size:19px}
+    #dname{font-size:23px}
     .sec{padding:11px 14px}
     #hints{display:none}
   }

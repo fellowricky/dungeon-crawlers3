@@ -4,226 +4,379 @@
  * and shared combat outcomes (damageMonster / killMonster).
  *
  * Mixed onto Game — uses pathfinding (findPath, hasLOS, stepAlong, nudgeToward).
+ * All VFX/UI/audio calls go through this.* hooks (see game_hooks.js) so the
+ * same code runs headlessly in Node.js for mass balance simulation.
  */
-import * as THREE from 'three';
 import {
   grantXp, heroAttackBonus, heroDamage, subclassOf,
-  CLASSES, RACES, roll, d as die, d20Roll, mod, pendingPoints
+  CLASSES, RACES, roll, d as die, d20Roll, mod, pendingPoints, pickAttackProfile,
+  WILD_SHAPE_FORMS, recalc
 } from './srd.js';
+import { rollItem, makeDye, equippedPerks, perkMag } from './items.js';
 import {
-  drawBar, makeFloatText, hitFlash,
-  spawnProjectile, spawnSlash, spawnSpriteEffect, spawnDeathFountain
-} from './entities.js';
-import { rollItem, equippedPerks } from './items.js';
-import { log, updatePartyFrames, updateResources, showBanner } from './ui.js';
-import { refreshMenus } from './menus.js';
-import {
-  FLOOR, WALL, HERO_SPEED, HERO_ATTACK_CD, COMBAT_SPEED, XP_SHARE,
-  STUCK_SIDESTEP_T, STUCK_TELEPORT_T, STUCK_SIDESTEP_DIST
+  FLOOR, WALL, HERO_SPEED, HERO_ATTACK_CD, HERO_THINK_INTERVAL, COMBAT_SPEED, COMBAT_MOVE_BOOST, XP_SHARE
 } from './constants.js';
-import { _v } from './shared.js';
-import { hasFeature, hasFeat, hasSlotFor, spendSlotFor, recoverSlots, totalSlots } from './features.js';
-import { onKill } from './quest_events.js';
-import { playSfx, spellSfx } from './audio.js';
+import { hasFeature, hasFeat, hasSlotFor, spendSlotFor, recoverSlots, totalSlots,
+  hasCharge, spendCharge,
+  featBonusDamage, featExtraAttacks, featOnHit, featIncomingDamage, featACBonus,
+  featCombatStartTempHp } from './features.js';
+import { trackGold, trackLoot } from './run_stats.js';
+import { GIGAPACK_REGISTRY } from './gigapack_registry.js';
+import { swapHeroSprite, drawBar } from './entities.js';
+import { aoeZoneManager } from './aoe_system.js';
+
+/* Dye drop odds per kill (independent of the gear-drop roll) */
+const DYE_DROP_BOSS = 0.35, DYE_DROP_ELITE = 0.08, DYE_DROP_NORMAL = 0.02;
+
+/* How close a melee attacker has to be before it counts as pinning a hero in
+   melee — used by the Disengage and kite branches of the hero AI. */
+const MELEE_PIN_RANGE = 1.6;
+
+export function getAbilityUseWeight(h) {
+  const ai = (h && h.data && h.data.aiPrefs) || (h && h.aiPrefs) || {};
+  if (typeof ai.abilityUse === 'number') return ai.abilityUse;
+  if (ai.abilityUsage === 'conservative') return 0.0;
+  if (ai.abilityUsage === 'unleash') return 1.0;
+  return 0.5;
+}
+
+export function getCombatMovementWeight(h) {
+  const ai = (h && h.data && h.data.aiPrefs) || (h && h.aiPrefs) || {};
+  if (typeof ai.combatMovement === 'number') return ai.combatMovement;
+  if (ai.movementStyle === 'hold') return 0.0;
+  if (ai.movementStyle === 'kite') return 0.7;
+  if (ai.movementStyle === 'flank') return 1.0;
+  return 0.5;
+}
+
+export function getPotionHpThreshold(h) {
+  const ai = (h && h.data && h.data.aiPrefs) || (h && h.aiPrefs) || {};
+  if (typeof ai.potionThreshold === 'number') return ai.potionThreshold;
+  if (ai.potionTrigger === 'off') return 0.0;
+  if (ai.potionTrigger === 'emergency') return 0.25;
+  if (ai.potionTrigger === 'proactive') return 0.50;
+  if (ai.potionTrigger === 'early') return 0.75;
+  return 0.25;
+}
+
+export function getAvailableAttackOptions(hero) {
+  const options = [];
+  const d = hero ? (hero.data || hero) : null;
+  if (!d) return options;
+
+  if (d.inWildShape && d.wildShapeActiveForm && WILD_SHAPE_FORMS[d.wildShapeActiveForm]) {
+    const wf = WILD_SHAPE_FORMS[d.wildShapeActiveForm];
+    const profile = pickAttackProfile(d);
+    options.push({
+      key: 'wildshape_attack',
+      label: `${wf.icon} ${profile.name}`,
+      sub: `${profile.dmg[0]}d${profile.dmg[1]} ${profile.dmgType} (Melee 5 ft)`,
+      profile: profile,
+      type: 'melee'
+    });
+    return options;
+  }
+
+  if (d.weaponProfile) {
+    const w = d.weaponProfile;
+    options.push({
+      key: 'weapon_melee',
+      label: `⚔️ ${w.name || 'Weapon Strike'} (Melee)`,
+      sub: `${w.dmg ? w.dmg[0] + 'd' + w.dmg[1] : '1d6'} Physical (Melee 5 ft)`,
+      profile: w,
+      type: 'melee'
+    });
+
+    const n = (w.name || '').toLowerCase();
+    if (n.includes('dagger') || n.includes('handaxe') || n.includes('javelin') || n.includes('spear') || w.thrown) {
+      options.push({
+        key: 'weapon_thrown',
+        label: `🎯 Throw ${w.name || 'Dagger'}`,
+        sub: `${w.dmg ? w.dmg[0] + 'd' + w.dmg[1] : '1d4'} Thrown (Range 30 ft)`,
+        profile: { ...w, melee: false, range: w.range || 6 },
+        type: 'thrown'
+      });
+    }
+  }
+
+  if (d.cantripProfile) {
+    const c = d.cantripProfile;
+    options.push({
+      key: 'cantrip',
+      label: `✨ ${c.name || 'Cantrip'}`,
+      sub: `1d${c.dmg ? c.dmg[1] : 10} ${c.dmgType || 'Magic'} (${(c.range || 8) * 5} ft)`,
+      profile: c,
+      type: 'cantrip'
+    });
+  }
+
+  if (!options.length) {
+    options.push({
+      key: 'unarmed',
+      label: `👊 Unarmed Strike`,
+      sub: `1 Bludgeoning (Melee 5 ft)`,
+      profile: { name: 'Unarmed Strike', melee: true, range: 1, dmg: [1, 1] },
+      type: 'unarmed'
+    });
+  }
+
+  return options;
+}
 
 /** Sprite paths + tint colors for ability / spell feedback.
  *  Each entry may include `frames` (texture-path array) + `frameInterval`
  *  to produce an animated sprite effect that cycles through the sequence. */
-const ABILITY_FX = {
+export const ABILITY_FX = {
   /* ── Class Features ── */
-  secondWind:      { sprite: 'dcss/effect/gold_sparkles_1.png', color: 0x6ae06a, label: '2nd WIND',     float: '#6ae06a' },
-  actionSurge:     { sprite: 'dcss/effect/heataura_1.png',      color: 0xffd34a, label: 'SURGE',         float: '#ffd34a' },
-  flurry:          { sprite: 'dcss/effect/heataura_2.png',      color: 0xe8d8a8, label: 'FLURRY',        float: '#e8d8a8' },
-  frenzy:          { sprite: 'dcss/effect/flame_0.png',
+  secondWind:      { sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/gold_sparkles_1.png', color: 0x6ae06a, label: '2nd WIND',     float: '#6ae06a' },
+  actionSurge:     { sheetKey: 'spell_haste_001_large_green', sprite: 'dcss/effect/heataura_1.png',      color: 0xffd34a, label: 'SURGE',         float: '#ffd34a' },
+  flurry:          { sheetKey: 'symmetrical_impact_004_large_yellow', sprite: 'dcss/effect/heataura_2.png',      color: 0xe8d8a8, label: 'FLURRY',        float: '#e8d8a8' },
+  frenzy:          { sheetKey: 'spell_attack_up_001_large_red', sprite: 'dcss/effect/flame_0.png',
     frames: ['dcss/effect/flame_0.png','dcss/effect/flame_1.png','dcss/effect/flame_2.png'],
     frameInterval: 0.06,                                        color: 0xff6030, label: 'FRENZY',        float: '#ff6030' },
-  cunningAction:   { sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0x8fd4e8, label: 'DASH',         float: '#8fd4e8' },
-  remarkableAthlete: { sprite: 'dcss/effect/gold_sparkles_1.png', color: 0xaab4cc, label: 'ATHLETE',      float: '#aab4cc' },
-  fastHands:       { sprite: 'dcss/effect/cloud_magic_trail_0.png', color: 0x8fd4e8, label: 'SMOKE BOMB',   float: '#8fd4e8' },
-  rage:            { sprite: 'dcss/effect/flame_0.png',
+  cunningAction:   { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0x8fd4e8, label: 'DASH',         float: '#8fd4e8' },
+  dash:            { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0x8fd4e8, label: 'DASH',         float: '#8fd4e8' },
+  disengage:       { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_magic_trail_0.png', color: 0x8fd4e8, label: 'DISENGAGE',    float: '#8fd4e8' },
+  dodge:           { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',         color: 0xa0c0ff, label: 'DODGE',        float: '#a0c0ff' },
+  patientDefense:  { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',         color: 0xa0c0ff, label: 'DODGE',        float: '#a0c0ff' },
+  bloodlust:       { sheetKey: 'burst_splatter_001_large_red', sprite: 'dcss/effect/drain_red_2.png',       color: 0xff5040, label: 'BLOODLUST',   float: '#ff5040' },
+  shieldOfFaith:   { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',         color: 0xa0c0ff, label: 'SHIELD',       float: '#a0c0ff' },
+  remarkableAthlete: { sheetKey: 'spell_haste_001_large_green', sprite: 'dcss/effect/gold_sparkles_1.png', color: 0xaab4cc, label: 'ATHLETE',      float: '#aab4cc' },
+  fastHands:       { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_magic_trail_0.png', color: 0x8fd4e8, label: 'SMOKE BOMB',   float: '#8fd4e8' },
+  rage:            { sheetKey: 'spell_attack_up_001_large_red', sprite: 'dcss/effect/flame_0.png',
     frames: ['dcss/effect/flame_0.png','dcss/effect/flame_1.png','dcss/effect/flame_2.png'],
     frameInterval: 0.07,                                        color: 0xff4020, label: 'RAGE',          float: '#ff6040' },
-  bearTotem:       { sprite: 'dcss/effect/cloud_forest_fire.png', color: 0xc08040, label: 'BEAR',          float: '#c08040' },
-  bardic:          { sprite: 'dcss/effect/gold_sparkles_1.png',
+  bearTotem:       { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/cloud_forest_fire.png', color: 0xc08040, label: 'BEAR',          float: '#c08040' },
+  bardic:          { sheetKey: 'directional_music_burst_001_large_red', sprite: 'dcss/effect/gold_sparkles_1.png',
     frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
     frameInterval: 0.07,                                        color: 0xe8a8ff, label: 'INSPIRE',       float: '#e8a8ff' },
-  wildShape:       { sprite: 'dcss/effect/cloud_magic_trail_0.png',
+  wildShape:       { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_magic_trail_0.png',
     frames: ['dcss/effect/cloud_magic_trail_0.png','dcss/effect/cloud_magic_trail_1.png','dcss/effect/cloud_magic_trail_2.png','dcss/effect/cloud_magic_trail_3.png'],
     frameInterval: 0.06,                                        color: 0x6aaa4a, label: 'WILD SHAPE',    float: '#6aaa4a' },
-  combatSong:      { sprite: 'dcss/effect/goldaura_0.png',
+  combatSong:      { sheetKey: 'directional_music_burst_002_large_yellow', sprite: 'dcss/effect/goldaura_0.png',
     frames: ['dcss/effect/goldaura_0.png','dcss/effect/goldaura_1.png','dcss/effect/goldaura_2.png'],
     frameInterval: 0.07,                                        color: 0xffd080, label: 'BATTLE SONG',   float: '#ffd080' },
-  divineSmite:     { sprite: 'dcss/effect/searing_ray_0.png',
+  divineSmite:     { sheetKey: 'symmetrical_impact_006_large_yellow', sprite: 'dcss/effect/searing_ray_0.png',
     frames: ['dcss/effect/searing_ray_0.png','dcss/effect/searing_ray_1.png','dcss/effect/searing_ray_2.png','dcss/effect/searing_ray_3.png'],
     frameInterval: 0.05,                                        color: 0xffe08a, label: 'SMITE',         float: '#ffe08a' },
-  tidesOfChaos:    { sprite: 'dcss/effect/cloud_chaos_1.png',
+  tidesOfChaos:    { sheetKey: 'round_sparkle_burst_003_large_red', sprite: 'dcss/effect/cloud_chaos_1.png',
     frames: ['dcss/effect/cloud_chaos_1.png','dcss/effect/cloud_chaos_2.png'],
     frameInterval: 0.08,                                        color: 0xb06cf0, label: 'CHAOS',         float: '#b06cf0' },
-  indomitable:     { sprite: 'dcss/effect/sanctuary.png',         color: 0xa0c0ff, label: 'INDOMITABLE',   float: '#a0c0ff' },
-  lucky:           { sprite: 'dcss/effect/gold_sparkles_3.png',   color: 0x6aea6a, label: 'LUCKY',         float: '#6aea6a' },
-  layOnHands:      { sprite: 'dcss/effect/goldaura_1.png',        color: 0xffe08a, label: null,            float: '#6ae06a' },
-  cureWounds:      { sprite: 'dcss/effect/goldaura_0.png',        color: 0x6ae06a, label: null,            float: '#6ae06a' },
-  healingWord:     { sprite: 'dcss/effect/gold_sparkles_2.png',   color: 0xe8a8ff, label: null,            float: '#6ae06a' },
-  deathstrike:     { sprite: 'dcss/effect/drain_red_0.png',
+  indomitable:     { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',         color: 0xa0c0ff, label: 'INDOMITABLE',   float: '#a0c0ff' },
+  lucky:           { sheetKey: 'status_sparkling_001_large_yellow', sprite: 'dcss/effect/gold_sparkles_3.png',   color: 0x6aea6a, label: 'LUCKY',         float: '#6aea6a' },
+  layOnHands:      { sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/goldaura_1.png',        color: 0xffe08a, label: null,            float: '#6ae06a' },
+  cureWounds:      { sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/goldaura_0.png',        color: 0x6ae06a, label: null,            float: '#6ae06a' },
+  healingWord:     { sheetKey: 'status_sparkling_001_large_yellow', sprite: 'dcss/effect/gold_sparkles_2.png',   color: 0xe8a8ff, label: null,            float: '#6ae06a' },
+  deathstrike:     { sheetKey: 'spell_death_001_large_red', sprite: 'dcss/effect/drain_red_0.png',
     frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
     frameInterval: 0.06,                                        color: 0xc04040, label: 'DEATHSTRIKE',   float: '#e07070' },
-  guidedStrike:    { sprite: 'dcss/effect/quad_glow.png',         color: 0xffe08a, label: 'GUIDED',        float: '#ffe08a' },
-  vowOfEnmity:     { sprite: 'dcss/effect/flame_2.png',           color: 0xe8a83f, label: 'VOW',           float: '#e8a83f' },
-  shadowStep:      { sprite: 'dcss/effect/umbra_0.png',
+  guidedStrike:    { sheetKey: 'directional_impact_004_large_yellow', sprite: 'dcss/effect/quad_glow.png',         color: 0xffe08a, label: 'GUIDED',        float: '#ffe08a' },
+  vowOfEnmity:     { sheetKey: 'spell_attack_up_001_large_red', sprite: 'dcss/effect/flame_2.png',           color: 0xe8a83f, label: 'VOW',           float: '#e8a83f' },
+  shadowStep:      { sheetKey: 'scifi_warp_003_large_blue', sprite: 'dcss/effect/umbra_0.png',
     frames: ['dcss/effect/umbra_0.png','dcss/effect/umbra_1.png','dcss/effect/umbra_2.png','dcss/effect/umbra_3.png'],
     frameInterval: 0.05,                                        color: 0x6a5080, label: 'SHADOW STEP',   float: '#a080c0' },
-  sacredWeapon:    { sprite: 'dcss/effect/irradiate_0.png',
+  sacredWeapon:    { sheetKey: 'round_light_burst_001_large_yellow', sprite: 'dcss/effect/irradiate_0.png',
     frames: ['dcss/effect/irradiate_0.png','dcss/effect/irradiate_1.png','dcss/effect/irradiate_2.png','dcss/effect/irradiate_3.png'],
     frameInterval: 0.06,                                        color: 0xffe08a, label: 'SACRED',        float: '#ffe08a' },
-  colossusSlayer:  { sprite: 'dcss/effect/searing_ray_5.png',     color: 0xe8a83f, label: 'PREY',          float: '#e8a83f' },
-  companionStrike: { sprite: 'dcss/effect/cloud_magic_trail_3.png', color: 0xa0c080, label: 'COMPANION',    float: '#a0c080' },
-  quiveringPalm:   { sprite: 'dcss/effect/sandblast_0.png',
+  colossusSlayer:  { sheetKey: 'directional_impact_003_large_violet', sprite: 'dcss/effect/searing_ray_5.png',     color: 0xe8a83f, label: 'PREY',          float: '#e8a83f' },
+  summonCompanion: { sheetKey: 'round_sparkle_burst_002_large_green', sprite: 'dcss/effect/cloud_magic_trail_3.png', color: 0xa0c080, label: 'SUMMON',     float: '#a0c080' },
+  quiveringPalm:   { sheetKey: 'symmetrical_impact_006_large_yellow', sprite: 'dcss/effect/sandblast_0.png',
     frames: ['dcss/effect/sandblast_0.png','dcss/effect/sandblast_1.png','dcss/effect/sandblast_2.png'],
     frameInterval: 0.06,                                        color: 0xffd080, label: 'QUIVERING',     float: '#ffd080' },
-  rallyingCry:     { sprite: 'dcss/effect/goldaura_2.png',        color: 0xe8a83f, label: 'RALLY',         float: '#e8a83f' },
-  preserveLife:    { sprite: 'dcss/effect/orb_glow_0.png',
+  rallyingCry:     { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/goldaura_2.png',        color: 0xe8a83f, label: 'RALLY',         float: '#e8a83f' },
+  preserveLife:    { sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/orb_glow_0.png',
     frames: ['dcss/effect/orb_glow_0.png','dcss/effect/orb_glow_1.png'],
     frameInterval: 0.08,                                        color: 0xbfe0ff, label: 'PRESERVE',      float: '#bfe0ff' },
-  dragonBreath:    { sprite: 'dcss/effect/cloud_fire_0.png',
+  dragonBreath:    { sheetKey: 'epic_explosion_001_large_orange', sprite: 'dcss/effect/cloud_fire_0.png',
     frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
     frameInterval: 0.06,                                        color: 0xff6020, label: 'BREATH',        float: '#ff6020' },
-  wildSurge:       { sprite: 'dcss/effect/cloud_chaos_3.png',
+  wildSurge:       { sheetKey: 'round_firework_burst_002_large_yellow', sprite: 'dcss/effect/cloud_chaos_3.png',
     frames: ['dcss/effect/cloud_chaos_3.png','dcss/effect/cloud_chaos_4.png','dcss/effect/cloud_chaos_5.png'],
     frameInterval: 0.06,                                        color: 0xff8844, label: 'WILD MAGIC',    float: '#ff8844' },
-  cuttingWords:    { sprite: 'dcss/effect/cloud_neg_1.png',       color: 0xd0a0ff, label: 'CUTTING WORDS', float: '#d0a0ff' },
-  fiendishBlessing:{ sprite: 'dcss/effect/cloud_neg_0.png',
+  cuttingWords:    { sheetKey: 'directional_music_burst_001_large_red', sprite: 'dcss/effect/cloud_neg_1.png',       color: 0xd0a0ff, label: 'CUTTING WORDS', float: '#d0a0ff' },
+  fiendishBlessing:{ sheetKey: 'spell_absorb_001_large_violet', sprite: 'dcss/effect/cloud_neg_0.png',
     frames: ['dcss/effect/cloud_neg_0.png','dcss/effect/cloud_neg_1.png','dcss/effect/cloud_neg_2.png'],
     frameInterval: 0.07,                                        color: 0x9b59b6, label: 'FIENDISH',      float: '#9b59b6' },
-  feyPresence:     { sprite: 'dcss/effect/cloud_spectral_0.png',
+  feyPresence:     { sheetKey: 'round_sparkle_burst_001_large_blue', sprite: 'dcss/effect/cloud_spectral_0.png',
     frames: ['dcss/effect/cloud_spectral_0.png','dcss/effect/cloud_spectral_1.png','dcss/effect/cloud_spectral_2.png'],
     frameInterval: 0.07,                                        color: 0xe8a8ff, label: 'FEY',           float: '#e8a8ff' },
   /* ── Spells ── */
-  magicMissile:    { sprite: 'dcss/effect/magic_bolt_1.png',
+  magicMissile:    { sheetKey: 'round_sparkle_burst_001_large_blue', sprite: 'dcss/effect/magic_bolt_1.png',
     frames: ['dcss/effect/magic_bolt_1.png','dcss/effect/magic_bolt_2.png','dcss/effect/magic_bolt_3.png','dcss/effect/magic_bolt_4.png','dcss/effect/magic_bolt_5.png','dcss/effect/magic_bolt_6.png'],
     frameInterval: 0.04,                                        color: 0xb08cff, label: 'MISSILE',       float: '#b08cff' },
-  shield:          { sprite: 'dcss/effect/sanctuary.png',         color: 0x88aaff, label: 'SHIELD',        float: '#88aaff' },
-  scorchingRay:    { sprite: 'dcss/effect/searing_ray_0.png',
+  shield:          { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',         color: 0x88aaff, label: 'SHIELD',        float: '#88aaff' },
+  scorchingRay:    { sheetKey: 'stylized_explosion_001_large_yellow', sprite: 'dcss/effect/searing_ray_0.png',
     frames: ['dcss/effect/searing_ray_0.png','dcss/effect/searing_ray_1.png','dcss/effect/searing_ray_2.png','dcss/effect/searing_ray_3.png','dcss/effect/searing_ray_4.png','dcss/effect/searing_ray_5.png'],
     frameInterval: 0.04,                                        color: 0xff7a30, label: 'SCORCH',        float: '#ff7a30' },
-  fireball:        { sprite: 'dcss/effect/cloud_fire_0.png',
+  fireball:        { sheetKey: 'epic_explosion_002_large_yellow', sprite: 'dcss/effect/cloud_fire_0.png',
     frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
     frameInterval: 0.05,                                        color: 0xff7a30, label: 'FIREBALL',      float: '#ff7a30' },
-  haste:           { sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0xa0e0ff, label: 'HASTE',         float: '#a0e0ff' },
-  bless:           { sprite: 'dcss/effect/gold_sparkles_1.png',
+  haste:           { sheetKey: 'spell_haste_001_large_green', sprite: 'dcss/effect/xom_sparkles_blue.png', color: 0xa0e0ff, label: 'HASTE',         float: '#a0e0ff' },
+  bless:           { sheetKey: 'status_sparkling_001_large_yellow', sprite: 'dcss/effect/gold_sparkles_1.png',
     frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
     frameInterval: 0.07,                                        color: 0xffe08a, label: 'BLESS',         float: '#ffe08a' },
-  spiritualWeapon: { sprite: 'dcss/effect/orb_glow_0.png',
+  spiritualWeapon: { sheetKey: 'directional_impact_004_large_yellow', sprite: 'dcss/effect/orb_glow_0.png',
     frames: ['dcss/effect/orb_glow_0.png','dcss/effect/orb_glow_1.png'],
     frameInterval: 0.08,                                        color: 0xbfe0ff, label: 'SPIRIT WEAPON', float: '#bfe0ff' },
-  spiritGuardians: { sprite: 'dcss/effect/cloud_spectral_0.png',
+  spiritGuardians: { sheetKey: 'round_light_burst_001_large_yellow', sprite: 'dcss/effect/cloud_spectral_0.png',
     frames: ['dcss/effect/cloud_spectral_0.png','dcss/effect/cloud_spectral_1.png','dcss/effect/cloud_spectral_2.png'],
     frameInterval: 0.07,                                        color: 0xd0c0ff, label: 'GUARDIANS',     float: '#d0c0ff' },
-  entangle:        { sprite: 'dcss/effect/cloud_magic_trail_0.png',
+  entangle:        { sheetKey: 'directional_bubble_burst_001_large_green', sprite: 'dcss/effect/cloud_magic_trail_0.png',
     frames: ['dcss/effect/cloud_magic_trail_0.png','dcss/effect/cloud_magic_trail_1.png','dcss/effect/cloud_magic_trail_2.png','dcss/effect/cloud_magic_trail_3.png'],
     frameInterval: 0.06,                                        color: 0x4cae4c, label: 'ENTANGLE',      float: '#4cae4c' },
-  moonbeam:        { sprite: 'dcss/effect/cloud_cold_0.png',
+  moonbeam:        { sheetKey: 'round_light_burst_001_large_yellow', sprite: 'dcss/effect/cloud_cold_0.png',
     frames: ['dcss/effect/cloud_cold_0.png','dcss/effect/cloud_cold_1.png','dcss/effect/cloud_cold_2.png'],
     frameInterval: 0.07,                                        color: 0xc0e8ff, label: 'MOONBEAM',      float: '#c0e8ff' },
-  callLightning:   { sprite: 'dcss/effect/zap_0.png',
+  callLightning:   { sheetKey: 'lightning_strike_001_large_violet', sprite: 'dcss/effect/zap_0.png',
     frames: ['dcss/effect/zap_0.png','dcss/effect/zap_1.png','dcss/effect/zap_2.png','dcss/effect/zap_3.png'],
     frameInterval: 0.05,                                        color: 0x7090ff, label: 'LIGHTNING',     float: '#7090ff' },
-  shatter:         { sprite: 'dcss/effect/sandblast_0.png',
+  shatter:         { sheetKey: 'symmetrical_impact_006_large_yellow', sprite: 'dcss/effect/sandblast_0.png',
     frames: ['dcss/effect/sandblast_0.png','dcss/effect/sandblast_1.png','dcss/effect/sandblast_2.png'],
     frameInterval: 0.06,                                        color: 0xd0a0ff, label: 'SHATTER',       float: '#d0a0ff' },
-  chaosBolt:       { sprite: 'dcss/effect/cloud_chaos_3.png',
+  chaosBolt:       { sheetKey: 'round_firework_burst_001_large_green', sprite: 'dcss/effect/cloud_chaos_3.png',
     frames: ['dcss/effect/cloud_chaos_3.png','dcss/effect/cloud_chaos_4.png','dcss/effect/cloud_chaos_5.png'],
     frameInterval: 0.05,                                        color: 0xff8844, label: 'CHAOS BOLT',    float: '#ff8844' },
-  dragonBreathSpell:{ sprite: 'dcss/effect/cloud_fire_0.png',
+  dragonBreathSpell:{ sheetKey: 'epic_explosion_001_large_orange', sprite: 'dcss/effect/cloud_fire_0.png',
     frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
     frameInterval: 0.06,                                        color: 0xff6020, label: 'BURNING HANDS', float: '#ff6020' },
-  hex:             { sprite: 'dcss/effect/drain_red_0.png',
+  hex:             { sheetKey: 'spell_death_001_large_red', sprite: 'dcss/effect/drain_red_0.png',
     frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
     frameInterval: 0.07,                                        color: 0x9b59b6, label: 'HEX',           float: '#9b59b6' },
-  armsOfHadar:     { sprite: 'dcss/effect/cloud_gloom_new.png',   color: 0x6a3080, label: 'HADAR',         float: '#6a3080' },
-  thunderousSmite: { sprite: 'dcss/effect/zap_0.png',
+  armsOfHadar:     { sheetKey: 'stylized_skull_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_gloom_new.png',   color: 0x6a3080, label: 'HADAR',         float: '#6a3080' },
+  thunderousSmite: { sheetKey: 'lightning_burst_002_large_violet', sprite: 'dcss/effect/zap_0.png',
     frames: ['dcss/effect/zap_0.png','dcss/effect/zap_1.png','dcss/effect/zap_2.png','dcss/effect/zap_3.png'],
     frameInterval: 0.06,                                        color: 0xf1c40f, label: 'THUNDEROUS',    float: '#f1c40f' },
-  huntersMark:     { sprite: 'dcss/effect/searing_ray_1.png',     color: 0x1abc9c, label: "HUNTER'S MARK", float: '#1abc9c' },
+  huntersMark:     { sheetKey: 'directional_impact_003_large_violet', sprite: 'dcss/effect/searing_ray_1.png',     color: 0x1abc9c, label: "HUNTER'S MARK", float: '#1abc9c' },
   /* ── New condition-based spells ── */
-  blindness:       { sprite: 'dcss/effect/cloud_black_smoke.png', color: 0x888899, label: 'BLINDED', float: '#888899' },
-  holdPerson:      { sprite: 'dcss/effect/silenced.png',         color: 0x8090c0, label: 'PARALYZED', float: '#8090c0' },
-  sleep:           { sprite: 'dcss/effect/cloud_yellow_smoke.png', color: 0x6688aa, label: 'SLEEP', float: '#6688aa' },
-  fear:            { sprite: 'dcss/effect/cloud_gloom_new.png',   color: 0x9b59b6, label: 'FEAR', float: '#9b59b6' },
-  slow:            { sprite: 'dcss/effect/cloud_blue_smoke.png',  color: 0x8fd4e8, label: 'SLOW', float: '#8fd4e8' },
-  bane:            { sprite: 'dcss/effect/cloud_neg_1.png',       color: 0xd0a0ff, label: 'BANE', float: '#d0a0ff' },
-  faerieFire:      { sprite: 'dcss/effect/cloud_spectral_0.png',
+  blindness:       { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_black_smoke.png', color: 0x888899, label: 'BLINDED', float: '#888899' },
+  holdPerson:      { sheetKey: 'spell_absorb_001_large_violet', sprite: 'dcss/effect/silenced.png',         color: 0x8090c0, label: 'PARALYZED', float: '#8090c0' },
+  sleep:           { sheetKey: 'round_sparkle_burst_001_large_blue', sprite: 'dcss/effect/cloud_yellow_smoke.png', color: 0x6688aa, label: 'SLEEP', float: '#6688aa' },
+  fear:            { sheetKey: 'stylized_skull_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_gloom_new.png',   color: 0x9b59b6, label: 'FEAR', float: '#9b59b6' },
+  slow:            { sheetKey: 'symmetrical_smoke_burst_001_large_brown', sprite: 'dcss/effect/cloud_blue_smoke.png',  color: 0x8fd4e8, label: 'SLOW', float: '#8fd4e8' },
+  bane:            { sheetKey: 'spell_death_001_large_red', sprite: 'dcss/effect/cloud_neg_1.png',       color: 0xd0a0ff, label: 'BANE', float: '#d0a0ff' },
+  faerieFire:      { sheetKey: 'round_sparkle_burst_002_large_green', sprite: 'dcss/effect/cloud_spectral_0.png',
     frames: ['dcss/effect/cloud_spectral_0.png','dcss/effect/cloud_spectral_1.png','dcss/effect/cloud_spectral_2.png'],
     frameInterval: 0.07,                                        color: 0xb08cff, label: 'FAERIE FIRE', float: '#b08cff' },
-  rayOfEnfeeblement:{ sprite: 'dcss/effect/cloud_meph_0.png',    color: 0xd0a080, label: 'ENFEEBLED', float: '#d0a080' },
-  web:             { sprite: 'dcss/effect/net_trap.png',          color: 0xbfa060, label: 'WEB', float: '#bfa060' },
-  hideousLaughter: { sprite: 'dcss/effect/cloud_chaos_1.png',
+  rayOfEnfeeblement:{ sheetKey: 'spell_poison_001_large_green', sprite: 'dcss/effect/cloud_meph_0.png',    color: 0xd0a080, label: 'ENFEEBLED', float: '#d0a080' },
+  web:             { sheetKey: 'directional_bubble_burst_001_large_green', sprite: 'dcss/effect/net_trap.png',          color: 0xbfa060, label: 'WEB', float: '#bfa060' },
+  hideousLaughter: { sheetKey: 'round_firework_burst_002_large_yellow', sprite: 'dcss/effect/cloud_chaos_1.png',
     frames: ['dcss/effect/cloud_chaos_1.png','dcss/effect/cloud_chaos_2.png'],
     frameInterval: 0.08,                                        color: 0xe8a8ff, label: 'LAUGHTER!', float: '#e8a8ff' },
-  lesserRestoration:{ sprite: 'dcss/effect/gold_sparkles_1.png',
+  lesserRestoration:{ sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/gold_sparkles_1.png',
     frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
     frameInterval: 0.07,                                        color: 0x6ae06a, label: 'RESTORED', float: '#6ae06a' },
-  greaterRestoration:{ sprite: 'dcss/effect/goldaura_0.png',
+  greaterRestoration:{ sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/goldaura_0.png',
     frames: ['dcss/effect/goldaura_0.png','dcss/effect/goldaura_1.png','dcss/effect/goldaura_2.png'],
     frameInterval: 0.06,                                        color: 0xffe08a, label: 'RESTORED!', float: '#ffe08a' },
-  protectionFromEvil:{ sprite: 'dcss/effect/sanctuary.png',      color: 0xffe08a, label: 'PROTECTED', float: '#ffe08a' },
+  protectionFromEvil:{ sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',      color: 0xffe08a, label: 'PROTECTED', float: '#ffe08a' },
   /* ── Extended spell list ── */
-  grease:          { sprite: 'dcss/effect/cloud_yellow_smoke.png', color: 0xbfa060, label: 'GREASE', float: '#bfa060' },
-  inflictWounds:   { sprite: 'dcss/effect/drain_red_0.png',
+  grease:          { sheetKey: 'symmetrical_smoke_burst_001_large_brown', sprite: 'dcss/effect/cloud_yellow_smoke.png', color: 0xbfa060, label: 'GREASE', float: '#bfa060' },
+  inflictWounds:   { sheetKey: 'spell_death_001_large_red', sprite: 'dcss/effect/drain_red_0.png',
     frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
     frameInterval: 0.06,                                        color: 0xc04040, label: 'WOUNDS', float: '#c04040' },
-  acidArrow:       { sprite: 'dcss/effect/acid_venom.png',        color: 0x4cae4c, label: 'ACID', float: '#4cae4c' },
-  mistyStep:       { sprite: 'dcss/effect/cloud_blue_smoke.png',  color: 0x8fd4e8, label: 'MISTY STEP', float: '#8fd4e8' },
-  silence:         { sprite: 'dcss/effect/silenced.png',          color: 0x888899, label: 'SILENCE', float: '#888899' },
-  bestowCurse:     { sprite: 'dcss/effect/cloud_neg_0.png',
+  acidArrow:       { sheetKey: 'burst_splatter_003_large_green', sprite: 'dcss/effect/acid_venom.png',        color: 0x4cae4c, label: 'ACID', float: '#4cae4c' },
+  mistyStep:       { sheetKey: 'directional_smoke_burst_001_large_white', sprite: 'dcss/effect/cloud_blue_smoke.png',  color: 0x8fd4e8, label: 'MISTY STEP', float: '#8fd4e8' },
+  silence:         { sheetKey: 'spell_absorb_001_large_violet', sprite: 'dcss/effect/silenced.png',          color: 0x888899, label: 'SILENCE', float: '#888899' },
+  bestowCurse:     { sheetKey: 'spell_death_001_large_red', sprite: 'dcss/effect/cloud_neg_0.png',
     frames: ['dcss/effect/cloud_neg_0.png','dcss/effect/cloud_neg_1.png','dcss/effect/cloud_neg_2.png'],
     frameInterval: 0.06,                                        color: 0x9b59b6, label: 'CURSED', float: '#9b59b6' },
-  lightningBolt:   { sprite: 'dcss/effect/zap_0.png',
+  lightningBolt:   { sheetKey: 'lightning_strike_001_large_violet', sprite: 'dcss/effect/zap_0.png',
     frames: ['dcss/effect/zap_0.png','dcss/effect/zap_1.png','dcss/effect/zap_2.png','dcss/effect/zap_3.png'],
     frameInterval: 0.05,                                        color: 0x7090ff, label: 'BOLT!', float: '#7090ff' },
-  massHealingWord: { sprite: 'dcss/effect/gold_sparkles_1.png',
+  massHealingWord: { sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/gold_sparkles_1.png',
     frames: ['dcss/effect/gold_sparkles_1.png','dcss/effect/gold_sparkles_2.png','dcss/effect/gold_sparkles_3.png'],
     frameInterval: 0.07,                                        color: 0x6ae06a, label: 'HEAL', float: '#6ae06a' },
-  vampiricTouch:   { sprite: 'dcss/effect/drain_red_0.png',
+  vampiricTouch:   { sheetKey: 'spell_absorb_001_large_violet', sprite: 'dcss/effect/drain_red_0.png',
     frames: ['dcss/effect/drain_red_0.png','dcss/effect/drain_red_1.png','dcss/effect/drain_red_2.png'],
     frameInterval: 0.06,                                        color: 0xc04040, label: 'DRAIN', float: '#c04040' },
-  iceStorm:        { sprite: 'dcss/effect/cloud_cold_0.png',
+  iceStorm:        { sheetKey: 'round_sparkle_burst_001_large_blue', sprite: 'dcss/effect/cloud_cold_0.png',
     frames: ['dcss/effect/cloud_cold_0.png','dcss/effect/cloud_cold_1.png','dcss/effect/cloud_cold_2.png'],
     frameInterval: 0.06,                                        color: 0x7fd4ff, label: 'ICE STORM', float: '#7fd4ff' },
-  blight:          { sprite: 'dcss/effect/cloud_neg_0.png',
+  blight:          { sheetKey: 'spell_death_001_large_red', sprite: 'dcss/effect/cloud_neg_0.png',
     frames: ['dcss/effect/cloud_neg_0.png','dcss/effect/cloud_neg_1.png','dcss/effect/cloud_neg_2.png'],
     frameInterval: 0.05,                                        color: 0x6a3080, label: 'BLIGHT', float: '#6a3080' },
-  deathWard:       { sprite: 'dcss/effect/sanctuary.png',         color: 0xffe08a, label: 'WARDED', float: '#ffe08a' },
-  wallOfFire:      { sprite: 'dcss/effect/cloud_fire_0.png',
+  deathWard:       { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/sanctuary.png',         color: 0xffe08a, label: 'WARDED', float: '#ffe08a' },
+  wallOfFire:      { sheetKey: 'epic_explosion_001_large_orange', sprite: 'dcss/effect/cloud_fire_0.png',
     frames: ['dcss/effect/cloud_fire_0.png','dcss/effect/cloud_fire_1.png','dcss/effect/cloud_fire_2.png'],
     frameInterval: 0.05,                                        color: 0xff6020, label: 'FIRE WALL', float: '#ff6020' },
-  coneOfCold:      { sprite: 'dcss/effect/frost_0.png',
+  coneOfCold:      { sheetKey: 'round_sparkle_burst_001_large_blue', sprite: 'dcss/effect/frost_0.png',
     frames: ['dcss/effect/frost_0.png','dcss/effect/frost_1.png'],
     frameInterval: 0.07,                                        color: 0x7fd4ff, label: 'CONE OF COLD', float: '#7fd4ff' },
-  flameStrike:     { sprite: 'dcss/effect/flame_0.png',
+  flameStrike:     { sheetKey: 'epic_explosion_002_large_yellow', sprite: 'dcss/effect/flame_0.png',
     frames: ['dcss/effect/flame_0.png','dcss/effect/flame_1.png','dcss/effect/flame_2.png'],
     frameInterval: 0.05,                                        color: 0xffd34a, label: 'FLAME STRIKE', float: '#ffd34a' },
-  massCureWounds:  { sprite: 'dcss/effect/goldaura_0.png',
+  massCureWounds:  { sheetKey: 'spell_heal_001_large_red', sprite: 'dcss/effect/goldaura_0.png',
     frames: ['dcss/effect/goldaura_0.png','dcss/effect/goldaura_1.png','dcss/effect/goldaura_2.png'],
     frameInterval: 0.06,                                        color: 0x6ae06a, label: 'CURED!', float: '#6ae06a' },
-  holdMonster:     { sprite: 'dcss/effect/silenced.png',          color: 0x8090c0, label: 'HELD', float: '#8090c0' },
+  holdMonster:     { sheetKey: 'spell_absorb_001_large_violet', sprite: 'dcss/effect/silenced.png',          color: 0x8090c0, label: 'HELD', float: '#8090c0' },
+  /* ── New spells (SRD audit) ── */
+  guidingBolt:     { sheetKey: 'round_light_burst_001_large_yellow', sprite: 'dcss/effect/orb_glow_2.png',        color: 0xffe08a, label: 'GUIDANCE', float: '#ffe08a' },
+  thunderwave:     { sheetKey: 'lightning_burst_001_large_violet', sprite: 'dcss/effect/sandblast_1.png',       color: 0xdfe4ee, label: 'THUNDER',  float: '#dfe4ee' },
+  magicWeapon:     { sheetKey: 'directional_impact_004_large_yellow', sprite: 'dcss/effect/irradiate_0.png',       color: 0xb08cff, label: 'MAGIC WPN', float: '#b08cff' },
+  barkskin:        { sheetKey: 'spell_defense_up_001_large_blue', sprite: 'dcss/effect/stone_arrow_0.png',     color: 0x6aaa4a, label: 'BARKSKIN', float: '#6aaa4a' },
 };
 
-import { SPELLS } from './spells.js';
-import { applyEffect, clearEffect, hasEffect, getEffect, getEffectMods, tickEffects, clearAllEffects, rollSave } from './conditions.js';
+/** Per-class cantrip impact FX — animated spritesheets (Pixel FX pack, 100px
+ *  frames, public/fx/spells). Each caster's signature cantrip gets a unique
+ *  burst on hit; `color` also tints the bolt projectile and impact ring.
+ *  fps × dur controls how much of the particle loop plays per hit. */
+const CANTRIP_FX = {
+  /* Fire Bolt (Wizard) — roaring orange flame particle orb */
+  wizard:   { url:'fx/spells/11_fire_spritesheet.png',      cols:8,  rows:8,  frames:61, fps:30, dur:1.0,  scale:2.5, color:0xff7a30, projSheet: 'stylized_explosion_001_large_yellow' },
+  /* Fire Bolt (Sorcerer) — wild spinning fire ring */
+  sorcerer: { url:'fx/spells/7_firespin_spritesheet.png',   cols:8,  rows:8,  frames:61, fps:34, dur:1.0,  scale:2.7, color:0xffb02e, projSheet: 'epic_explosion_001_large_orange' },
+  /* Sacred Flame (Cleric) — golden radiant sunburst */
+  cleric:   { url:'fx/spells/16_sunburn_spritesheet.png',   cols:8,  rows:8,  frames:61, fps:30, dur:1.0, scale:2.7, color:0xffd34a, projSheet: 'round_light_burst_001_large_yellow' },
+  /* Produce Flame (Druid) — bright natural flame */
+  druid:    { url:'fx/spells/9_brightfire_spritesheet.png', cols:8,  rows:8,  frames:61, fps:30, dur:1.0,  scale:2.5, color:0xffe14a, projSheet: 'round_sparkle_burst_002_large_green' },
+  /* Eldritch Blast (Warlock) — crackling green fel ring */
+  warlock:  { url:'fx/spells/17_felspell_spritesheet.png',  cols:10, rows:10, frames:91, fps:40, dur:1.0, scale:2.0, color:0x86ff5a, projSheet: 'round_sparkle_burst_003_large_red' },
+  /* Vicious Mockery (Bard) — glowing magenta musical note burst */
+  bard:     { url:'fx/spells/2_magic8_spritesheet.png',    cols:8,  rows:8,  frames:61, fps:30, dur:1.0,  scale:2.2, color:0xe8a8ff, projSheet: 'directional_music_burst_002_large_yellow' },
+  /* Ray of Frost (Artificer) — frost ice burst */
+  artificer:{ url:'fx/spells/19_freezing_spritesheet.png', cols:8,  rows:8,  frames:61, fps:30, dur:1.0,  scale:2.4, color:0x7fd4ff, projSheet: 'round_sparkle_burst_001_large_blue' },
+};
+
+import { SPELLS, spellDC } from './spells.js';
+import { applyEffect, clearEffect, hasEffect, getEffect, getEffectMods, tickEffects, clearAllEffects, rollSave, rollSaveDetail, EFFECTS, ROUND_SECONDS } from './conditions.js';
+import { provokesOA } from './turn_engine.js';
 
 export const combatMethods = {
-  /* ── FX bridge methods (called by spells.js cast() functions) ── */
-  _v3(x, y, z) { return new THREE.Vector3(x, y, z); },
-  fxSprite(path, pos, scale, dur) { spawnSpriteEffect(this.engine.scene, path, pos, scale, dur); },
-  fxProjectile(from, to, kind, color, onHit) { spawnProjectile(this.engine.scene, from, to, kind, color, onHit); },
-  fxSlash(pos, color, size) { spawnSlash(this.engine.scene, pos, color, size); },
-  fxText(text, pos, color) { makeFloatText(this.engine.scene, text, pos, color); },
-  fxLog(msg, style) { log(msg, style); },
-  tickEffectsOn(e) { tickEffects(e, this.elapsed); },
+  /* ── FX bridge methods now live in game_hooks.js (gameHookMethods) ──
+     _v3, fxSprite, fxProjectile, fxBeam, fxSlash, fxText, fxLog are provided
+     by the hook layer so domain code never imports entities/ui/audio directly. */
+
+  /* ── spell readout bridge ──────────────────────────────────────────
+     Spells route their damage and saving throws through these so the combat
+     log shows a real breakdown — the damage dealt to each foe (with any
+     resist/immune/vulnerable modifier) and every save roll with its result.
+     They log at the moment the effect resolves, so delayed projectile hits
+     still report correctly. Signatures mirror damageMonster / rollSave so the
+     spell definitions can call them as drop-in replacements. */
+  spellDamage(m, dmg, h, crit = false, opts = {}) {
+    if (!m || m.dead) return 0;
+    const name = m.data?.name || 'foe';
+    const { dmg: dealt, modLabel } = this.damageMonster(m, dmg, h, crit, opts);
+    const type = opts.dmgType ? ` ${opts.dmgType}` : '';
+    const tag = modLabel ? ` (${modLabel})` : '';
+    this.fxLog(`   ↳ ${dealt}${type}${tag} to ${name}`, crit ? 'crit' : 'roll');
+    return dealt;
+  },
+
+  spellSave(entity, ability, dc, opts = {}) {
+    const r = rollSaveDetail(entity, ability, dc, opts);
+    const name = entity.data?.name || 'foe';
+    this.fxLog(`   ↳ ${name} ${ability.toUpperCase()} save — ${r.saved ? 'success' : 'fail'}`,
+        r.saved ? 'miss' : 'roll', { detail: `(${r.total} vs DC ${dc})` });
+    return r.saved;
+  },
+  /* Effects expire on the combat clock (fxNow), never the wall clock — see
+     the time-base note in conditions.js. */
+  tickEffectsOn(e) { tickEffects(e, this.fxNow); },
 
   /** Refresh ability icons on party frames after a cast/spend. */
   refreshAbilityHud() {
-    updatePartyFrames(this.heroes.map(x => x.data));
+    this.refreshHud();
   },
 
   /**
@@ -233,32 +386,39 @@ export const combatMethods = {
    * @param {object} [opts] { at: entity|{x,z}, alsoAt: entity[], noAnim, scale, dur, floatY }
    */
   playAbilityFx(h, key, opts = {}) {
-    playSfx(spellSfx(key), { volume: 0.65 });
+    this.fxPlaySfx(this.fxSpellSfx(key), { volume: 0.65 });
     const fx = ABILITY_FX[key] || { sprite: 'dcss/effect/magic_bolt_1.png', color: 0xc0a060, label: null, float: '#e8c25a' };
     const at = opts.at || h;
     const x = at.x, z = at.z;
     const y = opts.floatY != null ? opts.floatY : 1.35;
-    const scale = opts.scale || 1.5;
+    const scale = opts.scale || 2.0;
     const dur = opts.dur || 0.45;
 
+    const sheetDef = fx.sheetDef || (fx.sheetKey ? GIGAPACK_REGISTRY[fx.sheetKey] : null);
+    if (sheetDef) {
+      this.fxSheetEffect(sheetDef, this._v3(x, 0.55, z), scale, dur);
+    }
     if (fx.sprite) {
       const spriteDef = fx.frames ? { sprite: fx.sprite, frames: fx.frames, frameInterval: fx.frameInterval } : fx.sprite;
-      spawnSpriteEffect(this.engine.scene, spriteDef, new THREE.Vector3(x, 0.55, z), scale, dur);
+      this.fxSprite(spriteDef, this._v3(x, 0.55, z), scale, dur);
     }
     if (fx.color != null) {
-      spawnSlash(this.engine.scene, { x, z }, fx.color, opts.ring || 1.2);
+      this.fxSlash({ x, z }, fx.color, opts.ring || 1.2);
     }
     if (fx.label) {
-      makeFloatText(this.engine.scene, fx.label, _v.set(x, y, z), fx.float || '#e8c25a');
+      this.fxText(fx.label, this._v3(x, y, z), fx.float || '#e8c25a');
     }
     if (opts.alsoAt) {
       for (const t of opts.alsoAt) {
         if (!t || t === at) continue;
+        if (sheetDef) {
+          this.fxSheetEffect(sheetDef, this._v3(t.x, 0.45, t.z), scale * 0.85, dur * 0.9);
+        }
         if (fx.sprite) {
           const spriteDef2 = fx.frames ? { sprite: fx.sprite, frames: fx.frames, frameInterval: fx.frameInterval } : fx.sprite;
-          spawnSpriteEffect(this.engine.scene, spriteDef2, new THREE.Vector3(t.x, 0.45, t.z), scale * 0.85, dur * 0.9);
+          this.fxSprite(spriteDef2, this._v3(t.x, 0.45, t.z), scale * 0.85, dur * 0.9);
         }
-        spawnSlash(this.engine.scene, { x: t.x, z: t.z }, fx.color || 0xc0a060, 0.9);
+        this.fxSlash({ x: t.x, z: t.z }, fx.color || 0xc0a060, 0.9);
       }
     }
 
@@ -284,15 +444,18 @@ export const combatMethods = {
     return this._combatSec() >= minSec;
   },
 
+  getAbilityUseWeight,
+  getCombatMovementWeight,
+  getPotionHpThreshold,
+
   /**
    * Threat assessment: is this foe worth spending limited resources on?
    * @param {'normal'|'high'|'low'} threshold  high = boss/elite only; low = almost always
    */
   _worthSpending(h, foe, alive, threshold = 'normal') {
-    /* abilityUse: per-hero "how willingly do I spend limited resources" knob.
-       0 = never spend (pure basic attacks); 0.5 = original tuning; 1 = liberal. */
-    const w = h.data.aiPrefs && h.data.aiPrefs.abilityUse != null ? h.data.aiPrefs.abilityUse : 0.5;
+    const w = getAbilityUseWeight(h);
     if (w <= 0) return false;
+    if (!foe || foe.dead) return false;
     if (foe.isBoss) return true;
     if (this.monsterEliteRoom(foe)) return true;
     if (threshold === 'high') return false;
@@ -307,34 +470,107 @@ export const combatMethods = {
     // Don't waste on nearly-dead trash. Conservative heroes skip earlier.
     const skipCut = 0.2 + 0.3 * (1 - w);
     if (foe.data.hp / Math.max(foe.data.maxHp, 1) < skipCut) return false;
-    return threshold !== 'high';
+    if (threshold === 'low') return w >= 0.4;
+    return false;
+  },
+
+  /* Throttled wrapper around pickHeroTarget. Because pickHeroTarget re-rolls a
+     random tiebreaker on every call, calling it each frame made heroes flip
+     targets ~60x/sec — re-facing and re-pathing constantly (the jitter).
+     Even a short think timer let a hero switch targets mid-approach, so they
+     could ping-pong between two foes and never commit to either. So a hero may
+     only CHOOSE a new target on its own turn in the initiative order: once
+     picked, that foe is locked in until the hero comes back around.
+
+     The only exception is a target that stopped being a legal one (dead /
+     inactive / out of engagement range) — then we retarget immediately so kills
+     don't leave the hero standing idle for a whole round.
+
+     Outside initiative (no active order) we fall back to the old staggered
+     think timer. Movement, facing and animation keep running every frame off
+     the cached foe, so the sprites stay smooth either way. */
+  heroDecideTarget(h, alive, dt) {
+    h.thinkT = (h.thinkT || 0) - dt;
+    const f = h.aiFoe;
+    const valid = f && f.data.hp > 0 && f.active
+      && (this.initiative && this.initiative.active || Math.hypot(f.x - h.x, f.z - h.z) < 13);
+
+    let retarget;
+    if (this.initiative && this.initiative.active) {
+      /* _canRetarget is armed once per turn by _beginTurn (initiative.js) and
+         consumed here, so exactly one decision happens per turn. */
+      retarget = !valid || (this.isCurrentActor(h) && h._canRetarget);
+    } else {
+      retarget = !valid || h.thinkT <= 0;
+    }
+
+    if (retarget) {
+      h.aiFoe = this.pickHeroTarget(h, alive);
+      h._canRetarget = false;
+      /* ±15% jitter on the interval so the party doesn't all think in lockstep */
+      h.thinkT = HERO_THINK_INTERVAL * (0.85 + Math.random() * 0.3);
+    }
+    return h.aiFoe;
   },
 
   pickHeroTarget(h, alive) {
-    /* targetPref: 0 = focus lowest-CR foe (clear trash first), 1 = focus highest-CR
-       foe (engage the boss/biggest threat), 0.5 = near-random. Randomization peaks
-       at 0.5 and vanishes at the extremes so the slider ends stay deterministic.
-       CR (m.data.cr) is the monster's difficulty-budget value. */
-    const pref = h.data.aiPrefs && h.data.aiPrefs.targetPref != null ? h.data.aiPrefs.targetPref : 0.5;
+    const ai = (h && h.data && h.data.aiPrefs) || (h && h.aiPrefs) || {};
+    let targeting = ai.targeting;
+    if (!targeting) {
+      if (ai.behaviorMode === 'defensive') targeting = 'guard_backline';
+      else if (ai.behaviorMode === 'aggressive') targeting = 'focus_low';
+      else targeting = 'nearest';
+    }
+
     const cands = [];
     for (const m of this.monsters) {
-      if (m.data.hp <= 0 || !m.active) continue;
+      if (!m || !m.data || m.data.hp <= 0 || !m.active) continue;
       const dd = Math.hypot(m.x - h.x, m.z - h.z);
-      if (dd < 13) cands.push({ m, dd, cr: (m.data.cr != null ? m.data.cr : 0) });
+      if ((this.initiative && this.initiative.active) || dd < 13) cands.push({ m, dd });
     }
     if (!cands.length) return null;
     if (cands.length === 1) return cands[0].m;
-    let minCr = Infinity, maxCr = -Infinity;
-    for (const c of cands) { if (c.cr < minCr) minCr = c.cr; if (c.cr > maxCr) maxCr = c.cr; }
-    const span = maxCr - minCr;
-    const noiseW = 1 - Math.abs(pref - 0.5) * 2;   // 0 at pref=0/1, 1 at pref=0.5
+
+    const SQUISHY = ['wizard', 'sorcerer', 'warlock', 'bard', 'cleric', 'druid', 'rogue'];
+    const isSquishy = a => a && a.data && SQUISHY.includes(a.data.classKey);
+    const isRangedCaster = ['wizard', 'sorcerer', 'warlock', 'ranger'].includes(h.data?.classKey);
+
     let best = null, bestScore = -1e9;
     for (const c of cands) {
-      const crNorm = span > 1e-6 ? (c.cr - minCr) / span : 0;
-      const det = crNorm * (2 * pref - 1);         // pref=0 -> -crNorm (low CR wins); pref=1 -> +crNorm
-      const noise = (Math.random() - 0.5) * noiseW;
-      const score = det + noise - c.dd * 0.02;      // small distance tiebreak keeps heroes local
-      if (score > bestScore) { bestScore = score; best = c.m; }
+      const m = c.m;
+      const hpFrac = m.data.hp / Math.max(m.data.maxHp, 1);
+      let det = 0;
+
+      // Immediate threat bonus: monster is right next to hero (melee range <= 2.2)
+      if (c.dd <= 2.2) {
+        det += 1.5;
+      }
+
+      if (targeting === 'guard_backline') {
+        const victim = (m._tgtIdx != null) ? this.heroes[m._tgtIdx] : null;
+        if (victim && victim !== h && victim.data.hp > 0 && isSquishy(victim)) det += 1.2;
+        for (const a of alive) {
+          if (a === h || !isSquishy(a)) continue;
+          if (Math.hypot(m.x - a.x, m.z - a.z) < 2.0) { det += 0.8; break; }
+        }
+        if (victim === h) det += 0.5;
+        det += (1 - hpFrac) * 0.3;
+      } else if (targeting === 'focus_low') {
+        det += (1 - hpFrac) * 1.2;
+        if (hpFrac < 0.20) det += 0.5;
+        if (isRangedCaster && (m.isBoss || (m.data.tags && m.data.tags.includes('caster')))) det += 0.25;
+      } else if (targeting === 'boss_caster') {
+        if (m.isBoss || m.isElite || (m.data.tags && (m.data.tags.includes('boss') || m.data.tags.includes('caster')))) det += 1.5;
+        det += (1 - hpFrac) * 0.4;
+      } else {
+        // 'nearest' (Default)
+        det += (1 - hpFrac) * 0.3;
+      }
+
+      const noise = (Math.random() - 0.5) * 0.1;
+      // Increased distance penalty (-0.15 instead of -0.02) to prevent sprinting past foes
+      const score = det + noise - c.dd * 0.15;
+      if (score > bestScore) { bestScore = score; best = m; }
     }
     return best;
   },
@@ -352,54 +588,257 @@ export const combatMethods = {
       if (dd < best) { best = dd; anchor = m; }
     }
     if (!anchor) {
-      anchor = alive[0];
+      anchor = this.partyLeader(alive);
       if (h === anchor || Math.hypot(h.x - anchor.x, h.z - anchor.z) < 1.2) { h.moving = false; return; }
     }
     const goal = this.nearFloorCell(this.cellOf(anchor.x, anchor.z), 2);
     if (goal < 0) { h.moving = false; return; }
     h.repathT -= dt;
     if (h.repathT <= 0 || !h.path || h.pathI >= h.path.length || h.pathGoal !== goal) {
-      h.path = this.findPath(this.cellOf(h.x, h.z), goal);
+      h.path = this.findPath(this.cellOf(h.x, h.z), goal, { mover: h });
       h.pathI = 0; h.repathT = 0.6; h.pathGoal = goal;
     }
-    h.moving = this.stepAlong(h, HERO_SPEED * 1.05 * h.data.speedMult * this.hasteMult(h), dt);
-    if (!h.moving) {
-      if (this.handleStuck) this.handleStuck(h, alive[0], dt);
+    h.moving = this.moveStep(h, HERO_SPEED * 1.05 * h.data.speedMult * this.hasteMult(h), dt);
+    if (!h.moving && this.canMove(h)) {
+      if (this.handleStuck) this.handleStuck(h, this.partyLeader(alive), dt);
       else { h.stuckT = 0; h.stuckStage = 0; }
     } else { h.stuckT = 0; h.stuckStage = 0; }
   },
 
+  /**
+   * Dash / Dodge / Disengage for an auto-mode hero, mirroring the monster-side
+   * decision in monster_ai.monsterTacticalAction so both sides of a fight play
+   * by the same action economy.
+   *
+   *   • Disengage — a ranged hero pinned in melee that is about to give ground.
+   *     Costs the Action (no attack), so it is held back for the cases where
+   *     eating an opportunity attack actually hurts: bloodied, or pinned by
+   *     more than one monster.
+   *   • Dash — the movement budget is spent, the foe is still out of weapon
+   *     reach, and one more move's worth would close the gap on a real route.
+   *   • Dodge — nothing is reachable this turn, so brace instead of idling.
+   *
+   * Returns true when an action was taken and heroCombat should stand down for
+   * this frame.
+   */
+  /**
+   * Hero-side mirror of the opportunity-attack check monsters already run
+   * (monster_ai.js). Before stepping out of a square a hostile threatens,
+   * decide whether the reposition is worth a free hit. Disengage is the
+   * standard way to break contact; failing that, a hero who can already
+   * swing at something is better off standing still than eating an attack
+   * to shuffle one square.
+   *
+   * Returns true when the caller should NOT step this frame.
+   */
+  heroAvoidOA(h, foe, atk) {
+    if (!this.initiative || !this.initiative.active) return false;
+    if (h.disengageActive) return false;
+    if (!h.path || h.pathI >= h.path.length) return false;
+    if (getEffectMods(h).incapacitated) return false;
+
+    const fromCell = this.cellOf(h.x, h.z);
+    const nextCell = h.path[h.pathI];
+    if (fromCell < 0 || nextCell == null || fromCell === nextCell) return false;
+
+    const provokers = provokesOA(this.oaHostiles(h), fromCell, nextCell);
+    if (!provokers.length) return false;
+
+    /* Break contact cleanly when the action is still available. */
+    if (!h.actUsed && this.takeCommonAction(h, 'disengage')) return false;
+
+    /* No action left. Standing and fighting beats a free hit — but only if
+       there is something to fight. Otherwise the reposition is worth it. */
+    if (foe && atk) {
+      const isReach = !!(atk.reach || (atk.range && atk.range >= 2.2));
+      const reach = atk.melee ? (isReach ? 2.5 : Math.max(1.4, atk.range || 1.4)) : atk.range;
+      if (Math.hypot(foe.x - h.x, foe.z - h.z) <= reach) {
+        h.path = null; h.pathI = 0;
+        h.moving = false;
+        return true;
+      }
+    }
+    return false;
+  },
+
+  /**
+   * Ranged heroes back out of melee instead of shooting from inside it.
+   * Disengage first so the withdrawal is free; if the action is already spent
+   * the hero holds and shoots rather than handing out a free attack.
+   *
+   * Returns true when the hero spent its turn repositioning.
+   */
+  heroKite(h, atk, dt) {
+    if (!atk || atk.melee) return false;                 // melee heroes hold the line
+    if (h.disengageActive) return false;                 // already withdrawing
+
+    /* combatMovement doubles as a "hold position" knob — at 0 the player has
+       asked this hero to stand still, so respect that over kiting. */
+    const cm = this.getCombatMovementWeight(h);
+    if (cm <= 0) return false;
+
+    const speedCells = this.cellsForSpeed(h);
+    const hasFullMove = (h.moveLeft == null || h.moveLeft >= speedCells * 0.85)
+      && (!h.path || h.pathI >= h.path.length);
+    if (!hasFullMove) return false;
+
+    /* Only melee-capable hostiles pin a shooter — another archer at 1 square
+       is not a reason to give up the turn. */
+    const pinners = this.monsters.filter(m =>
+      m.active && m.data && m.data.hp > 0 && !m.data.ranged &&
+      Math.hypot(m.x - h.x, m.z - h.z) <= MELEE_PIN_RANGE);
+    if (!pinners.length) return false;
+
+    if (!this.takeCommonAction(h, 'disengage')) return false;
+
+    const fleePath = this.findFleePath(h, pinners, h.moveLeft || speedCells);
+    if (fleePath) {
+      h.path = fleePath; h.pathI = 0; h.repathT = 0.6; h.stuckT = 0;
+      h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt || 0.016);
+      this.fxLog(`🏹 ${h.data.name} backs out of melee to keep shooting.`, 'sys');
+    } else {
+      h.moving = false;   // cornered — the Disengage at least blunts the next step
+    }
+    return true;
+  },
+
+  heroTacticalAction(h, foe, alive, dist, atk, dt) {
+    if (this.controlMode === 'manual') return false;
+    if (!this.initiative || !this.initiative.active || !this.isCurrentActor(h)) return false;
+    if (h.actUsed) return false;
+    if (getEffectMods(h).incapacitated) return false;
+
+    const isReach = !!(atk.reach || (atk.range && atk.range >= 2.2));
+    const reach = atk.melee ? (isReach ? 2.5 : Math.max(1.4, atk.range || 1.4)) : atk.range;
+    const inRange = dist <= reach && (atk.melee || this.hasLOS(h.x, h.z, foe.x, foe.z));
+
+    /* KITE: rangers, casters and anyone shooting should not stand in melee.
+       This has to run BEFORE the in-range bail below — a bow has a range of
+       ~7, so a goblin breathing down the archer's neck still counts as "in
+       range" and every tactical branch was being skipped. That is why ranged
+       heroes never backed off. */
+    if (this.heroKite(h, atk, dt)) return true;
+
+    if (inRange) return false;
+
+    const speedCells = this.cellsForSpeed(h);
+    const hasFullMove = (h.moveLeft == null || h.moveLeft >= speedCells * 0.85) && (!h.path || h.pathI >= h.path.length);
+
+    /* A) DISENGAGE CHECK: ONLY at turn start if hero started turn trapped in melee threat
+       AND is severely bloodied (<35% HP) or a squishy ranged caster.
+       Healthy melee heroes will NEVER Disengage! */
+    const threatDist = Math.hypot(foe.x - h.x, foe.z - h.z);
+    if (hasFullMove && threatDist <= MELEE_PIN_RANGE && !h.disengageActive) {
+      const pinnedBy = this.monsters.filter(m => m.active && m.data.hp > 0 &&
+        Math.hypot(m.x - h.x, m.z - h.z) <= MELEE_PIN_RANGE).length;
+      const bloodied = h.data.hp <= h.data.maxHp * 0.35;
+      const squishyRanged = !atk.melee && pinnedBy > 0;
+      if (pinnedBy > 0 && (bloodied || squishyRanged) && this.takeCommonAction(h, 'disengage')) {
+        const threats = this.monsters.filter(m => m.active && m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) <= 3.5);
+        const fleePath = this.findFleePath(h, threats, h.moveLeft || speedCells);
+        if (fleePath) {
+          h.path = fleePath; h.pathI = 0; h.repathT = 0.6; h.stuckT = 0;
+          h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt || 0.016);
+        } else {
+          h.moving = false;
+        }
+        return true;
+      }
+    }
+
+    /* B) DASH CHECK: ONLY at turn start when target is beyond normal move + reach.
+       If target IS reachable within normal movement, Dash is strictly forbidden! */
+    const needsDash = hasFullMove && dist > (reach + speedCells);
+
+    if (needsDash) {
+      const route = this.findPath(this.cellOf(h.x, h.z), this.cellOf(foe.x, foe.z), { mover: h });
+      if (route && this.takeCommonAction(h, 'dash')) {
+        h.path = route; h.pathI = 0; h.repathT = 0.6; h.stuckT = 0;
+        h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt || 0.016);
+        return true;
+      }
+    }
+
+    /* C) DODGE CHECK: out of movement budget and no route available */
+    if ((h.moveLeft || 0) <= 0 && (!h.path || h.pathI >= h.path.length) && this.takeCommonAction(h, 'dodge')) {
+      h.moving = false;
+      h.path = null; h.pathI = 0; h.stuckT = 0;
+      return true;
+    }
+    return false;
+  },
+
   heroCombat(h, foe, alive, dt) {
     const cls = CLASSES[h.data.classKey];
-    const atk = cls.attack;
+    /* Attack profile is resolved per-turn from the equipped weapon (casters
+       roll between cantrip and weapon via aiPrefs.rangedPref). Threaded through
+       opts.profile to every heroAttackRoll call below, including Extra Attack /
+       Action Surge / Flurry / Frenzy so they share the same stance this turn. */
+    const atk = h.data.weaponProfile || h.data.cantripProfile
+      ? pickAttackProfile(h.data) : (h.data.lastProfile || cls.attack);
+    h.data.lastProfile = atk;
     const dist = Math.hypot(foe.x - h.x, foe.z - h.z);
-    /* Per-hero AI priority knobs (see menus.js AI Priorities tab). */
-    const ai = h.data.aiPrefs || {};
-    const abilityUse = ai.abilityUse != null ? ai.abilityUse : 0.5;
-    const cm = ai.combatMovement != null ? ai.combatMovement : 0.5;
-    /* Initiative gate: only the current actor's cooldown may reach "ready";
-       off-turn heroes stay frozen (they still move via combatMove below). */
-    if (this.initiative && this.initiative.active && !this.isCurrentActor(h)) {
-      if (h.cd < 0.05) h.cd = 0.05;
-    } else {
-      h.cd -= dt;
-    }
+    /* Per-hero AI priority directives (see menus.js AI Priorities tab). */
+    const abilityUse = this.getAbilityUseWeight(h);
+    const cm = this.getCombatMovementWeight(h);
+    /* Initiative gate: off-turn heroes cannot act or move on other creatures' turns. */
+    if (this.initiative && this.initiative.active && !this.isCurrentActor(h)) return;
 
     // Track combat engagement for pacing / staggering
     if (!this._combatEngagedAt) this._combatEngagedAt = this.elapsed;
     h._abilityUsedThisCycle = false;
 
+    /* Manual mode: player heroes do NOT auto-chase or auto-attack.
+       If player issued a manual movement path, step along it. */
+    if (this.controlMode === 'manual') {
+      if (h.path && h.pathI < h.path.length) {
+        h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+      } else {
+        h.moving = false;
+      }
+      return;
+    }
+
+    /* Incapacitated (paralyzed / stunned / held): the hero cannot act or move. */
+    if (getEffectMods(h).incapacitated) { h.moving = false; return; }
+
+    /* If hero is actively executing a tactical flee / dash path, continue stepping */
+    if (h.path && h.pathI < h.path.length && (h.moveLeft || 0) > 0) {
+      if (this.heroAvoidOA(h, foe, atk)) return;
+      h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+      if (h.moving) return;
+    }
+
     /* Defensive/buff reflexes are "abilities" — skip entirely at 0% ability-use. */
     if (abilityUse > 0) this.runCombatReflexes(h, alive, foe);
 
-    const inRange = dist <= atk.range && (atk.melee || this.hasLOS(h.x, h.z, foe.x, foe.z));
+    /* Moonbeam reposition AI check: if concentrating on moonbeam and action available */
+    if (!h.actUsed && h.conc?.key === 'moonbeam' && h.conc.zone) {
+      const zone = h.conc.zone;
+      const foesInZone = this.monsters.filter(m => m.active && m.data && m.data.hp > 0 && Math.hypot(m.x - zone.x, m.z - zone.z) <= zone.radius);
+      if (foesInZone.length === 0 || (foe && Math.hypot(foe.x - zone.x, foe.z - zone.z) > zone.radius)) {
+        const bestTarget = foe || this.findMonsterTarget(h);
+        if (bestTarget && Math.hypot(bestTarget.x - h.x, bestTarget.z - h.z) <= 12.0) {
+          if (this.useMoveMoonbeam(h, { x: bestTarget.x, z: bestTarget.z })) {
+            return;
+          }
+        }
+      }
+    }
+
+    /* Dash / Dodge / Disengage — the same tactical fallbacks the monsters use. */
+    if (this.heroTacticalAction(h, foe, alive, dist, atk, dt)) return;
+
+    const isReach = !!(atk.reach || (atk.range && atk.range >= 2.2));
+    const attackRange = atk.melee ? (isReach ? 2.5 : Math.max(1.4, atk.range || 1.4)) : atk.range;
+    const inRange = dist <= attackRange && (atk.melee || this.hasLOS(h.x, h.z, foe.x, foe.z));
     if (!inRange) {
       /* combatMovement: low values make the hero hold position instead of chasing
          across the room. chaseRange runs from just beyond melee reach (cm=0) up to
          the full 13-unit engagement range (cm=1). */
-      const baseReach = atk.range + 1.5;
+      const baseReach = attackRange + 1.5;
       const chaseRange = baseReach + (13 - baseReach) * cm;
-      if (dist > chaseRange) {
+      if (!this.initiative?.active && dist > chaseRange) {
         h.combatFoe = null;
         h.moving = false;
         h.stuckT = 0; h.stuckStage = 0;
@@ -409,51 +848,18 @@ export const combatMethods = {
       h.combatFoe = null;
       h.repathT -= dt;
       if (h.repathT <= 0 || !h.path || h.pathI >= h.path.length) {
-        h.path = this.findPath(this.cellOf(h.x, h.z), this.cellOf(foe.x, foe.z));
+        let goal = this.cellOf(foe.x, foe.z);
+        if (typeof this.getUnoccupiedCellNear === 'function') {
+          goal = this.getUnoccupiedCellNear(goal, h, 2);
+        }
+        h.path = this.findPath(this.cellOf(h.x, h.z), goal, { mover: h });
         h.pathI = 0; h.repathT = 0.5;
       }
-      h.moving = this.stepAlong(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+      if (this.heroAvoidOA(h, foe, atk)) return;
+      h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt);
 
-      /* multi-stage stuck recovery during combat */
-      if (!h.moving && h !== alive[0]) {
-        h.stuckT = (h.stuckT || 0) + dt;
-        h.stuckStage = h.stuckStage || 0;
-
-        /* Stage 1: lateral dodge perpendicular to foe */
-        if (h.stuckStage === 0 && h.stuckT > STUCK_SIDESTEP_T) {
-          h.stuckStage = 1;
-          const perpX = -(foe.z - h.z), perpZ = (foe.x - h.x);
-          const d = Math.hypot(perpX, perpZ) || 1;
-          const sx = h.x + (perpX / d) * STUCK_SIDESTEP_DIST;
-          const sz = h.z + (perpZ / d) * STUCK_SIDESTEP_DIST;
-          if (!this.blocked(sx, sz, 0.3)) {
-            h.x = sx; h.z = sz; h.path = null;
-            h.stuckT = 0; h.stuckStage = 0;
-          } else {
-            const sx2 = h.x - (perpX / d) * STUCK_SIDESTEP_DIST;
-            const sz2 = h.z - (perpZ / d) * STUCK_SIDESTEP_DIST;
-            if (!this.blocked(sx2, sz2, 0.3)) {
-              h.x = sx2; h.z = sz2; h.path = null;
-              h.stuckT = 0; h.stuckStage = 0;
-            }
-          }
-        }
-
-        /* Stage 2: force repath */
-        if (h.stuckStage === 1 && h.stuckT > 1.2) {
-          h.stuckStage = 2;
-          h.path = null;
-        }
-
-        /* Stage 3: teleport (last resort) */
-        if (h.stuckStage >= 2 && h.stuckT > STUCK_TELEPORT_T) {
-          h.stuckT = 0; h.stuckStage = 0;
-          const leader = alive[0];
-          h.x = leader.x + (Math.random() - 0.5) * 0.5;
-          h.z = leader.z + (Math.random() - 0.5) * 0.5;
-          h.path = null;
-          log(`✨ Teleported ${h.data.name} to join combat.`, 'sys');
-        }
+      if (!h.moving && h !== this.partyLeader(alive) && this.canMove(h)) {
+        this.handleStuck(h, this.partyLeader(alive), dt);
       } else {
         h.stuckT = 0; h.stuckStage = 0;
       }
@@ -462,33 +868,53 @@ export const combatMethods = {
       h.stuckT = 0; h.stuckStage = 0;
     }
 
-    /* In-range tactical repositioning (ring around the foe). Low combatMovement
-       suppresses the dance — the hero plants and attacks from where it engaged. */
+    /* In-range tactical repositioning: combatMove smoothly orbits and shuffles at weapon reach */
     if (cm > 0.12) {
       this.combatMove(h, foe, atk, dt);
     } else {
       h.combatFoe = foe;
+      h.moving = false;
     }
     h.ent.grp.rotation.y = Math.atan2(foe.x - h.x, foe.z - h.z);
-    if (h.cd > 0) return;
+    if (h.actUsed) return;
+
+    /* Queued Action execution (from character card ability click) */
+    const d = h.data;
+    const queuedKey = (d && d._queuedAction) || h._queuedAction;
+    if (queuedKey) {
+      if (d) d._queuedAction = null;
+      h._queuedAction = null;
+      if (typeof updatePartyFrames === 'function') updatePartyFrames(this.heroes);
+      let executed = false;
+      if (queuedKey.startsWith('spell:')) {
+        const spellKey = queuedKey.replace('spell:', '');
+        executed = this.manualCastSpell(h, spellKey);
+      } else {
+        executed = this.manualPerformBonusAbility(h, queuedKey);
+      }
+      if (executed && d) {
+        this.fxLog(`⚡ ${d.name} executes queued action!`, 'crit');
+      }
+    }
 
     /* AI potion: if this hero's HP is below their potionThreshold, drink from the
        shared stash. Costs the turn just like an attack. potionThreshold=0 => never. */
     {
-      const pt = ai.potionThreshold != null ? ai.potionThreshold : 0.5;
+      const pt = this.getPotionHpThreshold(h);
       if (pt > 0 && h.data.hp > 0 && h.data.hp / h.data.maxHp < pt) {
         const kind = this.potions.heal > 0 ? 'heal'
-          : (this.potions.greater > 0 ? 'greater' : null);
+          : (this.potions.greater > 0 ? 'greater'
+          : (this.potions.superior > 0 ? 'superior' : null));
         if (kind) {
           this.potions[kind]--;
-          const amt = kind === 'greater' ? roll(4, 4, 4) : roll(2, 4, 2);
+          const amt = kind === 'superior' ? roll(8, 4, 8) : kind === 'greater' ? roll(4, 4, 4) : roll(2, 4, 2);
           h.data.hp = Math.min(h.data.maxHp, h.data.hp + amt);
-          makeFloatText(this.engine.scene, '+' + amt, _v.set(h.x, 1.3, h.z), '#6ae0ff');
-          log(`🧪 ${h.data.name} drinks a potion (+${amt}).`, 'heal');
-          drawBar(h.ent.bar, h.data.hp / h.data.maxHp);
-          updatePartyFrames(this.heroes.map(x => x.data));
-          updateResources(this);
-          h.cd = HERO_ATTACK_CD;
+          this.fxText('+' + amt, this._v3(h.x, 1.3, h.z), '#6ae0ff');
+          this.fxLog(`🧪 ${h.data.name} drinks a potion (+${amt}).`, 'heal');
+          this.fxDrawBar(h.ent.bar, h.data.hp / h.data.maxHp);
+          this.refreshHud();
+          this.refreshResources();
+          h.actUsed = true;
           return;
         }
       }
@@ -498,51 +924,57 @@ export const combatMethods = {
        sooner, conservative waits. Blocked entirely at abilityUse=0. */
     const healThresh = 0.2 + 0.5 * abilityUse;
 
-    /* healers: heal a badly-hurt ally instead of attacking */
-    if (abilityUse > 0 && cls.healer && h.data.healSlots > 0) {
-      let worst = null, wf = healThresh;
-      for (const a of alive) { const f = a.data.hp / a.data.maxHp; if (f < wf) { wf = f; worst = a; } }
-      if (worst) {
-        h.cd = HERO_ATTACK_CD;
-        h.data.healSlots--;
-        const ab = cls.attack.ability === 'cha' ? 'cha' : 'wis';
-        const amt = roll(1, 8, mod(h.data.effStats[ab]) + h.data.healBonus);
-        worst.data.hp = Math.min(worst.data.maxHp, worst.data.hp + amt);
-        this.playAbilityFx(h, 'cureWounds', { at: worst, spell: true });
-        makeFloatText(this.engine.scene, '+' + amt, _v.set(worst.x, 1.55, worst.z), '#6ae06a');
-        log(`${h.data.name} casts Cure Wounds on ${worst.data.name} (+${amt}).`, 'heal');
-        drawBar(worst.ent.bar, worst.data.hp / worst.data.maxHp);
-        this.refreshAbilityHud();
-        return;
-      }
-    }
+    /* Healing is no longer special-cased here. Cure Wounds is an ordinary
+       level-1 slot spell on the healer's known list, so it competes for slots
+       through the normal spell AI (_pickKnownSpell scores it via
+       ai.when:'hurtAlly') like every other spell. */
 
     /* Lay on Hands (paladin) */
     if (abilityUse > 0 && hasFeature(h.data, 'layOnHands') && (h.data.layOnHands || 0) > 0) {
       let worst = null, wf = healThresh;
-      for (const a of alive) { const f = a.data.hp / a.data.maxHp; if (f < wf) { wf = f; worst = a; } }
+      for (const a of this.heroes) {
+        const f = Math.max(0, a.data.hp / a.data.maxHp);
+        if (f < wf) { wf = f; worst = a; }
+      }
       if (worst) {
         const spend = Math.min(h.data.layOnHands, 10 + h.data.level);
         h.data.layOnHands -= spend;
-        h.cd = HERO_ATTACK_CD;
+        h.actUsed = true;
         this.healHero(worst, spend + h.data.healBonus);
         this.playAbilityFx(h, 'layOnHands', { at: worst, spell: true });
-        log(`🙏 ${h.data.name} uses Lay on Hands on ${worst.data.name} (+${spend}).`, 'heal');
+        this.fxLog(`🙏 ${h.data.name} uses Lay on Hands on ${worst.data.name} (+${spend}).`, 'heal');
         this.refreshAbilityHud();
         return;
       }
     }
 
-    h.cd = HERO_ATTACK_CD;
+    h.actUsed = true;
+
+    /* Action economy: a spotlight grants one action + one bonus action. The
+       bonus-action flags (h._bonusActed / h._bonusLeveled) are reset at the
+       start of the turn in initiative.js _beginTurn — NOT here — so the reflex
+       phase (runCombatReflexes, above) and this attack/spell phase share the
+       same single bonus action for the turn. */
 
     /* known spells (learned via progression) */
     const sc = subclassOf(h.data);
     if (abilityUse > 0) {
-      if (this.tryCastKnownSpell(h, foe, alive)) return;
-      if (sc && this.castSubclassSpell(h, sc, foe, alive)) return;
+      /* Bonus-action phase: cast a bonus-action spell (Healing Word, Hex,
+         Hunter's Mark, Misty Step…) WITHOUT ending the turn, then fall through
+         to the action below. For buff-then-swing spells (Hex, Hunter's Mark,
+         Thunderous Smite) this means the same-turn weapon attack benefits. */
+      this.tryCastBonusSpell(h, foe, alive);
+      /* Action phase: a leveled action-spell. 5e bonus-spell rule — if a leveled
+         spell was already cast as a bonus action this turn, the action can only
+         be a weapon attack or cantrip, not a second leveled spell. */
+      if (!h._bonusLeveled) {
+        if (this.tryCastKnownSpell(h, foe, alive)) return;
+        if (sc && this.castSubclassSpell(h, sc, foe, alive)) return;
+      }
     }
 
     const opts = this.buildAttackOpts(h, foe, sc);
+    opts.profile = atk;
     this.heroAttackRoll(h, foe, alive, opts);
 
     /* Extra Attack / Improved Extra Attack */
@@ -550,39 +982,58 @@ export const combatMethods = {
     if (hasFeature(h.data, 'extraAttack2')) attacks = 3;
     else if (hasFeature(h.data, 'extraAttack')) attacks = 2;
     for (let i = 1; i < attacks && foe.data.hp > 0; i++) {
-      this.heroAttackRoll(h, foe, alive, {});
+      this.heroAttackRoll(h, foe, alive, { profile: atk });
+    }
+
+    /* Feat-granted bonus strikes (Polearm Master butt-end, Crossbow Expert). */
+    if (atk.source === 'weapon') {
+      const feExtra = featExtraAttacks(h.data);
+      for (let i = 0; i < feExtra && foe.data.hp > 0; i++) {
+        this.heroAttackRoll(h, foe, alive, { profile: atk });
+      }
+    }
+
+    /* Two-Weapon Fighting (5e): when dual-wielding two light weapons, the
+       off hand lands one bonus-action attack this turn. No ability mod to its
+       damage (the noAbilityMod flag is set on the offhand profile). Only fires
+       when the main attack this turn was a weapon swing, not a cantrip — and
+       only if the hero hasn't already spent its bonus action (e.g. on Healing
+       Word or another bonus-action ability). Claims the bonus action. */
+    if (atk.source === 'weapon' && h.data.offhandProfile && foe.data.hp > 0 && !h._bonusActed) {
+      this.heroAttackRoll(h, foe, alive, { profile: h.data.offhandProfile });
+      h._bonusActed = true;
     }
 
     /* Action Surge (class feature or Champion subclass) — only when it matters */
     const surgeWorthy = foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.30 || foe.isBoss || this.monsterEliteRoom(foe);
     const canSurge = abilityUse > 0
       && (hasFeature(h.data, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge'))
-      && !h.data.abilityUsed.short && foe.data.hp > 0 && surgeWorthy && !h._abilityUsedThisCycle;
+      && hasCharge(h.data, 'actionSurgeClass') && foe.data.hp > 0 && surgeWorthy && !h._abilityUsedThisCycle;
     if (canSurge) {
-      h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+      spendCharge(h.data, 'actionSurgeClass'); h._abilityUsedThisCycle = true;
       this.playAbilityFx(h, 'actionSurge', { at: h });
-      log(`⚔ ${h.data.name} surges with action — attacking again!`, 'crit');
-      this.heroAttackRoll(h, foe, alive, {});
+      this.fxLog(`⚔ ${h.data.name} surges with action — attacking again!`, 'crit');
+      this.heroAttackRoll(h, foe, alive, { profile: atk });
       this.refreshAbilityHud();
     }
 
-    /* Flurry of Blows — only when foe is worth the effort */
-    else if (abilityUse > 0 && hasFeature(h.data, 'flurryOfBlows') && !h.data.abilityUsed.short && foe.data.hp > 0
-        && h.data.hp < h.data.maxHp * 0.7 && surgeWorthy && !h._abilityUsedThisCycle) {
-      h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+    /* Flurry of Blows (bonus action) — only when foe is worth the effort */
+    else if (abilityUse > 0 && hasFeature(h.data, 'flurryOfBlows') && hasCharge(h.data, 'flurryOfBlows') && foe.data.hp > 0
+        && h.data.hp < h.data.maxHp * 0.7 && surgeWorthy && !h._abilityUsedThisCycle && !h._bonusActed) {
+      spendCharge(h.data, 'flurryOfBlows'); h._abilityUsedThisCycle = true; h._bonusActed = true;
       this.playAbilityFx(h, 'flurry', { at: foe });
-      log(`👊 ${h.data.name} uses Flurry of Blows!`, 'crit');
-      this.heroAttackRoll(h, foe, alive, {});
+      this.fxLog(`👊 ${h.data.name} uses Flurry of Blows!`, 'crit');
+      this.heroAttackRoll(h, foe, alive, { profile: atk });
       this.refreshAbilityHud();
     }
 
-    /* Berserker frenzy — free extra attack, don't waste on near-dead foes */
-    else if (abilityUse > 0 && sc && sc.active.key === 'frenzy' && !h.data.abilityUsed.short && foe.data.hp > 0
-        && h.raging && foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.35 && !h._abilityUsedThisCycle) {
-      h.data.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+    /* Berserker frenzy (bonus-action attack) — don't waste on near-dead foes */
+    else if (abilityUse > 0 && sc && sc.active.key === 'frenzy' && hasCharge(h.data, 'frenzy') && foe.data.hp > 0
+        && h.raging && foe.data.hp / Math.max(foe.data.maxHp, 1) > 0.35 && !h._abilityUsedThisCycle && !h._bonusActed) {
+      spendCharge(h.data, 'frenzy'); h._abilityUsedThisCycle = true; h._bonusActed = true;
       this.playAbilityFx(h, 'frenzy', { at: foe });
-      log(`😤 ${h.data.name} frenzies — another strike!`, 'crit');
-      this.heroAttackRoll(h, foe, alive, {});
+      this.fxLog(`😤 ${h.data.name} frenzies — another strike!`, 'crit');
+      this.heroAttackRoll(h, foe, alive, { profile: atk });
       this.refreshAbilityHud();
     }
   },
@@ -598,41 +1049,56 @@ export const combatMethods = {
 
     const sc = subclassOf(d);
 
-    /* ── Second Wind — immediate save if critically low ── */
-    if ((d.secondWind || hasFeature(d, 'secondWind')) && !d.secondWindUsed && d.hp < d.maxHp * 0.3) {
-      d.secondWindUsed = true; h._abilityUsedThisCycle = true;
+    /* ── Second Wind (bonus action) — immediate save if critically low ── */
+    if ((d.secondWind || hasFeature(d, 'secondWind')) && !d.secondWindUsed && d.hp < d.maxHp * 0.3 && !h._bonusActed) {
+      d.secondWindUsed = true; h._abilityUsedThisCycle = true; h._bonusActed = true;
       const amt = roll(1, 10, d.level);
       d.hp = Math.min(d.maxHp, d.hp + amt);
       this.playAbilityFx(h, 'secondWind', { at: h });
-      makeFloatText(this.engine.scene, '+' + amt, _v.set(h.x, 1.55, h.z), '#6ae06a');
-      drawBar(h.ent.bar, d.hp / d.maxHp);
-      log(`${d.name} catches a second wind (+${amt}).`, 'heal');
+      this.fxText('+' + amt, this._v3(h.x, 1.55, h.z), '#6ae06a');
+      this.fxDrawBar(h.ent.bar, d.hp / d.maxHp);
+      this.fxLog(`${d.name} catches a second wind (+${amt}).`, 'heal');
       hudDirty = true;
     }
 
     /* ── Cunning Action — dodge when bloodied ── */
-    else if (!h._abilityUsedThisCycle) {
+    if (!h._abilityUsedThisCycle) {
       const cunning = hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction');
-      if (cunning && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
-        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        applyEffect(h, 'hasted', { duration: 30, elapsed: this.elapsed });
+      if (cunning && hasCharge(d, 'cunningActionClass') && d.hp < d.maxHp * 0.35 && !h._bonusActed) {
+        spendCharge(d, 'cunningActionClass'); h._abilityUsedThisCycle = true; h._bonusActed = true;
+        applyEffect(h, 'hasted', { duration: 30, elapsed: this.fxNow });
         this.playAbilityFx(h, 'cunningAction', { at: h });
-        log(`💨 ${d.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
+        this.fxLog(`💨 ${d.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
+        hudDirty = true;
+      }
+    }
+
+    /* ── Patient Defense (monk, bonus action) — take the Dodge when hard-pressed.
+       Deliberately draws on the same `flurryOfBlows` pool as Flurry (the game's
+       simplified ki model — a proper ki pool is a future enhancement), so a monk
+       spends its charges on either Flurry or Dodge. */
+    if (!h._abilityUsedThisCycle && !h._bonusActed) {
+      if (hasFeature(d, 'flurryOfBlows') && hasCharge(d, 'flurryOfBlows')
+          && d.hp < d.maxHp * 0.5 && this._combatStable(1.0)) {
+        spendCharge(d, 'flurryOfBlows'); h._abilityUsedThisCycle = true; h._bonusActed = true;
+        applyEffect(h, 'patientDefense', { duration: ROUND_SECONDS, elapsed: this.fxNow });
+        this.playAbilityFx(h, 'patientDefense', { at: h });
+        this.fxLog(`🛡 ${d.name} uses Patient Defense — dodging! (+5 AC)`, 'heal');
         hudDirty = true;
       }
     }
 
     /* ── Fast Hands (Thief subclass active) — smoke bomb blinding nearby foes ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (sc && sc.active.key === 'fastHands' && !d.abilityUsed.short
+    if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'fastHands' && hasCharge(d, 'fastHands') && !h._bonusActed
           && this.monsters.some(m => m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) < 4.0)) {
-        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+        spendCharge(d, 'fastHands'); h._abilityUsedThisCycle = true; h._bonusActed = true;
         this.playAbilityFx(h, 'fastHands', { at: h });
-        log(`💨 ${d.name} uses Fast Hands to throw a smoke bomb!`, 'heal');
+        this.fxLog(`💨 ${d.name} uses Fast Hands to throw a smoke bomb!`, 'heal');
         for (const m of this.monsters) {
           if (m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) < 4.0) {
-            applyEffect(m, 'blinded', { duration: 6, elapsed: this.elapsed, source: h });
-            makeFloatText(this.engine.scene, 'BLINDED', _v.set(m.x, 1.3, m.z), '#888899');
+            applyEffect(m, 'blinded', { duration: 6, elapsed: this.fxNow, source: h });
+            this.fxText('BLINDED', this._v3(m.x, 1.3, m.z), '#888899');
           }
         }
         hudDirty = true;
@@ -640,79 +1106,84 @@ export const combatMethods = {
     }
 
     /* ── Remarkable Athlete (Champion subclass active) ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (sc && sc.active.key === 'remarkableAthlete' && !d.abilityUsed.short
+    if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'remarkableAthlete' && hasCharge(d, 'remarkableAthlete')
           && this._combatStable(1.5)) {
-        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        applyEffect(h, 'remarkableAthlete', { duration: 30, elapsed: this.elapsed });
+        spendCharge(d, 'remarkableAthlete'); h._abilityUsedThisCycle = true;
+        applyEffect(h, 'remarkableAthlete', { duration: 30, elapsed: this.fxNow });
         this.playAbilityFx(h, 'remarkableAthlete', { at: h });
-        log(`🏃 ${d.name} uses Remarkable Athlete — physical peak reached! (+2 AC, +10% speed)`, 'heal');
+        this.fxLog(`🏃 ${d.name} uses Remarkable Athlete — physical peak reached! (+2 AC, +10% speed)`, 'heal');
         hudDirty = true;
       }
     }
 
-    /* ── Rage — only after combat has been going a bit ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (hasFeature(d, 'rage') && !d.rageUsed && d.hp < d.maxHp * 0.45
-          && this._combatStable(1.2)) {
-        d.rageUsed = true; h._abilityUsedThisCycle = true;
-        applyEffect(h, 'raging', { duration: 30, elapsed: this.elapsed });
+    /* ── Rage — fire on the first available turn of a real fight.
+       Rage is a fixed-duration buff, so holding it until the barbarian is
+       hurt wastes most of its uptime; the damage reduction is worth most
+       while the hits are still incoming. Gate on a live hostile in reach
+       rather than on HP so it doesn't burn on a fleeing straggler. ── */
+    if (!h._abilityUsedThisCycle) {
+      const rageWorthIt = this.monsters.some(m =>
+        m.data.hp > 0 && !m.dead && Math.hypot(m.x - h.x, m.z - h.z) < 12);
+      if (hasFeature(d, 'rage') && hasCharge(d, 'rage') && rageWorthIt && !h._bonusActed) {
+        spendCharge(d, 'rage'); h._abilityUsedThisCycle = true; h._bonusActed = true;
+        applyEffect(h, 'raging', { duration: 30, elapsed: this.fxNow });
         this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
-        log(`😡 ${d.name} enters a Rage!`, 'crit');
+        this.fxLog(`😡 ${d.name} enters a Rage!`, 'crit');
         hudDirty = true;
       }
     }
 
     /* ── Bear Totem — emergency DR for bear barbarians ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (sc && sc.active.key === 'bearTotem' && !d.abilityUsed.short && d.hp < d.maxHp * 0.35) {
-        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        applyEffect(h, 'bearTotem', { duration: 30, elapsed: this.elapsed });
+    if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'bearTotem' && hasCharge(d, 'bearTotem') && d.hp < d.maxHp * 0.35) {
+        spendCharge(d, 'bearTotem'); h._abilityUsedThisCycle = true;
+        applyEffect(h, 'bearTotem', { duration: 30, elapsed: this.fxNow });
         this.playAbilityFx(h, 'bearTotem', { at: h, scale: 1.6 });
-        log(`🐻 ${d.name} summons the Bear Totem — damage halved!`, 'heal');
+        this.fxLog(`🐻 ${d.name} summons the Bear Totem — damage halved!`, 'heal');
         hudDirty = true;
       }
     }
 
     /* ── Bardic Inspiration — don't inspire in the first 2s, wait for real trouble ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (hasFeature(d, 'bardicInspiration') && !d.abilityUsed.short && alive.length >= 2
-          && this._combatStable(2.0)) {
+    if (!h._abilityUsedThisCycle) {
+      if (hasFeature(d, 'bardicInspiration') && hasCharge(d, 'bardicInspiration') && alive.length >= 2
+          && this._combatStable(2.0) && !h._bonusActed) {
         const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.6);
         if (anyHurt) {
-          d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+          spendCharge(d, 'bardicInspiration'); h._abilityUsedThisCycle = true; h._bonusActed = true;
           for (const a of alive)
-            applyEffect(a, 'inspired', { duration: 30, elapsed: this.elapsed });
+            applyEffect(a, 'inspired', { duration: Infinity, elapsed: this.fxNow });
           this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
-          log(`🎵 ${d.name} inspires the party! (+1d4 to hit)`, 'heal');
+          this.fxLog(`🎵 ${d.name} inspires the party! (advantage on next attack)`, 'heal');
           hudDirty = true;
         }
       }
     }
 
-    /* ── Wild Shape — druid panic button ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (hasFeature(d, 'wildShapeClass') && !d.abilityUsed.short && d.hp < d.maxHp * 0.4) {
-        d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
-        applyEffect(h, 'wildShape', { duration: 30, elapsed: this.elapsed });
-        h.tempHp = (h.tempHp || 0) + 15 + d.level;
-        this.playAbilityFx(h, 'wildShape', { at: h, scale: 1.8 });
-        log(`🐻 ${d.name} Wild Shapes! (+temp HP, fierce claws)`, 'heal');
-        hudDirty = true;
+    /* ── Wild Shape — druid transform ── */
+    if (!h._abilityUsedThisCycle) {
+      if (hasFeature(d, 'wildShapeClass') && hasCharge(d, 'wildShapeClass') && !d.inWildShape && d.hp < d.maxHp * 0.55) {
+        const hasSlots = d.slots && Object.values(d.slots).some(s => s > 0);
+        if (!d.wildShapeOnlyOutOfSlots || !hasSlots) {
+          spendCharge(d, 'wildShapeClass'); h._abilityUsedThisCycle = true;
+          this.activateWildShape(h);
+          hudDirty = true;
+        }
       }
     }
 
     /* ── Combat Inspiration (Valor bard) — requires combat to be underway ── */
-    else if (!h._abilityUsedThisCycle) {
-      if (sc && sc.active.key === 'combatInspiration' && !d.abilityUsed.short
+    if (!h._abilityUsedThisCycle) {
+      if (sc && sc.active.key === 'combatInspiration' && hasCharge(d, 'combatInspiration')
           && this._combatStable(2.5) && alive.length >= 2) {
         const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.65);
         if (anyHurt) {
-          d.abilityUsed.short = true; h._abilityUsedThisCycle = true;
+          spendCharge(d, 'combatInspiration'); h._abilityUsedThisCycle = true;
           for (const a of alive)
-            applyEffect(a, 'inspired', { duration: 30, elapsed: this.elapsed });
+            applyEffect(a, 'inspired', { duration: Infinity, elapsed: this.fxNow });
           this.playAbilityFx(h, 'combatSong', { at: h, alsoAt: alive, spell: true });
-          log(`🎶 ${d.name} plays a battle song! (+1d4 to hit)`, 'heal');
+          this.fxLog(`🎶 ${d.name} plays a battle song! (advantage on next attack)`, 'heal');
           hudDirty = true;
         }
       }
@@ -726,55 +1197,63 @@ export const combatMethods = {
     const d = h.data;
     let hudDirty = false;
     const stable = this._combatStable(1.5);
-    if (sc && !d.abilityUsed.short) {
+    if (sc && hasCharge(d, sc.active.key)) {
       if (sc.active.key === 'deathstrike' && foe.data.hp >= foe.data.maxHp
           && this._worthSpending(h, foe, null, 'normal')) {
-        d.abilityUsed.short = true; opts.autoCrit = true;
+        spendCharge(d, 'deathstrike'); opts.autoCrit = true;
         this.playAbilityFx(h, 'deathstrike', { at: foe });
-        log(`🗡 ${d.name} lines up a Deathstrike!`, 'crit');
+        this.fxLog(`🗡 ${d.name} lines up an Assassinate!`, 'crit');
         hudDirty = true;
       } else if (sc.active.key === 'guidedStrike' && (foe.isBoss || this.monsterEliteRoom(foe))
           && this._worthSpending(h, foe, null, 'high')) {
-        d.abilityUsed.short = true; opts.atkBonus = 10; opts.extraDmg = roll(2, 8);
+        spendCharge(d, 'guidedStrike'); opts.atkBonus = 10; opts.extraDmg = roll(2, 8);
         this.playAbilityFx(h, 'guidedStrike', { at: foe, spell: true });
-        log(`⚡ ${d.name} calls a Guided Strike! (+10 to hit, +2d8)`, 'crit');
+        this.fxLog(`⚡ ${d.name} calls a Guided Strike! (+10 to hit, +2d8)`, 'crit');
         hudDirty = true;
       } else if (sc.active.key === 'vowOfEnmity' && (foe.isBoss || this.monsterEliteRoom(foe))
           && this._worthSpending(h, foe, null, 'high')) {
-        d.abilityUsed.short = true; opts.adv = (opts.adv || 0) + 1;
+        spendCharge(d, 'vowOfEnmity'); opts.adv = (opts.adv || 0) + 1;
         this.playAbilityFx(h, 'vowOfEnmity', { at: foe, spell: true });
-        log(`⚔️ ${d.name} swears a Vow of Enmity! (advantage)`, 'crit');
+        this.fxLog(`⚔️ ${d.name} swears a Vow of Enmity! (advantage)`, 'crit');
         hudDirty = true;
       } else if (sc.active.key === 'shadowStep' && stable
           && this._worthSpending(h, foe, null, 'low')) {
-        d.abilityUsed.short = true; opts.atkBonus = 4; opts.extraDmg = roll(2, 6);
+        spendCharge(d, 'shadowStep'); opts.atkBonus = 4; opts.extraDmg = roll(2, 6);
         this.playAbilityFx(h, 'shadowStep', { at: foe });
-        log(`🌑 ${d.name} Shadow Steps behind the foe!`, 'crit');
+        this.fxLog(`🌑 ${d.name} Shadow Steps behind the foe!`, 'crit');
         hudDirty = true;
       } else if (sc.active.key === 'sacredWeapon' && stable
           && this._worthSpending(h, foe, null, 'normal')) {
-        d.abilityUsed.short = true;
-        applyEffect(h, 'sacredWeapon', { duration: 30, elapsed: this.elapsed });
+        spendCharge(d, 'sacredWeapon');
+        applyEffect(h, 'sacredWeapon', { duration: 30, elapsed: this.fxNow });
         this.playAbilityFx(h, 'sacredWeapon', { at: h, spell: true });
-        log(`✨ ${d.name} blesses their weapon!`, 'crit');
+        this.fxLog(`✨ ${d.name} blesses their weapon!`, 'crit');
         hudDirty = true;
       } else if (sc.active.key === 'colossusSlayer' && foe.data.hp < foe.data.maxHp
           && this._worthSpending(h, foe, null, 'low')) {
-        d.abilityUsed.short = true; opts.extraDmg = roll(1, 8);
+        spendCharge(d, 'colossusSlayer'); opts.extraDmg = roll(1, 8);
         this.playAbilityFx(h, 'colossusSlayer', { at: foe });
-        log(`🏹 ${d.name}'s Colossus Slayer finds the wound!`, 'crit');
+        this.fxLog(`🏹 ${d.name}'s Colossus Slayer finds the wound!`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'companionStrike' && stable
-          && this._worthSpending(h, foe, null, 'normal')) {
-        d.abilityUsed.short = true; opts.extraDmg = roll(1, 8, 3);
-        this.playAbilityFx(h, 'companionStrike', { at: foe });
-        log(`🐺 ${d.name}'s companion strikes!`, 'crit');
-        hudDirty = true;
+      } else if (sc.active.key === 'summonCompanion' && stable
+          && this._worthSpending(h, foe, null, 'normal') && this.summons) {
+        /* Beast Master: summon (or mid-fight revive) the wolf companion.
+           If a wolf is already alive, the charge is left untouched — there is
+           nothing to summon. A downed wolf is revived at full HP. */
+        const wolf = this.summons.getActive('wolf', h);
+        if (!wolf || wolf.data.hp <= 0) {
+          spendCharge(d, 'summonCompanion');
+          if (wolf) this.summons.revive('wolf', h, 1);
+          else      this.summons.spawn(h, 'wolf');
+          this.playAbilityFx(h, 'summonCompanion', { at: h });
+          this.fxLog(`🐺 ${d.name} calls forth a wolf companion!`, 'crit');
+          hudDirty = true;
+        }
       } else if (sc.active.key === 'quiveringPalm' && (foe.isBoss || this.monsterEliteRoom(foe))
           && this._worthSpending(h, foe, null, 'high')) {
-        d.abilityUsed.short = true; opts.extraDmg = roll(4, 10);
+        spendCharge(d, 'quiveringPalm'); opts.extraDmg = roll(4, 10);
         this.playAbilityFx(h, 'quiveringPalm', { at: foe });
-        log(`✋ ${d.name} delivers Quivering Palm!`, 'crit');
+        this.fxLog(`✋ ${d.name} delivers Quivering Palm!`, 'crit');
         hudDirty = true;
       }
     }
@@ -784,7 +1263,7 @@ export const combatMethods = {
       d.smiteUsed = true;
       opts.extraDmg = (opts.extraDmg || 0) + roll(2, 8);
       this.playAbilityFx(h, 'divineSmite', { at: foe, spell: true });
-      log(`💫 ${d.name} Divine Smites!`, 'crit');
+      this.fxLog(`💫 ${d.name} Divine Smites!`, 'crit');
       hudDirty = true;
     }
     if (hasFeature(d, 'tidesOfChaos') && !d.tidesUsed && stable
@@ -792,7 +1271,7 @@ export const combatMethods = {
       d.tidesUsed = true;
       opts.adv = (opts.adv || 0) + 1;
       this.playAbilityFx(h, 'tidesOfChaos', { at: h, spell: true });
-      log(`🌀 ${d.name} rides the Tides of Chaos! (advantage)`, 'crit');
+      this.fxLog(`🌀 ${d.name} rides the Tides of Chaos! (advantage)`, 'crit');
       hudDirty = true;
     }
     if (hudDirty) this.refreshAbilityHud();
@@ -817,12 +1296,17 @@ export const combatMethods = {
     if (hasFeat(d, 'mageSlayer') && (foe.isBoss || this.monsterEliteRoom(foe))) {
       opts.extraDmg = (opts.extraDmg || 0) + 2;
     }
+    /* subclass passive: conditional to-hit / bonus damage */
+    this.subclassAttackMods(h, foe, opts);
     return opts;
   },
 
   /* one d20 attack roll + resolution (extracted so Action Surge can repeat it) */
   heroAttackRoll(h, foe, alive, opts = {}) {
     const cls = CLASSES[h.data.classKey];
+    /* Profile (weapon/cantrip/unarmed) is threaded in from heroCombat; falls
+       back to the cached lastProfile if a caller omitted it. */
+    const profile = opts.profile || h.data.lastProfile || h.data.weaponProfile || cls.attack;
 
     /* 5e advantage/disadvantage: sum sources, roll 2d20 take high/low */
     const selfMods = getEffectMods(h);
@@ -830,9 +1314,15 @@ export const combatMethods = {
     let adv = opts.adv || 0;
     if (foeMods.defAdvantage) adv += 1;        // foe blinded / paralyzed / faerie-fired…
     if (selfMods.atkDisadvantage) adv -= 1;    // attacker poisoned / frightened / prone…
+    if (selfMods.atkAdvantage) adv += selfMods.atkAdvantage; // Bardic Inspiration advantage
     let d20 = d20Roll(adv);
+    /* Consume one-shot attack buffs (Bardic Inspiration: advantage on next attack) */
+    if (selfMods.atkAdvantage && hasEffect(h, 'inspired')) clearEffect(h, 'inspired');
     if (d20 === 1 && RACES[h.data.raceKey].lucky) d20 = die(20);
-    let atkBonus = heroAttackBonus(h.data) + (opts.atkBonus || 0) + selfMods.atkBonus;
+    /* Compose the to-hit bonus from the profile's ability + cached proficiency/gear.
+       Works for main-hand weapon, offhand weapon (TWF), cantrip, and unarmed. */
+    const baseAtk = h.data.atkProf + mod(h.data.effStats[profile.ability]);
+    let atkBonus = baseAtk + (opts.atkBonus || 0) + selfMods.atkBonus;
     if (selfMods.blessDice) atkBonus += die(4);   // Bless / inspiration: +1d4 to hit
     /* Boss intel (foreshadow phase): the party knows the final boss's weaknesses */
     const qIntel = this.activeQuest;
@@ -842,7 +1332,7 @@ export const combatMethods = {
       atkBonus += 2;
       if (!this._intelLogged) {
         this._intelLogged = true;
-        log('🔎 The party knows this foe — they strike where the old warnings said to strike.', 'story');
+        this.fxLog('🔎 The party knows this foe — they strike where the old warnings said to strike.', 'story');
       }
     }
     let crit = !!opts.autoCrit || d20 >= h.data.critRange;
@@ -851,30 +1341,30 @@ export const combatMethods = {
     const foeAc = foe.data.ac + foeMods.acBonus;
     let miss = !crit && total < foeAc;
     /* paralyzed / unconscious foes: any melee hit is a critical (5e) */
-    if (!miss && foeMods.autoCritMelee && cls.attack.melee) crit = true;
-    if (crit && this.engine) { this.engine.triggerHitStop(3); }
+    if (!miss && foeMods.autoCritMelee && profile.melee) crit = true;
+    if (crit) { this.triggerHitStop(3); }
 
     /* Indomitable (long rest) / Lucky feat (short rest): convert a miss */
-    if (miss && hasFeature(h.data, 'indomitable') && !h.data.abilityUsed?.long) {
-      h.data.abilityUsed.long = true;
+    if (miss && hasFeature(h.data, 'indomitable') && hasCharge(h.data, 'indomitable')) {
+      spendCharge(h.data, 'indomitable');
       miss = false;
       this.playAbilityFx(h, 'indomitable', { at: h });
-      log(`🛡 ${h.data.name} is Indomitable — the miss becomes a hit!`, 'crit');
+      this.fxLog(`🛡 ${h.data.name} is Indomitable — the miss becomes a hit!`, 'crit');
       this.refreshAbilityHud();
-    } else if (miss && hasFeat(h.data, 'lucky') && !h.data.abilityUsed?.short) {
-      h.data.abilityUsed.short = true;
+    } else if (miss && hasFeat(h.data, 'lucky') && hasCharge(h.data, 'lucky')) {
+      spendCharge(h.data, 'lucky');
       miss = false;
       this.playAbilityFx(h, 'lucky', { at: h });
-      log(`🍀 ${h.data.name}'s Lucky feat turns a miss into a hit!`, 'crit');
+      this.fxLog(`🍀 ${h.data.name}'s Lucky feat turns a miss into a hit!`, 'crit');
       this.refreshAbilityHud();
     }
 
     let dmg = 0, sneak = false;
     if (!miss) {
       let wasCrit = crit;
-      dmg = heroDamage(h.data, wasCrit) + (opts.extraDmg || 0);
-      if (wasCrit && hasFeature(h.data, 'brutalCritical') && cls.attack.melee) {
-        dmg += die(cls.attack.dmg[1] || 6);
+      dmg = heroDamage(h.data, wasCrit, profile) + (opts.extraDmg || 0);
+      if (wasCrit && hasFeature(h.data, 'brutalCritical') && profile.melee) {
+        dmg += die(profile.dmg[1] || 6);
       }
       if (h.wildShapeUntil > this.elapsed) dmg += roll(2, 6);
       if (cls.sneakDice || hasFeature(h.data, 'sneakAttack')) {
@@ -885,36 +1375,49 @@ export const combatMethods = {
         }
       }
       /* Agonizing Blast: CHA to cantrip damage for warlocks */
-      if (hasFeature(h.data, 'agonizingBlast') && cls.attack.cantripScale) {
+      if (hasFeature(h.data, 'agonizingBlast') && profile.cantripScale) {
         dmg += mod(h.data.effStats.cha);
       }
+      /* Feat conditional bonus damage (GWM / Sharpshooter / Charger / Grappler /
+         Mounted Combatant / Spell Sniper / Skulker / Keen Mind). */
+      dmg += featBonusDamage(h.data, {
+        profile,
+        weapon: h.data.equipment && h.data.equipment.weapon,
+        foeFullHp: foe.data.hp >= foe.data.maxHp,
+        foeElite: foe.isBoss || this.monsterEliteRoom(foe),
+        foeImpaired: hasEffect(foe, 'slowed') || hasEffect(foe, 'prone') || hasEffect(foe, 'restrained')
+      });
       /* Legendary perk pre-damage modifiers (execute, first strike, crit surge) */
       dmg = this.applyPerkDamageMods(h, foe, dmg, wasCrit);
       if (intel) dmg = Math.round(dmg * 1.25);
     }
+    /* The roll math rides in opts.detail so the Options menu can collapse it
+       down to just the outcome (see ui.log / settings.js). */
     const advTag = adv > 0 ? ', adv' : adv < 0 ? ', dis' : '';
     const vs = `(${d20}+${atkBonus} vs AC ${foeAc}${advTag})`;
-    if (crit && !miss) log(`💥 ${h.data.name} crits ${foe.data.name}! ${opts.autoCrit ? '(Deathstrike)' : `(nat ${d20})`} — ${dmg} dmg${sneak ? ' +sneak' : ''}`, 'crit');
-    else if (miss) log(`${h.data.name} → ${foe.data.name}: ${total} ${vs} miss`, 'miss');
-    else log(`${h.data.name} → ${foe.data.name}: ${total} ${vs} hit, ${dmg} dmg${sneak ? ' +sneak' : ''}`, 'roll');
-    this.strike(h, foe, dmg, crit && !miss, miss, alive);
+    if (crit && !miss) this.fxLog(`💥 ${h.data.name} crits ${foe.data.name}! — ${dmg} dmg${sneak ? ' +sneak' : ''}`, 'crit',
+      { detail: opts.autoCrit ? '(Assassinate)' : `(nat ${d20})` });
+    else if (miss) this.fxLog(`${h.data.name} → ${foe.data.name}: miss`, 'miss', { detail: `${total} ${vs}` });
+    else this.fxLog(`${h.data.name} → ${foe.data.name}: hit, ${dmg} dmg${sneak ? ' +sneak' : ''}`, 'roll', { detail: `${total} ${vs}` });
+    this.strike(h, foe, dmg, crit && !miss, miss, alive, profile);
   },
 
-  /** Pre-hit damage multipliers/adders from equipped legendary perks. */
+  /** Pre-hit damage multipliers/adders from equipped legendary perks.
+   *  Magnitudes scale with the item's found ilvl (perkMag band). */
   applyPerkDamageMods(h, foe, dmg, crit) {
     let d = dmg;
     const perks = equippedPerks(h.data);
-    for (const { perk } of perks) {
+    for (const { perk, item } of perks) {
       if (perk.id === 'execute' && foe.data.maxHp > 0 && foe.data.hp / foe.data.maxHp < 0.30) {
-        d = Math.round(d * 1.35);
-        makeFloatText(this.engine.scene, 'EXECUTE', _v.set(foe.x, 1.4, foe.z), '#e8a83f');
+        d = Math.round(d * perkMag('execute', item.ilvl));
+        this.fxText('EXECUTE', this._v3(foe.x, 1.4, foe.z), '#e8a83f');
       }
       if (perk.id === 'firstStrike' && !h._foughtThisCombat) {
-        d = Math.round(d * 1.50);
-        makeFloatText(this.engine.scene, 'FIRST STRIKE', _v.set(foe.x, 1.5, foe.z), '#8fd4e8');
+        d = Math.round(d * perkMag('firstStrike', item.ilvl));
+        this.fxText('FIRST STRIKE', this._v3(foe.x, 1.5, foe.z), '#8fd4e8');
       }
       if (perk.id === 'critSurge' && crit) {
-        d += 4;
+        d += perkMag('critSurge', item.ilvl);
       }
     }
     return Math.max(0, d);
@@ -923,6 +1426,7 @@ export const combatMethods = {
   /** On-hit legendary perk procs (lifesteal, cleave, burn, chain, mana font). */
   applyOnHitPerks(h, foe, dmg, crit, alive) {
     if (dmg <= 0 || foe.dead) return;
+    this.subclassOnHit(h, foe, dmg, crit);
     h._foughtThisCombat = true;
     const perks = equippedPerks(h.data, 'onHit').concat(
       equippedPerks(h.data, 'onCrit').filter(p => crit)
@@ -934,14 +1438,14 @@ export const combatMethods = {
       const id = perk.id;
 
       if (id === 'lifesteal') {
-        const heal = Math.max(1, Math.round(dmg * 0.18));
+        const heal = Math.max(1, Math.round(dmg * perkMag('lifesteal', item.ilvl)));
         h.data.hp = Math.min(h.data.maxHp, h.data.hp + heal);
-        makeFloatText(this.engine.scene, `+${heal}`, _v.set(h.x, 1.35, h.z), '#e07070');
-        drawBar(h.ent.bar, h.data.hp / h.data.maxHp);
+        this.fxText(`+${heal}`, this._v3(h.x, 1.35, h.z), '#e07070');
+        this.fxDrawBar(h.ent.bar, h.data.hp / h.data.maxHp);
       }
 
-      if (id === 'cleave' && CLASSES[h.data.classKey].attack.melee) {
-        const splash = Math.max(1, Math.round(dmg * 0.45));
+      if (id === 'cleave' && (h.data.lastProfile || h.data.weaponProfile) && (h.data.lastProfile || h.data.weaponProfile).melee) {
+        const splash = Math.max(1, Math.round(dmg * perkMag('cleave', item.ilvl)));
         let best = null, bestD = 2.4;
         for (const m of this.monsters) {
           if (m === foe || m.dead || m.data.hp <= 0) continue;
@@ -950,21 +1454,21 @@ export const combatMethods = {
         }
         if (best) {
           this.damageMonster(best, splash, h, false, { skipPerks: true });
-          makeFloatText(this.engine.scene, 'CLEAVE', _v.set(best.x, 1.3, best.z), '#e8a83f');
-          spawnSlash(this.engine.scene, { x: best.x, z: best.z }, 0xe8a83f, best.data.scale * 0.8);
+          this.fxText('CLEAVE', this._v3(best.x, 1.3, best.z), '#e8a83f');
+          this.fxSlash({ x: best.x, z: best.z }, 0xe8a83f, best.data.scale * 0.8);
         }
       }
 
       if (id === 'burn') {
         const ticks = 3;
-        const tickDmg = Math.max(1, 1 + Math.floor(h.data.level / 3));
-        foe.burn = { ticks, dmg: tickDmg, src: h, t: 0 };
-        makeFloatText(this.engine.scene, 'BURN', _v.set(foe.x, 1.2, foe.z), '#ff7a30');
-        spawnSpriteEffect(this.engine.scene, 'dcss/effect/flame_0.png',
-          new THREE.Vector3(foe.x, 0.5, foe.z), 0.9, 0.25);
+        const tickDmg = perkMag('burn', item.ilvl);
+        foe.burn = { ticks, dmg: tickDmg, src: h, clock: this.fxNow };
+        this.fxText('BURN', this._v3(foe.x, 1.2, foe.z), '#ff7a30');
+        this.fxSprite('dcss/effect/flame_0.png',
+          this._v3(foe.x, 0.5, foe.z), 0.9, 0.25);
       }
 
-      if (id === 'chain' && !CLASSES[h.data.classKey].attack.melee && Math.random() < 0.40) {
+      if (id === 'chain' && !((h.data.lastProfile || h.data.weaponProfile) || {melee:true}).melee && Math.random() < perkMag('chain', item.ilvl)) {
         const arc = Math.max(1, Math.round(dmg * 0.5));
         let best = null, bestD = 4.5;
         for (const m of this.monsters) {
@@ -974,24 +1478,67 @@ export const combatMethods = {
         }
         if (best) {
           this.damageMonster(best, arc, h, false, { skipPerks: true });
-          makeFloatText(this.engine.scene, 'ARC', _v.set(best.x, 1.3, best.z), '#8fd4e8');
-          spawnSpriteEffect(this.engine.scene, 'dcss/effect/magic_bolt_1.png',
-            new THREE.Vector3(best.x, 0.5, best.z), 1.0, 0.25);
+          this.fxText('ARC', this._v3(best.x, 1.3, best.z), '#8fd4e8');
+          this.fxSprite('dcss/effect/magic_bolt_1.png',
+            this._v3(best.x, 0.5, best.z), 1.0, 0.25);
         }
       }
 
-      if (id === 'manaFont' && Math.random() < 0.15) {
+      if (id === 'manaFont' && Math.random() < perkMag('manaFont', item.ilvl)) {
         if (recoverSlots(h.data, 1) > 0) {
-          makeFloatText(this.engine.scene, '+slot', _v.set(h.x, 1.5, h.z), '#b06cf0');
-          log(`✦ ${h.data.name}'s ${item.name} restores a spell slot!`, 'heal');
-          updatePartyFrames(this.heroes.map(x => x.data));
+          this.fxText('+slot', this._v3(h.x, 1.5, h.z), '#b06cf0');
+          this.fxLog(`✦ ${h.data.name}'s ${item.name} restores a spell slot!`, 'heal');
+          this.refreshHud();
         }
       }
 
       if (id === 'critSurge' && crit) {
-        spawnSpriteEffect(this.engine.scene, 'dcss/effect/flame_0.png',
-          new THREE.Vector3(foe.x, 0.6, foe.z), 1.1, 0.3);
+        this.fxSprite('dcss/effect/flame_0.png',
+          this._v3(foe.x, 0.6, foe.z), 1.1, 0.3);
       }
+
+      if (id === 'arcaneBurst') {
+        const blastDmg = perkMag('arcaneBurst', item.ilvl) || 8;
+        const nearby = this.monsters.filter(m => !m.dead && m.data.hp > 0 && Math.hypot(m.x - foe.x, m.z - foe.z) <= 2.0);
+        for (const target of nearby) {
+          this.damageMonster(target, blastDmg, h, false, { dmgType: 'force', magical: true, skipPerks: true });
+        }
+        this.fxText('ARCANE BURST', this._v3(foe.x, 1.4, foe.z), '#b06cf0');
+        this.fxSprite('dcss/effect/magic_bolt_1.png', this._v3(foe.x, 0.5, foe.z), 1.5, 0.3);
+      }
+
+      if (id === 'frostBite') {
+        applyEffect(foe, 'chilled', { duration: 3.0, elapsed: this.fxNow, source: h });
+        this.fxText('FROSTBITE', this._v3(foe.x, 1.3, foe.z), '#8fd4e8');
+        this.fxSprite('dcss/effect/cloud_magic_trail_0.png', this._v3(foe.x, 0.5, foe.z), 1.2, 0.3);
+      }
+
+      if (id === 'holySmite') {
+        const smiteDmg = perkMag('holySmite', item.ilvl) || 10;
+        this.damageMonster(foe, smiteDmg, h, false, { dmgType: 'radiant', magical: true, skipPerks: true });
+        this.fxText('HOLY SMITE', this._v3(foe.x, 1.4, foe.z), '#ffe08a');
+        this.fxSprite('dcss/effect/directional_smoke_burst_001_large_white.png', this._v3(foe.x, 0.5, foe.z), 1.3, 0.3);
+      }
+    }
+    /* Feat on-hit riders (Sentinel root, Shield Master shove, Grappler/Tavern
+       Brawler stagger, Martial Adept maneuver). */
+    this.applyFeatOnHit(h, foe, crit);
+  },
+
+  /** Apply feat on-hit status effects + bonus damage to a struck foe. */
+  applyFeatOnHit(h, foe, crit) {
+    if (foe.dead || foe.data.hp <= 0) return;
+    const p = h.data.lastProfile || h.data.weaponProfile || { melee: true };
+    const hasShield = !!(h.data.equipment && h.data.equipment.shield);
+    const res = featOnHit(h.data, { melee: !!p.melee, crit, hasShield });
+    for (const e of res.effects) {
+      if (!hasEffect(foe, e.key)) {
+        applyEffect(foe, e.key, { duration: e.duration, elapsed: this.fxNow, source: h });
+      }
+    }
+    if (res.bonusDmg > 0) {
+      this.fxText('MANEUVER', this._v3(foe.x, 1.4, foe.z), '#e8c25a');
+      this.damageMonster(foe, res.bonusDmg, h, false, { dmgType: 'force', magical: true, skipPerks: true });
     }
   },
 
@@ -1000,21 +1547,21 @@ export const combatMethods = {
     if (!attacker || dealt <= 0 || attacker.dead) return;
     const perks = equippedPerks(h.data, 'onDamaged');
     const seen = new Set();
-    for (const { perk } of perks) {
+    for (const { perk, item } of perks) {
       if (seen.has(perk.id)) continue;
       seen.add(perk.id);
       if (perk.id === 'thorns') {
-        const thornDmg = 2 + Math.floor(h.data.level / 3);
+        const thornDmg = perkMag('thorns', item.ilvl);
         attacker.data.hp -= thornDmg;
-        makeFloatText(this.engine.scene, String(thornDmg), _v.set(attacker.x, 1.1, attacker.z), '#6aea6a');
+        this.fxText(String(thornDmg), this._v3(attacker.x, 1.1, attacker.z), '#6aea6a');
         if (attacker.data.hp <= 0) this.killMonster(attacker, h);
       }
-      if (perk.id === 'riposte' && CLASSES[h.data.classKey].attack.melee) {
-        const ret = 3 + Math.floor(h.data.level / 2);
+      if (perk.id === 'riposte' && (h.data.lastProfile || h.data.weaponProfile) && (h.data.lastProfile || h.data.weaponProfile).melee) {
+        const ret = perkMag('riposte', item.ilvl);
         attacker.data.hp -= ret;
-        makeFloatText(this.engine.scene, 'RIPOSTE', _v.set(attacker.x, 1.35, attacker.z), '#e8a83f');
-        makeFloatText(this.engine.scene, String(ret), _v.set(attacker.x, 1.1, attacker.z), '#ffd34a');
-        spawnSlash(this.engine.scene, { x: attacker.x, z: attacker.z }, 0xe8a83f, 0.7);
+        this.fxText('RIPOSTE', this._v3(attacker.x, 1.35, attacker.z), '#e8a83f');
+        this.fxText(String(ret), this._v3(attacker.x, 1.1, attacker.z), '#ffd34a');
+        this.fxSlash({ x: attacker.x, z: attacker.z }, 0xe8a83f, 0.7);
         if (attacker.data.hp <= 0) this.killMonster(attacker, h);
       }
     }
@@ -1022,14 +1569,198 @@ export const combatMethods = {
 
   /** On-kill legendary perks. */
   applyOnKillPerks(h, m) {
+    this.subclassOnKill(h, m);
     const perks = equippedPerks(h.data, 'onKill');
-    for (const { perk } of perks) {
+    for (const { perk, item } of perks) {
       if (perk.id === 'phaseStep') {
+        const ac = perkMag('phaseStep', item.ilvl);
         h.phaseStepUntil = this.elapsed + 3;
-        makeFloatText(this.engine.scene, 'PHASE', _v.set(h.x, 1.4, h.z), '#8fd4e8');
-        log(`◈ ${h.data.name}'s Phase Step grants +4 AC briefly.`, 'heal');
+        h.phaseStepAc = ac;
+        this.fxText('PHASE', this._v3(h.x, 1.4, h.z), '#8fd4e8');
+        this.fxLog(`◈ ${h.data.name}'s Phase Step grants +${ac} AC briefly.`, 'heal');
       }
     }
+  },
+
+  /* ================================================================
+     Subclass PASSIVES — flavor-driven triggered effects layered on top
+     of each subclass's flat pb bonus (folded in by recalc). Dispatched
+     by sc.passiveKey so the whole system lives in one place; every
+     number here is deliberately modest and easy to tune. Defined in
+     SUBCLASSES (srd.js); described on the character sheet.
+     ================================================================ */
+
+  /** Offensive passives — conditional to-hit / bonus damage into attack opts.
+   *  Called from buildAttackOpts. Reads target health + type. */
+  subclassAttackMods(h, foe, opts) {
+    const sc = subclassOf(h.data);
+    if (!sc || !sc.passiveKey) return;
+    const d = h.data;
+    const full = foe.data.hp >= foe.data.maxHp;
+    const wounded = foe.data.hp < foe.data.maxHp * 0.5;
+    const ftype = (foe.data.type || '').toLowerCase();
+    switch (sc.passiveKey) {
+      case 'assassinsMark':                  // Assassin: pressure the healthy
+        if (full) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
+        break;
+      case 'opportunist':                    // Thief: finish the wounded
+        if (wounded) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 4);
+        break;
+      case 'relentless':                     // Vengeance: hound the wounded
+        if (wounded) opts.extraDmg = (opts.extraDmg || 0) + 2;
+        break;
+      case 'giantKiller':                    // Hunter: crack the fresh
+        if (full) opts.extraDmg = (opts.extraDmg || 0) + 2;
+        break;
+      case 'elementalAffinity':              // Draconic: elemental bite
+        opts.extraDmg = (opts.extraDmg || 0) + 2;
+        break;
+      case 'sacredWrath':                    // Devotion: radiant vs unholy
+        if (ftype === 'undead' || ftype === 'fiend') opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
+        break;
+      case 'warBlessing':                    // War Domain: opening advantage
+        if (!h._foughtThisCombat) opts.adv = (opts.adv || 0) + 1;
+        break;
+      case 'peerlessSkill':                  // Lore: shine vs tough foes
+        if (foe.isBoss || this.monsterEliteRoom(foe)) opts.atkBonus = (opts.atkBonus || 0) + die(4);
+        break;
+      case 'openHandTech':                   // Open Hand: forceful opener
+        if (!h._foughtThisCombat) opts.extraDmg = (opts.extraDmg || 0) + Math.max(1, mod(d.effStats.wis)) + roll(1, 4);
+        break;
+      case 'bloodlust':                      // Berserker: spend stacked kill-fury
+        if (h._bloodlust && h._bloodlustUntil > this.elapsed)
+          opts.extraDmg = (opts.extraDmg || 0) + h._bloodlust * 2;
+        break;
+    }
+  },
+
+  /** On-hit passives — procs when a hero deals damage. Called from applyOnHitPerks. */
+  subclassOnHit(h, foe, dmg, crit) {
+    const sc = subclassOf(h.data);
+    if (!sc || !sc.passiveKey || dmg <= 0 || foe.dead) return;
+    const d = h.data;
+    if (sc.passiveKey === 'survivor' && crit) {          // Champion: crits mend you
+      this.healHero(h, 2 + Math.floor(d.level / 2));
+    } else if (sc.passiveKey === 'sculptedBlast'         // Evoker: bolt arcs onward
+        && ((h.data.lastProfile || h.data.weaponProfile) || {}).cantripScale
+        && Math.random() < 0.20) {
+      let best = null, bestD = 4.5;
+      for (const m of this.monsters) {
+        if (m === foe || m.dead || m.data.hp <= 0) continue;
+        const dd = Math.hypot(m.x - foe.x, m.z - foe.z);
+        if (dd < bestD) { bestD = dd; best = m; }
+      }
+      if (best) {
+        const splash = Math.max(1, Math.round(dmg * 0.5));
+        this.damageMonster(best, splash, h, false, { skipPerks: true, dmgType: 'fire', magical: true });
+        this.fxText('ARC', this._v3(best.x, 1.3, best.z), '#b06cf0');
+      }
+    } else if (sc.passiveKey === 'beguiling'             // Archfey: unnerve the foe
+        && Math.random() < 0.15 && !hasEffect(foe, 'frightened')) {
+      applyEffect(foe, 'frightened', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
+      this.fxText('FEAR', this._v3(foe.x, 1.3, foe.z), '#c07de8');
+    }
+  },
+
+  /** On-kill passives. Called from applyOnKillPerks. */
+  subclassOnKill(h, m) {
+    const sc = subclassOf(h.data);
+    if (!sc || !sc.passiveKey) return;
+    const d = h.data;
+    if (sc.passiveKey === 'bloodlust') {                 // Berserker: fury stacks
+      const cur = (h._bloodlust && h._bloodlustUntil > this.elapsed) ? h._bloodlust : 0;
+      h._bloodlust = Math.min(3, cur + 1);
+      h._bloodlustUntil = this.elapsed + 6;
+      this.fxText(`FURY x${h._bloodlust}`, this._v3(h.x, 1.5, h.z), '#ff6030');
+    } else if (sc.passiveKey === 'darkBlessing') {       // Fiend: temp HP on kill
+      const t = Math.max(1, d.level);
+      h.data.tempHp = Math.max(h.data.tempHp || 0, t);
+      this.fxText(`+${t} ward`, this._v3(h.x, 1.4, h.z), '#b06cf0');
+    } else if (sc.passiveKey === 'bestialBond') {        // Beast Master: companion mends
+      this.healHero(h, roll(1, 6));
+    } else if (sc.passiveKey === 'naturalRecovery' && Math.random() < 0.20) { // Land: slot back
+      if (recoverSlots(d, 1) > 0) {
+        this.fxText('+slot', this._v3(h.x, 1.5, h.z), '#6ae06a');
+        this.refreshHud();
+      }
+    } else if (sc.passiveKey === 'songOfVictory') {      // Valor: heal the wounded ally
+      let worst = null;
+      for (const a of this.heroes) {
+        if (a.data.hp <= 0 || a === h) continue;
+        if (!worst || a.data.hp / a.data.maxHp < worst.data.hp / worst.data.maxHp) worst = a;
+      }
+      if (worst && worst.data.hp < worst.data.maxHp) this.healHero(worst, roll(1, 6));
+    }
+  },
+
+  /** Incoming-damage multiplier from defensive passives. Called from applyIncomingDamage. */
+  subclassIncomingMul(h) {
+    const sc = subclassOf(h.data);
+    if (sc && sc.passiveKey === 'bearSpirit' && h.data.hp < h.data.maxHp * 0.5) return 0.8;
+    return 1;
+  },
+
+  /** Conditional AC bonus from defensive passives. Called from heroAC. */
+  subclassACBonus(h) {
+    const sc = subclassOf(h.data);
+    if (!sc || !sc.passiveKey) return 0;
+    if (sc.passiveKey === 'holdTheLine') {
+      const allyHurt = this.heroes.some(a => a !== h && a.data.hp > 0
+        && a.data.hp < a.data.maxHp * 0.4 && Math.hypot(a.x - h.x, a.z - h.z) < 4);
+      return allyHurt ? 2 : 0;
+    }
+    if (sc.passiveKey === 'cloakOfShadows') {
+      return h.data.hp >= h.data.maxHp ? 2 : 0;
+    }
+    return 0;
+  },
+
+  /** Start-of-fight passives (wards, temp HP, surges). Fires once per fight,
+   *  driven from the update loop when combat first engages. */
+  subclassCombatStart(h, alive) {
+    if (h.data.hp <= 0) return;
+    const sc = subclassOf(h.data);
+    if (!sc || !sc.passiveKey) return;
+    const d = h.data;
+    if (sc.passiveKey === 'arcaneWard') {
+      const t = d.level + Math.max(0, mod(d.effStats.int));
+      h.data.tempHp = Math.max(h.data.tempHp || 0, t);
+      this.fxText(`+${t} ward`, this._v3(h.x, 1.4, h.z), '#8fd4e8');
+    } else if (sc.passiveKey === 'thickHide') {
+      const t = d.level;
+      h.data.tempHp = Math.max(h.data.tempHp || 0, t);
+      this.fxText(`+${t} hide`, this._v3(h.x, 1.4, h.z), '#2ecc71');
+    } else if (sc.passiveKey === 'discipleOfLife') {
+      const t = Math.ceil(d.level / 2);
+      for (const a of (alive || this.heroes)) {
+        if (a.data.hp <= 0) continue;
+        a.data.tempHp = Math.max(a.data.tempHp || 0, t);
+      }
+      this.fxText('BLESSING', this._v3(h.x, 1.5, h.z), '#5a8fe8');
+    } else if (sc.passiveKey === 'tidesOfChaosPassive') {
+      if (Math.random() < 0.5) {
+        const t = d.level;
+        h.data.tempHp = Math.max(h.data.tempHp || 0, t);
+        this.fxText('SURGE +HP', this._v3(h.x, 1.5, h.z), '#e67e22');
+      } else {
+        applyEffect(h, 'hasted', { duration: 6, elapsed: this.fxNow });
+        this.fxText('SURGE HASTE', this._v3(h.x, 1.5, h.z), '#e67e22');
+      }
+    }
+  },
+
+  /** Inspiring Leader feat: the best contributor's oration grants the whole
+   *  party temporary HP once, at the start of each fight. */
+  applyInspiringLeader(alive) {
+    let best = 0;
+    for (const h of alive) if (h.data.hp > 0) best = Math.max(best, featCombatStartTempHp(h.data));
+    if (best <= 0) return;
+    for (const h of alive) {
+      if (h.data.hp <= 0) continue;
+      h.data.tempHp = Math.max(h.data.tempHp || 0, best);
+      this.fxText(`+${best}`, this._v3(h.x, 1.4, h.z), '#ffd36a');
+    }
+    this.fxLog(`📣 Inspiring words rally the party — +${best} temporary HP!`, 'heal');
   },
 
   /* ── Concentration (5e): one concentration spell per caster ────────
@@ -1037,24 +1768,124 @@ export const combatMethods = {
      forces a CON save (DC = max(10, half the damage)); going down ends it. */
 
   /**
+   * Spawns a persistent Area of Effect (AoE) zone.
+   */
+  spawnAoEZone(caster, spellKey, x, z, radius, options = {}) {
+    return aoeZoneManager.spawnZone(this, caster, spellKey, x, z, radius, options);
+  },
+
+  moveAoEZone(zone, newX, newZ, moveDuration = 0.5) {
+    return aoeZoneManager.moveZone(zone, newX, newZ, moveDuration);
+  },
+
+  removeAoEZone(zone) {
+    return aoeZoneManager.removeZone(this, zone);
+  },
+
+  updateAoEZones(dt) {
+    return aoeZoneManager.updateZones(this, dt);
+  },
+
+  processTurnZones(actor) {
+    return aoeZoneManager.processTurnZones(this, actor);
+  },
+
+  resolveMoonbeamDamage(zone, target) {
+    if (!target || !target.data || target.data.hp <= 0) return;
+    const caster = zone.caster;
+    const dc = spellDC(caster);
+    const slotLvl = zone.slotLevel || 2;
+    const diceCount = 2 + Math.max(0, slotLvl - 2);
+    let amt = roll(diceCount, 10, caster.data?.dmgBonus || 0);
+
+    const saved = this.spellSave(target, 'con', dc, { magic: true });
+    if (saved) amt = Math.floor(amt / 2);
+
+    this.spellDamage(target, amt, caster, false, { dmgType: 'radiant', magical: true });
+    this.fxLog(`🌙 ${target.data.name} ${saved ? 'saves (half dmg)' : 'fails save'} vs Moonbeam! (${amt} radiant)`, saved ? 'roll' : 'crit');
+
+    if (!saved) {
+      if (target.data.inWildShape) {
+        this.fxLog(`✨ Moonbeam reverts ${target.data.name} to true form!`, 'crit');
+        this.revertWildShape(target);
+      }
+    }
+  },
+
+  useMoveMoonbeam(h, targetPos) {
+    if (!h || !h.conc || h.conc.key !== 'moonbeam' || !h.conc.zone) {
+      this.fxLog(`No active Moonbeam to move.`, 'sys');
+      return false;
+    }
+    const zone = h.conc.zone;
+    const maxDist = 12.0;
+    const dist = Math.hypot(targetPos.x - h.x, targetPos.z - h.z);
+    if (dist > maxDist + 1.5) {
+      this.fxLog(`Target position is too far for Moonbeam (max 60 ft).`, 'sys');
+      return false;
+    }
+
+    this.moveAoEZone(zone, targetPos.x, targetPos.z, 0.5);
+    this.fxLog(`🌙 ${h.data.name} directs the Moonbeam to glide to new coordinates!`, 'crit');
+    this.playAbilityFx(h, 'moonbeam', { at: targetPos, spell: true });
+
+    const from = this._v3(targetPos.x, 6.0, targetPos.z);
+    const to = this._v3(targetPos.x, 0.4, targetPos.z);
+    this.fxBeam(from, to, {
+      type: 'pillar',
+      color: 0xc0e8ff,
+      coreColor: 0xffffff,
+      width: 1.6,
+      duration: 0.75,
+      targetBurst: 'round_light_burst_001_large_yellow'
+    });
+
+    const targets = (h._side === 'mon' ? this.heroes : this.monsters).filter(m =>
+      m.data && m.data.hp > 0 && m.active !== false && Math.hypot(m.x - targetPos.x, m.z - targetPos.z) <= zone.radius
+    );
+
+    for (const m of targets) {
+      if (!zone.savesThisTurn.has(m)) {
+        zone.savesThisTurn.add(m);
+        this.resolveMoonbeamDamage(zone, m);
+      }
+    }
+
+    h.actUsed = true;
+    this.refreshAbilityHud();
+    return true;
+  },
+
+  /**
    * Register a caster's concentration on a spell.
    * @param {object} h caster entity
    * @param {string} spellKey SPELLS registry key
    * @param {Array<{e:object, key:string}>} applied effects this spell placed
+   * @param {object} [zone] persistent AoE zone tied to this concentration
    */
-  concentrate(h, spellKey, applied) {
+  concentrate(h, spellKey, applied, zone = null) {
     this.breakConcentration(h, 'casting another spell');
-    h.conc = { key: spellKey, targets: applied || [] };
+    h.conc = { key: spellKey, targets: applied || [], zone };
+    if (h.data) h.data.conc = h.conc;
+    this.refreshHud();
   },
 
   breakConcentration(h, reason) {
-    if (!h.conc) return;
-    const label = SPELLS[h.conc.key]?.label || h.conc.key;
-    for (const t of h.conc.targets) {
+    if (!h.conc && !h.data?.conc) return;
+    const key = h.conc?.key || h.data?.conc?.key;
+    const label = SPELLS[key]?.label || key;
+    const targets = h.conc?.targets || h.data?.conc?.targets || [];
+    const zone = h.conc?.zone || h.data?.conc?.zone;
+    for (const t of targets) {
       if (t && t.e) clearEffect(t.e, t.key);
     }
+    if (zone) {
+      this.removeAoEZone(zone);
+    }
     h.conc = null;
-    if (reason && h.data) log(`💫 ${h.data.name}'s concentration on ${label} ends (${reason}).`, 'miss');
+    if (h.data) h.data.conc = null;
+    if (reason && h.data) this.fxLog(`💫 ${h.data.name}'s concentration on ${label} ends (${reason}).`, 'miss');
+    this.refreshHud();
   },
 
   /** Spend the lowest available slot of level ≥ spellLevel. */
@@ -1066,100 +1897,246 @@ export const combatMethods = {
 
   canUseSpellRecharge(h, spell) {
     if (spell.recharge === 'slot') return hasSlotFor(h.data, spell.level || 1);
-    if (spell.recharge === 'short') return !h.data.abilityUsed?.short;
-    if (spell.recharge === 'long' || spell.recharge === 'day') return !h.data.abilityUsed?.long;
+    if (spell.recharge === 'short' || spell.recharge === 'long' || spell.recharge === 'day') {
+      /* Each rest-recharge spell owns its own pool (`spell:<key>`) rather than
+         sharing one flag with every class feature. */
+      return hasCharge(h.data, 'spell:' + spell.key);
+    }
     return true;
   },
 
   markSpellUsed(h, spell) {
     if (spell.recharge === 'slot') this.spendSlot(h, spell.level || 1);
-    else if (spell.recharge === 'short') {
-      if (!h.data.abilityUsed) h.data.abilityUsed = {};
-      h.data.abilityUsed.short = true;
-      this.refreshAbilityHud();
-    } else if (spell.recharge === 'long' || spell.recharge === 'day') {
-      if (!h.data.abilityUsed) h.data.abilityUsed = {};
-      h.data.abilityUsed.long = true;
+    else if (spell.recharge === 'short' || spell.recharge === 'long' || spell.recharge === 'day') {
+      spendCharge(h.data, 'spell:' + spell.key);
       this.refreshAbilityHud();
     }
   },
 
-  /* Idle AI: pick the best known spell for this moment.
-   *   Now conservative — "any" spells gate behind combat time + threat,
-   *   elite/boss spells check threat, and nearly-dead targets are skipped. */
-  tryCastKnownSpell(h, foe, alive) {
+  /* Score a spell candidate for the current situation. Higher score = better cast choice. */
+  _scoreSpellForTarget(h, key, foe, alive) {
+    const sp = SPELLS[key];
+    if (!sp || !this.canUseSpellRecharge(h, sp)) return -1;
+
+    /* already concentrating on this spell — don't waste a slot recasting it */
+    if (sp.concentration && h.conc?.key === key) return -1;
+
+    const d = h.data;
+    const ai = sp.ai || { when: 'any', priority: 1 };
+    const _w = this.getAbilityUseWeight(h);
+    if (_w <= 0) return -1;
+
+    // Check target immunity / avoided types
+    if (ai.avoidTypes && foe && foe.data && ai.avoidTypes.includes(foe.data.type)) {
+      return -1;
+    }
+
+    // Check redundant debuffs (don't recast debuff if foe already has condition)
+    if (ai.debuffEffect && foe) {
+      if (hasEffect(foe, ai.debuffEffect)) return -1;
+    }
+
+    let score = ai.priority || 1;
+
+    // Add Spell Level weight when higher-level spell slots are available
+    if ((sp.level || 0) > 0) {
+      score += sp.level * 3.0;
+    }
+
+    // ── Self Hurt / Defensive Reflexes ──
+    if (ai.when === 'selfHurt') {
+      const healThresh = 0.2 + 0.5 * _w;
+      const hpFrac = h.data.hp / Math.max(h.data.maxHp, 1);
+      if (hpFrac < (ai.hpFrac != null ? ai.hpFrac : healThresh)) {
+        score += 15 * (1 - hpFrac);
+      } else {
+        return -1;
+      }
+    }
+
+    // ── Hurt Ally / Healing ──
+    else if (ai.when === 'hurtAlly') {
+      const healThresh = 0.2 + 0.5 * _w;
+      const targets = (alive || []).concat(this.heroes.filter(x => x.data.hp <= 0));
+      const worstHurt = targets.reduce((min, a) => Math.min(min, a.data.hp / Math.max(a.data.maxHp, 1)), 1);
+      if (worstHurt < (ai.hpFrac != null ? ai.hpFrac : healThresh) || this.heroes.some(a => a.data.hp <= 0)) {
+        score += 18 * (1 - worstHurt);
+      } else {
+        return -1;
+      }
+    }
+
+    // ── AoE Cluster Spells ──
+    else if (ai.when === 'cluster') {
+      if (!foe) return -1;
+      const r = ai.aoeRadius || 2.5;
+      const count = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - foe.x, m.z - foe.z) <= r).length;
+      const minReq = ai.minTargets || 2;
+      if (count < minReq) return -1;
+      score += 10 + (count - 1) * 8; // Dynamic score scaling with target count
+    }
+
+    // ── Single-Target Burst / Elite / Boss Spells ──
+    else if (ai.when === 'eliteOrBoss') {
+      if (!foe) return -1;
+      const isDangerous = foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 20;
+      if (!isDangerous && !this._worthSpending(h, foe, alive, 'low')) return -1;
+      score += isDangerous ? 12 : 4;
+    }
+
+    // ── "Any" Spells ──
+    else if (ai.when === 'any') {
+      if (!this._combatStable(ai.minCombatSec || 1.0) || !this._worthSpending(h, foe, alive, 'low')) {
+        return -1;
+      }
+    }
+
+    // ── Execute / Finisher Special Scoring (e.g. Magic Missile) ──
+    if (key === 'magicMissile') {
+      const activeEnemies = this.monsters.filter(m => m.data.hp > 0 && m.active);
+      const lowHpTarget = activeEnemies.find(m => m.data.hp <= 25 || m.data.hp / Math.max(m.data.maxHp, 1) < 0.3);
+      if (lowHpTarget) {
+        score += 14; // Auto-hit force darts make Magic Missile an ideal finisher
+      }
+    }
+
+    // ── Overkill Guard ──
+    // Don't dump 3rd/4th level damaging spells on foes that are 1 hit from dying
+    if (foe && (sp.level || 0) >= 3 && foe.data.hp < 12 && foe.data.hp / Math.max(foe.data.maxHp, 1) < 0.25) {
+      score -= 20;
+    }
+
+    return score;
+  },
+
+  /* Idle AI: pick the best known spell for this moment via dynamic contextual scoring. */
+  _pickKnownSpell(h, foe, alive, filter) {
+    if (h.data && h.data.inWildShape) return null;
     const known = h.data.knownSpells || [];
-    if (!known.length) return false;
+    if (!known.length) return null;
 
-    /* heal thresholds follow the hero's abilityUse knob (0.5 ≈ original). */
-    const _w = h.data.aiPrefs && h.data.aiPrefs.abilityUse != null ? h.data.aiPrefs.abilityUse : 0.5;
-    const healThresh = 0.2 + 0.5 * _w;
+    const w = getAbilityUseWeight(h);
+    if (w <= 0) return null;
 
-    let best = null, bestP = -1;
+    let best = null, maxScore = -1;
     for (const key of known) {
       const sp = SPELLS[key];
-      if (!sp || !this.canUseSpellRecharge(h, sp)) continue;
-      /* already concentrating on this spell — don't waste a slot recasting it */
-      if (sp.concentration && h.conc?.key === key) continue;
-      const ai = sp.ai || { when: 'any', priority: 1 };
-      let ok = false;
-      if (ai.when === 'any') {
-        // "Any" spells (Bless, Chaos Bolt) are always eligible — but we gate
-        // them behind combat stability + threat so they aren't wasted on trash.
-        ok = this._combatStable(ai.minCombatSec || 2.0)
-          && this._worthSpending(h, foe, alive, 'low');
+      if (!sp || !filter(sp)) continue;
+      const score = this._scoreSpellForTarget(h, key, foe, alive);
+      if (score > maxScore) {
+        maxScore = score;
+        best = key;
       }
-      else if (ai.when === 'eliteOrBoss') {
-        ok = (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)
-          && this._worthSpending(h, foe, alive, 'normal');
-      }
-      else if (ai.when === 'selfHurt') ok = h.data.hp / h.data.maxHp < (ai.hpFrac != null ? ai.hpFrac : healThresh);
-      else if (ai.when === 'hurtAlly') {
-        ok = alive.some(a => a.data.hp / a.data.maxHp < (ai.hpFrac != null ? ai.hpFrac : healThresh));
-      } else if (ai.when === 'cluster') {
-        const n = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - foe.x, m.z - foe.z) < 2.2).length;
-        ok = n >= (ai.minTargets || 3);
-      }
-      if (ok && ai.priority > bestP) { bestP = ai.priority; best = key; }
     }
-    if (!best) return false;
-    // Final guard: don't cast at a foe that's one hit from death (unless it's a defensive/urgent spell)
-    const sp = SPELLS[best];
-    if (sp && sp.ai && sp.ai.when !== 'selfHurt' && sp.ai.when !== 'hurtAlly'
-        && foe.data.hp / Math.max(foe.data.maxHp, 1) < 0.25 && foe.data.hp < 8) {
-      return false;
+    if (!best || maxScore <= 0) return null;
+
+    const chosenSpell = SPELLS[best];
+    const isLimited = (chosenSpell.level || 0) > 0 || chosenSpell.recharge === 'slot' || chosenSpell.recharge === 'short' || chosenSpell.recharge === 'long' || chosenSpell.recharge === 'day';
+
+    if (isLimited) {
+      const ai = chosenSpell.ai || {};
+      const isEmergency = (ai.when === 'selfHurt' && h.data.hp / Math.max(h.data.maxHp, 1) < 0.3)
+                       || (ai.when === 'hurtAlly' && (alive || []).some(a => a.data.hp / Math.max(a.data.maxHp, 1) < 0.35 || a.data.hp <= 0));
+      if (!isEmergency) {
+        const isHighThreat = foe && (foe.isBoss || this.monsterEliteRoom(foe));
+        const chance = isHighThreat ? Math.min(1.0, w * 2.5) : w;
+        if (Math.random() > chance) {
+          return null; // Conserve spell slot for at-will cantrip / basic attack
+        }
+      }
     }
-    return this.resolveSpell(h, best, foe, alive);
+
+    return best;
+  },
+
+  /* Action-phase caster AI: leveled action-spells only (bonus-action spells are
+     handled separately in tryCastBonusSpell, so they're excluded here). */
+  tryCastKnownSpell(h, foe, alive) {
+    const key = this._pickKnownSpell(h, foe, alive, sp => sp.bonusAction !== true);
+    if (!key) return false;
+    return this.resolveSpell(h, key, foe, alive);
+  },
+
+  /* Bonus-action phase: cast one bonus-action spell (Healing Word, Hex, Misty
+     Step…) WITHOUT consuming the hero's action. Marks the bonus action used and,
+     for a leveled spell, sets _bonusLeveled so the 5e "no second leveled spell
+     this turn" rule can block a follow-up action-spell. Returns true if cast. */
+  tryCastBonusSpell(h, foe, alive) {
+    if (h._bonusActed) return false;
+    const key = this._pickKnownSpell(h, foe, alive, sp => sp.bonusAction === true);
+    if (!key) return false;
+    const sp = SPELLS[key];
+    if (!this.resolveSpell(h, key, foe, alive)) return false;
+    h._bonusActed = true;
+    if ((sp.level || 0) > 0) h._bonusLeveled = true;
+    return true;
+  },
+
+  checkCounterspellInterrupt(caster, spellKey, spellDef) {
+    if (!caster || !spellDef || spellKey === 'counterspell' || spellDef.level === 0) return false;
+
+    // Determine target opposing team
+    const isMonsterCaster = !this.heroes.includes(caster);
+    const reactors = isMonsterCaster ? (this.heroes || []) : (this.monsters || []);
+
+    for (const r of reactors) {
+      if (!r || r.dead || r.active === false || r.reactionUsed) continue;
+
+      // Distance check: within 12 tiles (60 ft)
+      const dist = Math.hypot((r.x || 0) - (caster.x || 0), (r.z || 0) - (caster.z || 0));
+      if (dist > 12.0) continue;
+
+      const d = r.data || r;
+      const knowsCounter = (d.knownSpells && d.knownSpells.includes('counterspell')) ||
+                           (d.spellPool && Object.values(d.spellPool).flat().includes('counterspell')) ||
+                           hasFeature(r, 'counterspell');
+
+      if (knowsCounter && hasSlotFor(d, 3)) {
+        r.reactionUsed = true;
+        spendSlotFor(d, 3);
+
+        const spellLabel = spellDef.label || spellKey;
+        this.playAbilityFx(r, 'counterspell', { at: caster, spell: true, scale: 2.0 });
+        this.fxText('countered!', this._v3(caster.x, 1.2, caster.z), '#4080ff');
+        this.fxLog(`🚫 ${d.name} uses Reaction to cast Counterspell! ${caster.data?.name || 'Caster'}'s ${spellLabel} was nullified!`, 'crit');
+        this.refreshHud();
+        return true;
+      }
+    }
+    return false;
   },
 
   resolveSpell(h, key, foe, alive) {
+    if (h.data && h.data.inWildShape && key !== 'wildShape') return false;
     const sp = SPELLS[key];
     if (!sp || !this.canUseSpellRecharge(h, sp)) return false;
+    if (this.checkCounterspellInterrupt(h, key, sp)) return false;
     if (sp.cast) return sp.cast(this, h, foe, alive);
     return false;
   },
 
   /* day- and slot-tier subclass actives; returns true if one consumed this turn */
   castSubclassSpell(h, sc, foe, alive) {
+    if (h.data && h.data.inWildShape) return false;
     const key = sc.active.key, d = h.data;
-    if (key === 'rallyingCry' && !d.abilityUsed?.long) {
+    if (key === 'rallyingCry' && hasCharge(d, 'rallyingCry')) {
       const hurt = alive.filter(a => a.data.hp < a.data.maxHp * 0.5);
       if (hurt.length >= 2) {
-        d.abilityUsed.long = true;
+        spendCharge(d, 'rallyingCry');
         this.playAbilityFx(h, 'rallyingCry', { at: h, alsoAt: alive });
-        log(`📣 ${d.name} bellows a Rallying Cry!`, 'heal');
+        this.fxLog(`📣 ${d.name} bellows a Rallying Cry!`, 'heal');
         for (const a of alive) this.healHero(a, roll(1, 10, d.level));
         this.refreshAbilityHud();
         return true;
       }
       return false;
     }
-    if (key === 'preserveLife' && !d.abilityUsed?.long) {
+    if (key === 'preserveLife' && hasCharge(d, 'preserveLife')) {
       const hurt = alive.filter(a => a.data.hp < a.data.maxHp * 0.4);
       if (hurt.length >= 2) {
-        d.abilityUsed.long = true;
+        spendCharge(d, 'preserveLife');
         this.playAbilityFx(h, 'preserveLife', { at: h, alsoAt: alive, spell: true });
-        log(`✨ ${d.name} channels divinity — Preserve Life!`, 'heal');
+        this.fxLog(`✨ ${d.name} channels divinity — Preserve Life!`, 'heal');
         for (const a of alive) this.healHero(a, d.level * 2 + mod(d.effStats.wis) + d.healBonus);
         this.refreshAbilityHud();
         return true;
@@ -1167,84 +2144,147 @@ export const combatMethods = {
       return false;
     }
     if (key === 'fireball' && hasSlotFor(d, 3)) {
-      return this.resolveSpell(h, 'fireball', foe, alive);
+      const w = this.getAbilityUseWeight(h);
+      if (w > 0 && Math.random() <= w && this._worthSpending(h, foe, alive, 'normal')) {
+        return this.resolveSpell(h, 'fireball', foe, alive);
+      }
+      return false;
     }
     if (key === 'magicMissile' && hasSlotFor(d, 1)
         && (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 15)
         && this._worthSpending(h, foe, alive, 'normal')) {
-      return this.resolveSpell(h, 'magicMissile', foe, alive);
+      const w = this.getAbilityUseWeight(h);
+      if (w > 0 && Math.random() <= w) {
+        return this.resolveSpell(h, 'magicMissile', foe, alive);
+      }
+      return false;
     }
-    if (key === 'dragonBreath' && !d.abilityUsed.short && this._combatStable(1.0)) {
+    if (key === 'dragonBreath' && hasCharge(d, 'dragonBreath') && this._combatStable(1.0)) {
       const foes = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 3);
       if (foes.length >= 2) {
-        d.abilityUsed.short = true;
+        spendCharge(d, 'dragonBreath');
         this.playAbilityFx(h, 'dragonBreath', { at: h, alsoAt: foes, scale: 2.2, ring: 2.2 });
-        log(`🐉 ${d.name} breathes fire!`, 'crit');
-        for (const m of foes) this.damageMonster(m, roll(3, 6, d.dmgBonus), h, false);
+        this.fxLog(`🐉 ${d.name} breathes fire!`, 'crit');
+        for (const m of foes) this.spellDamage(m, roll(3, 6, d.dmgBonus), h, false, { dmgType: 'fire', magical: true });
         this.refreshAbilityHud();
         return true;
       }
     }
-    if (key === 'wildSurge' && !d.abilityUsed.short && this._combatStable(1.5)) {
+    if (key === 'wildSurge' && hasCharge(d, 'wildSurge') && this._combatStable(1.5)) {
       // Only surge when someone is actually hurt — don't waste the heal
       const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.8);
       if (anyHurt) {
-        d.abilityUsed.short = true;
+        spendCharge(d, 'wildSurge');
         this.playAbilityFx(h, 'wildSurge', { at: h, alsoAt: alive, spell: true });
-        log(`🌈 ${d.name}'s Wild Magic heals the party!`, 'heal');
+        this.fxLog(`🌈 ${d.name}'s Wild Magic heals the party!`, 'heal');
         for (const a of alive) this.healHero(a, roll(1, 10, d.level));
         this.refreshAbilityHud();
         return true;
       }
     }
-    if (key === 'cuttingWords' && !d.abilityUsed.short && (foe.isBoss || this.monsterEliteRoom(foe))
+    if (key === 'cuttingWords' && hasCharge(d, 'cuttingWords') && (foe.isBoss || this.monsterEliteRoom(foe))
         && this._worthSpending(h, foe, alive, 'high')) {
-      d.abilityUsed.short = true;
-      foe.cutWordsUntil = this.elapsed + 6;
+      spendCharge(d, 'cuttingWords');
+      foe.cutWordsUntil = this.fxNow + ROUND_SECONDS;   // one round, on the combat clock
       foe.data._acPenalty = 4;
       this.playAbilityFx(h, 'cuttingWords', { at: foe, spell: true });
-      log(`🎤 ${d.name} uses Cutting Words on ${foe.data.name}!`, 'crit');
+      this.fxLog(`🎤 ${d.name} uses Cutting Words on ${foe.data.name}!`, 'crit');
       this.refreshAbilityHud();
       return true;
     }
-    if (key === 'fiendishBlessing' && !d.abilityUsed.short
+    if (key === 'fiendishBlessing' && hasCharge(d, 'fiendishBlessing')
         && this._combatStable(1.8) && d.hp < d.maxHp * 0.8) {
-      d.abilityUsed.short = true;
-      h.tempHp = (h.tempHp || 0) + 10;
+      spendCharge(d, 'fiendishBlessing');
+      h.data.tempHp = (h.data.tempHp || 0) + 10;
       this.playAbilityFx(h, 'fiendishBlessing', { at: h, spell: true });
-      log(`😈 ${d.name} gains Fiendish Blessing (+10 temp HP)!`, 'heal');
+      this.fxLog(`😈 ${d.name} gains Fiendish Blessing (+10 temp HP)!`, 'heal');
       this.refreshAbilityHud();
       return true;
     }
-    if (key === 'feyPresence' && !d.abilityUsed.short && this._combatStable(1.2)) {
+    if (key === 'feyPresence' && hasCharge(d, 'feyPresence') && this._combatStable(1.2)) {
       const foes = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 3);
       if (foes.length) {
-        d.abilityUsed.short = true;
+        spendCharge(d, 'feyPresence');
         for (const m of foes) m.charmedUntil = this.elapsed + 3;
         this.playAbilityFx(h, 'feyPresence', { at: h, alsoAt: foes, spell: true });
-        log(`🧚 ${d.name}'s Fey Presence charms nearby foes!`, 'heal');
+        this.fxLog(`🧚 ${d.name}'s Fey Presence charms nearby foes!`, 'heal');
         this.refreshAbilityHud();
         return true;
       }
     }
-    if (key === 'wildShape' && !d.abilityUsed.short
-        && d.hp < d.maxHp * 0.55) {
-      d.abilityUsed.short = true;
-      h.wildShapeUntil = this.elapsed + 8;
-      h.tempHp = (h.tempHp || 0) + 20;
-      this.playAbilityFx(h, 'wildShape', { at: h, scale: 1.9 });
-      log(`🐻 ${d.name} Wild Shapes into a bear!`, 'heal');
+    if (key === 'wildShape' && hasCharge(d, 'wildShapeClass') && !d.inWildShape) {
+      spendCharge(d, 'wildShapeClass');
+      this.activateWildShape(h);
       this.refreshAbilityHud();
       return true;
     }
     return false;
   },
 
+  activateWildShape(h) {
+    const d = h.data;
+    d.preWildShapeHp = d.hp;
+    const formKey = d.wildShapeForm || 'bear';
+    const formDef = WILD_SHAPE_FORMS[formKey] || WILD_SHAPE_FORMS.bear;
+    const conM = mod(d.effStats ? d.effStats.con : (d.stats ? d.stats.con : 10));
+    const hpPool = formDef.hpFormula(d.level, conM);
+    
+    d.wildShapeHp = hpPool;
+    d.wildShapeMaxHp = hpPool;
+    d.inWildShape = true;
+    d.wildShapeActiveForm = formKey;
+    
+    recalc(d);
+    if (h.ent) swapHeroSprite(h.ent, d);
+    this.playAbilityFx(h, 'wildShape', { at: h, scale: 2.0 });
+    this.fxLog(`${formDef.icon} ${d.name} Wild Shapes into a ${formDef.label}! (${hpPool} HP Pool)`, 'heal');
+    this.refreshHud();
+  },
+
+  revertWildShape(h, overflow = 0) {
+    const d = h.data;
+    const formKey = d.wildShapeActiveForm || 'bear';
+    const formDef = WILD_SHAPE_FORMS[formKey] || WILD_SHAPE_FORMS.bear;
+    
+    d.inWildShape = false;
+    d.wildShapeHp = 0;
+    d.hp = Math.max(1, (d.preWildShapeHp || d.hp) - overflow);
+    
+    recalc(d);
+    if (h.ent) swapHeroSprite(h.ent, d);
+    this.playAbilityFx(h, 'wildShape', { at: h, scale: 1.8 });
+    this.fxLog(`🌿 ${d.name}'s ${formDef.label} HP was depleted! Reverted to natural form (${d.hp}/${d.maxHp} HP).`, 'heal');
+    this.refreshHud();
+  },
+
   healHero(a, amt) {
-    if (a.data.hp <= 0) return;
-    a.data.hp = Math.min(a.data.maxHp, a.data.hp + amt);
-    makeFloatText(this.engine.scene, '+' + amt, _v.set(a.x, 1.3, a.z), '#6ae06a');
-    drawBar(a.ent.bar, a.data.hp / a.data.maxHp);
+    const wasDown = a.data.hp <= 0;
+    if (!wasDown && amt <= 0) return;
+    /* Any healing revives a downed ally (5e): floor at 1 HP and reset the
+       death pose so the sprite stands back up. */
+    const gain = wasDown ? Math.max(1, amt) : amt;
+    a.data.hp = Math.min(a.data.maxHp, Math.max(0, a.data.hp) + gain);
+    if (wasDown) {
+      this._reviveHeroPose(a);
+      this.fxLog(`✨ ${a.data.name} is revived at ${a.data.hp} HP!`, 'heal');
+      this.refreshHud();
+    }
+    this.fxText('+' + gain, this._v3(a.x, 1.3, a.z), '#6ae06a');
+    this.fxDrawBar(a.ent.bar, a.data.hp / a.data.maxHp);
+  },
+
+  /* Reset the downed sprite (forward lean + sunk mesh + death-anim flags) so a
+     revived hero stands back up. Mirrors the pose reset used by the explore
+     auto-revive and the death-respawn flow. */
+  _reviveHeroPose(h) {
+    h.ent.grp.rotation.z = 0;
+    h.ent.grp.rotation.x = 0;
+    h.ent.anim.mesh.position.y = 0;
+    h._dyingStarted = false;
+    h._deathLean = 0;
+    h.ent.anim._dying = false;
+    h.ent.anim._deathDone = false;
+    h.ent.anim.play('walk');
   },
 
   /* dynamic in-combat positioning: hold a slot around the foe with a gentle
@@ -1284,32 +2324,53 @@ export const combatMethods = {
         }
       }
       if (centerAng !== null) {
-        const n = Math.max(1, this.heroes.length - 1);
-        h.anchorAngle = centerAng + (idx / n - 0.5) * 2.8 + (Math.random() - 0.5) * 0.25;
+        const n = Math.max(1, this.heroes.length);
+        h.anchorAngle = centerAng + ((idx - (n - 1) / 2) / Math.max(1, n)) * 1.5 + (Math.random() - 0.5) * 0.2;
       }
       h.swayPhase = Math.random() * 6.28;
       h.swayDir = Math.random() < 0.5 ? -1 : 1;
     }
-    const desiredR = atk.melee ? 1.05 : Math.max(2.6, Math.min(atk.range - 0.8, atk.range * 0.6));
-    const ang = h.anchorAngle + Math.sin(this.elapsed * 0.75 + h.swayPhase) * 0.55 * h.swayDir;
-    const r = desiredR + Math.sin(this.elapsed * 1.15 + h.swayPhase) * 0.22;
+    const isReach = !!(atk.reach || (atk.range && atk.range >= 2.2));
+    let desiredR = atk.melee
+      ? (isReach ? 2.15 : 1.35)
+      : Math.max(2.8, Math.min(atk.range - 0.8, atk.range * 0.6));
+
+    /* Vicinity Emergency Retreat / Positioning: wounded heroes (< 25% HP) and squishy casters step back slightly */
+    if (h.data && (h.data.hp / Math.max(h.data.maxHp, 1) < 0.25 || (!atk.melee && ['wizard', 'sorcerer', 'warlock', 'ranger'].includes(h.data.classKey)))) {
+      desiredR = Math.min(atk.range - 0.5, desiredR + 1.2);
+    }
+    const ang = h.anchorAngle + Math.sin(this.elapsed * 0.75 + h.swayPhase) * 0.4 * h.swayDir;
+    const r = desiredR + Math.sin(this.elapsed * 1.15 + h.swayPhase) * 0.15;
     let tx = foe.x + Math.cos(ang) * r;
     let tz = foe.z + Math.sin(ang) * r;
     let moved = false;
-    if (!this.blocked(tx, tz, 0.3)) {
+    const isHeroClear = (x, z) => {
+      for (const ally of this.heroes) {
+        if (ally !== h && ally.data && ally.data.hp > 0 && Math.hypot(x - ally.x, z - ally.z) < 1.0) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    if (!this.blocked(tx, tz, 0.3) && isHeroClear(tx, tz)) {
       moved = true;
     } else {
-      /* slot landed in a wall — probe angle + radius variations */
-      const probeRadii = [desiredR, desiredR * 0.75, desiredR * 1.3, desiredR * 0.55];
-      const probeAngles = [0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4];
+      /* slot landed in a wall or on an ally — probe angle + radius variations inward toward open space */
+      const probeRadii = [desiredR, desiredR * 0.85, desiredR * 1.15, desiredR * 0.7];
+      const probeAngles = [0.4, -0.4, 0.8, -0.8, 1.2, -1.2];
       outer:
       for (const pr of probeRadii) {
         for (const dAng of probeAngles) {
           const ax = foe.x + Math.cos(ang + dAng) * pr;
           const az = foe.z + Math.sin(ang + dAng) * pr;
-          if (!this.blocked(ax, az, 0.3)) { tx = ax; tz = az; moved = true; break outer; }
+          if (!this.blocked(ax, az, 0.3) && isHeroClear(ax, az)) {
+            tx = ax; tz = az; moved = true; break outer;
+          }
         }
       }
+      /* Fallback if no perfectly clear spot: pick any unblocked spot */
+      if (!moved && !this.blocked(tx, tz, 0.3)) moved = true;
     }
     if (!moved) {
       /* last resort — nudge toward room centre or corridor open area */
@@ -1325,19 +2386,50 @@ export const combatMethods = {
       if (!this.blocked(fallbackX, fallbackZ, 0.3)) { tx = fallbackX; tz = fallbackZ; moved = true; }
     }
     if (moved) {
-      h.moving = this.nudgeToward(h, tx, tz, HERO_SPEED * COMBAT_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+      /* Tactical gate: only the current actor orbits, and the orbit draws
+         from its movement budget (spendMove). Off-turn or budget-spent →
+         hold. Boosted speed matches moveStep so the pace stays consistent. */
+      const tactical = !!(this.initiative && this.initiative.active);
+      if (tactical && (!this.isCurrentActor(h) || (h.moveLeft || 0) <= 0)) {
+        h.moving = false;
+      } else {
+        const bx = h.x, bz = h.z;
+        const spd = HERO_SPEED * COMBAT_SPEED * h.data.speedMult * this.hasteMult(h)
+          * (tactical ? COMBAT_MOVE_BOOST : 1);
+        h.moving = this.nudgeToward(h, tx, tz, spd, dt);
+        if (h.moving && tactical) this.spendMove(h, Math.hypot(h.x - bx, h.z - bz));
+      }
     } else {
       h.moving = false;
     }
   },
 
-  hasteMult(h) { const mods = getEffectMods(h); return mods.speedMul > 1 ? mods.speedMul : 1; },
+  /* Effect-aware speed multiplier: haste raises it, slows/restrained/prone lower
+     it (bidirectional since the monster-abilities work — Slow now actually slows). */
+  hasteMult(h) { return getEffectMods(h).speedMul; },
   heroAC(h) {
     let ac = h.data.ac;
     const mods = getEffectMods(h);
     ac += mods.acBonus;
-    if (hasEffect(h, 'raging')) ac += 2; // redundant with mods, kept for clarity
+    ac += this.subclassACBonus(h); // conditional subclass passive (Hold the Line / Cloak of Shadows)
+    /* Phase Step legendary perk: short AC surge after a kill. */
+    if (h.phaseStepUntil && this.elapsed < h.phaseStepUntil) ac += h.phaseStepAc || 4;
+    /* Barkskin: AC has a floor (default 16) while the effect is active. */
+    if (mods.acFloor) ac = Math.max(ac, mods.acFloor);
     return ac;
+  },
+
+  /** Spend temp HP against incoming damage, return the unabsorbed remainder.
+   *  Pure resource math — no concentration/charm/uncanny side effects, so it's
+   *  safe for DoT ticks and non-attack mishaps. Temp HP is never regained. */
+  absorbTempHp(h, dmg) {
+    let d = dmg;
+    if (h.data.tempHp > 0) {
+      const absorb = Math.min(h.data.tempHp, d);
+      h.data.tempHp -= absorb;
+      d -= absorb;
+    }
+    return d;
   },
 
   /** Incoming damage after rage / totem / uncanny dodge / temp HP. */
@@ -1345,22 +2437,52 @@ export const combatMethods = {
     let d = dmg;
     const mods = getEffectMods(h);
     d = Math.round(d * mods.dmgTakenMul);
+    d = Math.round(d * this.subclassIncomingMul(h)); // subclass passive (e.g. Bear Spirit)
     if (hasFeature(h.data, 'uncannyDodge') && !h.uncannyUsed) {
       h.uncannyUsed = true;
       d = Math.ceil(d / 2);
     }
-    if (h.tempHp > 0) {
-      const absorb = Math.min(h.tempHp, d);
-      h.tempHp -= absorb;
-      d -= absorb;
+    /* Feat flat damage reduction (Heavy Armor Master). */
+    d = featIncomingDamage(h.data, d);
+    d = this.absorbTempHp(h, d);
+
+    /* Wild Shape health pool absorption */
+    if (h.data.inWildShape && h.data.wildShapeHp > 0) {
+      if (d <= h.data.wildShapeHp) {
+        h.data.wildShapeHp -= d;
+        if (d > 0) h.data.dmgTaken = (h.data.dmgTaken || 0) + d;
+        if (h.ent && h.ent.bar) drawBar(h.ent.bar, h.data.wildShapeHp / h.data.wildShapeMaxHp, '#2ecc71');
+        if (h.data.wildShapeHp <= 0) {
+          this.revertWildShape(h, 0);
+        }
+        return d;
+      } else {
+        const overflow = d - h.data.wildShapeHp;
+        const absorbed = h.data.wildShapeHp;
+        h.data.wildShapeHp = 0;
+        if (d > 0) h.data.dmgTaken = (h.data.dmgTaken || 0) + absorbed;
+        this.revertWildShape(h, overflow);
+        return d;
+      }
     }
     /* Death Ward: if hit would be lethal, survive at 1 HP instead */
     if (hasEffect(h, 'deathWarded') && d >= h.data.hp) {
       clearEffect(h, 'deathWarded');
       d = Math.max(0, h.data.hp - 1);
-      log(`🛡 ${h.data.name}'s Death Ward triggers — survives at 1 HP!`, 'heal');
+      this.fxLog(`🛡 ${h.data.name}'s Death Ward triggers — survives at 1 HP!`, 'heal');
     }
     h.data.hp -= d;
+    if (d > 0) h.data.dmgTaken = (h.data.dmgTaken || 0) + d;
+    /* Charm breaks on damage (5e): taking damage grants a fresh save. */
+    if (d > 0 && hasEffect(h, 'charmed')) {
+      const eff = getEffect(h, 'charmed');
+      const rs = eff.repeatSave || { ability: 'wis', dc: 12 };
+      if (rollSave(h, rs.ability || 'wis', rs.dc || 12, { magic: true })) {
+        clearEffect(h, 'charmed');
+        this.fxLog(`💫 ${h.data.name} snaps out of the charm!`, 'heal');
+        this.fxText('charm broken', this._v3(h.x, 1.35, h.z), '#e8a8ff');
+      }
+    }
     /* Concentration check (5e): CON save DC max(10, half damage), or the spell drops */
     if (h.conc) {
       if (h.data.hp <= 0) {
@@ -1373,46 +2495,157 @@ export const combatMethods = {
     return d;
   },
 
-  strike(h, foe, dmg, crit, miss, alive = null) {
-    const cls = CLASSES[h.data.classKey], a = cls.attack;
-    const party = alive || this.heroes.filter(x => x.data.hp > 0);
-    if (a.melee) {
-      this.triggerLunge(h, foe);
-      playSfx('swordAttack', { volume: 0.7 });
-      if (miss) { this.showMiss(foe); playSfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.6 }); }
-      else {
-        playSfx('swordHit', { volume: 0.8 });
-        this.damageMonster(foe, dmg, h, crit);
-        this.applyOnHitPerks(h, foe, dmg, crit, party);
-        spawnSlash(this.engine.scene, { x: foe.x, z: foe.z }, crit ? 0xffd34a : 0xdfe4ee, foe.data.scale);
-        spawnSpriteEffect(this.engine.scene, crit ? 'dcss/effect/flame_0.png' : 'dcss/effect/blood_0.png', new THREE.Vector3(foe.x, 0.5, foe.z), 1.0, 0.3);
+  /* ── Charmed hero: fights for the charmer ──────────────────────────
+     A charmed hero switches teams — attacks the nearest living ally until the
+     charm breaks (damage-triggered save in applyIncomingDamage, or the repeat
+     save each round via tickEffects). Runs INSTEAD of heroCombat (game.js). */
+  charmedHeroUpdate(h, alive, dt) {
+    /* initiative gate, same as heroCombat */
+    if (this.initiative && this.initiative.active && !this.isCurrentActor(h)) return;
+    if (getEffectMods(h).incapacitated) { h.moving = false; return; }
+
+    /* nearest living ally (not self) */
+    let ally = null, bd = 1e9;
+    for (const o of alive) {
+      if (o === h || o.data.hp <= 0) continue;
+      const d = Math.hypot(o.x - h.x, o.z - h.z);
+      if (d < bd) { bd = d; ally = o; }
+    }
+    if (!ally) { h.moving = false; return; }
+
+    const profile = pickAttackProfile(h.data) || h.data.lastProfile || CLASSES[h.data.classKey].attack;
+    h.data.lastProfile = profile;
+    const range = profile.melee ? 1.2 : profile.range;
+
+    if (bd > range) {
+      /* stalk the ally */
+      h.repathT = (h.repathT || 0) - dt;
+      if (h.repathT <= 0 || !h.path || h.pathI >= h.path.length) {
+        h.path = this.findPath(this.cellOf(h.x, h.z), this.cellOf(ally.x, ally.z));
+        h.pathI = 0; h.repathT = 0.6;
       }
-    } else {
-      const color = h.data.classKey === 'wizard' ? 0xff7a30
-        : h.data.classKey === 'cleric' ? 0xbfe0ff : 0xe8d8a8;
-      const kind = h.data.classKey === 'rogue' ? 'arrow' : 'bolt';
-      const from = new THREE.Vector3(h.x, 0.55, h.z);
-      const to = new THREE.Vector3(foe.x, 0.4 * foe.data.scale + 0.4, foe.z);
-      playSfx(kind === 'arrow' ? 'bowAttack' : 'spellBuff', { volume: kind === 'arrow' ? 0.7 : 0.4 });
-      spawnProjectile(this.engine.scene, from, to, kind, color, () => {
-        if (foe.dead) return;
-        if (miss) { this.showMiss(foe); playSfx('bowBlock', { volume: 0.55 }); }
-        else {
-          playSfx(kind === 'arrow' ? 'bowHit' : 'spellImpact', { volume: 0.75 });
-          this.damageMonster(foe, dmg, h, crit);
-          this.applyOnHitPerks(h, foe, dmg, crit, party);
-          if (kind === 'bolt') {
-            spawnSlash(this.engine.scene, { x: foe.x, z: foe.z }, color, foe.data.scale * 0.9);
-            spawnSpriteEffect(this.engine.scene, 'dcss/effect/magic_bolt_1.png', to, 1.2, 0.3);
-          } else {
-            spawnSpriteEffect(this.engine.scene, 'dcss/effect/arrow_4.png', to, 1.0, 0.3);
-          }
-        }
-      });
+      h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt);
+      h.ent.grp.rotation.y = Math.atan2(ally.x - h.x, ally.z - h.z);
+      return;
+    }
+
+    h.moving = false;
+    h.ent.grp.rotation.y = Math.atan2(ally.x - h.x, ally.z - h.z);
+    if (h.actUsed) return;
+    h.actUsed = true;
+
+    /* one attack roll vs the ally's AC */
+    const d20 = d20Roll(0);
+    const total = d20 + (h.data.atkProf || 0) + mod(h.data.effStats[profile.ability] || 10);
+    const crit = d20 === 20;
+    const ac = this.heroAC(ally);
+    this.triggerLunge(h, ally);
+    this.fxPlaySfx('swordAttack', { volume: 0.6 });
+    if (!crit && total < ac) {
+      this.fxText('miss', this._v3(ally.x, 1.1, ally.z), '#9aa');
+      this.fxLog(`💜 ${h.data.name} (charmed) swings at ${ally.data.name} — miss!`, 'miss');
+      return;
+    }
+    const dmg = heroDamage(h.data, crit, profile);
+    this.fxLog(`💜 ${h.data.name} (charmed) hits ${ally.data.name} for ${dmg}!`, 'down', { cat: 'hitmiss' });
+    this.hurtHero(ally, dmg, h, 0xe8a8ff, profile.dmgType);
+  },
+
+  /* ── Effect-based DoTs on heroes (poison, swallow acid, wounded…) ──
+     applyEffect stores { dotDmg, dotClock } on the record; one damage pulse per
+     round, matching 5e's "at the start of each of its turns". The pulse is
+     driven off the combat clock rather than real seconds so a poison ticks the
+     same number of times whether a round resolves fast or slow — and doesn't
+     tick at all while the party is out of combat.
+     Called each frame from the hero status loop in game.js. */
+  tickHeroDots(h) {
+    if (!h._effects || h.data.hp <= 0) return;
+    for (const k in h._effects) {
+      const eff = h._effects[k];
+      if (eff.dotDmg == null) continue;
+      if (eff.dotClock == null) eff.dotClock = this.fxNow;
+      if (this.fxNow - eff.dotClock < ROUND_SECONDS) continue;
+      eff.dotClock += ROUND_SECONDS;
+      /* Temp HP soaks DoTs too (5e), but skip the combat-reaction side effects
+         of applyIncomingDamage — a 1/sec tick must not burn Uncanny Dodge. */
+      const d = this.absorbTempHp(h, eff.dotDmg);
+      h.data.hp -= d;
+      h.data.dmgTaken = (h.data.dmgTaken || 0) + d;
+      this.fxText(String(d), this._v3(h.x, 1.15, h.z), '#4cae4c');
+      this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
+      if (h.data.hp <= 0) {
+        h.data.hp = 0; h.data.downs++;
+        this.fxLog(`💀 ${h.data.name} succumbs to ${(EFFECTS[k] && EFFECTS[k].label) || k} and goes down!`, 'down');
+        this.refreshHud();
+      }
     }
   },
 
-  showMiss(foe) { makeFloatText(this.engine.scene, 'miss', _v.set(foe.x, 1.1, foe.z), '#9aa'); },
+  strike(h, foe, dmg, crit, miss, alive = null, profile = null) {
+    /* Profile carries melee/ranged, damage type, and source — drives the
+       lunge-vs-projectile visual and the physical damage type. */
+    const p = profile || h.data.lastProfile || h.data.weaponProfile
+      || { melee:true, dmgType:'slashing', source:'weapon' };
+    const party = alive || this.heroes.filter(x => x.data.hp > 0);
+    /* Magic Weapon (spell): weapon counts as magical → bypasses nonmagical resistance.
+       Cantrips are inherently magical. */
+    const wDmgType = p.dmgType || 'slashing';
+    const wMagical = !!getEffectMods(h).magicWeapon || p.source === 'cantrip';
+    if (p.melee) {
+      this.triggerLunge(h, foe);
+      this.fxPlaySfx('swordAttack', { volume: 0.7 });
+      if (miss) { this.showMiss(foe); this.fxPlaySfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.6 }); }
+      else {
+        this.fxPlaySfx('swordHit', { volume: 0.8 });
+        if (crit) {
+          this.triggerHitStop(4);
+          this.triggerShake(0.5, 0.25);
+        } else {
+          this.triggerHitStop(1);
+        }
+        this.damageMonster(foe, dmg, h, crit, { dmgType: wDmgType, magical: wMagical });
+        this.applyOnHitPerks(h, foe, dmg, crit, party);
+        this.fxMeleeHitVFX({ x: foe.x, z: foe.z }, { x: h.x, z: h.z }, crit, wDmgType, foe.data.scale || 1.0);
+      }
+    } else {
+      /* Ranged: physical bows/crossbows shoot arrows; caster cantrips shoot bolts
+         and land their class's signature animated burst (CANTRIP_FX). */
+      const isCantrip = p.source === 'cantrip';
+      const cfx = isCantrip ? CANTRIP_FX[h.data.classKey] : null;
+      const color = cfx ? cfx.color : 0xe8d8a8;
+      const kind = isCantrip ? 'bolt' : 'arrow';
+      const from = this._v3(h.x, 0.55, h.z);
+      const to = this._v3(foe.x, 0.4 * foe.data.scale + 0.4, foe.z);
+      this.fxPlaySfx(kind === 'arrow' ? 'bowAttack' : this.fxCantripSfx(h.data.classKey),
+              { volume: kind === 'arrow' ? 0.7 : 0.4 });
+      
+      const projOpts = {
+        classKey: h.data.classKey,
+        sheetDef: cfx?.projSheet ? GIGAPACK_REGISTRY[cfx.projSheet] : null,
+        dmgType: wDmgType,
+        scale: isCantrip ? 1.4 : 1.0
+      };
+
+      this.fxProjectile(from, to, kind, color, () => {
+        if (foe.dead) return;
+        if (miss) { this.showMiss(foe); this.fxPlaySfx('bowBlock', { volume: 0.55 }); }
+        else {
+          this.fxPlaySfx(kind === 'arrow' ? 'bowHit' : 'spellImpact', { volume: 0.75 });
+          this.damageMonster(foe, dmg, h, crit, { dmgType: wDmgType, magical: wMagical });
+          this.applyOnHitPerks(h, foe, dmg, crit, party);
+          if (kind === 'bolt') {
+            this.fxSlash({ x: foe.x, z: foe.z }, color, foe.data.scale * 0.9);
+            if (cfx) this.fxSheetEffect(cfx, to, cfx.scale * Math.max(1, foe.data.scale * 0.8));
+            else this.fxSprite('dcss/effect/magic_bolt_1.png', to, 1.2, 0.3);
+          } else {
+            this.fxSprite('dcss/effect/arrow_4.png', to, 1.0, 0.3);
+          }
+        }
+      }, projOpts);
+    }
+  },
+
+  showMiss(foe) { this.fxText('miss', this._v3(foe.x, 1.1, foe.z), '#9aa'); },
 
   triggerLunge(e, target) {
     const dx = target.x - e.x, dz = target.z - e.z, d = Math.hypot(dx, dz) || 1;
@@ -1428,7 +2661,17 @@ export const combatMethods = {
   },
 
   damageMonster(m, dmg, h, crit = false, opts = {}) {
-    if (m.dead) return;
+    if (m.dead) return { dmg: 0, modLabel: null };
+    /* Damage-type modifiers: resistance / immunity / vulnerability (5e).
+     * Spell damage passes { dmgType, magical:true }; weapon strikes pass a
+     * physical type with magical:false so nonmagical-weapon resistance applies. */
+    let modLabel = null;
+    if (opts.dmgType && dmg > 0) {
+      const mod = this.damageModifier(m, opts.dmgType, !!opts.magical || !!opts.spell);
+      if (mod === 'immune') { dmg = 0; modLabel = 'IMMUNE'; }
+      else if (mod === 'vuln') { dmg = dmg * 2; modLabel = 'VULNERABLE'; }
+      else if (mod === 'resist') { dmg = Math.floor(dmg / 2); modLabel = 'RESIST'; }
+    }
     m.data.hp -= dmg;
     if (!m.active) {
       m.active = true;
@@ -1440,34 +2683,120 @@ export const combatMethods = {
     if (h?.data) h.data.dmgDealt += dmg;
     /* accrue threat so damage pulls aggro off whoever's nearest */
     if (!opts.skipThreat && dmg > 0 && this.creditThreat) this.creditThreat(m, h, dmg);
-    hitFlash(m.ent);
-    makeFloatText(this.engine.scene, String(dmg), _v.set(m.x, 0.9 * m.data.scale + 0.5, m.z), crit ? '#ffd34a' : '#ff8a5a');
-    drawBar(m.ent.bar, Math.max(0, m.data.hp / m.data.maxHp), '#e0483a');
+    this.fxHitFlash(m.ent);
+    if (modLabel === 'IMMUNE') {
+      this.fxText('IMMUNE', this._v3(m.x, 0.9 * m.data.scale + 0.5, m.z), '#9aa');
+    } else {
+      const col = modLabel === 'VULNERABLE' ? '#ffe070'
+        : modLabel === 'RESIST' ? '#9aa'
+        : crit ? '#ffd34a' : '#ff8a5a';
+      this.fxText(String(dmg) + (modLabel ? ` ${modLabel}` : ''), this._v3(m.x, 0.9 * m.data.scale + 0.5, m.z), col);
+    }
+    /* Regeneration suppression (SRD trolls): fire or acid stops the healing */
+    if (m.data.regen && dmg > 0 && (opts.dmgType === 'fire' || opts.dmgType === 'acid')) {
+      m._noRegenUntil = this.fxNow + ROUND_SECONDS;   // one round, on the combat clock
+    }
+    /* Undead Fortitude (SRD zombies): CON save DC 5+dmg to drop to 1 HP instead,
+       unless the blow was radiant or a critical hit. */
+    if (m.data.hp <= 0 && m.data.undeadFortitude && dmg > 0) {
+      if (crit || opts.dmgType === 'radiant') {
+        this.fxLog(`☠ ${m.data.name}'s Undead Fortitude bypassed by ${crit ? 'critical hit' : 'radiant damage'}!`, 'roll');
+      } else {
+        const dc = 5 + dmg;
+        const res = rollSaveDetail(m, 'con', dc);
+        if (res.saved) {
+          m.data.hp = 1;
+          this.fxText('fortitude!', this._v3(m.x, 1.1, m.z), '#9aa');
+          this.fxLog(`☠ ${m.data.name} refuses to die! Undead Fortitude — PASSED!`, 'crit',
+            { detail: `(CON save ${res.d20} + ${res.mod} = ${res.total} vs DC ${dc})` });
+        } else {
+          this.fxLog(`☠ ${m.data.name} Undead Fortitude — FAILED.`, 'roll',
+            { detail: `(CON save ${res.d20} + ${res.mod} = ${res.total} vs DC ${dc})` });
+        }
+      }
+    }
+    /* Phase F hooks: onDamaged retaliates against the attacker (fire
+       elemental Fire Form, salamander Heated Body). onBloodied fires
+       once when HP first crosses 50% (flesh-golem Berserk, enrage). */
+    if (dmg > 0 && m.data.hp > 0 && m.data.abilities && h?.data?.hp > 0) {
+      this.applyOnDamagedAbilities(m, h, dmg, opts);
+    }
+    if (!m._bloodied && m.data.hp > 0 && m.data.maxHp && m.data.hp < m.data.maxHp / 2) {
+      m._bloodied = true;
+      if (m.data.abilities) this.applyOnBloodiedAbilities(m);
+    }
+    this.fxDrawBar(m.ent.bar, Math.max(0, m.data.hp / m.data.maxHp), '#e0483a');
     if (m.data.hp <= 0) this.killMonster(m, h);
+    return { dmg, modLabel };
   },
 
-  /** Tick burn DoTs on monsters (called from update loop). */
-  updateMonsterStatus(dt) {
+  /** Resolve a damage-type modifier for a monster target.
+   *  Returns 'immune' | 'resist' | 'vuln' | null based on statblock arrays.
+   *  `magical` true bypasses the "nonmagical weapons" meta-resistances. */
+  damageModifier(m, dmgType, magical = false) {
+    const sb = m.data?.statblock;
+    if (!sb || !dmgType) return null;
+    const t = dmgType;
+    const isPhys = t === 'bludgeoning' || t === 'piercing' || t === 'slashing';
+    /* Meta-type strings some monsters carry (e.g. mummies, devils). These only
+     * bite nonmagical weapon hits; spells are magical and ignore them. */
+    const physMeta = !magical && isPhys && (
+      (sb.immune || []).some(x => x.includes('from nonmagical weapons')) ||
+      (sb.resist || []).some(x => x.includes('from nonmagical weapons'))
+    );
+    if (physMeta && (sb.immune || []).some(x => x.includes('from nonmagical weapons'))) return 'immune';
+    if ((sb.immune || []).includes(t)) return 'immune';
+    if ((sb.vulnerable || []).includes(t)) return 'vuln';
+    if ((sb.resist || []).includes(t)) return 'resist';
+    if (physMeta) return 'resist';
+    return null;
+  },
+
+  /** Damage type for the hero's active attack profile (weapon- or cantrip-driven).
+   *  Kept for any external caller; combat now reads profile.dmgType directly in strike(). */
+  heroWeaponDmgType(h) {
+    const p = h.data.lastProfile || h.data.weaponProfile;
+    return (p && p.dmgType) || 'slashing';
+  },
+
+  /** Tick burn DoTs on monsters (called from update loop).
+   *  One pulse per round on the combat clock, like every other DoT — see
+   *  tickHeroDots and the time-base note in conditions.js. `burn.ticks` is
+   *  therefore a count of ROUNDS the burn lasts, not of real seconds. */
+  updateMonsterStatus() {
     for (const m of this.monsters) {
       if (m.dead || m.data.hp <= 0 || !m.burn) continue;
-      m.burn.t = (m.burn.t || 0) + dt;
-      if (m.burn.t >= 1.0) {
-        m.burn.t -= 1.0;
+      if (m.burn.clock == null) m.burn.clock = this.fxNow;
+      if (this.fxNow - m.burn.clock >= ROUND_SECONDS) {
+        m.burn.clock += ROUND_SECONDS;
         m.burn.ticks--;
         const bd = m.burn.dmg;
         m.data.hp -= bd;
-        makeFloatText(this.engine.scene, String(bd), _v.set(m.x, 1.0, m.z), '#ff7a30');
-        drawBar(m.ent.bar, Math.max(0, m.data.hp / m.data.maxHp), '#e0483a');
+        this.fxText(String(bd), this._v3(m.x, 1.0, m.z), '#ff7a30');
+        this.fxDrawBar(m.ent.bar, Math.max(0, m.data.hp / m.data.maxHp), '#e0483a');
         if (m.data.hp <= 0) this.killMonster(m, m.burn.src);
         else if (m.burn.ticks <= 0) m.burn = null;
       }
     }
   },
 
+  /** Any living monster still in `roomId`, ignoring `exclude` (the one that
+   *  just died — its `dead` flag is set, but callers pass it for clarity).
+   *
+   *  Room-scoped on purpose. The boss floor clear used to scan every monster
+   *  on the floor, so a single un-fought spawn in a room the party never
+   *  visited kept `_bossSlain` parked and the floor never completed. */
+  roomHasLivingMonsters(roomId, exclude = null) {
+    return this.monsters.some(o =>
+      o !== exclude && !o.dead && o.data.hp > 0 && o.roomId === roomId);
+  },
+
   killMonster(m, h) {
     m.dead = true;
     m.ent.grp.visible = false;
     m.burn = null;
+    /* onDeath abilities (magmin Death Burst…) detonate before the loot flow */
+    if (m.data.abilities && this.monsterDeathBurst) this.monsterDeathBurst(m);
     /* bestiary: tally kills per monster id (unlocks the compendium entry at 10) */
     if (m.data && m.data.id) {
       if (!this.bestiary) this.bestiary = {};
@@ -1477,58 +2806,116 @@ export const combatMethods = {
       h.data.kills++;
       this.applyOnKillPerks(h, m);
     }
+    /* Companion kill: forward on-kill perks to the summoner (e.g. Beast Bond heal) */
+    if (h && h.companion) {
+      const s = this.heroes.find(a =>
+        !a.companion && !a.temp &&
+        a.data.name === h.summonerName &&
+        a.data.classKey === h.summonerClassKey &&
+        a.data.hp > 0);
+      if (s) this.applyOnKillPerks(s, m);
+    }
     /* Kill-streak tracking */
     this._killStreak = (this._killStreak || 0) + 1;
     this._killStreakTimer = 2.0;
-    if (this._killStreak === 3) makeFloatText(this.engine.scene, 'TRIPLE KILL!', _v.set(m.x, 1.5, m.z), '#ff9a3c');
-    else if (this._killStreak === 5) makeFloatText(this.engine.scene, 'MULTI KILL!', _v.set(m.x, 1.6, m.z), '#ff4030');
+    if (this._killStreak === 3) this.fxText('TRIPLE KILL!', this._v3(m.x, 1.5, m.z), '#ff9a3c');
+    else if (this._killStreak === 5) this.fxText('MULTI KILL!', this._v3(m.x, 1.6, m.z), '#ff4030');
     else if (this._killStreak >= 7) {
-      makeFloatText(this.engine.scene, 'MASSACRE!', _v.set(m.x, 1.7, m.z), '#ffd34a');
-      if (this.engine) this.engine.triggerShake(0.5, 0.3);
+      this.fxText('MASSACRE!', this._v3(m.x, 1.7, m.z), '#ffd34a');
+      this.triggerShake(0.5, 0.3);
     }
     this.gold += m.data.gold;
+    trackGold(this, m.data.gold);
+    if (m.data.gold > 0 && typeof this.notifyLootFeedback === 'function') {
+      this.notifyLootFeedback({ gold: m.data.gold });
+    }
     const before = this.heroes.map(a => a.data.level);
-    const share = Math.max(1, Math.round(m.data.xp * XP_SHARE));
-    /* temp allies fight for free — no XP, no level-ups on a one-floor guest */
-    for (const a of this.heroes) if (a.data.hp > 0 && !a.temp) grantXp(a.data, share, log);
+    const dungeonLevel = this.dungeonLevel || 1;
+    const share = (m.isBoss ? 10 : (m.data._ambushElite || this.monsterEliteRoom(m) ? 3 : 1)) * dungeonLevel;
+    for (const a of this.heroes) if (a.data.hp > 0 && !a.temp && !a.companion) grantXp(a.data, share, (msg, style) => this.fxLog(msg, style));
+    this.summons.syncScales();   // a level-up from this kill rescales companions
+    if (this.guild) this.guild.dispatchDungeonXp(share);
     const killer = h?.data?.name || 'The party';
-    log(`${killer} slays the ${m.data.name}. (+${m.data.gold}g, +${share} XP each)`, m.data._ambushElite ? 'elite' : m.isBoss ? 'boss' : 'kill');
-    onKill(this, m, h);
+    const goldText = m.data.gold ? ` (+${m.data.gold}g, +${share} XP each)` : ` (+${share} XP each)`;
+    this.fxLog(`${killer} slays the ${m.data.name}.${goldText}`, m.data._ambushElite ? 'elite' : m.isBoss ? 'boss' : 'kill');
+    if (this.fxOnKill) this.fxOnKill(m, h);
     /* Random drops: common–epic only (legendaries are quest rewards). */
     let dropChance = m.isBoss ? 1 : ((m.data._ambushElite || this.monsterEliteRoom(m)) ? 0.35 : 0.10);
     if (Math.random() < dropChance) {
-      const it = rollItem(this.activeQuest ? this.activeQuest.level : this.dungeonLevel);
+      const it = rollItem(this.activeQuest ? this.activeQuest.level : this.dungeonLevel, Math.random, null, { source: 'trash' });
       this.inventory.push(it);
-      log(`  ↳ ${m.data.name} dropped ${it.name} (ilvl ${it.ilvl})!`, 'treasure');
+      trackLoot(this, it);
+      if (typeof this.notifyLootFeedback === 'function') {
+        this.notifyLootFeedback({ item: it });
+      }
+      this.fxLog(`  ↳ ${m.data.name} dropped ${it.name} (ilvl ${it.ilvl})!`, 'treasure');
+    }
+    /* Independent dye roll — cosmetic loot on top of the gear table. */
+    const dyeChance = m.isBoss ? DYE_DROP_BOSS : ((m.data._ambushElite || this.monsterEliteRoom(m)) ? DYE_DROP_ELITE : DYE_DROP_NORMAL);
+    if (Math.random() < dyeChance) {
+      const dye = makeDye();
+      this.inventory.push(dye);
+      trackLoot(this, dye);
+      if (typeof this.notifyLootFeedback === 'function') {
+        this.notifyLootFeedback({ item: dye });
+      }
+      this.fxLog(`  ↳ 🎨 ${m.data.name} dropped a ${dye.name}!`, 'treasure');
     }
     if (m.isBoss) {
       /* Boss death spectacle: slow-mo, shake, golden fountain */
-      if (this.engine) {
-        this.engine.triggerSlowMo(1.5);
-        this.engine.triggerShake(1.2, 0.6);
+      this.triggerSlowMo(1.5);
+      this.triggerShake(1.2, 0.6);
+      this.fxDeathFountain(this._v3(m.x, 0.1, m.z));
+      this.fxPlaySfx('gateOpen', { volume: 0.9 });
+      const bossBonusGold = 50 * this.dungeonLevel;
+      this.gold += bossBonusGold;
+      trackGold(this, bossBonusGold);
+      if (typeof this.notifyLootFeedback === 'function') {
+        this.notifyLootFeedback({ gold: bossBonusGold });
       }
-      spawnDeathFountain(this.engine.scene, new THREE.Vector3(m.x, 0.1, m.z));
-      playSfx('gateOpen', { volume: 0.9 });
-      log(`👑 ${m.data.name} falls! The floor is conquered!`, 'boss');
-      this.gold += 50 * this.dungeonLevel;
 
-      const q = this.activeQuest;
-      const finalFloor = q && (this.questFloor|0) >= (q.floors|0);
-
-      if (finalFloor && q.rewardItem && !q.rewardClaimed) {
-        /* Quest reward is delivered at the end of the final dungeon floor. */
-        this.grantQuestRewardsAtDungeonEnd();
+      /* Defer the floor clear until the boss ROOM is empty. */
+      const minionsAlive = this.roomHasLivingMonsters(m.roomId, m);
+      if (minionsAlive) {
+        this._bossSlain = m;
+        this.fxLog(`👑 ${m.data.name} falls! Defeat the remaining minions to conquer the floor!`, 'boss');
       } else {
-        showBanner('FLOOR CLEARED!', `${m.data.name} defeated`);
-        const it = rollItem((this.activeQuest ? this.activeQuest.level : this.dungeonLevel) + 2, Math.random, null, { forceRarity: 'epic' });
-        this.inventory.push(it);
-        log(`  ↳ ${it.name} (ilvl ${it.ilvl}) claimed from the hoard!`, 'treasure');
+        this._completeBossFloorClear(m);
+      }
+    } else if (this._bossSlain) {
+      /* A minion died after the boss — check if the boss room is now clear */
+      const anyLeft = this.roomHasLivingMonsters(this._bossSlain.roomId);
+      if (!anyLeft) {
+        const boss = this._bossSlain;
+        this._bossSlain = null;
+        this.fxLog(`🏆 All enemies defeated! The floor is conquered!`, 'boss');
+        this._completeBossFloorClear(boss);
       }
     }
     if (this.heroes.some((a, i) => a.data.level > before[i])) this.announceLevelUp();
-    updateResources(this);
-    updatePartyFrames(this.heroes.map(x => x.data));
-    refreshMenus(this);
+
+    /* Song of Rest: passive post-combat heal (10% max HP) when all room
+       monsters are dead and a bard with songOfRest is in the party. */
+    if (!this.roomHasLivingMonsters(m.roomId, m)) {
+      for (const bard of this.heroes) {
+        if (bard.data && bard.data.hp > 0 && hasFeature(bard.data, 'songOfRest')) {
+          for (const ally of this.heroes) {
+            if (ally.data && ally.data.hp > 0 && ally.data.hp < ally.data.maxHp) {
+              const healAmt = Math.max(1, Math.floor(ally.data.maxHp * 0.10));
+              ally.data.hp = Math.min(ally.data.maxHp, ally.data.hp + healAmt);
+              this.fxText('+' + healAmt, this._v3(ally.x, 1.2, ally.z), '#6ae06a');
+              if (ally.ent && ally.ent.bar) drawBar(ally.ent.bar, ally.data.hp / ally.data.maxHp);
+            }
+          }
+          this.fxLog(`🎶 ${bard.data.name}'s Song of Rest heals the party (10% max HP).`, 'heal');
+          break;  // only one bard triggers Song of Rest per encounter
+        }
+      }
+    }
+
+    this.refreshResources();
+    this.refreshHud();
+    this.fxRefreshMenus();
   },
 
   monsterEliteRoom(m) {
@@ -1536,9 +2923,353 @@ export const combatMethods = {
     return r && (r.type === 'elite');
   },
 
+  /** Deferred boss floor clear: rewards, banner, quest completion. Called when
+      the boss AND all its minions are dead. */
+  _completeBossFloorClear(boss) {
+    const q = this.activeQuest;
+    const finalFloor = q && (this.questFloor|0) >= (q.floors|0);
+
+    if (finalFloor && q.rewardItem && !q.rewardClaimed) {
+      this.grantQuestRewardsAtDungeonEnd();
+    } else {
+      this.fxShowBanner('FLOOR CLEARED!', `${boss.data.name} defeated`);
+      const hoardLvl = this.activeQuest ? this.activeQuest.level : this.dungeonLevel;
+      const it = rollItem(hoardLvl, Math.random, null, { source: 'hoard', luck: 4 });
+      this.inventory.push(it);
+      trackLoot(this, it);
+      if (typeof this.notifyLootFeedback === 'function') {
+        this.notifyLootFeedback({ item: it });
+      }
+      this.fxLog(`  ↳ ${it.name} (ilvl ${it.ilvl}) claimed from the hoard!`, 'treasure');
+    }
+    this.refreshResources();
+    this.refreshHud();
+    this.fxRefreshMenus();
+    this._floorClearTimer = 3.0;
+  },
+
   announceLevelUp() {
-    const total = this.heroes.reduce((n, h) => n + pendingPoints(h.data), 0);
-    const badge = document.getElementById('nav-levelup-badge');
-    if (badge) { badge.textContent = total; badge.style.display = total > 0 ? '' : 'none'; }
+    const total = this.heroes.filter(h => !h.companion && !h.temp).reduce((n, h) => n + pendingPoints(h.data), 0);
+    /* The level-up button was folded into Party; its badge went with it. */
+    if (typeof document !== 'undefined') {
+      const badge = document.getElementById('nav-party-badge');
+      if (badge) { badge.textContent = total; badge.style.display = total > 0 ? '' : 'none'; }
+    }
+  },
+
+  /* ================================================================
+     Manual Mode Combat Execution API
+     ================================================================ */
+
+  manualPerformAttack(h, targetFoe = null) {
+    if (!h || h.actUsed) return false;
+    const alive = this.heroes.filter(x => x.data.hp > 0);
+    const foe = targetFoe || this.findMonsterTarget(h);
+    if (!foe || foe.data.hp <= 0) {
+      this.fxLog(`No valid target for ${h.data.name}'s attack.`, 'sys');
+      return false;
+    }
+
+    const atk = h.data.weaponProfile || { name: 'Unarmed', d: 4, n: 1, type: 'bludgeoning', source: 'weapon' };
+    const wpn = h.data.equipment && h.data.equipment.weapon;
+    const vw = (wpn && wpn.visualWeapon) || '';
+    const isRanged = vw.startsWith('ranged/');
+    const dist = Math.hypot(foe.x - h.x, foe.z - h.z);
+    const maxReach = isRanged ? 15.0 : 1.9;
+
+    /* If out of melee reach and using a melee weapon, move closer first! */
+    if (!isRanged && dist > maxReach) {
+      const budget = h.moveLeft != null ? h.moveLeft : this.cellsForSpeed(h);
+      if (budget <= 0) {
+        this.fxLog(`🦶 ${h.data.name} has no movement left to reach ${foe.data.name}.`, 'sys');
+        return false;
+      }
+      const goalCell = this.nearFloorCell(this.cellOf(foe.x, foe.z), 2);
+      if (goalCell >= 0) {
+        const path = this.findPath(this.cellOf(h.x, h.z), goalCell);
+        if (path && path.length > 1) {
+          const maxSteps = Math.min(budget, path.length - 1);
+          const actualPath = path.slice(0, maxSteps + 1);
+          h.path = actualPath;
+          h.pathI = 0;
+          h.repathT = 0;
+          h.moving = true;
+          h.moveLeft = Math.max(0, budget - maxSteps);
+          h._pendingAttackTarget = foe;
+          this.fxLog(`🏃 ${h.data.name} moves toward ${foe.data.name}...`, 'sys');
+          this.fxUpdateManualBar();
+          return true;
+        }
+      }
+    }
+
+    const sc = subclassOf(h.data);
+    const opts = this.buildAttackOpts(h, foe, sc);
+    opts.profile = atk;
+
+    h.actUsed = true;
+    this.heroAttackRoll(h, foe, alive, opts);
+
+    /* Extra Attack */
+    let attacks = 1;
+    if (hasFeature(h.data, 'extraAttack2')) attacks = 3;
+    else if (hasFeature(h.data, 'extraAttack')) attacks = 2;
+    for (let i = 1; i < attacks && foe.data.hp > 0; i++) {
+      this.heroAttackRoll(h, foe, alive, { profile: atk });
+    }
+
+    /* Offhand attack if applicable & bonus action free */
+    if (atk.source === 'weapon' && h.data.offhandProfile && foe.data.hp > 0 && !h.bonusUsed && !h._bonusActed) {
+      this.heroAttackRoll(h, foe, alive, { profile: h.data.offhandProfile });
+      h.bonusUsed = true;
+      h._bonusActed = true;
+    }
+
+    this.refreshHud();
+    this.fxUpdateInitTracker();
+    this.fxUpdateManualBar();
+    return true;
+  },
+
+  startSpellTargeting(h, key, radius = 4.0, isAoE = true, slotLevel = 1) {
+    this.cancelSpellTargeting();
+    const sp = SPELLS[key] || (key === 'moveMoonbeam' ? { label: 'Move Moonbeam', color: 0xc0e8ff } : null);
+    const spName = sp ? sp.label : key;
+    const isMultiTarget = key === 'magicMissile' || key === 'scorchingRay';
+    const totalDarts = isMultiTarget ? (key === 'magicMissile' ? 3 + Math.max(0, slotLevel - 1) : 3 + Math.max(0, slotLevel - 2)) : 1;
+
+    this.targetingState = {
+      active: true,
+      hero: h,
+      spellKey: key,
+      radius,
+      isAoE,
+      slotLevel,
+      isMultiTarget,
+      totalDarts,
+      assignedTargets: [],
+      isBonus: sp && (sp.bonusAction === true || sp.castingTime === 'bonus')
+    };
+
+    if (this.engine && this.engine.scene) {
+      this._targetingVisualObj = this.fxAoEVisual({ x: h.x, z: h.z }, sp?.color || 0xffaa30, radius);
+    }
+
+    if (isMultiTarget) {
+      this.fxLog(`🎯 Aiming ${spName} (Level ${slotLevel}) — Click target for Dart 1 of ${totalDarts} (Esc to cancel).`, 'sys');
+    } else {
+      const modeLabel = isAoE ? `Area (${Math.round(radius * 5)} ft radius)` : `Target`;
+      this.fxLog(`🎯 Aiming ${spName} [${modeLabel}] — Click target on screen to cast (Esc to cancel).`, 'sys');
+    }
+    this.fxUpdateManualBar();
+  },
+
+  updateSpellTargeting(x, z) {
+    if (!this.targetingState || !this.targetingState.active) return;
+    if (this._targetingVisualObj && this._targetingVisualObj.group) {
+      this._targetingVisualObj.group.position.set(x, 0.05, z);
+    }
+  },
+
+  confirmSpellTargeting(x, z, clickedMonster = null) {
+    if (!this.targetingState || !this.targetingState.active) return false;
+    const { hero, spellKey, slotLevel, isMultiTarget, totalDarts, assignedTargets } = this.targetingState;
+
+    if (isMultiTarget) {
+      const target = clickedMonster || (x != null && z != null ? this.monsters.find(m => m.active && m.data.hp > 0 && Math.hypot(m.x - x, m.z - z) <= 2.5) : null) || this.findMonsterTarget(hero);
+      if (target) {
+        assignedTargets.push(target);
+        this.fxText(`🎯 Dart ${assignedTargets.length}`, { x: target.x, y: 1.5, z: target.z }, '#ffda7b');
+        this.fxLog(`🎯 Dart ${assignedTargets.length} assigned to ${target.data.name} (${totalDarts - assignedTargets.length} remaining).`, 'sys');
+
+        if (assignedTargets.length < totalDarts) {
+          this.fxLog(`🎯 Click target for Dart ${assignedTargets.length + 1} of ${totalDarts}.`, 'sys');
+          this.fxUpdateManualBar();
+          return true;
+        }
+      }
+    }
+
+    const finalTargets = isMultiTarget ? (assignedTargets.length ? assignedTargets : null) : null;
+    this.cancelSpellTargeting();
+    return this.manualPerformSpell(hero, spellKey, clickedMonster, { x, z }, slotLevel, finalTargets);
+  },
+
+  cancelSpellTargeting() {
+    if (this._targetingVisualObj && this._targetingVisualObj.group && this.engine && this.engine.scene) {
+      this.engine.scene.remove(this._targetingVisualObj.group);
+      this._targetingVisualObj = null;
+    }
+    this.targetingState = null;
+    this.fxUpdateManualBar();
+  },
+
+  manualPerformSpell(h, key, targetFoe = null, targetPos = null, slotLevel = null, assignedTargets = null) {
+    if (!h) return false;
+    if (key === 'moveMoonbeam') {
+      if (!h.conc || h.conc.key !== 'moonbeam' || !h.conc.zone) {
+        this.fxLog(`No active Moonbeam to move.`, 'sys');
+        return false;
+      }
+      if (h.actUsed) {
+        this.fxLog(`${h.data.name} already used their Action this turn.`, 'sys');
+        return false;
+      }
+      if (!targetPos && !targetFoe && this.controlMode === 'manual') {
+        this.startSpellTargeting(h, 'moveMoonbeam', 1.8, true, 2);
+        return true;
+      }
+      const pos = targetPos || (targetFoe ? { x: targetFoe.x, z: targetFoe.z } : null);
+      if (pos) return this.useMoveMoonbeam(h, pos);
+      return false;
+    }
+    const sp = SPELLS[key];
+    if (!sp) return false;
+    const isBonus = sp.bonusAction === true || sp.castingTime === 'bonus';
+    if (isBonus && (h.bonusUsed || h._bonusActed)) {
+      this.fxLog(`${h.data.name} already used their Bonus Action this turn.`, 'sys');
+      return false;
+    }
+    if (!isBonus && h.actUsed) {
+      this.fxLog(`${h.data.name} already used their Action this turn.`, 'sys');
+      return false;
+    }
+
+    const isAoE = !!(sp.aoeRadius || sp.ai?.aoeRadius || sp.targetType === 'area' || sp.ai?.when === 'cluster');
+    const radius = sp.aoeRadius || sp.ai?.aoeRadius || (key === 'fireball' ? 4.0 : 2.5);
+    const chosenSlotLevel = slotLevel || sp.level || 1;
+
+    /* In manual mode, if no target foe or position has been selected yet, enter targeting mode! */
+    if (!targetPos && !targetFoe && !assignedTargets && this.controlMode === 'manual') {
+      this.startSpellTargeting(h, key, isAoE ? radius : 1.2, isAoE, chosenSlotLevel);
+      return true;
+    }
+
+    const alive = this.heroes.filter(x => x.data.hp > 0);
+    const foe = targetFoe || (targetPos ? this.monsters.find(m => m.active && m.data.hp > 0 && Math.hypot(m.x - targetPos.x, m.z - targetPos.z) <= radius) : null) || this.findMonsterTarget(h);
+
+    const success = sp.cast ? sp.cast(this, h, foe, alive, chosenSlotLevel, targetPos, assignedTargets) : this.resolveSpell(h, key, foe, alive);
+    if (success) {
+      if (isBonus) {
+        h.bonusUsed = true;
+        h._bonusActed = true;
+        if ((sp.level || 0) > 0) h._bonusLeveled = true;
+      } else {
+        h.actUsed = true;
+      }
+      spendSlotFor(h.data, chosenSlotLevel);
+      this.refreshHud();
+      this.fxUpdateInitTracker();
+      this.fxUpdateManualBar();
+      return true;
+    }
+    return false;
+  },
+
+  manualPerformCommonAction(h, actionType) {
+    if (!h || h.actUsed) return false;
+    /* Dash / Dodge / Disengage all run through the shared turn-engine helper
+       (turn_engine.takeCommonAction) so manual mode and both AIs book the same
+       budgets and effects. The extra flavour log stays manual-only. */
+    if (actionType === 'dash') {
+      const boost = this.cellsForSpeed(h);
+      if (!this.takeCommonAction(h, 'dash')) return false;
+      this.fxLog(`(+${boost * 5} ft movement budget)`, 'heal');
+    } else if (actionType === 'dodge') {
+      if (!this.takeCommonAction(h, 'dodge')) return false;
+      h.dodgeActive = true;
+      this.fxLog('(+5 AC until the start of their next turn)', 'heal');
+    } else if (actionType === 'disengage') {
+      if (!this.takeCommonAction(h, 'disengage')) return false;
+      this.fxLog('(movement provokes no opportunity attacks this turn)', 'heal');
+    } else if (actionType === 'help') {
+      h.actUsed = true;
+      const ally = this.heroes.find(x => x !== h && x.data.hp > 0);
+      if (ally) applyEffect(ally, 'inspired', { duration: ROUND_SECONDS, elapsed: this.fxNow });
+      this.fxLog(`🤝 ${h.data.name} takes the Help action to assist allies!`, 'heal');
+    } else {
+      return false;
+    }
+    this.refreshHud();
+    this.fxUpdateInitTracker();
+    this.fxUpdateManualBar();
+    return true;
+  },
+
+  manualPerformBonusAbility(h, abilityKey) {
+    if (!h || h.bonusUsed || h._bonusActed) {
+      this.fxLog(`${h.data.name} already used their Bonus Action this turn.`, 'sys');
+      return false;
+    }
+    const d = h.data;
+    const alive = (this.heroes || []).filter(x => x.data && x.data.hp > 0);
+
+    if (abilityKey === 'secondWind') {
+      if (d.secondWindUsed) { this.fxLog('Second Wind has already been used.', 'sys'); return false; }
+      d.secondWindUsed = true; h.bonusUsed = true; h._bonusActed = true;
+      const amt = roll(1, 10, d.level);
+      d.hp = Math.min(d.maxHp, d.hp + amt);
+      this.playAbilityFx(h, 'secondWind', { at: h });
+      this.fxText('+' + amt, this._v3(h.x, 1.55, h.z), '#6ae06a');
+      this.fxDrawBar(h.ent.bar, d.hp / d.maxHp);
+      this.fxLog(`💚 ${d.name} uses Second Wind (+${amt} HP).`, 'heal');
+    } else if (abilityKey === 'offhand') {
+      const foe = typeof this.findMonsterTarget === 'function' ? this.findMonsterTarget(h) : null;
+      if (!d.offhandProfile) { this.fxLog('No off-hand weapon equipped.', 'sys'); return false; }
+      if (!foe || foe.data.hp <= 0) { this.fxLog('No target for off-hand attack.', 'sys'); return false; }
+      h.bonusUsed = true; h._bonusActed = true;
+      this.heroAttackRoll(h, foe, alive, { profile: d.offhandProfile });
+    } else if (abilityKey === 'rage') {
+      if (!spendCharge(d, 'rage')) { this.fxLog('Rage has no uses left.', 'sys'); return false; }
+      h.bonusUsed = true; h._bonusActed = true;
+      applyEffect(h, 'raging', { duration: 30, elapsed: this.fxNow });
+      this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
+      this.fxLog(`😡 ${d.name} enters a Rage!`, 'crit');
+    } else if (abilityKey === 'cunningAction') {
+      if (!spendCharge(d, 'cunningActionClass')) { this.fxLog('Cunning Action has no uses left.', 'sys'); return false; }
+      h.bonusUsed = true; h._bonusActed = true;
+      applyEffect(h, 'hasted', { duration: 30, elapsed: this.fxNow });
+      this.playAbilityFx(h, 'cunningAction', { at: h });
+      this.fxLog(`💨 ${d.name} uses Cunning Action (+4 AC, +40% speed)!`, 'heal');
+    } else if (abilityKey === 'flurry') {
+      const foe = typeof this.findMonsterTarget === 'function' ? this.findMonsterTarget(h) : null;
+      if (!foe || foe.data.hp <= 0) { this.fxLog('No target for Flurry of Blows.', 'sys'); return false; }
+      if (!spendCharge(d, 'flurryOfBlows')) { this.fxLog('No ki left for Flurry of Blows.', 'sys'); return false; }
+      h.bonusUsed = true; h._bonusActed = true;
+      this.playAbilityFx(h, 'flurry', { at: foe });
+      const profile = d.weaponProfile || { name: 'Unarmed', d: 4, n: 1, type: 'bludgeoning', source: 'weapon' };
+      this.heroAttackRoll(h, foe, alive, { profile });
+      this.fxLog(`👊 ${d.name} uses Flurry of Blows!`, 'crit');
+    } else if (abilityKey === 'bardicInspiration') {
+      if (!spendCharge(d, 'bardicInspiration')) { this.fxLog('Bardic Inspiration has no uses left.', 'sys'); return false; }
+      h.bonusUsed = true; h._bonusActed = true;
+      for (const a of alive) applyEffect(a, 'inspired', { duration: Infinity, elapsed: this.fxNow });
+      this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
+      this.fxLog(`🎵 ${d.name} uses Bardic Inspiration (advantage on next attack)!`, 'heal');
+    } else if (abilityKey === 'dropWildShape' || abilityKey === 'revertWildShape') {
+      if (!d.inWildShape) { this.fxLog(`${d.name} is not in Wild Shape.`, 'sys'); return false; }
+      this.revertWildShape(h, 0);
+      this.fxLog(`🌿 ${d.name} drops Wild Shape and reverts to natural form.`, 'heal');
+      return true;
+    } else {
+      return false;
+    }
+
+    this.refreshHud();
+    this.fxUpdateInitTracker();
+    this.fxUpdateManualBar();
+    return true;
+  },
+
+  manualEndTurn() {
+    if (!this.initiative || !this.initiative.active) return;
+    const cur = this._currentActor();
+    if (cur) {
+      this.fxLog(`⏱️ ${cur.data.name} ends their turn.`, 'sys');
+    }
+    this._advanceTurn();
+    this.fxUpdateManualBar();
   }
 };
+
+export default combatMethods;

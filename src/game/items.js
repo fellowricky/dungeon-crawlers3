@@ -4,17 +4,39 @@
  * cyclically for generation (dependency is one-way for pure helpers).
  *
  * Item shape:
- *   baseKey, slot, rarity, ilvl, affixKeys[], perk?, bonuses{}, visuals...
+ *   baseKey, slot, rarity, ilvl, affixes[{key,n}], perk?, bonuses{}, visuals...
  *
- * bonuses shape (all optional, additive):
+ * bonuses shape (all optional, additive, FLAT keys so aggregateEquipment's
+ * generic numeric summing keeps working):
  *   str dex con int wis cha  — ability score bonuses
  *   ac atk dmg hp            — combat bonuses
  *   crit                     — lowers crit threshold (1 => crit on 19-20)
  *   heal                     — added to Cure Wounds / healing
- *   speed                    — movement multiplier bonus (0.1 = +10%)
+ *   speed                    — exploration movement multiplier (0.1 = +10%)
+ *   move                     — combat movement, in feet
+ *   saveStr…saveCha          — per-ability saving throw bonuses
+ *   elemFire…elemPsychic     — flat bonus damage of a type
+ *   slot1…slot9              — extra leveled spell slots
+ *   skills{}                 — nested per-skill map (kit gear only)
  *
- * Legendaries: quest rewards only. Always carry one combat perk and bond to
- * the wearer's level while equipped.
+ * ─── POWER MODEL ────────────────────────────────────────────────────────
+ * Every bonus has a POINT COST and every item has a POINT BUDGET, both defined
+ * in loot_budget.json and computed by budget.js. Generation spends the budget;
+ * it does not scale numbers by rarity tier. Consequences worth knowing:
+ *
+ *   - The BASE ITEM is charged against the budget, so an expensive base simply
+ *     cannot fit in a low-ilvl budget. That is why there is no minimum-floor
+ *     table any more — the old hand-maintained one has been deleted.
+ *   - Rarity is a DROP CHANCE plus a budget multiplier and an affix-line count.
+ *     It is not a gate: every rarity is rollable at every depth.
+ *   - ilvl comes from the QUEST TIER and the loot source, never from the floor
+ *     the party is standing on.
+ *   - Gear does NOT attune. Every item's stats are frozen at the ilvl it was
+ *     found at, so a drop is always compared against a fixed baseline.
+ *
+ * Legendaries carry one combat perk and are the only rarity that can. The perk
+ * is BUDGET-EXEMPT — its power comes from the found-ilvl band (perkBand) — so a
+ * low-ilvl legendary can still afford its own defining feature.
  */
 
 /* equipment slots, in display order */
@@ -27,15 +49,42 @@ export const SLOTS = [
   { key:'offhand',label:'Off-hand',icon:'🛡️' },
   { key:'ring1',  label:'Ring',    icon:'💍' },
   { key:'ring2',  label:'Ring',    icon:'💍' },
-  { key:'boots',  label:'Boots',   icon:'🥾' }
+  { key:'boots',  label:'Boots',   icon:'🥾' },
+  { key:'kit1',   label:'Kit',     icon:'🎒' },
+  { key:'kit2',   label:'Kit',     icon:'🧰' }
 ];
 export const SLOT_LABEL = Object.fromEntries(SLOTS.map(s=>[s.key,s.label]));
 /* which equip-slot(s) an item's `slot` field can occupy */
 export function slotsFor(itemSlot){
   if(itemSlot==='ring') return ['ring1','ring2'];
+  if(itemSlot==='kit') return ['kit1','kit2'];
   if(itemSlot==='shield') return ['offhand'];
   return [itemSlot];
 }
+
+/* Bag category tabs derive from an item's logical `slot` field (not the equip
+   key). Maps every value in BASES to one of the four bag tabs. */
+export function itemCategory(it){
+  if(!it) return 'other';
+  switch(it.slot){
+    case 'weapon': return 'weapon';
+    case 'helm': case 'armor': case 'gloves': case 'boots': case 'shield': return 'armor';
+    case 'amulet': case 'ring': return 'accessory';
+    case 'dye': return 'other';
+    default: return 'other'; /* kit + anything unforeseen */
+  }
+}
+
+/* Skill display labels — mirrors SKILLS in srd.js, duplicated here to keep
+   items.js free of a cyclic import back into the rules layer (see file header).
+   Used to format kit skill bonuses in bonusText. */
+export const SKILL_LABEL = {
+  athletics:'Athletics', acrobatics:'Acrobatics', sleightOfHand:'Sleight of Hand',
+  stealth:'Stealth', arcana:'Arcana', history:'History', investigation:'Investigation',
+  nature:'Nature', religion:'Religion', animalHandling:'Animal Handling', insight:'Insight',
+  medicine:'Medicine', perception:'Perception', survival:'Survival', deception:'Deception',
+  intimidation:'Intimidation', performance:'Performance', persuasion:'Persuasion'
+};
 
 /* armor proficiency ranks */
 export const PROF_RANK = { none:0, light:1, medium:2, heavy:3 };
@@ -47,209 +96,80 @@ export const WEAPON_RANK = { simple:0, martial:1 };
 /* rarities: weight is the base drop weight; mult scales gold value;
    affixes = how many secondary stat rolls it gets on top of the base.
    Legendary is quest-only and never appears in weighted random rolls. */
-export const RARITIES = {
-  common:    { name:'',          color:'#b4b0a4', weight:50,  mult:1.0, affixes:0 },
-  uncommon:  { name:'Fine',      color:'#5fd46a', weight:26,  mult:1.7, affixes:1 },
-  rare:      { name:'Enchanted', color:'#5aa0f0', weight:14,  mult:2.5, affixes:2 },
-  epic:      { name:'Ancient',   color:'#b06cf0', weight:6,   mult:3.5, affixes:2 },
-  legendary: { name:'Fabled',    color:'#e8a83f', weight:0,   mult:4.8, affixes:2 }
-};
+import ITEMS_DATA from './items.json' with { type: 'json' };
+import {
+  getTuning, bonusesCost, baseCost, itemBudget, affixBudget, baseAffordable,
+  rarityWeight, rarityHasPerk, affixSlotsFor, sourceIlvl, bonusLabel, slotLevelOf,
+  baseChassisCost,
+} from './budget.js';
+
+/* Re-exported so callers (and the loot editor) reach the pricing engine through
+   the item layer rather than importing two modules. */
+export {
+  getTuning, setTuning, defaultTuning, bonusesCost, baseCost, itemBudget,
+  affixBudget, bonusLabel, sourceIlvl, costGroups, unitCost,
+} from './budget.js';
+
+export const RARITIES = ITEMS_DATA.rarities;
 export const RARITY_ORDER = ['common','uncommon','rare','epic','legendary'];
 export const TIER = { common:0, uncommon:1, rare:2, epic:3, legendary:4 };
 
 /* ─── Legendary perks ─────────────────────────────────────────────────── */
-export const PERKS = {
-  cleave: {
-    id:'cleave', name:'Cleave',
-    desc:'On hit, deal 45% damage to a nearby foe.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  lifesteal: {
-    id:'lifesteal', name:'Bloodthirst',
-    desc:'Heal for 18% of damage dealt on hit.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  execute: {
-    id:'execute', name:'Execute',
-    desc:'+35% damage vs enemies below 30% HP.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  burn: {
-    id:'burn', name:'Immolate',
-    desc:'Hits ignite the foe for bonus fire damage over time.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  firstStrike: {
-    id:'firstStrike', name:'First Strike',
-    desc:'Your opening blow each fight deals +50% damage.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  critSurge: {
-    id:'critSurge', name:'Crit Surge',
-    desc:'Critical hits deal +4 bonus damage.',
-    hooks:['onCrit'], slots:['weapon']
-  },
-  chain: {
-    id:'chain', name:'Arc Chain',
-    desc:'Ranged/magic hits have a 40% chance to arc to a second foe.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  manaFont: {
-    id:'manaFont', name:'Mana Font',
-    desc:'15% chance on hit to restore a spell slot.',
-    hooks:['onHit'], slots:['weapon']
-  },
-  riposte: {
-    id:'riposte', name:'Riposte',
-    desc:'When hit in melee, retaliate for 3 + half level damage.',
-    hooks:['onDamaged'], slots:['weapon','offhand']
-  },
-  thorns: {
-    id:'thorns', name:'Thorns',
-    desc:'Attackers take 2 + floor(level/3) damage.',
-    hooks:['onDamaged'], slots:['armor','offhand','amulet']
-  },
-  phaseStep: {
-    id:'phaseStep', name:'Phase Step',
-    desc:'On kill, briefly gain +4 AC for 3 seconds.',
-    hooks:['onKill'], slots:['boots','weapon','ring']
-  },
-  keenEdge: {
-    id:'keenEdge', name:'Keen Edge',
-    desc:'Widen critical range by 1 (stacks with other sources).',
-    hooks:['passive'], slots:['weapon'],
-    passive:{ crit:1 }
-  },
-  bulwark: {
-    id:'bulwark', name:'Bulwark',
-    desc:'+1 AC and +8 HP while equipped.',
-    hooks:['passive'], slots:['armor','offhand','helm'],
-    passive:{ ac:1, hp:8 }
-  },
-  windwalker: {
-    id:'windwalker', name:'Windwalker',
-    desc:'+12% move speed while equipped.',
-    hooks:['passive'], slots:['boots','amulet','ring'],
-    passive:{ speed:0.12 }
-  }
-};
+export const PERKS = ITEMS_DATA.perks || {};
+if (!PERKS.arcaneBurst) PERKS.arcaneBurst = { id: 'arcaneBurst', name: 'Arcane Burst', hooks: ['onHit'] };
+if (!PERKS.frostBite) PERKS.frostBite = { id: 'frostBite', name: 'Frostbite', hooks: ['onHit'] };
+if (!PERKS.holySmite) PERKS.holySmite = { id: 'holySmite', name: 'Holy Smite', hooks: ['onHit'] };
 
 const PERK_LIST = Object.values(PERKS);
 
+export function perkBand(ilvl){
+  const l = Math.max(1, ilvl|0);
+  return l >= 15 ? 3 : l >= 10 ? 2 : l >= 5 ? 1 : 0;
+}
+export const PERK_MAGS = ITEMS_DATA.perkMags || {};
+if (!PERK_MAGS.arcaneBurst) PERK_MAGS.arcaneBurst = [4, 8, 12, 18];
+if (!PERK_MAGS.holySmite) PERK_MAGS.holySmite = [5, 10, 15, 22];
+
+/** Magnitude of a scaling perk at a given found-ilvl (null for passives). */
+export function perkMag(id, ilvl){
+  const arr = PERK_MAGS[id];
+  return arr ? arr[perkBand(ilvl)] : null;
+}
+/** Perk description with the band's actual numbers baked in. */
+export function perkDescFor(id, ilvl){
+  const m = perkMag(id, ilvl);
+  switch(id){
+    case 'cleave':      return `On hit, deal ${Math.round(m*100)}% damage to a nearby foe.`;
+    case 'lifesteal':   return `Heal for ${Math.round(m*100)}% of damage dealt on hit.`;
+    case 'execute':     return `+${Math.round((m-1)*100)}% damage vs enemies below 30% HP.`;
+    case 'burn':        return `Hits ignite the foe for ${m} fire damage per second.`;
+    case 'firstStrike': return `Your opening blow each fight deals +${Math.round((m-1)*100)}% damage.`;
+    case 'critSurge':   return `Critical hits deal +${m} bonus damage.`;
+    case 'chain':       return `Ranged/magic hits have a ${Math.round(m*100)}% chance to arc to a second foe.`;
+    case 'manaFont':    return `${Math.round(m*100)}% chance on hit to restore a spell slot.`;
+    case 'riposte':     return `When hit in melee, retaliate for ${m} damage.`;
+    case 'thorns':      return `Attackers take ${m} damage.`;
+    case 'phaseStep':   return `On kill, briefly gain +${m} AC for 3 seconds.`;
+    case 'arcaneBurst': return `Hits release an arcane explosion dealing ${m || 8} force damage in 2m.`;
+    case 'frostBite':   return `Hits chill the target, slowing movement speed for 3 seconds.`;
+    case 'holySmite':   return `Hits strike with holy light for +${m || 10} bonus radiant damage.`;
+    default:            return PERKS[id]?.desc || '';
+  }
+}
+
 /** Theme-flavored perk weights for quest legendaries. */
-const THEME_PERK_BIAS = {
-  ancient: ['keenEdge','manaFont','chain','bulwark'],
-  verdant: ['lifesteal','thorns','windwalker','riposte'],
-  frost:   ['firstStrike','execute','bulwark','phaseStep'],
-  grim:    ['lifesteal','execute','critSurge','riposte'],
-  molten:  ['burn','cleave','critSurge','thorns']
-};
+export const THEME_PERK_BIAS = ITEMS_DATA.themePerkBias;
 
 /* base item templates: primary bonus + slot + icon. `prof` on armor gates it
    behind class armor training. */
-const BASES = {
-  weapon: [
-    { name:'Club',          weaponType:'simple', icon:'dcss/item/weapon/club.png', prim:{}, visualWeapon:'blunt/mace', visualColor:'#8d5524', light:true },
-    { name:'Rusty Dagger',  weaponType:'simple', icon:'dcss/item/weapon/dagger_old.png', prim:{}, visualWeapon:'sword/dagger', visualColor:'#8f7777', finesse:true, light:true, thrown:true },
-    { name:'Wooden Wand',   weaponType:'simple', icon:'dcss/item/wand/gem_wood.png', prim:{}, visualWeapon:'magic/wand', visualColor:'#a17043' },
-    { name:'Dagger',        weaponType:'simple', icon:'dcss/item/weapon/dagger.png', prim:{atk:1, crit:1}, visualWeapon:'sword/dagger', finesse:true, light:true, thrown:true },
-    { name:'Shortsword',    weaponType:'martial', icon:'dcss/item/weapon/short_sword_1.png', prim:{atk:1, dmg:1}, visualWeapon:'sword/longsword', finesse:true, light:true },
-    { name:'Longsword',     weaponType:'martial', icon:'dcss/item/weapon/long_sword_1.png', prim:{atk:2, dmg:1}, visualWeapon:'sword/longsword', versatile:true },
-    { name:'Greatsword',    weaponType:'martial', icon:'dcss/item/weapon/greatsword_1.png', prim:{atk:2, dmg:2}, twoHanded:true, visualWeapon:'sword/longsword_alt', heavy:true },
-    { name:'Rapier',        weaponType:'martial', icon:'dcss/item/weapon/rapier_1.png', prim:{atk:2, crit:1}, visualWeapon:'sword/rapier', finesse:true },
-    { name:'Mace',          weaponType:'simple', icon:'dcss/item/weapon/mace_1.png', prim:{atk:1, dmg:2}, visualWeapon:'blunt/mace' },
-    { name:'Warhammer',     weaponType:'martial', icon:'dcss/item/weapon/war_hammer.png', prim:{dmg:2}, visualWeapon:'blunt/hammer', versatile:true },
-    { name:'Spear',         weaponType:'simple', icon:'dcss/item/weapon/spear.png', prim:{atk:2, dmg:1}, visualWeapon:'polearm/spear', versatile:true, thrown:true },
-    { name:'Battleaxe',     weaponType:'martial', icon:'dcss/item/weapon/axe.png', prim:{dmg:2, crit:1}, visualWeapon:'blunt/waraxe', versatile:true },
-    { name:'Shortbow',      weaponType:'simple', icon:'dcss/item/weapon/ranged/shortbow_1.png', prim:{atk:1, dmg:1}, range:5, twoHanded:true, visualWeapon:'ranged/bow' },
-    { name:'Longbow',       weaponType:'martial', icon:'dcss/item/weapon/ranged/longbow.png', prim:{atk:2, dmg:2}, range:8, twoHanded:true, visualWeapon:'ranged/bow', heavy:true },
-    { name:'Wand',          weaponType:'simple', icon:'dcss/item/wand/wand_silver.png', prim:{atk:1, int:1}, range:6, visualWeapon:'magic/wand' },
-    { name:'Staff',         weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{dmg:1, wis:1}, twoHanded:true, visualWeapon:'magic/wand', visualColor:'#8d5524', versatile:true },
-    { name:'Diamond Staff', weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, int:2, wis:1}, twoHanded:true, visualWeapon:'magic/diamond', visualColor:'#5c4033', versatile:true },
-    { name:'Gnarled Staff', weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, wis:2}, twoHanded:true, visualWeapon:'magic/gnarled', visualColor:'#8b5a2b', versatile:true },
-    { name:'Loop Staff',    weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, int:1, wis:2}, twoHanded:true, visualWeapon:'magic/loop', visualColor:'#7b4a1b', versatile:true },
-    { name:'S Staff',       weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, int:3}, twoHanded:true, visualWeapon:'magic/s', visualColor:'#4b2a0b', versatile:true },
-    { name:'Simple Staff',  weaponType:'simple', icon:'dcss/item/weapon/quarterstaff.png', prim:{atk:1, wis:1}, twoHanded:true, visualWeapon:'magic/simple', visualColor:'#8d5524', versatile:true },
-    { name:'Dragonspear',   weaponType:'martial', icon:'dcss/item/weapon/spear.png', prim:{atk:2, dmg:3}, twoHanded:true, visualWeapon:'polearm/dragonspear', heavy:true, reach:true },
-    { name:'Halberd',       weaponType:'martial', icon:'dcss/item/weapon/spear.png', prim:{atk:1, dmg:3, crit:1}, twoHanded:true, visualWeapon:'polearm/halberd', heavy:true, reach:true },
-    { name:'Longspear',     weaponType:'martial', icon:'dcss/item/weapon/spear.png', prim:{atk:3, dmg:2}, twoHanded:true, visualWeapon:'polearm/longspear', heavy:true, reach:true },
-    { name:'Flail',         weaponType:'martial', icon:'dcss/item/weapon/mace_1.png', prim:{atk:2, dmg:2}, visualWeapon:'blunt/flail' },
-    { name:'Katana',        weaponType:'martial', icon:'dcss/item/weapon/katana.png', prim:{atk:3, crit:1}, visualWeapon:'sword/katana', versatile:true },
-    { name:'Saber',         weaponType:'martial', icon:'dcss/item/weapon/scimitar.png', prim:{atk:2, speed:0.05}, visualWeapon:'sword/saber', finesse:true },
-    { name:'Scimitar',      weaponType:'martial', icon:'dcss/item/weapon/scimitar.png', prim:{atk:1, dmg:2, crit:1}, visualWeapon:'sword/scimitar', finesse:true, light:true },
-    { name:'Arming Sword',  weaponType:'martial', icon:'dcss/item/weapon/short_sword_1.png', prim:{atk:2, dmg:2}, visualWeapon:'sword/arming', versatile:true },
-    { name:'Crossbow',      weaponType:'martial', icon:'dcss/item/weapon/ranged/shortbow_1.png', prim:{atk:2, dmg:3}, range:6, twoHanded:true, visualWeapon:'ranged/crossbow', heavy:true, loading:true },
-    { name:'Hand Axe',      weaponType:'simple', icon:'dcss/item/weapon/axe.png', prim:{atk:1, dmg:2}, visualWeapon:'blunt/waraxe', light:true, thrown:true }
-  ],
-  shield: [
-    { name:'Buckler',     icon:'dcss/item/armor/shields/buckler_1.png', prim:{ac:1}, visualShield:'round' },
-    { name:'Kite Shield', icon:'dcss/item/armor/shields/shield_2_kite.png', prim:{ac:2}, visualShield:'kite' },
-    { name:'Tower Shield',icon:'dcss/item/armor/shields/large_shield_1.png', prim:{ac:2, hp:4}, visualShield:'crusader/fg' }
-  ],
-  helm: [
-    { name:'Cap',            icon:'dcss/item/armor/headgear/cap_1.png', prim:{ac:1}, visualHelm:'cloth/leather_cap', visualColor:'#8d5524' },
-    { name:'Circlet',        icon:'dcss/item/armor/headgear/elven_leather_helm.png', prim:{int:1, wis:1}, visualHelm:'headband/thick' },
-    { name:'Wizard Hat',     icon:'dcss/item/armor/headgear/wizard_hat_1.png', prim:{int:1, wis:1}, visualHelm:'magic/large' },
-    { name:'Tricorne Hat',   icon:'dcss/item/armor/headgear/hat_1.png', prim:{cha:1, dex:1}, visualHelm:'pirate/tricorne/basic' },
-    { name:'Barbuta',        icon:'dcss/item/armor/headgear/helmet_3.png', prim:{ac:1, hp:2}, visualHelm:'helmet/barbuta' },
-    { name:'Bascinet',       icon:'dcss/item/armor/headgear/helmet_4.png', prim:{ac:2}, visualHelm:'helmet/bascinet' },
-    { name:'Kettle Helm',    icon:'dcss/item/armor/headgear/helmet_2.png', prim:{ac:2, dex:-1}, visualHelm:'helmet/kettle' },
-    { name:'Horned Helm',    icon:'dcss/item/armor/headgear/crested_helmet.png', prim:{ac:2, str:1}, visualHelm:'helmet/horned' },
-    { name:'Spangenhelm',    icon:'dcss/item/armor/headgear/helmet_2.png', prim:{ac:2, hp:5}, visualHelm:'helmet/spangenhelm' },
-    { name:'Armet',          icon:'dcss/item/armor/headgear/helmet_5.png', prim:{ac:3}, visualHelm:'helmet/armet' },
-    { name:'Close Helm',     icon:'dcss/item/armor/headgear/helmet_5.png', prim:{ac:3, hp:3}, visualHelm:'helmet/close' },
-    { name:'Sugarloaf Helm', icon:'dcss/item/armor/headgear/plumed_helmet.png', prim:{ac:3, hp:6}, visualHelm:'helmet/sugarloaf' },
-    { name:'Great Helm',     icon:'dcss/item/armor/headgear/helmet_1.png', prim:{ac:3, hp:8}, visualHelm:'helmet/greathelm' },
-    { name:'Cloth Hood',     icon:'dcss/item/armor/headgear/wizard_hat_2.png', prim:{ac:1, dex:1}, visualHelm:'cloth/hood', visualColor:'#333333' },
-    { name:'Mail Coif',      icon:'dcss/item/armor/headgear/helmet_coif.png', prim:{ac:2}, visualHelm:'helmet/mail', visualColor:'#a9a9a9' }
-  ],
-  armor: [
-    /* 5e AC model: body armor SETS the AC base (armorBase) by category (prof).
-       Dex is applied per category in recalc (light=full, medium=max+2, heavy=0);
-       'none' torsos are cloth → unarmored (base 10 + Dex). Non-AC stats (hp/int/
-       dex) stay as item bonuses; AC no longer double-counts through prim.ac. */
-    { name:'Torn Robe',    icon:'dcss/item/armor/torso/robe_1_old.png', prim:{}, prof:'none', visualTorso:'clothes/robe', visualColor:'#7c6858' },
-    { name:'Peasant Shirt',icon:'dcss/item/armor/torso/animal_skin_1.png', prim:{}, prof:'none', visualTorso:'clothes/shortsleeve/shortsleeves', visualColor:'#d6cbb1' },
-    { name:'Tabard',       icon:'dcss/item/armor/torso/robe_2.png', prim:{hp:2}, prof:'none', visualTorso:'jacket/tabard', visualLegs:'none' },
-    { name:'Robe',         icon:'dcss/item/armor/torso/robe_1.png', prim:{int:1}, prof:'none', visualTorso:'clothes/robe', visualColor:'#3a66b2' },
-    { name:'Leather Armor',icon:'dcss/item/armor/torso/leather_armor_1.png', prim:{}, armorBase:11, prof:'light', visualTorso:'armour/leather' },
-    { name:'Chain Shirt',  icon:'dcss/item/armor/torso/chain_mail_1.png', prim:{hp:4}, armorBase:13, prof:'medium', visualTorso:'chainmail' },
-    { name:'Legion Armor', icon:'dcss/item/armor/torso/chain_mail_2.png', prim:{hp:6}, armorBase:14, prof:'medium', visualTorso:'armour/legion', visualShoulders:'legion' },
-    { name:'Plate Armor',  icon:'dcss/item/armor/torso/plate_1.png', prim:{hp:8}, armorBase:18, prof:'heavy', visualTorso:'armour/plate', visualLegs:'armour/plate' },
-    { name:'Sleeveless Tunic',icon:'dcss/item/armor/torso/robe_2.png', prim:{dex:1}, prof:'none', visualTorso:'clothes/sleeveless', visualColor:'#a0522d' },
-    { name:'Leather Vest', icon:'dcss/item/armor/torso/leather_armor_1.png', prim:{dex:1}, armorBase:11, prof:'light', visualTorso:'clothes/vest', visualColor:'#5c4033' }
-  ],
-  gloves: [
-    { name:'Gloves',          icon:'dcss/item/armor/hands/glove_1.png', prim:{atk:1}, visualGloves:'arms/hands/gloves' },
-    { name:'Leather Bracers', icon:'dcss/item/armor/hands/gauntlet_1.png', prim:{ac:1}, visualGloves:'arms/bracers' },
-    { name:'Gauntlets',       icon:'dcss/item/armor/hands/gauntlet_1.png', prim:{str:1}, visualGloves:'arms/armour/plate' },
-    { name:'Mage Gloves',     icon:'dcss/item/armor/hands/glove_3.png', prim:{int:1, wis:1}, visualGloves:'arms/hands/gloves' }
-  ],
-  boots: [
-    { name:'Sandals',       icon:'dcss/item/armor/feet/boots_4_green.png', prim:{speed:0.05}, visualShoes:'sandals' },
-    { name:'Boots',         icon:'dcss/item/armor/feet/boots_1_brown_new.png', prim:{speed:0.1}, visualShoes:'shoes/basic' },
-    { name:'Rimmed Boots',  icon:'dcss/item/armor/feet/boots_1_brown_new.png', prim:{speed:0.08, hp:2}, visualShoes:'boots/rimmed' },
-    { name:'Swift Boots',   icon:'dcss/item/armor/feet/boots_2_jackboots.png', prim:{speed:0.18, dex:1}, visualShoes:'shoes/basic' },
-    { name:'Ranger Boots',  icon:'dcss/item/armor/feet/boots_3_stripe_new.png', prim:{speed:0.12, dex:1}, visualShoes:'boots/fold' },
-    { name:'Ghillie Shoes', icon:'dcss/item/armor/feet/boots_1_brown_new.png', prim:{speed:0.15, dex:1}, visualShoes:'shoes/ghillies' },
-    { name:'Greaves',       icon:'dcss/item/armor/feet/boots_iron_2.png', prim:{ac:1, hp:2}, visualShoes:'armour/plate' },
-    { name:'Steel Greaves', icon:'dcss/item/armor/feet/boots_iron_2.png', prim:{ac:1, hp:4}, visualShoes:'armour/plate' }
-  ],
-  ring: [
-    { name:'Ring of Protection', icon:'dcss/item/ring/iron.png', prim:{ac:1} },
-    { name:'Ring of Might',      icon:'dcss/item/ring/gold.png', prim:{str:1} },
-    { name:'Ring of Precision',  icon:'dcss/item/ring/emerald.png', prim:{atk:1} },
-    { name:'Ring of Vigor',      icon:'dcss/item/ring/ruby.png', prim:{hp:5} },
-    { name:'Ring of the Adept',  icon:'dcss/item/ring/diamond.png', prim:{int:1, wis:1} }
-  ],
-  amulet: [
-    { name:'Amulet of Health',   icon:'dcss/item/amulet/crystal_red.png', prim:{con:1, hp:4} },
-    { name:'Amulet of Fury',     icon:'dcss/item/amulet/celtic_red.png', prim:{dmg:1} },
-    { name:'Amulet of Warding',  icon:'dcss/item/amulet/celtic_yellow.png', prim:{ac:1, hp:3} },
-    { name:'Amulet of Insight',  icon:'dcss/item/amulet/eye_cyan.png', prim:{wis:1, heal:2} }
-  ]
-};
+export const BASES = ITEMS_DATA.bases;
 const BASE_SLOTS = Object.keys(BASES);
+/* Slots eligible for the default (uniform) random slot pick. Kits are excluded
+   here and rolled via a low-probability branch instead (see KIT_DROP_RATE),
+   so random drops still favor combat gear. */
+const BASE_SLOTS_NONKIT = BASE_SLOTS.filter(s => s !== 'kit');
+/* Share of random loot that rolls an adventuring-gear kit (~5-10% target). */
+const KIT_DROP_RATE = 0.07;
 
 /** Look up a base template by slot + name. */
 export function getBase(slot, baseKey){
@@ -258,46 +178,61 @@ export function getBase(slot, baseKey){
   return list.find(b => b.name === baseKey) || null;
 }
 
-/* Minimum floor a base can start dropping on. Weak/basic gear drops from the
-   start; stronger bases unlock as the party descends, so there's always a
-   next upgrade to chase. (Starter items bypass this via makeStarterItem.) */
-const BASE_MIN_FLOOR = {
-  'Wand':2, 'Circlet':2, 'Gauntlets':2, 'Mage Gloves':2, 'Barbuta':2, 'Rimmed Boots':2,
-  'Longsword':3, 'Rapier':3, 'Mace':3, 'Battleaxe':3, 'Shortbow':3, 'Staff':3,
-  'Kite Shield':3, 'Chain Shirt':3, 'Swift Boots':3, 'Greaves':3,
-  'Ring of the Adept':3, 'Amulet of Health':3, 'Bascinet':3, 'Kettle Helm':3,
-  'Wizard Hat':3, 'Tricorne Hat':3, 'Ranger Boots':3,
-  'Simple Staff':3, 'Loop Staff':3, 'Arming Sword':3, 'Scimitar':3, 'Hand Axe':3, 'Mail Coif':3,
-  'Great Helm':4, 'Horned Helm':4, 'Spangenhelm':4, 'Legion Armor':4, 'Ghillie Shoes':4, 'Steel Greaves':4,
-  'Gnarled Staff':4, 'Diamond Staff':4, 'Flail':4, 'Saber':4, 'Crossbow':4,
-  'Greatsword':5, 'Spear':5, 'Longbow':5, 'Tower Shield':5, 'Plate Armor':5, 'Close Helm':5,
-  'S Staff':5, 'Longspear':5, 'Halberd':5, 'Katana':5,
-  'Sugarloaf Helm':6, 'Dragonspear':6
-};
+/* The old hand-maintained BASE_MIN_FLOOR table (120 entries) is GONE, and the
+   `minFloors` key has been removed from items.json along with it. What a base
+   can afford is now DERIVED: its cost is charged against the item budget, so a
+   Claymore cannot fit at low ilvl without anything gating it explicitly.
+   `budget.earliestIlvl()` reports the resulting unlock level for display. */
+
+/**
+ * Pick a base for `slot` that the budget can afford, biased toward bases that
+ * USE most of it — otherwise an ilvl-20 roll would keep handing out Clubs, since
+ * a cheap base is affordable at every level.
+ */
+function pickAffordableBase(slot, ilvl, rarity, rng){
+  const list = BASES[slot];
+  if(!list || !list.length) return null;
+  const budget = itemBudget(slot, ilvl, rarity);
+  const { baseMinShare } = getTuning().basePricing;
+
+  const affordable = list.filter(b => baseAffordable(slot, ilvl, rarity, b));
+  if(!affordable.length){
+    /* Below every base's price: hand back the cheapest so a slot is never empty. */
+    return list.reduce((lo, b) => baseCost(slot, b) < baseCost(slot, lo) ? b : lo, list[0]);
+  }
+  /* Prefer the meaty end of what's affordable; fall back to all of it early on
+     when nothing yet clears the minimum share. */
+  const meaty = affordable.filter(b => baseCost(slot, b) >= budget * baseMinShare);
+  return pick(meaty.length ? meaty : affordable, rng);
+}
 
 /* secondary affixes pulled for higher rarities */
-const AFFIXES = [
-  { key:'str', label:'of Strength',   b:{str:1} },
-  { key:'dex', label:'of Agility',    b:{dex:1} },
-  { key:'con', label:'of Endurance',  b:{con:1} },
-  { key:'int', label:'of Intellect',  b:{int:1} },
-  { key:'wis', label:'of Wisdom',     b:{wis:1} },
-  { key:'atk', label:'of Accuracy',   b:{atk:1} },
-  { key:'dmg', label:'of Wrath',      b:{dmg:1} },
-  { key:'ac',  label:'of the Turtle', b:{ac:1} },
-  { key:'hp',  label:'of the Bear',   b:{hp:5} },
-  { key:'crit',label:'of Ruin',       b:{crit:1} }
-];
+export const AFFIXES = ITEMS_DATA.affixes;
 const AFFIX_BY_KEY = Object.fromEntries(AFFIXES.map(a => [a.key, a]));
 const AFFIX_BY_LABEL = Object.fromEntries(AFFIXES.map(a => [a.label, a]));
 
 let _uid = 1;
 const pick = (arr, rng) => arr[Math.floor(rng()*arr.length)];
 
-const VISORS = [
-  'grated', 'grated_narrow', 'horned', 'pigface', 'pigface_raised',
-  'round', 'round_raised', 'slit', 'slit_narrow'
-];
+/* Which visors suit which helmet, keyed by `visualHelm`.
+   Only the closed-helm family is listed: on soft hats and hoods the visor floats
+   over a bare face, and on the open Roman/brimmed helms (legion, maximus,
+   morion, kettle) it fights the cheek guards and brim already in the sprite.
+   Helms absent from this map never roll a visor.
+   `chance` is per-helm — a great helm reads as unfinished with an open face, a
+   nasal helm is complete either way, so the closed family rolls one far more
+   often. Visors tint from the helm slot, so they match the rolled metal. */
+const HELM_VISORS = {
+  'helmet/greathelm':   { chance: 0.75, visors: ['grated', 'grated_narrow', 'slit', 'slit_narrow', 'horned'] },
+  'helmet/sugarloaf':   { chance: 0.75, visors: ['grated', 'grated_narrow', 'slit', 'slit_narrow', 'horned'] },
+  'helmet/close':       { chance: 0.75, visors: ['grated', 'grated_narrow', 'slit', 'slit_narrow', 'pigface', 'pigface_raised', 'round', 'round_raised'] },
+  'helmet/armet':       { chance: 0.60, visors: ['grated', 'grated_narrow', 'pigface', 'slit', 'round'] },
+  'helmet/bascinet':    { chance: 0.60, visors: ['pigface', 'pigface_raised', 'grated', 'grated_narrow', 'slit', 'round', 'round_raised'] },
+  'helmet/barbuta':     { chance: 0.60, visors: ['slit', 'slit_narrow', 'grated', 'grated_narrow', 'round', 'round_raised'] },
+  'helmet/norman':      { chance: 0.35, visors: ['grated', 'grated_narrow', 'slit', 'slit_narrow'] },
+  'helmet/nasal':       { chance: 0.35, visors: ['grated', 'grated_narrow', 'slit', 'slit_narrow'] },
+  'helmet/spangenhelm': { chance: 0.35, visors: ['grated', 'grated_narrow', 'slit', 'slit_narrow'] }
+};
 
 // Gear color variations drawn from LPC metal and cloth palettes
 const METALS = [
@@ -325,7 +260,7 @@ const CLOTHS = [
 function rollVisualColor(slot, rarityKey, rng) {
   // 60% of common drops retain their standard sprite sheet colors
   if (rarityKey === 'common' && rng() < 0.6) return null;
-  if (slot === 'ring' || slot === 'amulet') return null;
+  if (slot === 'ring' || slot === 'amulet' || slot === 'kit') return null;
 
   if (slot === 'weapon' || slot === 'shield' || slot === 'helm' || (slot === 'armor' && rng() < 0.4)) {
     return pick(METALS, rng);
@@ -334,91 +269,97 @@ function rollVisualColor(slot, rarityKey, rng) {
   }
 }
 
-/* Highest rarity random loot allows. Legendaries are quest-only. */
-function maxRarityIdx(floor){
-  if(floor>=12) return 3;   // epic
-  if(floor>=7)  return 2;   // rare
-  if(floor>=3)  return 1;   // uncommon
-  return 0;                // floors 1—2: common only
-}
-function rollRarity(floor, rng, maxIdx = null){
-  const cap = maxIdx != null ? Math.min(maxIdx, maxRarityIdx(floor)) : maxRarityIdx(floor);
-  const boost = 1 + floor*0.04;          // deeper floors tilt toward rarer loot
-  let total=0; const w=[];
-  for(let idx=0; idx<=cap; idx++){
-    w[idx] = RARITIES[RARITY_ORDER[idx]].weight * Math.pow(boost, idx);
-    total += w[idx];
-  }
-  let r = rng()*total;
-  for(let idx=0; idx<=cap; idx++){ r -= w[idx]; if(r<=0) return RARITY_ORDER[idx]; }
+/* NOTE ON `tier`: this is the QUEST TIER — the difficulty variable that also
+   drives monster scaling — NOT the 1–10 floor index within a dungeon
+   (`questFloor`). Quest tier ≈ party level. It selects the DROP ODDS; the item
+   level comes from the tier plus the loot source's offset (budget.sourceIlvl),
+   so the same quest drops the same quality of gear on floor 1 and floor 10. */
+
+/**
+ * Roll a rarity. There is NO CAP — every rarity is rollable at every tier, and
+ * scarcity alone is what makes the top ones special (legendary sits near 0.05%).
+ * The flat rarity budget multiplier is what makes removing the gate safe: an
+ * early epic is a good find rather than a run-breaker.
+ *
+ * `luck` (optional) multiplies the non-common weights, letting a chest or a
+ * hoard improve the mix without changing what's possible.
+ */
+function rollRarity(tier, rng, luck = 1){
+  const w = RARITY_ORDER.map(r => {
+    const base = rarityWeight(r, tier);
+    return r === 'common' ? base : base * luck;
+  });
+  const total = w.reduce((s, x) => s + x, 0);
+  if(total <= 0) return 'common';
+  let r = rng() * total;
+  for(let i = 0; i < w.length; i++){ r -= w[i]; if(r <= 0) return RARITY_ORDER[i]; }
   return 'common';
 }
 
-/* Combat bonuses (ac/atk/dmg/crit) are king in d20 math, so they scale in
-   small integer steps by rarity tier + ilvl — never by the raw rarity multiplier,
-   which would make high-ilvl pieces absurd. HP and gold value can scale more
-   freely; ability scores cap at +2 from a single source. */
-export function scaleBonus(key, baseVal, tier, ilvl){
-  const lvl = Math.max(1, ilvl|0);
-  switch(key){
-    case 'ac':
-    case 'atk':
-    case 'dmg':
-      return baseVal + Math.floor(tier/2) + Math.floor(lvl/8);   // +0..+2 tier, slow ilvl creep
-    case 'crit':
-      return baseVal + (tier>=3 ? 1 : 0);
-    case 'hp':
-      return Math.round(baseVal * (1 + tier*0.6)) + Math.floor(lvl/2)*2;
-    case 'speed':
-      return +(baseVal * (1 + tier*0.15)).toFixed(2);
-    case 'heal':
-      return baseVal + Math.floor(tier/2) + Math.floor(lvl/10);
-    case 'str': case 'dex': case 'con': case 'int': case 'wis': case 'cha':
-      return baseVal + (tier>=2 ? 1 : 0);                          // +1, or +2 at rare+
-    default:
-      return baseVal;
-  }
-}
-
-/** Recompute `item.bonuses` (and display name) from base + affixes + ilvl + perk. */
+/**
+ * Recompute `item.bonuses`, display name and gold value from base + affixes.
+ *
+ * This is now a pure SUM — the budget was already spent at generation time and
+ * the chosen magnitudes are stored on the item. Nothing here scales with rarity
+ * or ilvl, which is what makes an item's numbers stable for its whole life.
+ */
 export function recomputeItemBonuses(item){
   if(!item) return item;
   const base = getBase(item.slot, item.baseKey);
   const rarityKey = item.rarity || 'common';
   const R = RARITIES[rarityKey] || RARITIES.common;
-  const tier = TIER[rarityKey] ?? 0;
-  const ilvl = Math.max(1, item.ilvl|0);
-  const bonuses = {};
+  const ilvl = Math.max(0, item.ilvl|0);
+  const G = getTuning().gold;
 
-  const addB = (src, isAffix) => {
-    if(!src) return;
-    for(const k in src){
-      const v = scaleBonus(k, src[k], isAffix ? Math.max(0, tier-1) : tier, ilvl);
-      bonuses[k] = (bonuses[k]||0) + v;
+  /* Adventuring-gear tool: its whole budget buys skill ranks. */
+  const toolSkills = base?.toolSkills || item.toolSkills;
+  if(item.slot === 'kit' && toolSkills && toolSkills.length){
+    const ranks = Math.max(1, Math.floor(itemBudget('kit', ilvl, rarityKey) / getTuning().costs.skill));
+    const sb = {};
+    if(toolSkills.length <= 1){
+      sb[toolSkills[0]] = ranks;
+    } else {
+      /* Breadth vs depth: a dual-skill tool splits its ranks. */
+      const per = Math.max(1, Math.floor(ranks / toolSkills.length));
+      for(const sk of toolSkills) sb[sk] = per;
     }
+    item.bonuses = { skills: sb };
+    item.color = R.color;
+    item.toolSkills = [...toolSkills];         // persist for saves
+    item.name = item.uniqueName
+      || ((R.name ? R.name + ' ' : '') + (base?.name || item.baseKey || 'Tool'));
+    item.value = Math.round(G.flat + bonusesCost(item.bonuses) * G.perPoint);
+    return item;
+  }
+
+  const bonuses = {};
+  const add = (src, mult = 1) => {
+    if(!src) return;
+    for(const k in src) bonuses[k] = (bonuses[k] || 0) + src[k] * mult;
   };
 
-  if(base) addB(base.prim, false);
-  else if(item._legacyPrim) addB(item._legacyPrim, false);
+  if(base) add(base.prim);
+  else if(item._legacyPrim) add(item._legacyPrim);
 
-  const affixKeys = item.affixKeys || [];
   let suffix = '';
-  for(const key of affixKeys){
-    const aff = AFFIX_BY_KEY[key];
+  for(const a of (item.affixes || [])){
+    const aff = AFFIX_BY_KEY[a.key];
     if(!aff) continue;
-    addB(aff.b, true);
+    add(aff.b, Math.max(1, a.n | 0));
     if(!suffix) suffix = ' ' + aff.label;
   }
 
-  /* passive perk stats (keen edge, bulwark, etc.) */
+  /* Passive perk stats (Keen Edge, Bulwark, Windwalker) are flat and unscaled. */
   if(item.perk && item.perk.id && PERKS[item.perk.id]?.passive){
-    addB(PERKS[item.perk.id].passive, false);
+    add(PERKS[item.perk.id].passive);
   }
+
+  /* speed is fractional; keep it from accumulating float noise */
+  if(bonuses.speed) bonuses.speed = +bonuses.speed.toFixed(2);
 
   item.bonuses = bonuses;
   item.color = R.color;
 
-  /* rebuild name unless it's a named unique */
   if(!item.uniqueName){
     const prefix = R.name ? R.name + ' ' : '';
     const baseName = base?.name || item.baseKey || 'Relic';
@@ -427,47 +368,83 @@ export function recomputeItemBonuses(item){
     item.name = item.uniqueName;
   }
 
-  item.value = Math.round((5 + ilvl*7) * R.mult * (1 + Object.keys(bonuses).length*0.8) * (item.perk ? 1.9 : 1));
+  /* Value derives from the item's real point cost, so the economy can't drift
+     away from the power curve. */
+  const points = baseChassisCost(item.slot, base) + bonusesCost(bonuses);
+  item.value = Math.round(G.flat + points * G.perPoint + (item.perk ? G.perkBonus : 0));
   return item;
 }
 
-/** Preview bonuses at a given ilvl without mutating the item. */
-export function previewBonuses(item, ilvl){
-  const clone = {
-    ...item,
-    ilvl,
-    bonuses: {},
-    affixKeys: item.affixKeys ? [...item.affixKeys] : [],
-    perk: item.perk
-  };
-  recomputeItemBonuses(clone);
-  return clone.bonuses;
+/** Total points of power an item carries, INCLUDING any perk. This is the
+ *  "how good is it" number — used by tooltips, upgrade comparisons and pity. */
+export function itemPoints(item){
+  if(!item) return 0;
+  return baseChassisCost(item.slot, getBase(item.slot, item.baseKey)) + bonusesCost(item.bonuses);
 }
 
-/** Effective ilvl for display / combat (legendaries bond to wearer). */
-export function effectiveIlvl(item, heroLevel){
-  if(!item) return 1;
-  const base = Math.max(1, item.ilvl|0);
-  if(item.rarity === 'legendary' && heroLevel) return Math.max(base, heroLevel);
-  return base;
+/**
+ * Points the item actually SPENT from its budget: base + affixes only.
+ *
+ * Perks are budget-exempt by design, and the three PASSIVE perks (Bulwark, Keen
+ * Edge, Windwalker) grant real stats rather than a proc — so a legendary
+ * carrying one legitimately holds more power than its budget. `itemPoints`
+ * counts that; this doesn't. Anything checking "did generation stay inside the
+ * budget" must use this one.
+ */
+export function itemSpend(item){
+  if(!item) return 0;
+  const base = getBase(item.slot, item.baseKey);
+  let spend = baseCost(item.slot, base);
+  for(const a of (item.affixes || [])){
+    const def = AFFIX_BY_KEY[a.key];
+    if(def) spend += bonusesCost(def.b) * Math.max(1, a.n | 0);
+  }
+  return spend;
+}
+
+/** Preview bonuses without mutating the item. Stats are frozen, so this simply
+ *  reports what the item already carries (signature kept for existing callers). */
+export function previewBonuses(item, _ilvl){
+  return item?.bonuses || {};
+}
+
+/** Effective ilvl for display. Gear never attunes — always the found ilvl. */
+export function effectiveIlvl(item, _heroLevel){
+  if(!item) return 0;
+  return Math.max(0, item.ilvl|0);
 }
 
 function buildVisuals(slot, base, rarityKey, rng){
   const visualColor = base.visualColor || rollVisualColor(slot, rarityKey, rng);
-  const visualVisor = (slot === 'helm' && base.name !== 'Cap' && base.name !== 'Circlet' && base.name !== 'Cloth Hood' && base.name !== 'Mail Coif' && rng() < 0.4)
-    ? pick(VISORS, rng) : null;
+  const visorSpec = slot === 'helm' ? HELM_VISORS[base.visualHelm] : null;
+  const visualVisor = (visorSpec && rng() < visorSpec.chance)
+    ? pick(visorSpec.visors, rng) : null;
+
+  /* Sleeve cuts that read well layered over a robe. */
+  const ROBE_SLEEVES = [
+    'clothes/longsleeve/longsleeves',
+    'clothes/longsleeve/longsleeves_cuffed',
+    'clothes/longsleeve/laced',
+    'clothes/longsleeve/scoop',
+    'clothes/longsleeve/longsleeve2_cardigan'
+  ];
 
   let visualShoulders = base.visualShoulders || null;
   let visualSleeves = null;
+  let visualCape = base.visualCape || null;
   if (slot === 'armor') {
     if (base.name === 'Plate Armor') {
       visualShoulders = rng() < 0.8 ? pick(['pauldrons', 'bauldron', 'mantal'], rng) : null;
-    } else if (base.name === 'Legion Armor') {
-      visualShoulders = 'legion';
     } else if (base.name === 'Chain Shirt' && rng() < 0.5) {
       visualShoulders = 'epaulets';
-    } else if ((base.name === 'Robe' || base.name === 'Torn Robe') && rng() < 0.6) {
-      visualSleeves = 'clothes/longsleeve/longsleeves';
+    } else if (base.name === 'Robe' || base.name === 'Torn Robe') {
+      // Robes are the plainest torso sheet in the set, so they lean hardest on
+      // the extra layers to look like distinct pieces of gear.
+      if (rng() < 0.6) visualSleeves = pick(ROBE_SLEEVES, rng);
+      if (rng() < 0.35) visualShoulders = 'mantal';
+      if (!visualCape && rng() < 0.35) {
+        visualCape = base.name === 'Torn Robe' ? 'tattered' : pick(['solid', 'trim'], rng);
+      }
     }
   }
 
@@ -488,27 +465,99 @@ function buildVisuals(slot, base, rarityKey, rng){
     visualVisor,
     visualShoulders,
     visualSleeves,
+    visualBracers: base.visualBracers || null,
+    visualBelt: base.visualBelt || null,
+    visualCape,
     visualCrystal,
     crystalColor,
     visualShoes: base.visualShoes || null,
-    visualGloves: base.visualGloves || null
+    visualGloves: base.visualGloves || null,
+    visualNeck: base.visualNeck || null
   };
 }
 
-function rollAffixKeys(count, usedPrimKeys, rng){
-  const used = new Set(usedPrimKeys || []);
-  const keys = [];
-  for(let i=0;i<count;i++){
-    const options = AFFIXES.filter(a => !used.has(a.key));
-    if(!options.length) break;
-    const aff = pick(options, rng);
-    used.add(aff.key);
-    keys.push(aff.key);
-  }
-  return keys;
+/** Cost of one "step" of an affix (its `b` block applied once). */
+function affixStepCost(aff){ return bonusesCost(aff.b); }
+
+/** How many steps of an affix are allowed. Its own cap plus ilvl headroom —
+ *  without the headroom, deep budgets have nothing left to buy and underspend. */
+function affixMaxSteps(aff, ilvl){
+  const per = getTuning().affixSlots._maxPerIlvl || 0;
+  const extra = per > 0 ? Math.floor(Math.max(0, ilvl | 0) / per) : 0;
+  return (aff.max || 3) + extra;
 }
 
-function makeItemRecord(slot, base, rarityKey, ilvl, affixKeys, perk, rng){
+/**
+ * Is this affix legal on this slot at this ilvl, for this base?
+ *
+ * A base may narrow the pool with `affixAllow` — an explicit whitelist of affix
+ * keys, set per base in the loot editor. ABSENT means "no restriction", so every
+ * existing base keeps rolling the full pool; an empty array is a real (if odd)
+ * choice meaning "no affixes at all", not the same thing as absent. The
+ * whitelist only ever subtracts — the affix's own `slots` / `minIlvl` rules
+ * still apply on top.
+ */
+export function affixEligible(aff, slot, ilvl, base = null){
+  if(aff.slots && !aff.slots.includes(slot)) return false;
+  if(aff.minIlvl != null && ilvl < aff.minIlvl) return false;
+  const allow = base && base.affixAllow;
+  if(Array.isArray(allow) && !allow.includes(aff.key)) return false;
+  const cost = affixStepCost(aff);
+  return cost > 0;                              // unpriced affixes never roll
+}
+
+/**
+ * Spend an affix budget: pick affix lines and magnitudes until the points run
+ * out or the rarity's line limit is reached.
+ *
+ * Two passes on purpose. The first picks distinct lines with modest magnitudes
+ * so items read as a spread of properties rather than one huge number; the
+ * second tops existing lines up with whatever is left, so budgets are actually
+ * consumed instead of quietly evaporating.
+ */
+function rollAffixes(slot, ilvl, rarity, base, rng){
+  const { minAffixBudget } = getTuning().basePricing;
+  let remaining = affixBudget(slot, ilvl, rarity, base);
+  const maxLines = affixSlotsFor(rarity, ilvl);
+  const used = new Set(Object.keys(base?.prim || {}));
+  const out = [];
+
+  const eligible = () => AFFIXES.filter(a =>
+    !used.has(a.key) && affixEligible(a, slot, ilvl, base) && affixStepCost(a) <= remaining);
+
+  while(out.length < maxLines && remaining >= minAffixBudget){
+    const pool = eligible();
+    if(!pool.length) break;
+    const aff = pick(pool, rng);
+    const step = affixStepCost(aff);
+    /* Leave room for the lines still to come, so the first pick can't eat
+       everything and leave a "rare" with a single affix. */
+    const linesLeft = maxLines - out.length;
+    const share = linesLeft > 1 ? remaining / linesLeft : remaining;
+    const affordable = Math.max(1, Math.floor(share / step));
+    const capped = Math.min(affixMaxSteps(aff, ilvl), affordable);
+    const n = 1 + Math.floor(rng() * capped);
+    out.push({ key: aff.key, n });
+    used.add(aff.key);
+    remaining -= n * step;
+  }
+
+  /* Top-up pass: pour leftovers into lines that still have headroom. */
+  let guard = 40;
+  while(remaining >= minAffixBudget && guard-- > 0){
+    const room = out.filter(a => {
+      const def = AFFIX_BY_KEY[a.key];
+      return def && a.n < affixMaxSteps(def, ilvl) && affixStepCost(def) <= remaining;
+    });
+    if(!room.length) break;
+    const a = pick(room, rng);
+    a.n++;
+    remaining -= affixStepCost(AFFIX_BY_KEY[a.key]);
+  }
+  return out;
+}
+
+function makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng){
   const R = RARITIES[rarityKey];
   const visuals = buildVisuals(slot, base, rarityKey, rng);
   const item = {
@@ -518,9 +567,9 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixKeys, perk, rng){
     icon: base.icon,
     rarity: rarityKey,
     color: R.color,
-    ilvl: Math.max(1, ilvl|0),
-    floor: Math.max(1, ilvl|0), // legacy field kept for saves/UI
-    affixKeys: affixKeys || [],
+    ilvl: Math.max(0, ilvl|0),
+    floor: Math.max(0, ilvl|0), // legacy field kept for saves/UI
+    affixes: affixes || [],
     perk: perk || null,
     prof: base.prof || 'none',
     bonuses: {},
@@ -538,26 +587,54 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixKeys, perk, rng){
   if(base.versatile) item.versatile = true;
   if(base.loading) item.loading = true;
   if(base.armorBase) item.armorBase = base.armorBase;
+  if(base.acBase) item.acBase = base.acBase;
+  /* weapon-derived attack profile fields (5e): damage dice, melee/ranged, damage type, focus */
+  if(base.dmg) item.dmg = base.dmg.slice();
+  if(base.melee != null) item.melee = base.melee;
+  if(base.dmgType) item.dmgType = base.dmgType;
+  if(base.focus) item.focus = true;
   recomputeItemBonuses(item);
   return item;
 }
 
 /**
- * Generate one random item scaled to a dungeon floor / ilvl.
- * Random loot never exceeds epic.
+ * Generate one random item for a quest `tier`.
+ *
+ * `tier` selects the DROP ODDS. The item level comes from `tier` plus the loot
+ * source's offset (`opts.source`, default 'chest'), so what you find tracks the
+ * quest you took rather than which floor you happen to be standing on.
+ *
+ * opts:
+ *   source      'trash' | 'chest' | 'boss' | 'hoard' | 'quest'   (default 'chest')
+ *   ilvl        explicit item level, bypassing the source offset
+ *   luck        multiplier on non-common drop weights (chests, hoards)
+ *   forceRarity skip the rarity roll entirely
+ *   noLegendary re-roll legendaries down to epic (quest rewards handle their own)
  */
-export function rollItem(floor, rng=Math.random, forceSlot=null, opts={}){
-  const ilvl = Math.max(1, (opts.ilvl != null ? opts.ilvl : floor)|0);
-  const slot = forceSlot || pick(BASE_SLOTS, rng);
-  const base = pick(BASES[slot], rng);
+export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
+  const t = Math.max(0, tier|0);
+  const ilvl = Math.max(0, (opts.ilvl != null ? opts.ilvl : sourceIlvl(opts.source || 'chest', t, rng))|0);
+  // Kits are rare (~7%); the rest of random drops split evenly across combat gear.
+  const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit' : pick(BASE_SLOTS_NONKIT, rng));
 
-  let rarityKey = opts.forceRarity || rollRarity(Math.max(floor, ilvl), rng, opts.maxRarityIdx);
-  // Hard cap: random generation never yields legendary
-  if(rarityKey === 'legendary' && !opts.allowLegendary) rarityKey = 'epic';
+  let rarityKey = opts.forceRarity || rollRarity(t, rng, opts.luck != null ? opts.luck : 1);
+  if(rarityKey === 'legendary' && opts.noLegendary) rarityKey = 'epic';
 
-  const R = RARITIES[rarityKey];
-  const affixKeys = rollAffixKeys(R.affixes, Object.keys(base.prim||{}), rng);
-  return makeItemRecord(slot, base, rarityKey, ilvl, affixKeys, null, rng);
+  /* Adventuring-gear tool: no affixes, its whole budget buys skill ranks
+     (see recomputeItemBonuses). */
+  if(slot === 'kit'){
+    const base = pick(BASES.kit, rng);
+    return makeItemRecord('kit', base, rarityKey, ilvl, [], null, rng);
+  }
+
+  const base = pickAffordableBase(slot, ilvl, rarityKey, rng);
+  if(!base) return null;
+  const affixes = rollAffixes(slot, ilvl, rarityKey, base, rng);
+  /* Only the top rarity carries a perk — that, not raw numbers, is what sets it
+     apart now that the rarity budget multiplier is deliberately flat. */
+  const perk = rarityHasPerk(rarityKey) ? rollPerk(slot, opts.theme, rng) : null;
+  if(perk && PERK_MAGS[perk.id]) perk.desc = perkDescFor(perk.id, ilvl);
+  return makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng);
 }
 
 /** Pick a perk valid for a slot, optionally biased by quest theme. */
@@ -580,15 +657,20 @@ export function rollPerk(slot, theme=null, rng=Math.random){
 }
 
 /**
- * Quest-only legendary. Solid stats (epic-like affix count) + one perk.
- * Slightly fewer raw affixes than a pure stat-stick so the perk is the prize.
+ * A guaranteed legendary at a given ilvl (quest rewards, chain finales).
+ * Random loot can also roll one — see rollRarity — but only at lottery odds.
  */
 export function rollLegendary(ilvl, rng=Math.random, opts={}){
-  const slot = opts.forceSlot || pick(BASE_SLOTS, rng);
-  const base = pick(BASES[slot], rng);
-  const affixKeys = rollAffixKeys(RARITIES.legendary.affixes, Object.keys(base.prim||{}), rng);
+  // Legendaries are combat perks — never roll a kit slot.
+  const slot = opts.forceSlot || pick(BASE_SLOTS_NONKIT, rng);
+  const lvl = Math.max(0, ilvl|0);
+  const base = pickAffordableBase(slot, lvl, 'legendary', rng);
+  const affixes = rollAffixes(slot, lvl, 'legendary', base, rng);
   const perk = opts.perk || rollPerk(slot, opts.theme, rng);
-  const item = makeItemRecord(slot, base, 'legendary', Math.max(1, ilvl|0), affixKeys, perk, rng);
+  /* Bake the found-ilvl band's numbers into the perk text (stats freeze at
+     this ilvl, so the desc stays true for the item's whole life). */
+  if(perk && PERK_MAGS[perk.id]) perk.desc = perkDescFor(perk.id, lvl);
+  const item = makeItemRecord(slot, base, 'legendary', lvl, affixes, perk, rng);
   // Legendary metals lean flashy
   if(!base.visualColor && (slot === 'weapon' || slot === 'shield' || slot === 'helm' || slot === 'armor')){
     item.visualColor = pick(['#e8c25a','#8fd4e8','#252025','#c8d4db','#b06cf0'], rng);
@@ -596,36 +678,47 @@ export function rollLegendary(ilvl, rng=Math.random, opts={}){
   return item;
 }
 
-/** Create a tier-0 starter item by base name */
-export function makeStarterItem(slot, baseName) {
+/** Create a tier-0 starter item by base name. Zero budget, zero bonuses — the
+ *  point is that ANY level-1 drop is an upgrade on it (see STARTER_GEAR in srd.js
+ *  for the bottom-of-ladder bases each class begins with). */
+export function makeStarterItem(slot, baseName, look = null) {
   const base = BASES[slot].find(b => b.name === baseName);
   if (!base) return null;
+  const L = look || {};
   const item = {
     id: 'i'+(_uid++),
     baseKey: base.name,
-    name: base.name,
+    name: L.name || base.name,
+    starterName: L.name || null,
     slot,
     icon: base.icon,
     rarity: 'common',
     color: RARITIES.common.color,
-    ilvl: 1,
+    ilvl: 0,
     floor: 0,
-    affixKeys: [],
+    affixes: [],
     perk: null,
     bonuses: {},
     prof: base.prof || 'none',
     value: 0,
     starter: true, // intentionally zero-bonus tutorial gear
-    visualTorso: base.visualTorso,
-    visualLegs: base.visualLegs,
+    visualTorso: L.torso || base.visualTorso,
+    visualLegs: L.legs || base.visualLegs,
+    /* `sleeves` was missing here for years, so any starter kit that wanted a
+       sleeve layer silently lost it — see buildLayerPaths in sprite_animator. */
+    visualSleeves: L.sleeves || base.visualSleeves || null,
     visualWeapon: base.visualWeapon,
     visualHelm: base.visualHelm,
     visualShield: base.visualShield,
-    visualColor: base.visualColor || null,
+    visualColor: L.color || base.visualColor || null,
     visualVisor: null,
-    visualShoulders: base.visualShoulders || null,
-    visualShoes: base.visualShoes || null,
-    visualGloves: base.visualGloves || null
+    visualShoulders: L.shoulders || base.visualShoulders || null,
+    visualBracers: L.bracers || base.visualBracers || null,
+    visualBelt: L.belt || base.visualBelt || null,
+    visualCape: L.cape || base.visualCape || null,
+    visualShoes: L.shoes || base.visualShoes || null,
+    visualGloves: base.visualGloves || null,
+    visualNeck: base.visualNeck || null
   };
   /* propagate D&D 5e weapon gameplay properties from base -> item */
   if(base.weaponType) item.weaponType = base.weaponType;
@@ -639,44 +732,179 @@ export function makeStarterItem(slot, baseName) {
   if(base.versatile) item.versatile = true;
   if(base.loading) item.loading = true;
   if(base.armorBase) item.armorBase = base.armorBase;
+  if(base.acBase) item.acBase = base.acBase;
+  /* weapon-derived attack profile fields (5e): damage dice, melee/ranged, damage type, focus */
+  if(base.dmg) item.dmg = base.dmg.slice();
+  if(base.melee != null) item.melee = base.melee;
+  if(base.dmgType) item.dmgType = base.dmgType;
+  if(base.focus) item.focus = true;
   return item;
 }
 
-/** Loot roll for a chest: 1—3 items, scaled to floor.
- *  Each item has a 50% chance to roll one tier higher than the floor normally allows. */
-export function rollChestLoot(floor, rng=Math.random){
+/* ─── Dyes ────────────────────────────────────────────────────────────────
+   Cosmetic loot: applying a dye to an equipped, tintable piece of gear sets
+   its visualColor (the sprite recolor path in sprite_animator.js already
+   honors it). Common starts from the LPC CLOTHS palette, uncommon the LPC
+   METALS palette, and rare tiers add gem and magical shades beyond both. */
+export const DYE_COLORS = {
+  common: [
+    { name:'Leather Brown',  hex:'#8d5524' },
+    { name:'Forest Green',   hex:'#2e7d32' },
+    { name:'Midnight Black', hex:'#212121' },
+    { name:'Alabaster White',hex:'#f5f5f5' },
+    { name:'Crimson',        hex:'#a32020' },
+    { name:'Royal Blue',     hex:'#1565c0' },
+    { name:'Tan',            hex:'#d6cbb1' },
+    { name:'Olive Drab',     hex:'#6b8e23' },
+    { name:'Rust',           hex:'#b8432a' },
+    { name:'Charcoal',       hex:'#3a3a3a' },
+    { name:'Slate Grey',     hex:'#607d8b' },
+    { name:'Violet',         hex:'#7d3c98' },
+    { name:'Teal',           hex:'#008080' },
+    { name:'Maroon',         hex:'#800020' },
+    { name:'Navy',           hex:'#1b2a6b' },
+    { name:'Sand',           hex:'#c7b377' },
+    { name:'Rosewood',       hex:'#8a4a63' },
+    { name:'Lilac',          hex:'#b2a4d4' },
+    { name:'Sky Blue',       hex:'#4a90d9' },
+    { name:'Seafoam',        hex:'#7fd1b9' }
+  ],
+  uncommon: [
+    { name:'Copper',         hex:'#a26118' },
+    { name:'Bronze',         hex:'#b54936' },
+    { name:'Steel',          hex:'#726b7e' },
+    { name:'Brass',          hex:'#b08a36' },
+    { name:'Shadow Purple',  hex:'#6a1b9a' },
+    { name:'Dark Iron',      hex:'#52414a' },
+    { name:'Dark Leather',   hex:'#3e2723' },
+    { name:'Emerald',        hex:'#0e7d3c' },
+    { name:'Sapphire',       hex:'#1650a8' },
+    { name:'Ruby',           hex:'#9b111e' },
+    { name:'Topaz',          hex:'#d29a3e' },
+    { name:'Amber',          hex:'#c87f0f' },
+    { name:'Jade',           hex:'#43b3a0' },
+    { name:'Gunmetal',       hex:'#2f3437' },
+    { name:'Cobalt',         hex:'#3b6fd4' },
+    { name:'Vermilion',      hex:'#e33a2b' },
+    { name:'Ochre',          hex:'#b58127' },
+    { name:'Indigo',         hex:'#3f1f6e' }
+  ],
+  rare: [
+    { name:'Silver',         hex:'#c8d4db' },
+    { name:'Gold',           hex:'#e8c25a' },
+    { name:'Mithril',        hex:'#8fd4e8' },
+    { name:'Obsidian',       hex:'#252025' },
+    { name:'Platinum',       hex:'#e5e4e2' },
+    { name:'Electrum',       hex:'#c5a253' },
+    { name:'Adamantine',     hex:'#6b7b8d' },
+    { name:'Pearl',          hex:'#f0e6d0' },
+    { name:'Amethyst',       hex:'#9b59b6' },
+    { name:'Orichalcum',     hex:'#d48416' },
+    { name:'Abyssal',        hex:'#14141e' },
+    { name:'Inferno',        hex:'#ff7a1a' }
+  ]
+};
+const DYE_VALUE = { common: 40, uncommon: 90, rare: 200 };
+/* rarity odds for a dropped dye */
+const DYE_RARITY_WEIGHTS = [ ['common', 60], ['uncommon', 30], ['rare', 10] ];
+
+export function makeDye(rng = Math.random, opts = {}){
+  let rarity = opts.rarity;
+  if(!rarity){
+    let roll = rng() * DYE_RARITY_WEIGHTS.reduce((s, [,w]) => s + w, 0);
+    for(const [r, w] of DYE_RARITY_WEIGHTS){ roll -= w; if(roll <= 0){ rarity = r; break; } }
+    rarity = rarity || 'common';
+  }
+  const c = opts.color || pick(DYE_COLORS[rarity], rng);
+  /* Plain record (not makeItemRecord): no base/bonuses/visuals. value>0 +
+     empty bonuses/affixes keep migrateItem's starter heuristic off it. */
+  return {
+    id: 'i'+(_uid++),
+    baseKey: 'Dye',
+    slot: 'dye',
+    icon: '🎨',
+    name: `${c.name} Dye`,
+    rarity,
+    color: RARITIES[rarity].color,
+    dyeColor: c.hex,
+    ilvl: 1,
+    floor: 1,
+    value: DYE_VALUE[rarity] || 40,
+    affixes: [],
+    perk: null,
+    prof: 'none',
+    bonuses: {}
+  };
+}
+
+const CHEST_DYE_CHANCE = 0.18;
+
+/** Loot roll for a chest: 1—3 gear items (+ occasionally a dye) at the quest
+ *  tier. Half the items roll with a luck bonus on the non-common weights, which
+ *  improves the mix without changing what's reachable — there is no tier cap to
+ *  respect any more. */
+export function rollChestLoot(tier, rng=Math.random, questFloor=0){
   const n = 1 + (rng()<0.5?0:1) + (rng()<0.22?1:0);
   const items = [];
   for(let i=0;i<n;i++){
-    const boosted = rng() < 0.5;
-    const tier = boosted ? Math.min(maxRarityIdx(floor) + 1, 3) : undefined;
-    items.push(rollItem(floor, rng, undefined, tier !== undefined ? { maxRarityIdx: tier } : {}));
+    const opts = { source: 'chest', questFloor };
+    if(rng() < 0.5) opts.luck = 2.5;
+    const it = rollItem(tier, rng, undefined, opts);
+    if(it) items.push(it);
   }
+  if(rng() < CHEST_DYE_CHANCE) items.push(makeDye(rng));
   return items;
 }
 
 /** Human-readable one-line summary of an item's bonuses. */
 export function bonusText(item, heroLevel=null){
-  const order = ['ac','atk','dmg','hp','crit','heal','str','dex','con','int','wis','cha','speed'];
-  const label = { ac:'AC', atk:'Hit', dmg:'Dmg', hp:'HP', crit:'Crit', heal:'Heal',
-                  str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS', cha:'CHA', speed:'Speed' };
-
-  let bonuses = item.bonuses || {};
-  if(heroLevel && item.rarity === 'legendary'){
-    const eff = effectiveIlvl(item, heroLevel);
-    if(eff !== item.ilvl) bonuses = previewBonuses(item, eff);
-  }
-
+  /* Fixed order for the classic stats, then the newer families in a stable
+     order so tooltips don't shuffle between renders. */
+  const order = ['ac','atk','dmg','hp','crit','heal','str','dex','con','int','wis','cha','move','speed'];
+  const bonuses = item.bonuses || {};
   const parts = [];
-  for(const k of order){
+  const emit = k => {
     const v = bonuses[k];
-    if(!v) continue;
-    if(k==='speed') parts.push(`+${Math.round(v*100)}% Speed`);
-    else if(k==='crit') parts.push(`+${v} Crit range`);
-    else parts.push(`+${v} ${label[k]}`);
+    if(!v) return;
+    if(k === 'speed') parts.push(`+${Math.round(v*100)}% Speed`);
+    else if(k === 'crit') parts.push(`+${v} Crit range`);
+    else if(k === 'move') parts.push(`+${v} ft Move`);
+    else if(slotLevelOf(k)) parts.push(`+${v} ${bonusLabel(k)}`);
+    else parts.push(`+${v} ${bonusLabel(k)}`);
+  };
+  for(const k of order) emit(k);
+  /* Saves, elemental damage and spell slots, in whatever order they exist. */
+  for(const k in bonuses){
+    if(order.includes(k) || k === 'skills') continue;
+    emit(k);
+  }
+  /* Kit gear: per-skill check bonuses. */
+  if(bonuses.skills){
+    for(const sk in bonuses.skills){
+      const v = bonuses.skills[sk];
+      if(v) parts.push(`+${v} ${SKILL_LABEL[sk] || sk}`);
+    }
   }
   /* Body armor advertises the AC base it sets (not an additive bonus). */
   if(item.armorBase) parts.unshift(`AC ${item.armorBase} (${item.prof})`);
+  /* Shields/helms: chassis AC is a property of the item, not a stat bonus, so
+     it isn't in `bonuses` and has to be printed explicitly. */
+  else if(item.acBase) parts.unshift(`+${item.acBase} AC`);
+  /* Weapons show their D&D 5e damage die + type up front. */
+  if(item.slot === 'weapon' && item.dmg){
+    const tags = [];
+    if(item.finesse) tags.push('finesse');
+    if(item.light) tags.push('light');
+    if(item.thrown) tags.push('thrown');
+    if(item.twoHanded) tags.push('two-handed');
+    if(item.heavy) tags.push('heavy');
+    if(item.reach) tags.push('reach');
+    if(item.versatile) tags.push('versatile');
+    if(item.loading) tags.push('loading');
+    if(item.focus) tags.push('focus');
+    const tag = tags.length ? ` (${tags.join(', ')})` : '';
+    parts.unshift(`${item.dmg[0]}d${item.dmg[1]} ${item.dmgType || ''}${tag}`.trim());
+  }
   return parts.join(' — ');
 }
 
@@ -690,20 +918,23 @@ export function perkText(item){
   return `★ ${name} — ${desc}`;
 }
 
-/** Aggregate a hero's equipped items into a single bonuses object.
- *  Legendaries use effective ilvl (bonded to hero level). */
+/** Aggregate a hero's equipped items into a single bonuses object. */
 export function aggregateEquipment(equipment, heroLevel=null){
   const total = {};
   for(const slot in equipment){
     const it = equipment[slot];
     if(!it) continue;
     migrateItem(it);
-    let bonuses = it.bonuses || {};
-    if(heroLevel && it.rarity === 'legendary'){
-      const eff = effectiveIlvl(it, heroLevel);
-      if(eff !== (it.ilvl|0)) bonuses = previewBonuses(it, eff);
+    const bonuses = it.bonuses || {};
+    for(const k in bonuses){
+      if(k === 'skills'){
+        /* merge the nested per-skill kit map instead of numeric-adding */
+        total.skills = total.skills || {};
+        for(const sk in bonuses.skills) total.skills[sk] = (total.skills[sk]||0) + bonuses.skills[sk];
+        continue;
+      }
+      total[k] = (total[k]||0) + bonuses[k];
     }
-    for(const k in bonuses) total[k] = (total[k]||0) + bonuses[k];
   }
   return total;
 }
@@ -711,10 +942,11 @@ export function aggregateEquipment(equipment, heroLevel=null){
 /** Retrieve base item stats as a bonusText-style string */
 export function getBaseStatsText(slot, name) {
   const base = BASES[slot]?.find(b => name.endsWith(b.name) || name.includes(b.name));
-  if (base && base.prim && Object.keys(base.prim).length > 0) {
-    return bonusText({ bonuses: base.prim });
-  }
-  return '';
+  if (!base) return '';
+  /* Bases carry no stat bonuses any more — only chassis. Report that instead of
+     the (now always empty) `prim` block. */
+  return bonusText({ bonuses: {}, slot, dmg: base.dmg, dmgType: base.dmgType,
+                     armorBase: base.armorBase, acBase: base.acBase, prof: base.prof });
 }
 
 /* ─── Migration / attunement ──────────────────────────────────────────── */
@@ -737,9 +969,16 @@ function extractAffixKeysFromName(name){
   return keys;
 }
 
-/** Ensure legacy save items have baseKey / ilvl / affixKeys. Safe to call repeatedly. */
+/** Ensure legacy save items have baseKey / ilvl / affixes. Safe to call repeatedly. */
 export function migrateItem(it){
-  if(!it || it._migrated) return it;
+  if(!it) return it;
+  /* amulets predating the neck sprite layer: backfill the visual even on
+     saves that were already migrated (the flag persists into save files) */
+  if (it.slot === 'amulet' && it.visualNeck === undefined) {
+    const b = getBase(it.slot, it.baseKey || it.name || '');
+    if (b && b.visualNeck) it.visualNeck = b.visualNeck;
+  }
+  if(it._migrated) return it;
 
   if(!it.baseKey){
     const base = findBaseFromName(it.slot, it.name);
@@ -758,27 +997,59 @@ export function migrateItem(it){
       if (it.slot === 'weapon' && it.weaponType === undefined && base.weaponType) it.weaponType = base.weaponType;
       if (it.twoHanded === undefined && base.twoHanded) it.twoHanded = true;
       if (it.range === undefined && base.range != null) it.range = base.range;
+      if (it.finesse === undefined && base.finesse) it.finesse = true;
+      if (it.light === undefined && base.light) it.light = true;
+      if (it.heavy === undefined && base.heavy) it.heavy = true;
+      if (it.reach === undefined && base.reach) it.reach = true;
+      if (it.thrown === undefined && base.thrown) it.thrown = true;
+      if (it.versatile === undefined && base.versatile) it.versatile = true;
+      if (it.loading === undefined && base.loading) it.loading = true;
+      if (it.armorBase === undefined && base.armorBase) it.armorBase = base.armorBase;
+      /* Shields/helms predating the chassis-AC split carried their AC in the
+         base's `prim` block, which flowed into `bonuses`. Bases now hold no stat
+         bonuses at all, so their protection lives in `acBase` and is read
+         directly by recalc — backfill it or an old shield grants nothing. */
+      if (it.acBase === undefined && base.acBase) it.acBase = base.acBase;
+      /* weapon-derived attack profile fields (5e): dice, melee/ranged, damage type, focus */
+      if (it.slot === 'weapon') {
+        if (it.dmg === undefined && base.dmg) it.dmg = base.dmg.slice();
+        if (it.melee === undefined && base.melee != null) it.melee = base.melee;
+        if (it.dmgType === undefined && base.dmgType) it.dmgType = base.dmgType;
+        if (it.focus === undefined && base.focus) it.focus = true;
+      }
+      /* amulets predating the neck sprite layer get their visual backfilled */
+      if (it.slot === 'amulet' && it.visualNeck === undefined && base.visualNeck) it.visualNeck = base.visualNeck;
     }
   }
-  if(it.ilvl == null) it.ilvl = Math.max(1, it.floor|0) || 1;
-  if(!Array.isArray(it.affixKeys)){
-    it.affixKeys = extractAffixKeysFromName(it.name || '');
+  if(it.ilvl == null) it.ilvl = Math.max(0, it.floor|0);
+  /* Budget-rework migration: items used to store bare `affixKeys` and derive
+     magnitudes by rarity/ilvl scaling. They now store explicit magnitudes.
+     Convert one step per old key and let the budget re-fill the rest below. */
+  if(!Array.isArray(it.affixes)){
+    const keys = Array.isArray(it.affixKeys) ? it.affixKeys : extractAffixKeysFromName(it.name || '');
+    it.affixes = keys.filter(k => AFFIX_BY_KEY[k]).map(k => ({ key: k, n: 1 }));
+    delete it.affixKeys;
   }
   if(it.perk && typeof it.perk === 'string'){
     const def = PERKS[it.perk];
     it.perk = def ? { id:def.id, name:def.name, desc:def.desc } : null;
   }
-  if(it.rarity === 'legendary' && !it.perk){
-    // Legacy legendary without perk — grant a default so it stays special
+  if(it.rarity === 'legendary' && !it.perk && it.slot !== 'kit'){
+    // Legacy legendary without perk — grant a default so it stays special.
+    // Tools (kit slot) are tier-5 "legendary" for color only — never perked.
     it.perk = rollPerk(it.slot, null, Math.random);
+    if(PERK_MAGS[it.perk.id]) it.perk.desc = perkDescFor(it.perk.id, it.ilvl || 1);
   }
   /* Detect pre-ilvl starter gear: common, no value, floor 0, empty bonuses */
   if(it.starter || (it.rarity === 'common' && (it.floor === 0 || it.floor == null) && (it.value === 0 || it.value == null)
-      && !(it.affixKeys||[]).length && it.bonuses && Object.keys(it.bonuses).length === 0)){
+      && !(it.affixes||[]).length && it.bonuses && Object.keys(it.bonuses).length === 0)){
     it.starter = true;
     it.bonuses = {};
     it.value = 0;
-    it.name = it.baseKey || it.name;
+    /* Starters get their name forced back to the base to strip affix-derived
+       names off legacy items. `starterName` opts out: it is the class-kit name
+       chosen in STARTER_GEAR, not something an affix invented. */
+    it.name = it.starterName || it.baseKey || it.name;
     it._migrated = true;
     return it;
   }
@@ -797,61 +1068,12 @@ export function migrateInventory(list){
   for(const it of list) migrateItem(it);
 }
 
-/**
- * Bond / attune equipped gear after a hero levels up.
- * - Legendary: ilvl snaps to hero level (grows forever)
- * - Rare / Epic: +1 ilvl per level-up, capped at hero level
- * - Uncommon: +1 ilvl every other level (half rate), cap hero level
- * - Common: no attunement
- * Returns true if any item changed.
- */
-export function attuneHeroGear(hero, logFn=null){
-  if(!hero?.equipment) return false;
-  let changed = false;
-  const lvl = hero.level|0;
-
-  for(const slot of Object.keys(hero.equipment)){
-    const it = hero.equipment[slot];
-    if(!it) continue;
-    migrateItem(it);
-    if(it.starter) continue; // tutorial gear never attunes — replace it
-    const before = it.ilvl|0;
-    let next = before;
-
-    if(it.rarity === 'legendary'){
-      next = Math.max(before, lvl);
-    } else if(it.rarity === 'epic' || it.rarity === 'rare'){
-      if(before < lvl) next = Math.min(before + 1, lvl);
-    } else if(it.rarity === 'uncommon'){
-      if(before < lvl && (lvl % 2 === 0)) next = Math.min(before + 1, lvl);
-    }
-
-    if(next !== before){
-      it.ilvl = next;
-      it.floor = next;
-      recomputeItemBonuses(it);
-      changed = true;
-      if(logFn){
-        const verb = it.rarity === 'legendary' ? 'bonds to' : 'attunes to';
-        logFn(`  ↳ ${it.name} ${verb} ilvl ${next}`, 'level');
-      }
-    }
-  }
-  return changed;
-}
-
-/** When equipping a legendary, immediately bond it to the hero's level. */
-export function bondLegendaryOnEquip(item, heroLevel){
-  if(!item || item.rarity !== 'legendary') return item;
-  migrateItem(item);
-  const eff = Math.max(item.ilvl|0, heroLevel|0);
-  if(eff !== (item.ilvl|0)){
-    item.ilvl = eff;
-    item.floor = eff;
-    recomputeItemBonuses(item);
-  }
-  return item;
-}
+/* ATTUNEMENT IS GONE. Gear used to walk its ilvl up as the hero levelled, which
+   meant equipment quietly kept pace whether or not you found anything — so a
+   drop could never feel like a find. Every item's stats are now frozen at the
+   ilvl it was found at, and upgrades come only from loot. Kept as a no-op so
+   any straggling caller stays harmless. */
+export function attuneHeroGear(){ return false; }
 
 /** Collect equipped items that have a perk with a given combat hook. */
 export function equippedPerks(hero, hook=null){
@@ -873,9 +1095,6 @@ export function equippedPerks(hero, hook=null){
 export function ilvlText(item, heroLevel=null){
   if(!item) return '';
   const base = Math.max(1, item.ilvl|0);
-  if(item.rarity === 'legendary' && heroLevel && heroLevel > base){
-    return `ilvl ${base} → ${heroLevel}`;
-  }
-  if(item.rarity === 'legendary') return `ilvl ${base} · bonds to wearer`;
+  if(item.rarity === 'legendary') return `ilvl ${base} · fixed at find`;
   return `ilvl ${base}`;
 }

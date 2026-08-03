@@ -1,0 +1,153 @@
+{
+  "baseBudget": 150,
+  "difficultyFloor": 0.25,
+  "difficultySpan": 0,
+  "maxSpawns": 10,
+  "overspendSlack": 0,
+  "typeMult": {
+    "combat": 1,
+    "elite": 1.15,
+    "boss": 1.25
+  },
+  "crAnchorLevels": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20
+  ],
+  "crAnchorCRs": [
+    0.125,
+    0.25,
+    0.5,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    10,
+    12,
+    10,
+    10,
+    10,
+    10,
+    10
+  ],
+  "crCostScale": 1,
+  "crCostOverrides": {
+    "1": 16,
+    "2": 21,
+    "3": 28,
+    "5": 34,
+    "8": 42,
+    "12": 50,
+    "17": 70,
+    "23": 85,
+    "30": 109,
+    "0.125": 6,
+    "0.25": 8,
+    "0.5": 12
+  },
+  "levelCurve": {
+    "1": {
+      "budgetMult": 0.75,
+      "spawnCap": 10
+    },
+    "2": {
+      "budgetMult": 1,
+      "spawnCap": 10
+    },
+    "3": {
+      "budgetMult": 1.25,
+      "spawnCap": 10
+    },
+    "4": {
+      "budgetMult": 1.5,
+      "spawnCap": 10
+    },
+    "5": {
+      "budgetMult": 2.18,
+      "spawnCap": 10
+    },
+    "6": {
+      "budgetMult": 2.51,
+      "spawnCap": 10
+    },
+    "7": {
+      "budgetMult": 2.83,
+      "spawnCap": 10
+    },
+    "8": {
+      "budgetMult": 3.15,
+      "spawnCap": 10
+    },
+    "9": {
+      "budgetMult": 3.47,
+      "spawnCap": 10
+    },
+    "10": {
+      "budgetMult": 3.79,
+      "spawnCap": 10
+    },
+    "11": {
+      "budgetMult": 4.11,
+      "spawnCap": 10
+    },
+    "12": {
+      "budgetMult": 4.43,
+      "spawnCap": 10
+    },
+    "13": {
+      "budgetMult": 4.75,
+      "spawnCap": 10
+    },
+    "14": {
+      "budgetMult": 5.07,
+      "spawnCap": 10
+    },
+    "15": {
+      "budgetMult": 5.39,
+      "spawnCap": 10
+    },
+    "16": {
+      "budgetMult": 5.72,
+      "spawnCap": 10
+    },
+    "17": {
+      "budgetMult": 6.04,
+      "spawnCap": 10
+    },
+    "18": {
+      "budgetMult": 6.36,
+      "spawnCap": 10
+    },
+    "19": {
+      "budgetMult": 6.68,
+      "spawnCap": 10
+    },
+    "20": {
+      "budgetMult": 7,
+      "spawnCap": 10
+    }
+  }
+}

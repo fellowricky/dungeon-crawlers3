@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dungeon Crawlers — Sound Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090b12;
+      --bg-panel: #111422;
+      --bg-card: #181c2e;
+      --bg-input: #0e101a;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(217, 164, 65, 0.3);
+      --text-main: #e2e4f0;
+      --text-muted: #8e95b0;
+      --gold: #d9a441;
+      --gold-bright: #fcd34d;
+      --gold-glow: rgba(217, 164, 65, 0.2);
+      --red: #ef4444;
+      --green: #10b981;
+      --blue: #3b82f6;
+      --violet: #8b5cf6;
+      --cyan: #06b6d4;
+      --amber: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── header ───────────────────────────────────────────────────── */
+    #app-header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      z-index: 10;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+    .header-icon { font-size: 26px; }
+    .header-title { font-size: 17px; font-weight: 600; letter-spacing: 0.2px; }
+    .header-sub { font-size: 11px; color: var(--text-muted); }
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .stat-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .stat-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .stat-chip b { color: var(--text-main); font-weight: 600; }
+    .stat-chip.ok b { color: var(--green); }
+    .stat-chip.warn b { color: var(--amber); }
+    .stat-chip.bad b { color: var(--red); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary { background: var(--gold); color: #000; border: none; font-weight: 600; }
+    .btn-primary:hover { background: var(--gold-bright); box-shadow: 0 0 12px var(--gold-glow); }
+    .btn-danger { background: rgba(239, 68, 68, 0.15); color: var(--red); border-color: rgba(239, 68, 68, 0.3); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+    .btn-xs { padding: 3px 8px; font-size: 11px; }
+    .btn-icon {
+      padding: 3px 7px; font-size: 12px; border-radius: 5px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      color: var(--text-main); cursor: pointer;
+    }
+    .btn-icon:hover { border-color: var(--gold); color: var(--gold-bright); }
+
+    /* ── tabs ─────────────────────────────────────────────────────── */
+    #tab-rail {
+      display: flex;
+      gap: 2px;
+      padding: 0 20px;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      background: none;
+      border-top: none; border-left: none; border-right: none;
+    }
+    .tab:hover { color: var(--text-main); }
+    .tab.active { color: var(--gold-bright); border-bottom-color: var(--gold); }
+
+    #main-container { flex: 1; display: flex; overflow: hidden; }
+    .tab-page { flex: 1; display: none; overflow: hidden; }
+    .tab-page.active { display: flex; }
+
+    /* ── sidebar (slot list) ──────────────────────────────────────── */
+    #sidebar {
+      width: 300px;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-search {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .search-box { position: relative; }
+    .search-input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 13px;
+    }
+    .search-input:focus { outline: none; border-color: var(--gold); }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      font-size: 13px; color: var(--text-muted);
+    }
+    .filter-row { display: flex; gap: 6px; }
+    .select-input {
+      flex: 1; padding: 6px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 12px;
+    }
+    .select-input:focus { outline: none; border-color: var(--gold); }
+
+    #slot-list { flex: 1; overflow-y: auto; padding: 6px; }
+    .list-group-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px;
+      color: var(--text-muted); padding: 10px 8px 4px;
+    }
+    .slot-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 9px; border-radius: 6px; cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .slot-entry:hover { background: rgba(255,255,255,0.04); }
+    .slot-entry.selected { background: var(--bg-card); border-color: var(--border-bright); }
+    .slot-entry .name { flex: 1; font-size: 13px; font-family: ui-monospace, monospace; }
+    .slot-entry .count { font-size: 10px; color: var(--text-muted); }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot.recorded { background: var(--green); }
+    .dot.fallback { background: var(--amber); }
+    .dot.silent   { background: #555a70; }
+    .dot.broken   { background: var(--red); }
+
+    /* ── detail / content ─────────────────────────────────────────── */
+    .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .panel h3 {
+      font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px;
+      color: var(--gold); margin-bottom: 12px; font-weight: 600;
+    }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .panel-head h3 { margin: 0; }
+
+    .slot-title { font-size: 22px; font-weight: 600; font-family: ui-monospace, monospace; }
+    .badge {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+      padding: 2px 8px; border-radius: 20px; font-weight: 600;
+    }
+    .badge.recorded { background: rgba(16,185,129,0.18); color: var(--green); }
+    .badge.fallback { background: rgba(245,158,11,0.18); color: var(--amber); }
+    .badge.silent   { background: rgba(255,255,255,0.07); color: var(--text-muted); }
+    .badge.broken   { background: rgba(239,68,68,0.18); color: var(--red); }
+
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: block; font-size: 11px; color: var(--text-muted);
+      margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .form-input {
+      width: 100%; padding: 7px 10px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-main); font-size: 13px;
+    }
+    .form-input:focus { outline: none; border-color: var(--gold); }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .file-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 6px; background: var(--bg-input);
+      border: 1px solid var(--border); margin-bottom: 6px;
+    }
+    .file-row .path { flex: 1; font-size: 12px; font-family: ui-monospace, monospace; word-break: break-all; }
+    .file-row.missing { border-color: rgba(239,68,68,0.4); }
+    .file-row.missing .path { color: var(--red); }
+
+    .empty-note {
+      padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.5;
+      background: rgba(245,158,11,0.08); border: 1px dashed rgba(245,158,11,0.35);
+      color: #f3d9a8;
+    }
+    .empty-note.silent { background: rgba(255,255,255,0.03); border-color: var(--border); color: var(--text-muted); }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+    .chip {
+      font-size: 11px; padding: 3px 9px; border-radius: 20px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      color: var(--text-main); cursor: pointer; font-family: ui-monospace, monospace;
+    }
+    .chip:hover { border-color: var(--gold); color: var(--gold-bright); }
+
+    /* ── tables ───────────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.7px; color: var(--text-muted); font-weight: 600;
+      padding: 8px 10px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--bg-panel); z-index: 1;
+    }
+    td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    td.mono { font-family: ui-monospace, monospace; font-size: 12px; }
+    td.muted { color: var(--text-muted); font-size: 12px; }
+    .row-select { padding: 4px 6px; font-size: 12px; min-width: 150px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-main); }
+    .row-select:focus { outline: none; border-color: var(--gold); }
+
+    .toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 12px 24px; border-bottom: 1px solid var(--border);
+      background: var(--bg-panel); flex-shrink: 0;
+    }
+    .toolbar .search-box { width: 240px; }
+    .toolbar .select-input { flex: 0 0 auto; min-width: 150px; }
+    .spacer { flex: 1; }
+    .hint { font-size: 11px; color: var(--text-muted); }
+
+    .page-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── file picker modal ────────────────────────────────────────── */
+    #picker-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      display: none; align-items: center; justify-content: center; z-index: 300;
+    }
+    #picker-backdrop.show { display: flex; }
+    #picker {
+      width: min(700px, 92vw); max-height: 80vh;
+      background: var(--bg-panel); border: 1px solid var(--border-bright);
+      border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    #picker header {
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    #picker header .t { flex: 1; font-size: 15px; font-weight: 600; }
+    #picker .body { overflow-y: auto; padding: 10px 14px; }
+    #picker footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+    .pick-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+    }
+    .pick-row:hover { background: rgba(255,255,255,0.05); }
+    .pick-row .path { flex: 1; font-size: 12px; font-family: ui-monospace, monospace; word-break: break-all; }
+    .pick-row .size { font-size: 10px; color: var(--text-muted); }
+    .pick-row.used { opacity: 0.55; }
+
+    .toast {
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--bg-card); border: 1px solid var(--border-bright);
+      color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5); z-index: 400;
+      opacity: 0; transform: translateY(10px); transition: all 0.2s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.err { border-color: rgba(239,68,68,0.5); }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: #2a2f45; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a4058; }
+  </style>
+</head>
+<body>
+
+  <header id="app-header">
+    <div class="header-brand">
+      <span class="header-icon">🔊</span>
+      <div>
+        <div class="header-title">Sound Editor</div>
+        <div class="header-sub">Review and wire every sound slot, spell and ability — <span class="mono">src/game/sounds.json</span></div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="stat-chips" id="stat-chips"></div>
+      <label class="stat-chip" style="display:flex;align-items:center;gap:6px">
+        🔈 <input id="preview-vol" type="range" min="0" max="100" value="80" style="width:70px" aria-label="Preview volume">
+      </label>
+      <button class="btn" id="btn-revert">↺ Revert</button>
+      <button class="btn" id="btn-export">⬇ Export JSON</button>
+      <button class="btn btn-primary" id="btn-save">💾 Save to Project</button>
+    </div>
+  </header>
+
+  <nav id="tab-rail">
+    <button class="tab active" data-page="page-slots">🎚 Slots</button>
+    <button class="tab" data-page="page-abilities">✨ Spells &amp; Abilities</button>
+    <button class="tab" data-page="page-routing">🧭 Cantrips &amp; Damage Types</button>
+    <button class="tab" data-page="page-library">📁 Audio Library</button>
+  </nav>
+
+  <div id="main-container">
+
+    <!-- ── Slots ─────────────────────────────────────────────────── -->
+    <div class="tab-page active" id="page-slots">
+      <aside id="sidebar">
+        <div class="sidebar-search">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input id="slot-search" class="search-input" type="text" placeholder="Search slots…">
+          </div>
+          <div class="filter-row">
+            <select id="slot-filter-cat" class="select-input"><option value="">All categories</option></select>
+            <select id="slot-filter-status" class="select-input">
+              <option value="">All states</option>
+              <option value="recorded">Recorded</option>
+              <option value="fallback">Using fallback</option>
+              <option value="silent">Silent</option>
+              <option value="broken">Broken files</option>
+            </select>
+          </div>
+          <button class="btn btn-xs" id="btn-new-slot">＋ New slot</button>
+        </div>
+        <div id="slot-list"></div>
+      </aside>
+      <div class="content" id="slot-detail"></div>
+    </div>
+
+    <!-- ── Abilities ─────────────────────────────────────────────── -->
+    <div class="tab-page" id="page-abilities">
+      <div class="page-col">
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input id="ab-search" class="search-input" type="text" placeholder="Search abilities…">
+          </div>
+          <select id="ab-filter-source" class="select-input">
+            <option value="">All sources</option>
+            <option value="feature">Class features</option>
+            <option value="spell">Spells</option>
+            <option value="boss">Boss spells</option>
+          </select>
+          <select id="ab-filter-status" class="select-input">
+            <option value="">All states</option>
+            <option value="recorded">Slot recorded</option>
+            <option value="fallback">Slot using fallback</option>
+            <option value="silent">Slot silent</option>
+          </select>
+          <select id="ab-filter-slot" class="select-input"><option value="">Any slot</option></select>
+          <div class="spacer"></div>
+          <span class="hint" id="ab-count"></span>
+        </div>
+        <div class="content"><table id="ab-table"></table></div>
+      </div>
+    </div>
+
+    <!-- ── Routing ───────────────────────────────────────────────── -->
+    <div class="tab-page" id="page-routing">
+      <div class="content">
+        <div class="panel">
+          <h3>Cantrips — per-class signature cantrip</h3>
+          <p class="hint" style="margin-bottom:12px">A caster's cantrip is its most-heard sound; each class routes to its own slot so they don't all share one whoosh.</p>
+          <table id="cantrip-table"></table>
+        </div>
+        <div class="panel">
+          <h3>Damage types — data-driven monster abilities</h3>
+          <p class="hint" style="margin-bottom:12px">Fallback routing for monster abilities in <span class="mono">monsters.json</span> that have no named spell of their own. Their damage type picks the slot.</p>
+          <table id="dmg-table"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Library ───────────────────────────────────────────────── -->
+    <div class="tab-page" id="page-library">
+      <div class="page-col">
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input id="lib-search" class="search-input" type="text" placeholder="Search audio files…">
+          </div>
+          <select id="lib-filter" class="select-input">
+            <option value="">All files</option>
+            <option value="used">Used by a slot</option>
+            <option value="orphan">Unused (orphaned)</option>
+            <option value="missing">Referenced but missing</option>
+          </select>
+          <div class="spacer"></div>
+          <span class="hint" id="lib-count"></span>
+        </div>
+        <div class="content"><table id="lib-table"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- file picker -->
+  <div id="picker-backdrop">
+    <div id="picker">
+      <header>
+        <div class="t">Add audio file to <span id="picker-slot" class="mono"></span></div>
+        <input id="picker-search" class="search-input" type="text" placeholder="Filter…" style="width:200px;padding-left:12px">
+      </header>
+      <div class="body" id="picker-body"></div>
+      <footer>
+        <span class="hint" id="picker-hint"></span>
+        <div class="spacer"></div>
+        <button class="btn" id="picker-close">Close</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="./src/sound_editor.js"></script>
+</body>
+</html>
