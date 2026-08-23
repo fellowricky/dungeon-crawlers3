@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import {
-  makeHero, normalizeHero, spawnMonster, crForDungeonLevel, crBandIndex, MONSTER_THEMES, MONSTERS_BY_ID, monsterSpawnsIn, dungeonMonsterIds, grantXp, getCuratedBossEncounter,
+  makeHero, normalizeHero, spawnMonster, crForDungeonLevel, maxCrForDungeonLevel, crBandIndex, MONSTER_THEMES, MONSTERS_BY_ID, monsterSpawnsIn, dungeonMonsterIds, grantXp, getCuratedBossEncounter, getThemeForMonster, pickRoomSpecies,
   storyPoolIds, storyLaneWeight, planStoryFloorCast
 } from './srd.js';
 import {
@@ -19,23 +19,32 @@ import {
   updateFlash, updateProjectiles, updateWorldFx, clearEffects,
   updateStatusTray, disposeSearchIndicator,
   createExitIndicator, updateExitIndicator, disposeExitIndicator,
-  preloadAllSpellAndCombatVFX
+  preloadAllSpellAndCombatVFX, preloadFloorAssets, updateEntityStatusAuras
 } from './entities.js';
-import { log, buildPartyFrames, updatePartyFrames, updateResources, showBanner, showTitle, showSetup, initGameLog, updateLogPauseBtn, bindPartyLeaderUI, bindCompanionUI } from './ui.js';
+import { configureSpriteMaterial } from './sprite_animator.js';
+import { updateCompositeFX } from './vfx_animations.js';
+import { playNixieEffect } from '../render/nixie_vfx.js';
+import { log, buildPartyFrames, updatePartyFrames, updateResources, showBanner, showTitle, showSetup, initGameLog, updateLogPauseBtn, bindPartyLeaderUI, bindCompanionUI, layoutRightRail } from './ui.js';
+import { showSaveSlotsModal } from './ui_save_slots.js';
+import { hasAnySave, getMostRecentSaveSlot, getActiveSlot, setActiveSlot } from './save_slots.js';
+import { logRoomSpawnDebug } from './spawn_debug.js';
 import { initMenus, refreshMenus } from './menus.js';
 import { initShop, showShop } from './shop.js';
 import { initWorldMap, showWorldMap } from './worldmap.js';
+import { showLoadingScreen, hideLoadingScreen } from '../ui/loading_screen.js';
 import { showIntroCrawl } from './intro_crawl.js';
 import { initSkills, checkForChallenge, resetChallengeState, fireCampChallenge, checkRoomEntryChallenge, fireChallenge } from './skills.js';
 import { checkBossReveal } from './boss_card.js';
 import { showFloorBeat } from './floor_beat.js';
 import { initChestWheel } from './chest_wheel.js';
 import { initOptionsMenu } from './options_ui.js';
+import { getSetting } from './settings.js';
 import { GuildManager } from './guild.js';
 import {
   initQuestEvents, normalizeQuest, resolveFloorPhase, phaseNeedsChoice, offerFloorChoice,
   applyPhaseToSpawns, announceFloor, spawnAlly, dismissAlly, placeGems,
-  checkPuzzleGate, onFloorCleared, onQuestCompleted, updateQuestTracker
+  checkPuzzleGate, onFloorCleared, onQuestCompleted, updateQuestTracker,
+  shouldUseStoryCast
 } from './quest_events.js';
 import { GAUNTLET_DESCEND } from './quest_story.js';
 import { initRunStats, finalizeRunStats, trackGold, trackLoot, trackFloor, restoreRunStats } from './run_stats.js';
@@ -44,8 +53,8 @@ import { partyLongRest, partyShortRest } from './rest.js';
 import { hasEffect } from './conditions.js';
 import { initAudio, playSfx } from './audio.js';
 
-import { THEME_ORDER, REVEAL_RADIUS, FLOOR } from './constants.js';
-import { writeInstances } from '../render/dungeon_scene.js';
+import { THEME_ORDER, REVEAL_RADIUS, FLOOR, WALL } from './constants.js';
+import { writeInstances, extinguishCampfire, cam } from '../render/dungeon_scene.js';
 import { autoProloguePlan } from './overland_prologue.js';
 import { _v } from './shared.js';
 import { buildWallAdj, buildChokepoints, buildSolidProps, pathfindingMethods } from './pathfinding.js';
@@ -56,7 +65,9 @@ import { gameHookMethods } from './game_hooks.js';
 import { exploreMethods } from './explore.js';
 import { inventoryMethods } from './inventory.js';
 import { initiativeMethods } from './initiative.js';
+import { Trace, installTraceConsole } from './ai_trace.js';
 import { turnEngineMethods } from './turn_engine.js';
+import { reservationMethods } from './reservation.js';
 import { createSummonManager } from './summons.js';
 
 /* Min real speed (world units/sec) that counts as "moving" for the walk cycle.
@@ -66,6 +77,13 @@ const MOVE_ANIM_SPEED_EPS = 0.2;
    bursty/intermittent movement (path capture, force cancellation) so heroes don't
    flicker back to the idle frame mid-stride. */
 const WALK_ANIM_HOLD = 0.12;
+
+const _doorP = new THREE.Vector3();
+const _doorQ = new THREE.Quaternion();
+const _doorS = new THREE.Vector3();
+const _doorM = new THREE.Matrix4();
+const _doorE = new THREE.Euler();
+const DOOR_SINK_Y = -2.6;
 
 const WIPE_FLAVOR = [
   'The darkness claims you for now\u2026',
@@ -82,82 +100,60 @@ const WIPE_FLAVOR = [
   'Even heroes must sometimes fall.',
 ];
 
-let _cachedTentMaterial = null;
+const TENT_DIRS = ['front', 'back', 'left', 'right'];
+let _tentMaterials = {};
 
-function createTentSprite() {
-  if (!_cachedTentMaterial) {
-    const cv = document.createElement('canvas');
-    cv.width = 64; cv.height = 64;
-    const ctx = cv.getContext('2d');
-
-    ctx.fillStyle = '#8b6914';
-    ctx.beginPath();
-    ctx.moveTo(32, 8);
-    ctx.lineTo(8, 56);
-    ctx.lineTo(56, 56);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#4a3208';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.fillStyle = '#3a2204';
-    ctx.beginPath();
-    ctx.moveTo(32, 24);
-    ctx.lineTo(24, 56);
-    ctx.lineTo(40, 56);
-    ctx.closePath();
-    ctx.fill();
-
-    const tex = new THREE.CanvasTexture(cv);
-    tex.minFilter = THREE.LinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    _cachedTentMaterial = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false });
+export function getTentMaterial(dir = 'front') {
+  const d = TENT_DIRS.includes(dir) ? dir : 'front';
+  if (!_tentMaterials[d]) {
+    const texPath = `sprites/tent/tent_${d}.png`;
+    const tex = new THREE.TextureLoader().load(texPath);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    _tentMaterials[d] = configureSpriteMaterial(new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthTest: true,
+      depthWrite: false
+    }));
   }
+  return _tentMaterials[d];
+}
 
-  const sp = new THREE.Sprite(_cachedTentMaterial);
-  sp.center.set(0.5, 0);
+export function createTentSprite(dir = 'front') {
+  const sp = new THREE.Sprite(getTentMaterial(dir));
+  sp.center.set(0.5, 0.1);
   return sp;
 }
 
-function drawCampfireCanvas(ctx, w, h, time) {
-  ctx.clearRect(0, 0, w, h);
+export function getTentFacingDir(tentX, tentZ, campX, campZ, camera = cam) {
+  if (!camera || !camera.position) return 'front';
 
-  const flk = Math.sin(time * 15) * 0.15 + Math.sin(time * 23) * 0.1;
+  // The tent's entrance doorway faces towards the central campfire
+  const toFireX = campX - tentX;
+  const toFireZ = campZ - tentZ;
+  const tentAngle = Math.atan2(toFireZ, toFireX);
 
-  ctx.strokeStyle = '#5a3a1a';
-  ctx.lineWidth = 4;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(12, 44);
-  ctx.lineTo(50, 52);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(50, 40);
-  ctx.lineTo(12, 50);
-  ctx.stroke();
+  // Angle from tent to camera
+  const toCamX = camera.position.x - tentX;
+  const toCamZ = camera.position.z - tentZ;
+  const camAngle = Math.atan2(toCamZ, toCamX);
 
-  const fh = 28 + flk * 10;
+  let diff = camAngle - tentAngle;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
 
-  ctx.fillStyle = 'rgba(255,100,30,0.55)';
-  ctx.beginPath();
-  ctx.moveTo(20, 44);
-  ctx.quadraticCurveTo(22 + flk * 4, 22, 32 + flk * 6, 44 - fh);
-  ctx.quadraticCurveTo(42 - flk * 5, 18, 44, 44);
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(255,180,40,0.75)';
-  ctx.beginPath();
-  ctx.moveTo(26, 44);
-  ctx.quadraticCurveTo(27 + flk * 2, 32, 32 + flk * 4, 44 - fh * 0.7);
-  ctx.quadraticCurveTo(37 - flk * 3, 30, 38, 44);
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(255,255,180,0.85)';
-  ctx.beginPath();
-  ctx.arc(32, 44 - fh * 0.3, 6 + flk * 2, 0, Math.PI * 2);
-  ctx.fill();
+  // diff is the angle of camera relative to the tent's front
+  if (Math.abs(diff) <= Math.PI / 4) {
+    return 'front';
+  } else if (Math.abs(diff) >= (3 * Math.PI) / 4) {
+    return 'back';
+  } else if (diff > 0) {
+    return 'right';
+  } else {
+    return 'left';
+  }
 }
 
 class Game {
@@ -222,7 +218,8 @@ class Game {
     if (!btn) return;
     const isManual = this.controlMode === 'manual';
     btn.className = `mode-toggle-btn ${isManual ? 'mode-manual' : 'mode-auto'}`;
-    btn.innerHTML = `<span class="mode-ico">${isManual ? '🎯' : '⚡'}</span><span class="mode-label">${isManual ? 'MANUAL' : 'AUTO'}</span>`;
+    btn.innerHTML = `<span class="mode-ico">${isManual ? '🎮' : '⚡'}</span><span class="mode-label">${isManual ? 'MANUAL' : 'AUTO'}</span>`;
+    btn.title = isManual ? 'Control Mode: MANUAL (Click or press M for Auto)' : 'Control Mode: AUTO (Click or press M for Manual)';
   }
 
   /** Average hero level, floored at 1.  Used to set a floor under
@@ -286,10 +283,16 @@ class Game {
       return;
     }
 
-    const save = this.loadSave();
-    /* Boot flow: title screen → (New Game) party setup → run, or
-       (Continue) straight back into the saved run. */
-    const startNewParty = slots => {
+    const activeSlot = getActiveSlot();
+    this.activeSaveSlot = activeSlot;
+    const initialSave = this.loadSave(activeSlot) || (hasAnySave() ? this.loadSave(getMostRecentSaveSlot()) : null);
+
+    /* Boot flow: title screen → (New Game) select save slot → party setup → run, or
+       (Continue) straight back into the saved run, or (Load Game) pick slot. */
+    const startNewParty = (slots, targetSlotId) => {
+      const slotId = targetSlotId != null ? targetSlotId : (this.activeSaveSlot || getActiveSlot());
+      this.activeSaveSlot = slotId;
+      setActiveSlot(slotId);
       this.heroes = slots.map(s => ({ data: makeHero(s.name, s.raceKey, s.classKey, s.baseStats, s.visual) }));
       this.leaderIdx = 0;
       this.storedHeroes = [];
@@ -301,9 +304,20 @@ class Game {
       this.legendaryPity = 0;
       this.storyProgress = {};
       this.controlMode = 'auto';
+      this.guild = new GuildManager(this);
+      this.saveGame(slotId);
       this.beginRun();
     };
-    const continueSaved = () => {
+
+    const continueSaved = (targetSlotId) => {
+      const slotId = targetSlotId != null ? targetSlotId : (getMostRecentSaveSlot() || this.activeSaveSlot || getActiveSlot());
+      const save = this.loadSave(slotId);
+      if (!save) {
+        openTitle();
+        return;
+      }
+      this.activeSaveSlot = slotId;
+      setActiveSlot(slotId);
       this.heroes = save.heroes.map(h => ({ data: normalizeHero(h) }));
       this.leaderIdx = Math.min(Math.max(0, save.leaderIdx || 0), this.heroes.length - 1);
       this.storedHeroes = (save.storedHeroes || []).map(h => normalizeHero(h));
@@ -319,6 +333,7 @@ class Game {
       this.legendaryPity = save.legendaryPity || 0;
       this.storyProgress = save.storyProgress || {};
       this.controlMode = save.controlMode || 'auto';
+      this.guild = new GuildManager(this);
       if (save.guildData && this.guild) this.guild.deserialize(save.guildData);
       restoreRunStats(this, save.runStats || null);
       /* Old save resumed mid-quest: stats cover the remainder of the run */
@@ -328,17 +343,57 @@ class Game {
       this.summons.restore(save.companions);
       this.beginRun(true);
     };
-    const openTitle = () => showTitle(!!save, {
-      onNew: () => showSetup(startNewParty, openTitle),
-      onContinue: continueSaved
-    });
+
+    this.startNewPartyInSlot = (slotId) => {
+      this.activeSaveSlot = slotId;
+      showSetup(slots => startNewParty(slots, slotId), () => showWorldMap({ refresh: true }));
+    };
+
+    this.loadAndSwitchSlot = (slotId) => {
+      this.saveGame();
+      continueSaved(slotId);
+    };
+
+    const openTitle = () => {
+      const anySave = hasAnySave();
+      showTitle(anySave, {
+        onNew: () => {
+          showSaveSlotsModal({
+            mode: 'new',
+            onSelect: (targetSlotId) => {
+              this.activeSaveSlot = targetSlotId;
+              setActiveSlot(targetSlotId);
+              showSetup(slots => startNewParty(slots, targetSlotId), openTitle);
+            },
+            onCancel: openTitle
+          });
+        },
+        onContinue: () => continueSaved(getMostRecentSaveSlot()),
+        onLoad: () => {
+          showSaveSlotsModal({
+            mode: 'load',
+            onSelect: (targetSlotId) => {
+              continueSaved(targetSlotId);
+            },
+            onCancel: openTitle
+          });
+        }
+      });
+    };
     openTitle();
 
     const modeBtn = document.getElementById('mode-toggle-btn');
     if (modeBtn) modeBtn.addEventListener('click', () => this.toggleControlMode());
-    document.getElementById('potheal').addEventListener('click', () => this.drinkPotion('heal'));
-    document.getElementById('potgreater').addEventListener('click', () => this.drinkPotion('greater'));
-    document.getElementById('potsuperior').addEventListener('click', () => this.drinkPotion('superior'));
+    const exitBtn = document.getElementById('btn-exit-dungeon');
+    if (exitBtn) exitBtn.addEventListener('click', () => {
+      if (this.state === 'worldmap') return;
+      if (window.confirm('Abandon the current dungeon run and return to the World Map? All collected loot and gold will be kept.')) {
+        this._fleeDungeon();
+      }
+    });
+    document.getElementById('potheal')?.addEventListener('click', () => this.drinkPotion('heal'));
+    document.getElementById('potgreater')?.addEventListener('click', () => this.drinkPotion('greater'));
+    document.getElementById('potsuperior')?.addEventListener('click', () => this.drinkPotion('superior'));
     /* potion hotkeys: 1 = heal, 2 = greater, 3 = superior (ignore while typing).
        L cycles the party leader, M toggles Auto/Manual mode.
        Auto-drinking is now per-hero via the AI Priorities tab (potionThreshold knob). */
@@ -352,6 +407,7 @@ class Game {
       else if (e.key === 'l' || e.key === 'L') this.cycleLeader();
       else if (e.key === 'm' || e.key === 'M') this.toggleControlMode();
       else if (e.key === 'Escape') {
+        if (this.cancelAttackTargeting) this.cancelAttackTargeting();
         if (this.cancelSpellTargeting) this.cancelSpellTargeting();
         if (this.clearPendingMove) this.clearPendingMove();
       }
@@ -445,6 +501,12 @@ class Game {
     const grad   = 0.70 * lvlT + 0.30 * floorT;
     const roomCount = Math.min(MAX_ROOMS, Math.round(MIN_ROOMS + (MAX_ROOMS - MIN_ROOMS) * grad));
     const themeKey = q?.theme || THEME_ORDER[(lvl - 1) % THEME_ORDER.length];
+
+    showLoadingScreen({
+      title: q ? q.name : `DUNGEON DEPTH ${lvl}`,
+      subtitle: q ? `Floor ${this.questFloor} of ${q.floors} · Preparing encounters...` : `Descending into depth ${lvl}...`,
+      floor: this.questFloor
+    });
     /* Long rest is applied when a floor is cleared (finishDungeon).
        Here we only top up HP to at least half and clear combat-only state. */
     for (const h of this.heroes) {
@@ -525,7 +587,7 @@ class Game {
     if (this._searchIndicator) { disposeSearchIndicator(this._searchIndicator); this._searchIndicator = null; }
     if (this.gameGroup) { eng.scene.remove(this.gameGroup); }
     clearEffects(eng.scene);
-    preloadAllSpellAndCombatVFX();
+    preloadAllSpellAndCombatVFX(eng?.renderer, eng?.scene, eng?.cam);
     this.gameGroup = new THREE.Group();
     eng.scene.add(this.gameGroup);
 
@@ -547,16 +609,18 @@ class Game {
     this.revealed = fog.revealed;
     this.visitedRooms = fog.visitedRooms;
     this._searchedRooms = new Uint8Array(rooms.length);
+    this._scoutedRooms = new Uint8Array(rooms.length);
     this.fogAll();
 
     this.roomAnchor = rooms.map(r => {
       let c = r.cy * W + r.cx;
-      if (grid[c] === FLOOR) return c;
+      if (grid[c] === FLOOR && (!d.solidProps || !d.solidProps[c])) return c;
       for (let rad = 1; rad < 6; rad++)
         for (let oy = -rad; oy <= rad; oy++) for (let ox = -rad; ox <= rad; ox++) {
           const nx = r.cx + ox, ny = r.cy + oy;
-          if (nx >= 0 && ny >= 0 && nx < W && ny < H && grid[ny * W + nx] === FLOOR && d.roomId[ny * W + nx] === r.id)
-            return ny * W + nx;
+          const idx = ny * W + nx;
+          if (nx >= 0 && ny >= 0 && nx < W && ny < H && grid[idx] === FLOOR && d.roomId[idx] === r.id && (!d.solidProps || !d.solidProps[idx]))
+            return idx;
         }
       return c;
     });
@@ -574,7 +638,7 @@ class Game {
     /* dungeon-theme-aware monster selection: rooms draw from every creature
        explicitly whitelisted for the dungeon theme (see dungeonMonsterIds),
        so per-creature dungeon picks in the bestiary are honoured. */
-    const roomLockedSpawns = {}; // roomId -> { [crBand]: spec }
+    const roomSpawnSpecies = {}; // roomId -> { counts, pools, anchorFamily } — feeds the per-room species variety cap
     /* Hard-coded story cast for this floor, if the mission declares one. */
     const _sq = this.activeQuest;
     const _sPlan = (_sq && Array.isArray(_sq.floorPlan)) ? _sq.floorPlan[this.questFloor - 1] : null;
@@ -582,7 +646,14 @@ class Game {
        Flatten either into a single candidate list — spawnMonster then filters it
        by CR window, so the authored cast auto-scales with floor depth. */
     const _rawRoster = (_sPlan && _sPlan.monsters) || (_sq && _sq.monsterRoster) || null;
-    const storyPool = _rawRoster && storyPoolIds(_rawRoster).length ? _rawRoster : null;
+    /* The story-cast path is for AUTHORED casts only — story missions (q.story)
+       or floors with an explicit per-floor `monsters` list. Generic quests also
+       carry a `monsterRoster` (decorateQuest sets one for every quest), but they
+       must spawn from the generator's priced slots instead, so the room threat
+       budget and the level's CR ceiling are actually honoured. Routing them here
+       silently replaced the budget-drawn rooms with a lane-locked curated cast
+       that ignored the budget entirely. */
+    const storyPool = shouldUseStoryCast(_sq, _sPlan) && _rawRoster && storyPoolIds(_rawRoster).length ? _rawRoster : null;
     const questInfo = {
       dungeonLevel: this.activeQuest ? this.activeQuest.level : this.dungeonLevel,
       questFloor: this.questFloor,
@@ -619,6 +690,7 @@ class Game {
         const m = applyPhaseToSpawns(this, spawnMonster(
           MONSTERS_BY_ID[castId]?.cr ?? 1, this.effectiveLevel, Math.random,
           [castId], questInfo, sp.role || null, true, true));
+        if (this._spawnDbg) this._spawnDbg.push({ roomId: sp.roomId, tcr: MONSTERS_BY_ID[castId]?.cr ?? 1, band: 'story', allowed: 'cast', role: sp.role || null, fieldedCR: m.data?.cr, fieldedId: m.data?.id });
         if (sp.roomBuff === 'arcane_surge') {
           m.arcaneSurge = true;
           m.atk = (m.atk || 0) + 2;
@@ -626,10 +698,6 @@ class Game {
         }
         this.addMonster(m, sp.x, sp.y, sp.roomId);
         continue;
-      }
-
-      if (roomLockedSpawns[sp.roomId] === undefined) {
-        roomLockedSpawns[sp.roomId] = {};
       }
 
       /* Resolve the spawn's target CR. fixedCR pins it (swarm minions); crOffset
@@ -643,7 +711,11 @@ class Game {
         const step = sp.crOffset >= 0
           ? targetCR * Math.pow(1.5, sp.crOffset)
           : targetCR * Math.pow(0.6, -sp.crOffset);
-        targetCR = Math.max(0.125, step);
+        /* Clamp to the level ceiling so the slot's resolved CR (what the purse
+           is charged) matches what spawnMonster is allowed to field — without
+           this, a step-up that clears the ceiling is priced above the curve but
+           fields a ceiling monster, silently shorting the room's value. */
+        targetCR = Math.min(Math.max(0.125, step), maxCrForDungeonLevel(questInfo.dungeonLevel));
       } else if (sp.targetCR == null) {
         targetCR = baseCR;
       }
@@ -667,34 +739,59 @@ class Game {
           allowedNames = verminTheme.monsters.filter(id => monsterSpawnsIn(MONSTERS_BY_ID[id], d.themeKey));
         }
       }
+      const poolKey = sp.role ? `role_${sp.role}_${bandKey}` : String(bandKey);
 
-      if (sp.role) {
-        const lockKey = `role_${sp.role}_${bandKey}`;
-        if (!roomLockedSpawns[sp.roomId][lockKey]) {
-          roomLockedSpawns[sp.roomId][lockKey] = spawnMonster(targetCR, this.effectiveLevel, Math.random, allowedNames, questInfo, sp.role);
+      /* Per-room species state for the variety cap: counts caps how many copies
+         of one creature a room may field (SPECIES_CAP); pools tracks which
+         species each band/role has already rolled; anchorFamily is the room's
+         dominant vibe family so fresh rolls stay cohesive. */
+      let roomSpecies = roomSpawnSpecies[sp.roomId];
+      if (!roomSpecies) roomSpecies = roomSpawnSpecies[sp.roomId] = { counts: {}, pools: {}, anchorFamily: null };
+      const counts = roomSpecies.counts;
+      if (!roomSpecies.pools[poolKey]) roomSpecies.pools[poolKey] = [];
+      const bandPool = roomSpecies.pools[poolKey];
+      /* Unified rooms (a swarm, a duel, a brood) deliberately field ONE species
+         per role — the variety cap below would break "ten grey rats". */
+      const unify = sp.roomStyle === 'swarm' || sp.roomStyle === 'duelists' || sp.roomStyle === 'nest';
+
+      let chosenId;
+      if (unify) {
+        if (bandPool.length === 0) {
+          const seed = spawnMonster(targetCR, this.effectiveLevel, Math.random, allowedNames, questInfo, sp.role);
+          bandPool.push(seed.id);
         }
-        const roleSpec = roomLockedSpawns[sp.roomId][lockKey];
-        const m = applyPhaseToSpawns(this, spawnMonster(targetCR, this.effectiveLevel, Math.random, [roleSpec.id], questInfo, sp.role));
-        if (sp.roomBuff === 'arcane_surge') {
-          m.arcaneSurge = true;
-          m.atk = (m.atk || 0) + 2;
-          m.speedMult = (m.speedMult || 1) * 1.15;
-        }
-        this.addMonster(m, sp.x, sp.y, sp.roomId);
+        chosenId = bandPool[0];
       } else {
-        if (roomLockedSpawns[sp.roomId][bandKey] === undefined) {
-          const spec = spawnMonster(targetCR, this.effectiveLevel, Math.random, allowedNames, questInfo);
-          roomLockedSpawns[sp.roomId][bandKey] = spec;
-        }
-        const mSpec = roomLockedSpawns[sp.roomId][bandKey];
-        const m = applyPhaseToSpawns(this, spawnMonster(targetCR, this.effectiveLevel, Math.random, [mSpec.id], questInfo));
-        if (sp.roomBuff === 'arcane_surge') {
-          m.arcaneSurge = true;
-          m.atk = (m.atk || 0) + 2;
-          m.speedMult = (m.speedMult || 1) * 1.15;
-        }
-        this.addMonster(m, sp.x, sp.y, sp.roomId);
+        /* The CR window the slot may field within — mirrors spawnMonster so the
+           pick can exclude capped species without drifting off the slot's CR. */
+        const minCR = Math.max(0, targetCR * 0.5);
+        const maxCR = Math.min(Math.max(targetCR * 1.5, targetCR + 0.5),
+          maxCrForDungeonLevel(questInfo.dungeonLevel));
+        const windowed = allowedNames
+          ? allowedNames.filter((id) => {
+              const c = MONSTERS_BY_ID[id] && MONSTERS_BY_ID[id].cr;
+              return typeof c === 'number' && c >= minCR && c <= maxCR;
+            })
+          : null;
+        chosenId = pickRoomSpecies({
+          bandPool, counts,
+          anchorFamily: roomSpecies.anchorFamily,
+          familyOf: (id) => getThemeForMonster(MONSTERS_BY_ID[id]),
+          window: windowed && windowed.length ? windowed : allowedNames,
+          roll: (pool) => spawnMonster(targetCR, this.effectiveLevel, Math.random, pool, questInfo, sp.role).id
+        });
       }
+      counts[chosenId] = (counts[chosenId] || 0) + 1;
+      if (!roomSpecies.anchorFamily) roomSpecies.anchorFamily = getThemeForMonster(MONSTERS_BY_ID[chosenId]);
+
+      const m = applyPhaseToSpawns(this, spawnMonster(targetCR, this.effectiveLevel, Math.random, [chosenId], questInfo, sp.role));
+      if (this._spawnDbg) this._spawnDbg.push({ roomId: sp.roomId, tcr: targetCR, band: bandKey, allowed: allowedNames?.length ?? null, role: sp.role || null, fieldedCR: m.data?.cr, fieldedId: m.data?.id });
+      if (sp.roomBuff === 'arcane_surge') {
+        m.arcaneSurge = true;
+        m.atk = (m.atk || 0) + 2;
+        m.speedMult = (m.speedMult || 1) * 1.15;
+      }
+      this.addMonster(m, sp.x, sp.y, sp.roomId);
     }
     /* Final floor fights the quest's pre-rolled curated boss encounter */
     const q2 = this.activeQuest;
@@ -713,7 +810,14 @@ class Game {
       updateExitIndicator(this._exitIndicator, 0, false, 0);
 
       // Spawn 2-3 Miniboss / Elite pack monsters in room d.boss
-      const targetCR = crForDungeonLevel(questInfo.dungeonLevel + Math.max(0, questInfo.questFloor - 1) * 0.5);
+      /* The pack scales toward the level's CR ceiling, never past it — the
+         party must not meet anything above the dungeon's controlled strength
+         (the same rule buyRoomSpawns and spawnMonster already enforce). */
+      const packCap = maxCrForDungeonLevel(questInfo.dungeonLevel);
+      const targetCR = Math.min(
+        crForDungeonLevel(questInfo.dungeonLevel + Math.max(0, questInfo.questFloor - 1) * 0.5),
+        packCap
+      );
       const eliteCount = 2 + Math.floor(Math.random() * 2);
       /* Same theme roster the ordinary rooms draw from (above). Passing null
          here meant the elite pack ignored the dungeon roster entirely and
@@ -799,14 +903,35 @@ class Game {
     const ex = ea % W, ey = Math.floor(ea / W);
     this.heroes.forEach((h, i) => {
       h.ent = makeHeroMesh(h.data);
-      h.x = this.wx(ex + (i % 2 === 0 ? -0.5 : 0.5));
-      h.z = this.wz(ey + (i < 2 ? -0.5 : 0.5));
+      /* Place each hero on a distinct cell at or adjacent to the entrance,
+         not at half-cell ±0.5 offsets (which used to seed a first-move
+         backstep jitter). Reserve the landing cell so no follower stacks on
+         the leader before movement begins. */
+      const offsets = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      const ox = offsets[i % offsets.length][0];
+      const oy = offsets[i % offsets.length][1];
+      const px = Math.max(1, Math.min(W - 2, ex + ox));
+      const py = Math.max(1, Math.min(this.D.H - 2, ey + oy));
+      if (typeof this.placeAtFreeCell === 'function') {
+        this.placeAtFreeCell(h, this.wx(px), this.wz(py), { radius: 2 });
+      } else {
+        h.x = this.wx(px); h.z = this.wz(py);
+      }
       h.ent.grp.position.set(h.x, 0, h.z);
-      h.path = null; h.pathI = 0;
+      this.clearEntityPath(h);
       h.target = null; h.repathT = 0; h.walkPhase = Math.random() * 6;
       this.gameGroup.add(h.ent.grp);
       drawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
     });
+
+    /* Immediately snap camera directly onto the party leader so the view starts on the party without panning */
+    const alive = this.heroes.filter(h => h.data.hp > 0);
+    const leader = this.partyLeader(alive) || this.heroes[0];
+    if (leader && this.engine && this.engine.camTarget) {
+      this.engine.camTarget.set(leader.x, 0, leader.z);
+      if (typeof this.engine.updateCam === 'function') this.engine.updateCam();
+    }
+
     this.leaderTrail = [];
     this.targetRoom = -1;
     this.userGoal = -1;
@@ -817,14 +942,24 @@ class Game {
     this.completeT = 0;
 
     this.visitRoom(d.entrance, true);
-    this.recalculateFog(this);   // show frontier rooms adjacent to entrance
+    if (this.guild && typeof this.guild.getDungeonPreScoutedRooms === 'function') {
+      const scouted = this.guild.getDungeonPreScoutedRooms(d);
+      for (const sRid of scouted) {
+        if (sRid >= 0 && sRid < d.rooms.length) this._scoutedRooms[sRid] = 1;
+      }
+      if (scouted.length > 0) {
+        log(`🗺️ Cartographer's Guild charted ${scouted.length} room${scouted.length > 1 ? 's' : ''} on this floor in advance!`, 'treasure');
+      }
+    }
+    this.recalculateFog(this);   // show frontier rooms adjacent to entrance + scouted rooms
 
     if (this.testMonsterConfig) {
       const tCfg = this.testMonsterConfig;
       this.monsters.forEach(m => {
         if (m.ent && m.ent.grp) this.gameGroup.remove(m.ent.grp);
       });
-      this.monsters = [];
+    this.monsters = [];
+    this._spawnDbg = [];   // per-slot spawn record, consumed by spawn_debug.js
 
       const ea = this.roomAnchor[d.entrance];
       const ex = ea % W, ey = Math.floor(ea / W);
@@ -863,6 +998,8 @@ class Game {
     updateResources(this);
     updatePartyFrames(this.heroes.map(h => h.data));
     refreshMenus(this);
+    const warmupPromise = preloadFloorAssets(this, this.engine?.renderer, this.engine?.scene, this.engine?.cam);
+    hideLoadingScreen(warmupPromise, 1400);
   }
 
   addMonster(spec, x, y, roomId, isBoss = false) {
@@ -878,12 +1015,31 @@ class Game {
       const pick = spec.variants[Math.floor(Math.random() * spec.variants.length)];
       instanceSpec.ranged = (pick === 'ranged');
     }
+    /* Find a free spawn cell near the requested (x, y). Multiple escorts /
+       reinforcements often share a spawn anchor; without this, two bodies
+       would land on the same tile and the second would evict the first's
+       reservation. Radius-2 spiral search picks the nearest open floor. */
+    let spawnX = this.wx(x), spawnZ = this.wz(y);
+    if (typeof this.placeAtFreeCell === 'function' && this.D) {
+      /* placeAtFreeCell mutates the entity's x/z directly, so we use a
+         throwaway holder then read the chosen coordinates back. */
+      const probe = { x: spawnX, z: spawnZ, data: instanceSpec };
+      this.placeAtFreeCell(probe, spawnX, spawnZ, { radius: 2 });
+      spawnX = probe.x; spawnZ = probe.z;
+    }
     const m = {
-      data: instanceSpec, x: this.wx(x), z: this.wz(y), roomId, isBoss,
+      data: instanceSpec, x: spawnX, z: spawnZ, roomId, isBoss,
       variant: instanceSpec.ranged ? 'ranged' : 'melee',
       active: false, path: null, pathI: 0, cd: Math.random() * 2, repathT: 0,
       walkPhase: Math.random() * 6
     };
+    /* Even dormant (inactive) monsters reserve their spawn cell so a hero
+       wandering past doesn't stand on top of them before they activate. The
+       reservation is reaped automatically if the monster later moves/dies. */
+    if (typeof this.reserveCell === 'function') {
+      const c = (typeof this.cellOf === 'function') ? this.cellOf(m.x, m.z) : -1;
+      if (c >= 0) this.reserveCell(m, c);
+    }
     m.ent = makeMonsterMesh(spec);
     m.ent.grp.position.set(m.x, 0, m.z);
     m.ent.grp.visible = false;
@@ -892,8 +1048,9 @@ class Game {
   }
 
   /** Spawn a temporary ally hero mid-floor (skill-check reward / animal friend).
-   *  `data` is a full hero record (from makeHero). Placed at the party leader.
-   *  temp:true excludes it from saveGame, kill XP, and quest-reward splits. */
+   *  `data` is a full hero record (from makeHero). Placed at a free cell near
+   *  the party leader. temp:true excludes it from saveGame, kill XP, and
+   *  quest-reward splits. */
   spawnTempAlly(data, label = 'ally') {
     if (this.heroes.some(h => h.temp)) return null;   // one temp ally at a time
     const leader = this.heroes.find(h => !h.temp && h.data.hp > 0) || this.heroes[0];
@@ -904,6 +1061,11 @@ class Game {
       ent, path: null, pathI: 0, cd: Math.random(), repathT: 0,
       target: null, walkPhase: Math.random() * 6
     };
+    /* Land on a free cell near the leader instead of stacking on the leader's
+       own tile (the old behaviour seeded a same-cell pair every time). */
+    if (typeof this.placeAtFreeCell === 'function' && leader) {
+      this.placeAtFreeCell(h, leader.x, leader.z, { radius: 2 });
+    }
     h.ent.grp.position.set(h.x, 0, h.z);
     this.gameGroup.add(h.ent.grp);
     drawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
@@ -912,11 +1074,15 @@ class Game {
     return h;
   }
 
-  /** Remove a temp ally (floor clear / dismiss). */
+  /** Remove a temp ally (floor clear / dismiss). Any gear the player equipped
+   *  on them from the party stash is returned to the stash. */
   dismissTempAlly() {
     const idx = this.heroes.findIndex(h => h.temp);
     if (idx < 0) return;
     const [ally] = this.heroes.splice(idx, 1);
+    if (ally.data?.equipment) {
+      for (const it of Object.values(ally.data.equipment)) this.inventory.push(it);
+    }
     if (ally.ent?.grp?.parent) ally.ent.grp.parent.remove(ally.ent.grp);
     buildPartyFrames(this.heroes.map(x => x.data));
   }
@@ -962,6 +1128,10 @@ class Game {
     }
   }
 
+  isCombatActive() {
+    return !!(this.combat || (this.initiative && this.initiative.active));
+  }
+
   isDoorClosed(archIndex) {
     if (!this._unlockedDoors) return false;
     return !this._unlockedDoors.has(archIndex);
@@ -981,34 +1151,46 @@ class Game {
     if (!gateMesh || !gateMesh.userData || !gateMesh.userData.set) return;
     const s = gateMesh.userData.set;
     for (let i = 0; i < s.n; i++) {
+      if (this._animatingDoors && this._animatingDoors.has(i)) continue;
       const isOpen = !!(this._unlockedDoors && this._unlockedDoors.has(i));
-      const targetY = isOpen ? -1.5 : 0;
+      const targetY = isOpen ? -10.0 : 0;
       s.py[i] = targetY;
       if (gateMesh.userData._origPy) {
         gateMesh.userData._origPy[i] = targetY;
       }
+      _doorQ.setFromEuler(_doorE.set(s.rx[i], s.ry[i], s.rz[i]));
+      _doorP.set(s.px[i], targetY, s.pz[i]);
+      if (isOpen) {
+        _doorS.set(0, 0, 0);
+      } else {
+        _doorS.set(s.sx[i], s.sy[i], s.sz[i]);
+      }
+      _doorM.compose(_doorP, _doorQ, _doorS);
+      gateMesh.setMatrixAt(i, _doorM);
     }
-    writeInstances(gateMesh, Infinity);
+    if (gateMesh.instanceMatrix) gateMesh.instanceMatrix.needsUpdate = true;
   }
 
-  /* Doors open for whichever living hero walks up to them — not just the
-     leader, and not only outside combat.
-       • Leader-only meant a follower whose route crossed a different gate
-         than the leader's stood on it until the stuck-recovery teleport.
-       • Combat-only-suspended meant that the instant `this.combat` latched
-         (a monster on the far side, a foe still alive behind the party) the
-         gate froze shut with heroes pathing into it — a soft-lock, because
-         the fight can't end while the combatants can't reach each other. */
+  /* Doors open for whichever living hero walks up to them outside of combat.
+     While in combat, closed doors cannot be opened so combat does not spill
+     out into adjacent rooms. */
   updateDoors(dt) {
+    if (this.isCombatActive()) {
+      if (this._doorUnlockTimers) this._doorUnlockTimers = {};
+      if (this._animatingDoors) this._animatingDoors.clear();
+      return;
+    }
     if (!this.D || !this.D.arches || !this._unlockedDoors) return;
     const alive = this.heroes.filter(h => h.data.hp > 0);
     if (!alive.length) return;
 
     if (!this._doorUnlockTimers) this._doorUnlockTimers = {};
+    if (!this._animatingDoors) this._animatingDoors = new Map();
 
     const W = this.D.W;
     let changed = false;
 
+    // 1. Proximity check to trigger door opening
     for (let i = 0; i < this.D.arches.length; i++) {
       if (this._unlockedDoors.has(i)) continue;
       const a = this.D.arches[i];
@@ -1046,7 +1228,36 @@ class Game {
         if (this._doorUnlockTimers[i] === undefined) {
           this._doorUnlockTimers[i] = 0;
           playSfx('lockUnlock', { volume: 0.7 });
+          playSfx('gateOpen', { volume: 0.75 });
           log('🚪 Opening door...', 'sys');
+
+          const meshes = this.engine?.getMeshes ? this.engine.getMeshes() : null;
+          const gateMesh = meshes ? meshes.gate : null;
+          const s = gateMesh?.userData?.set;
+          const origPx = (s && s.px && s.px[i] !== undefined) ? s.px[i] : ax;
+          const origPz = (s && s.pz && s.pz[i] !== undefined) ? s.pz[i] : az;
+          const startY = (s && s.py && s.py[i] !== undefined) ? s.py[i] : 0;
+          const origSx = (s && s.sx && s.sx[i] !== undefined) ? s.sx[i] : 1.0;
+          const origSy = (s && s.sy && s.sy[i] !== undefined) ? s.sy[i] : 1.8;
+          const origSz = (s && s.sz && s.sz[i] !== undefined) ? s.sz[i] : 1.0;
+
+          try {
+            playNixieEffect('door_splinters', { x: ax, y: 0.05, z: az }, { scale: 0.85, duration: 0.35 });
+          } catch (e) {}
+
+          this._animatingDoors.set(i, {
+            t: 0,
+            dur: 0.6,
+            ax,
+            az,
+            origPx,
+            origPz,
+            startY,
+            targetY: DOOR_SINK_Y,
+            origSx,
+            origSy,
+            origSz
+          });
         }
 
         this._doorUnlockTimers[i] += dt;
@@ -1057,34 +1268,85 @@ class Game {
           changed = true;
           playSfx('doorOpen', { volume: 0.8 });
           log('🚪 Door opened.', 'sys');
-          /* Everyone repaths: the cell that was costing +5 (or blocking the
-             step outright) is now plain floor, so held-up followers behind
-             the opener pick up the new route on the same frame. */
-          for (const h of alive) {
-            h.path = null;
+          /* Everyone repaths: stagger slightly across successive frames so
+             the entire party does not compute full A* searches simultaneously on a single frame. */
+          alive.forEach((h, idx) => {
+            if (typeof this.clearEntityPath === 'function') this.clearEntityPath(h);
+            else { h.path = null; h.pathI = 0; }
             h.pathGoal = -1;
-            h.repathT = 0;
+            h.repathT = idx * 0.04;
             h.stuckT = 0;
             h.stuckStage = 0;
             h._blockedByDoor = false;
             h._doorWaitTime = 0;
-          }
+          });
           this.stuckT = 0;
         }
       } else {
-        if (this._doorUnlockTimers[i] !== undefined) {
+        if (this._doorUnlockTimers[i] !== undefined && !this._unlockedDoors.has(i)) {
           delete this._doorUnlockTimers[i];
+          this._animatingDoors.delete(i);
+          this.syncDoorVisuals();
         }
       }
     }
+
+    // 2. Animate rumbling and sliding doors
+    if (this._animatingDoors && this._animatingDoors.size > 0) {
+      const meshes = this.engine?.getMeshes ? this.engine.getMeshes() : null;
+      const gateMesh = meshes ? meshes.gate : null;
+      const s = gateMesh?.userData?.set;
+
+      if (gateMesh && s) {
+        for (const [idx, anim] of this._animatingDoors.entries()) {
+          anim.t += dt;
+          const p = Math.min(1.0, anim.t / anim.dur);
+
+          // Rumble vibration effect
+          const rumbleMag = Math.max(0, (1.0 - p) * 0.03);
+          const jx = Math.sin(anim.t * 70.0) * rumbleMag;
+          const jz = Math.cos(anim.t * 60.0) * rumbleMag;
+
+          // Smooth mechanical slide & shrink into floor pocket
+          const ease = p * p * (3 - 2 * p);
+          const curY = anim.startY + (anim.targetY - anim.startY) * ease;
+          const scaleMult = Math.max(0, 1.0 - ease);
+
+          s.py[idx] = curY;
+          s.px[idx] = anim.origPx + jx;
+          s.pz[idx] = anim.origPz + jz;
+
+          _doorQ.setFromEuler(_doorE.set(s.rx[idx], s.ry[idx], s.rz[idx]));
+          _doorP.set(s.px[idx], s.py[idx], s.pz[idx]);
+          _doorS.set(anim.origSx * Math.min(1.0, scaleMult * 1.2), anim.origSy * scaleMult, anim.origSz * Math.min(1.0, scaleMult * 1.2));
+          _doorM.compose(_doorP, _doorQ, _doorS);
+          gateMesh.setMatrixAt(idx, _doorM);
+
+          if (p >= 1.0) {
+            s.py[idx] = -10.0;
+            s.px[idx] = anim.origPx;
+            s.pz[idx] = anim.origPz;
+            if (gateMesh.userData._origPy) {
+              gateMesh.userData._origPy[idx] = -10.0;
+            }
+            _doorS.set(0, 0, 0);
+            _doorP.set(s.px[idx], -10.0, s.pz[idx]);
+            _doorM.compose(_doorP, _doorQ, _doorS);
+            gateMesh.setMatrixAt(idx, _doorM);
+            this._animatingDoors.delete(idx);
+          }
+        }
+        if (gateMesh.instanceMatrix) gateMesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+
     if (changed) this.syncDoorVisuals();
   }
 
   /* Unlock every still-closed door arch that a path passes through. Returns
-     true if at least one door was opened. Used to break combat deadlocks where
-     a closed gate is the only thing between a monster and its target — see
-     monsterChase (proactive) and _breakCombatStall (watchdog). */
+     true if at least one door was opened. Refuses to open doors while in combat. */
   forceDoorsAlongPath(path) {
+    if (this.isCombatActive()) return false;
     if (!path || !this.D || !this.D.cellToArch || !this._unlockedDoors) return false;
     let opened = false;
     for (const c of path) {
@@ -1093,6 +1355,7 @@ class Game {
       if (arch >= 0 && !this._unlockedDoors.has(arch)) {
         this._unlockedDoors.add(arch);
         if (this._doorUnlockTimers) delete this._doorUnlockTimers[arch];
+        if (this._animatingDoors) this._animatingDoors.delete(arch);
         opened = true;
       }
     }
@@ -1103,12 +1366,18 @@ class Game {
     return opened;
   }
 
-  /* Last-resort: open every closed door on the floor. */
+  /* Last-resort: open every closed door on the floor outside of combat. */
   forceOpenAllDoors() {
+    if (this.isCombatActive()) return false;
     if (!this.D || !this.D.arches || !this._unlockedDoors) return false;
     let opened = false;
     for (let i = 0; i < this.D.arches.length; i++)
-      if (!this._unlockedDoors.has(i)) { this._unlockedDoors.add(i); opened = true; }
+      if (!this._unlockedDoors.has(i)) {
+        this._unlockedDoors.add(i);
+        if (this._doorUnlockTimers) delete this._doorUnlockTimers[i];
+        if (this._animatingDoors) this._animatingDoors.delete(i);
+        opened = true;
+      }
     if (opened) {
       this.syncDoorVisuals();
       playSfx('doorOpen', { volume: 0.7 });
@@ -1170,8 +1439,16 @@ class Game {
       const p = this.findPath(this.cellOf(m.x, m.z), goal);   // door-ignoring
       if (p && this.forceDoorsAlongPath(p)) opened = true;
     }
-    for (const m of this.monsters) { m.path = null; m.pathI = 0; m.repathT = 0; }
-    for (const h of this.heroes)   { h.path = null; h.pathI = 0; h.repathT = 0; }
+    for (const m of this.monsters) {
+      if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+      else { m.path = null; m.pathI = 0; }
+      m.repathT = 0;
+    }
+    for (const h of this.heroes)   {
+      if (typeof this.clearEntityPath === 'function') this.clearEntityPath(h);
+      else { h.path = null; h.pathI = 0; }
+      h.repathT = 0;
+    }
     if (opened) {
       log('🚪 A door between combatants opens and the battle resumes.', 'sys');
     }
@@ -1180,11 +1457,22 @@ class Game {
   /* ============ main update ============ */
   update(dt, elapsed) {
     this.elapsed = elapsed;
+    /* Options → Combat playback speed: scale the whole combat clock (movement,
+       attack lunges, sprite animation frames, projectiles, VFX, float text,
+       initiative pacing, cooldowns) uniformly while a fight is active. Read each
+       frame so a mid-fight slider change applies instantly. Exploration and the
+       camp rest animation run at full speed. */
+    if (this.combat) {
+      const cs = getSetting('combatSpeed');
+      if (typeof cs === 'number' && cs > 0 && cs !== 1) dt *= cs;
+    }
     window.__elapsedTime = elapsed;
     window.__effectClock = this.fxNow;   // combat clock — status-tray countdowns
     updateFloatTexts(this.engine.scene, dt);
     updateProjectiles(this.engine.scene, dt);
     updateWorldFx(this.engine.scene, dt);
+    updateCompositeFX(this.engine.scene, dt);
+    updateEntityStatusAuras([...(this.heroes || []), ...(this.monsters || [])], dt);
     if (this.paused) return;
     if (this._pendingFinish) {
       this._pendingFinish = false;
@@ -1201,7 +1489,6 @@ class Game {
     }
     if (this.state !== 'crawl' || !this.D) return;
     if (this.engine.isAnimating()) return;
-    if (this.campAnim) { this.updateCampAnimation(dt); return; }
 
     const alive = this.heroes.filter(h => h.data.hp > 0);
 
@@ -1219,7 +1506,20 @@ class Game {
     const leader = this.partyLeader(alive);
 
     for (const h of alive) {
-      const c = this.cellOf(h.x, h.z);
+      let c = this.cellOf(h.x, h.z);
+      if (c < 0 || this.D.grid[c] !== FLOOR) {
+        /* Out-of-bounds watchdog: immediately rescue hero back onto walkable floor */
+        const safeCell = this.nearFloorCell(c >= 0 ? c : 0, 50);
+        if (safeCell >= 0) {
+          const sx = this.wx(safeCell % this.D.W);
+          const sz = this.wz(Math.floor(safeCell / this.D.W));
+          h.x = sx; h.z = sz;
+          if (h.ent && h.ent.grp) h.ent.grp.position.set(sx, 0, sz);
+          if (typeof this.clearEntityPath === 'function') this.clearEntityPath(h);
+          c = safeCell;
+          log(`⚠️ Relocated ${h.data.name} back inside the dungeon.`, 'sys');
+        }
+      }
       if (c >= 0) {
         this.revealAround(c, REVEAL_RADIUS);
         if (c !== h.lastCell) {
@@ -1276,6 +1576,8 @@ class Game {
       this.applyInspiringLeader(alive);   // feat: party-wide temp HP
       const lc = this.cellOf(leader.x, leader.z);
       this.combatRoomId = (lc >= 0 && this.D.roomId) ? this.D.roomId[lc] : -1;
+      logRoomSpawnDebug(this, this.combatRoomId);   // console roster + budget readout
+      layoutRightRail();   // swap the quest box out for the initiative tracker
     }
     for (const h of alive) {
       /* Charmed heroes switch teams — they stalk and attack their own allies
@@ -1303,6 +1605,7 @@ class Game {
         h.uncannyUsed = false;       // Uncanny Dodge once per fight
       }
       updatePartyFrames(this.heroes.map(x => x.data));
+      layoutRightRail();   // bring the quest box back
     }
 
     /* Doors keep working during a fight — see updateDoors. Suspending them
@@ -1313,40 +1616,56 @@ class Game {
     else this._stallT = 0;
 
     if (!this.combat) {
-      this.exploreAI(alive, leader, dt);
-      /* Downed real heroes stagger back up at 30% between fights. Summoned
-         companions are intentionally excluded — their deathPolicy (e.g.
-         reviveOnShortRest) governs when they return. */
-      for (const h of this.heroes) if (h.data.hp <= 0 && !h.companion) {
-        h.data.hp = Math.max(1, Math.round(h.data.maxHp * 0.3));
-        // Reset death pose
-        h.ent.grp.rotation.z = 0;
-        h.ent.grp.rotation.x = 0;
-        h.ent.anim.mesh.position.y = 0;
-        h._dyingStarted = false;
-        h._deathLean = 0;
-        h.ent.anim._dying = false;
-        h.ent.anim._deathDone = false;
-        h.ent.anim.play('walk');
-        h.x = leader.x + (Math.random() - 0.5); h.z = leader.z + (Math.random() - 0.5);
-        log(`${h.data.name} staggers back to their feet.`, 'heal');
-        drawBar(h.ent.bar, h.data.hp / h.data.maxHp);
+      if (this.campAnim) {
+        this.updateCampAnimation(dt);
+      } else {
+        this.exploreAI(alive, leader, dt);
+        /* Downed real heroes stagger back up at 30% between fights. Summoned
+           companions are intentionally excluded — their deathPolicy (e.g.
+           reviveOnShortRest) governs when they return. */
+        for (const h of this.heroes) if (h.data.hp <= 0 && !h.companion) {
+          h.data.hp = Math.max(1, Math.round(h.data.maxHp * 0.3));
+          // Reset death pose
+          h.ent.grp.rotation.z = 0;
+          h.ent.grp.rotation.x = 0;
+          h.ent.anim.mesh.position.y = 0;
+          h._dyingStarted = false;
+          h._deathLean = 0;
+          h.ent.anim._dying = false;
+          h.ent.anim._deathDone = false;
+          h.ent.anim.play('walk');
+          if (typeof this.placeAtFreeCell === 'function') {
+            this.placeAtFreeCell(h, leader.x, leader.z, { radius: 2 });
+          } else {
+            h.x = leader.x + (Math.random() - 0.5); h.z = leader.z + (Math.random() - 0.5);
+          }
+          log(`${h.data.name} staggers back to their feet.`, 'heal');
+          drawBar(h.ent.bar, h.data.hp / h.data.maxHp);
+        }
+        this.checkInteractables(alive);
+        this.updateSearch(dt, alive, leader);
+        /* Warlocks recover a spell slot once a room's monsters are all dead */
+        this.refreshSlotsOnRoomClear();
+        /* Puzzle-floor ward rounds fire before random post-clear challenges */
+        checkPuzzleGate(this);
+        /* Post-clear skill challenges (paused overlay when one fires) */
+        checkForChallenge(this);
+        /* Post-search & pre-boss skill challenges */
+        checkRoomEntryChallenge(this);
+        /* Cosmetic boss reveal card (story missions with bossArt only) */
+        checkBossReveal(this);
       }
-      this.checkInteractables(alive);
-      this.updateSearch(dt, alive, leader);
-      /* Puzzle-floor ward rounds fire before random post-clear challenges */
-      checkPuzzleGate(this);
-      /* Post-clear skill challenges (paused overlay when one fires) */
-      checkForChallenge(this);
-      /* Post-search & pre-boss skill challenges */
-      checkRoomEntryChallenge(this);
-      /* Cosmetic boss reveal card (story missions with bossArt only) */
-      checkBossReveal(this);
     }
 
     }
 
-    this.applySeparation(alive, dt);
+    if (!this.campAnim) {
+      this.reapReservations();
+      /* Snap first, then un-stack: settling a body onto its tile centre can put
+         two of them on the same point, so the overlap resolver has to run last. */
+      this.snapStationaryToTiles(alive, dt);
+      this.resolveRestingOverlaps();
+    }
 
     /* visuals: position, bob, attack lunge */
     const cx = this.engine.cam.position.x - this.engine.camTarget.x;
@@ -1355,8 +1674,23 @@ class Game {
     const cosC = Math.cos(camAngle), sinC = Math.sin(camAngle);
 
     for (const h of this.heroes) {
-      const [ox, oz] = this.lungeOffset(h, dt);
-      h.ent.grp.position.set(h.x + ox, 0, h.z + oz);
+      if (!this.campAnim) {
+        const [ox, oz] = this.lungeOffset(h, dt);
+        h.ent.grp.position.set(h.x + ox, 0, h.z + oz);
+      }
+
+      /* Visual scale: enlarged status effect increases sprite size by 50% */
+      if (h.ent && h.ent.grp && !this.campAnim) {
+        const isEnlarged = hasEffect(h, 'enlarged') || hasEffect(h.data, 'enlarged');
+        const targetScale = isEnlarged ? 1.5 : 1.0;
+        const currentScale = h.ent.grp.scale.x || 1.0;
+        if (Math.abs(currentScale - targetScale) > 0.005) {
+          const newScale = currentScale + (targetScale - currentScale) * Math.min(1.0, dt * 8.0);
+          h.ent.grp.scale.set(newScale, newScale, newScale);
+        } else if (currentScale !== targetScale) {
+          h.ent.grp.scale.set(targetScale, targetScale, targetScale);
+        }
+      }
 
       if (h.data.hp <= 0) {
         // Trigger death animation once
@@ -1469,7 +1803,7 @@ class Game {
       th.group.visible = isTurn;
       if (isTurn && th.mat && th.spr) {
         th.mat.opacity = 0.50 + Math.sin((this.elapsed || 0) * 3.5) * 0.20;
-        const scaleBoost = 1.65 + Math.sin((this.elapsed || 0) * 2.5) * 0.08;
+        const scaleBoost = 1.24 + Math.sin((this.elapsed || 0) * 2.5) * 0.06;
         th.spr.scale.set(scaleBoost, scaleBoost * 1.12, 1.0);
       }
     }
@@ -1482,7 +1816,7 @@ class Game {
       th.group.visible = isTurn;
       if (isTurn && th.mat && th.spr) {
         th.mat.opacity = 0.50 + Math.sin((this.elapsed || 0) * 3.5) * 0.20;
-        const scaleBoost = 1.65 + Math.sin((this.elapsed || 0) * 2.5) * 0.08;
+        const scaleBoost = 1.24 + Math.sin((this.elapsed || 0) * 2.5) * 0.06;
         th.spr.scale.set(scaleBoost, scaleBoost * 1.12, 1.0);
       }
     }
@@ -1493,50 +1827,53 @@ class Game {
     if (this.campAnim || !heroes.length) return;
 
     const campX = sx, campZ = sz;
+    const N = heroes.length;
+    const R = 1.5; // 50% larger diameter circle around the fire
 
-    const tents = heroes.map((h) => {
-      const dx = campX - h.x, dz = campZ - h.z;
-      const d = Math.hypot(dx, dz) || 1;
-      const tentX = h.x + (dx / d) * 0.4;
-      const tentZ = h.z + (dz / d) * 0.4;
+    const tents = heroes.map((h, i) => {
+      const angle = (i / N) * Math.PI * 2 - Math.PI / 2;
+      let targetX = campX + Math.cos(angle) * R;
+      let targetZ = campZ + Math.sin(angle) * R;
 
-      h.ent.grp.visible = false;
+      // Ensure target position doesn't push into a wall if campfire is near edge
+      if (this.D && this.D.grid) {
+        const cell = typeof this.cellOf === 'function' ? this.cellOf(targetX, targetZ) : -1;
+        if (cell >= 0 && this.D.grid[cell] === WALL) {
+          targetX = campX + Math.cos(angle) * 1.1;
+          targetZ = campZ + Math.sin(angle) * 1.1;
+        }
+      }
 
-      const tent = createTentSprite();
-      tent.position.set(tentX, 0, tentZ);
-      tent.scale.set(1.35, 1.35, 1);
+      const startX = h.x !== undefined ? h.x : campX;
+      const startZ = h.z !== undefined ? h.z : campZ;
+
+      const dir = getTentFacingDir(targetX, targetZ, campX, campZ, cam);
+      const tent = createTentSprite(dir);
+      tent.position.set(targetX, 0, targetZ);
+      tent.scale.set(1.6, 1.6, 1);
+      tent.visible = false;
       this.gameGroup.add(tent);
 
-      return { sprite: tent, hero: h };
+      return {
+        sprite: tent,
+        hero: h,
+        startX,
+        startZ,
+        targetX,
+        targetZ,
+        currentDir: dir
+      };
     });
-
-    const cfCV = document.createElement('canvas');
-    cfCV.width = 64; cfCV.height = 64;
-    const cfCtx = cfCV.getContext('2d');
-    const cfTex = new THREE.CanvasTexture(cfCV);
-    cfTex.minFilter = THREE.LinearFilter;
-    cfTex.magFilter = THREE.LinearFilter;
-    const cfMat = new THREE.SpriteMaterial({ map: cfTex, transparent: true, depthTest: true, depthWrite: false });
-    const campfire = new THREE.Sprite(cfMat);
-    campfire.position.set(campX, 0.05, campZ);
-    campfire.scale.set(1.4, 1.4, 1);
-    this.gameGroup.add(campfire);
-
-    const light = new THREE.PointLight(0xff8833, 2, 4, 0.5);
-    light.position.set(campX, 0.15, campZ);
-    this.gameGroup.add(light);
 
     this.campAnim = {
       phase: 0,
       timer: 0,
       tents,
-      campfire: { sprite: campfire, canvas: cfCV, ctx: cfCtx, tex: cfTex },
-      light,
       campX,
       campZ
     };
 
-    log('⛺', 'heal');
+    log('⛺ The party gathers around the warm campfire to rest.', 'heal');
   }
 
   updateCampAnimation(dt) {
@@ -1545,33 +1882,99 @@ class Game {
     a.timer += dt;
     const t = a.timer;
 
-    if (t < 0.6) {
-      const k = t / 0.6;
-      const s = Math.max(0.01, 1 - k * k);
+    // Dynamically update tent facing perspectives based on camera orbit angle
+    for (const tk of a.tents) {
+      const newDir = getTentFacingDir(tk.targetX, tk.targetZ, a.campX, a.campZ, cam);
+      if (tk.currentDir !== newDir) {
+        tk.currentDir = newDir;
+        tk.sprite.material = getTentMaterial(newDir);
+      }
+    }
+
+    // Stage 1 (0 to 1.8s): Party smoothly walks to their spots in the campfire circle
+    if (t < 1.8) {
+      const p = Math.min(1, t / 1.8);
+      const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; // smooth walking
       for (const tk of a.tents) {
-        tk.hero.ent.grp.scale.setScalar(s);
+        const curX = tk.startX + (tk.targetX - tk.startX) * ease;
+        const curZ = tk.startZ + (tk.targetZ - tk.startZ) * ease;
+        tk.hero.x = curX;
+        tk.hero.z = curZ;
+        if (tk.hero.ent && tk.hero.ent.grp) {
+          tk.hero.ent.grp.position.set(curX, 0, curZ);
+          tk.hero.ent.grp.visible = true;
+          tk.hero.ent.grp.scale.setScalar(1);
+          if (tk.hero.ent.anim) {
+            if (typeof tk.hero.ent.anim.setDirection === 'function') {
+              tk.hero.ent.anim.setDirection(tk.targetX - tk.startX, tk.targetZ - tk.startZ);
+            }
+            if (typeof tk.hero.ent.anim.play === 'function') {
+              tk.hero.ent.anim.play('walk');
+            }
+          }
+        }
+        tk.hero.walk = true;
+        tk.hero.moving = true;
+        tk.sprite.visible = false;
       }
-    } else if (t < 14.2) {
-      a.lastTexUpdate = (a.lastTexUpdate || 0) + dt;
-      if (a.lastTexUpdate >= 0.05) {
-        a.lastTexUpdate = 0;
-        drawCampfireCanvas(a.campfire.ctx, a.campfire.canvas.width, a.campfire.canvas.height, t);
-        a.campfire.tex.needsUpdate = true;
-      }
-      a.light.intensity = 1.3 + Math.sin(t * 11) * 0.4 + Math.sin(t * 17) * 0.3;
-    } else if (t < 14.8) {
-      const k = (t - 14.2) / 0.6;
-      const s = Math.min(1, k * k);
+    }
+    // Stage 2 (1.8s to 2.5s): Heroes stand gathered in a circle facing the warm crackling fire
+    else if (t < 2.5) {
       for (const tk of a.tents) {
-        tk.hero.ent.grp.scale.setScalar(s);
+        tk.hero.walk = false;
+        tk.hero.moving = false;
+        tk.hero.x = tk.targetX;
+        tk.hero.z = tk.targetZ;
+        if (tk.hero.ent && tk.hero.ent.grp) {
+          tk.hero.ent.grp.position.set(tk.targetX, 0, tk.targetZ);
+          tk.hero.ent.grp.visible = true;
+          tk.hero.ent.grp.scale.setScalar(1);
+          if (tk.hero.ent.anim && typeof tk.hero.ent.anim.setDirection === 'function') {
+            tk.hero.ent.anim.setDirection(a.campX - tk.targetX, a.campZ - tk.targetZ);
+          }
+        }
+        tk.sprite.visible = false;
       }
-      a.campfire.sprite.material.opacity = 1 - k;
-      a.light.intensity = Math.max(0, 1.3 * (1 - k));
-    } else {
+    }
+    // Stage 3 (2.5s to 7.5s): Instantaneous tent pitch, 5-second cozy tent rest
+    else if (t < 7.5) {
+      for (const tk of a.tents) {
+        tk.hero.walk = false;
+        tk.hero.moving = false;
+        tk.hero.x = tk.targetX;
+        tk.hero.z = tk.targetZ;
+        if (tk.hero.ent && tk.hero.ent.grp) {
+          tk.hero.ent.grp.position.set(tk.targetX, 0, tk.targetZ);
+          tk.hero.ent.grp.scale.setScalar(1);
+          tk.hero.ent.grp.visible = false; // Inside tent
+        }
+        tk.sprite.visible = true;
+        tk.sprite.scale.set(1.6, 1.6, 1);
+      }
+    }
+    // Stage 4 (7.5s to 8.0s): Tents pack up, party emerges fully refreshed
+    else if (t < 8.0) {
+      for (const tk of a.tents) {
+        if (tk.hero.ent && tk.hero.ent.grp) {
+          tk.hero.ent.grp.position.set(tk.targetX, 0, tk.targetZ);
+          tk.hero.ent.grp.visible = true;
+          tk.hero.ent.grp.scale.setScalar(1);
+        }
+        tk.sprite.visible = false;
+      }
+    }
+    // Finished
+    else {
       this.applyCampRest();
       return false;
     }
     return true;
+  }
+
+  extinguishCampfire(x, z, radius = 2.5) {
+    if (typeof extinguishCampfire === 'function') {
+      extinguishCampfire(x, z, radius);
+    }
   }
 
   applyCampRest() {
@@ -1580,16 +1983,31 @@ class Game {
 
     for (const tk of a.tents) {
       this.gameGroup.remove(tk.sprite);
-      tk.hero.ent.grp.visible = true;
-      tk.hero.ent.grp.scale.setScalar(1);
+      if (tk.hero.ent && tk.hero.ent.grp) {
+        tk.hero.ent.grp.visible = true;
+        tk.hero.ent.grp.scale.setScalar(1);
+        tk.hero.ent.grp.position.set(tk.targetX, 0, tk.targetZ);
+      }
+      tk.hero.x = tk.targetX;
+      tk.hero.z = tk.targetZ;
+      tk.hero.walk = false;
+      tk.hero.moving = false;
     }
 
-    a.campfire.sprite.material.map.dispose();
-    a.campfire.sprite.material.dispose();
-    this.gameGroup.remove(a.campfire.sprite);
-    this.gameGroup.remove(a.light);
+    // Extinguish 3D campfire in the dungeon scene
+    this.extinguishCampfire(a.campX, a.campZ);
+    if (this.shrines) {
+      for (const s of this.shrines) {
+        const sx = this.wx(s.x), sz = this.wz(s.y);
+        if (Math.hypot(sx - a.campX, sz - a.campZ) < 2.5) {
+          s.used = true;
+          s.extinguished = true;
+        }
+      }
+    }
 
     this.campAnim = null;
+    log('💨 The campfire is extinguished as the well-rested party sets out.', 'sys');
     partyShortRest(this, { fullHeal: true, reason: 'shrine' });
   }
 
@@ -1714,9 +2132,19 @@ class Game {
     /* Revive at full HP, reposition at entrance, reset death/anim state. */
     this.heroes.forEach((h, i) => {
       h.data.hp = h.data.maxHp;
-      h.x = this.wx(ea % W) + (i % 2 === 0 ? -0.5 : 0.5);
-      h.z = this.wz(Math.floor(ea / W)) + (i < 2 ? -0.5 : 0.5);
-      h.path = null;
+      /* Distinct entrance-adjacent cells, never half-cell offsets. */
+      const offsets = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+      const ox = offsets[i % offsets.length][0];
+      const oy = offsets[i % offsets.length][1];
+      const px = Math.max(1, Math.min(W - 2, (ea % W) + ox));
+      const py = Math.max(1, Math.min(this.D.H - 2, Math.floor(ea / W) + oy));
+      if (typeof this.placeAtFreeCell === 'function') {
+        this.placeAtFreeCell(h, this.wx(px), this.wz(py), { radius: 2 });
+      } else {
+        h.x = this.wx(px) + (i % 2 === 0 ? -0.5 : 0.5);
+        h.z = this.wz(Math.floor(ea / W)) + (i < 2 ? -0.5 : 0.5);
+      }
+      this.clearEntityPath(h);
       h.ent.grp.rotation.z = 0;
       h.ent.grp.rotation.x = 0;
       h.ent.anim.mesh.position.y = 0;
@@ -1727,10 +2155,14 @@ class Game {
       h.ent.anim.play('walk');
     });
 
-    /* Full recharge (abilities / slots / effects) \u2014 HP already set above. */
+    /* Full recharge (abilities / slots / effects) — HP already set above. */
     partyLongRest(this, { reason: 'death respawn' });
 
-    for (const m of this.monsters) { m.active = false; m.path = null; }
+    for (const m of this.monsters) {
+      m.active = false;
+      if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+      else m.path = null;
+    }
     this.targetRoom = -1;
     this.wipeT = 0;
     updateResources(this);
@@ -1834,7 +2266,9 @@ class Game {
         log('🜂 The floor is swept. The way onward opens — head for the marker.', 'story');
         playSfx('doorOpen', { volume: 0.8 });
         /* point the explore AI at the exit room so the party actually goes */
-        this.userGoal = this.roomAnchor[fx.roomId];
+        const exitCell = fx.y * this.D.W + fx.x;
+        const exitTarget = typeof this.nearFloorCell === 'function' ? this.nearFloorCell(exitCell, 2) : exitCell;
+        this.userGoal = exitTarget >= 0 ? exitTarget : exitCell;
         this.targetRoom = fx.roomId;
       }
       return;
@@ -1844,7 +2278,9 @@ class Game {
 
     /* keep steering there in case the explore AI wanders off */
     if (this.targetRoom !== fx.roomId) {
-      this.userGoal = this.roomAnchor[fx.roomId];
+      const exitCell = fx.y * this.D.W + fx.x;
+      const exitTarget = typeof this.nearFloorCell === 'function' ? this.nearFloorCell(exitCell, 2) : exitCell;
+      this.userGoal = exitTarget >= 0 ? exitTarget : exitCell;
       this.targetRoom = fx.roomId;
     }
 
@@ -1999,8 +2435,23 @@ Object.assign(
   exploreMethods,
   inventoryMethods,
   initiativeMethods,
-  turnEngineMethods
+  turnEngineMethods,
+  reservationMethods
 );
 
 export const game = new Game();
-if (typeof window !== 'undefined') window.__game = game;
+if (typeof window !== 'undefined') {
+  window.__game = game;
+  /* AI decision trace — off by default, costs nothing until switched on.
+     In the console:  __aiTrace(true)  then  __aiTraceDump() / __aiTraceIdle()
+     With __aiTraceLog(true) the reasoning is echoed straight into the combat
+     log, so a fight can be watched without opening devtools. */
+  installTraceConsole();
+  window.__aiTraceLog = (v = true) => {
+    Trace.enable(true);
+    Trace.sink = v
+      ? (e, event, why) => game.fxLog(`🧠 ${(e.data && e.data.name) || '?'} — ${event}: ${why}`, 'sys')
+      : null;
+    return `AI reasoning in combat log: ${v ? 'ON' : 'OFF'}`;
+  };
+}

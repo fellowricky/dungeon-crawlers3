@@ -14,9 +14,11 @@ import {
   matCampRing, matRegimentalBanner, matBoneStone, matBiolum, matGlacialIce,
   matFloor, matWall, matWallCap, matTrim, matGlow, matCloth, matIce, matMoss, matBark,
   matGrass, matLeaf, matCrackD, matRune, matPortal, matShaft, matSkirt,
-  matRuneSeal, matEmber, matBlot, matBlotAdd, matWeb, liquidMat, partMat, POST,
+  matRuneSeal, matEmber, matBlot, matBlotAdd, matWeb, liquidMat, partMat, fogPlaneMat, POST,
   applyTileTheme
 } from './dungeon_materials.js';
+import { initNixieVfx, updateNixieVfx, clearPersistentNixieEffects, registerPersistentNixieEffect, stopPersistentNixieEffectsNear } from './nixie_vfx.js';
+import { initAmbientFX, updateAmbientFX, clearAmbientFX, triggerLiquidSplashFX } from './ambient_fx.js';
 
 const canvasBg = 0x050609;
 const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -29,6 +31,8 @@ propLoader.setDRACOLoader(dracoLoader);
 
 const BIOME_PROP_FILES = {
   Forest: {
+    tree: 'tree.opt.glb',
+    tree_winter: 'tree_winter.opt.glb',
     mushroomLog: 'MushroomLog.opt.glb', rocks: 'rocks.opt.glb', stump: 'stump.opt.glb',
     vinemound: 'vinemound.opt.glb', cairn: 'Cairn.opt.glb', stakes: 'stakes.opt.glb',
     rack: 'rack.opt.glb', goblinfire: 'goblinfire.opt.glb', skulltotem: 'skulltotem.opt.glb'
@@ -38,23 +42,32 @@ const BIOME_PROP_FILES = {
   },
   Grim: { tombstone: 'Tombstone.opt.glb' },
   Molten: { anvil: 'Anvil.opt.glb' },
-  frost: { icebone: 'icebone.opt.glb' },
+  frost: { icebone: 'icebone.opt.glb', snowtree: 'snowtree.opt.glb', tree_winter: 'snowtree.opt.glb' },
   Verdant: {
     fren1: 'fren1.opt.glb', fren2: 'fren2.opt.glb', fren3: 'fren3.opt.glb', fren4: 'fren4.opt.glb',
     mushroomA: 'mushroom.opt.glb', mushroomB: 'mushroom2.opt.glb', rootsA: 'roots1.opt.glb', rootsB: 'roots2.opt.glb'
   },
   Moor: {
+    swamptree: 'swamptree.opt.glb',
     bush: 'bush.opt.glb', signpost: 'signpost.opt.glb',
     brokenSignpost: '389570cd4af64ded8622428ce71e2991.opt.glb', wheel: 'wheel.opt.glb'
+  },
+  Mire: {
+    deadtree: 'deadtree.opt.glb'
   }
 };
 /* per-asset visual scale multiplier — these models are all normalized to fill
    one tile on import, but their real-world proportions differ, so the single-
    tile default reads wrong for several of them */
 const PROP_SCALE_MULTIPLIER = {
+  tree: 1.8,
+  tree_winter: 1.8,
+  snowtree: 1.8,
+  swamptree: 1.8,
+  deadtree: 1.8,
   mushroomLog: 1.25,
   coffin: 1.5, pillarA: 1.3, pillarB: 1.3, vase: 0.85,
-  anvil: 0.75, tombstone: 1.15, icebone: 1.1,
+  anvil: 0.75, tombstone: 0.38, icebone: 1.1,
   fren1: 0.9, fren2: 0.9, fren3: 0.9, fren4: 0.9,
   mushroomA: 1.2, mushroomB: 1.2, rootsA: 1.3, rootsB: 1.3,
   stump: 1.2, vinemound: 1.2, cairn: 1.1, rocks: 1.1, skulltotem: 1.3,
@@ -68,7 +81,7 @@ const propBaseOffset = {};
  *  Used for the shipped biome props, for custom_props.json, and live by the
  *  dungeon editor when a model is imported. Resolves once the model is ready
  *  so a caller can re-forge and actually see it. */
-export function registerProp(key, url, scaleMult){
+export function registerProp(key, url, scaleMult, retries = 2){
   if(scaleMult) PROP_SCALE_MULTIPLIER[key] = scaleMult;
   return new Promise((resolve, reject) => {
     propLoader.load(url, gltf => {
@@ -76,23 +89,60 @@ export function registerProp(key, url, scaleMult){
       propBaseOffset[key] = -new THREE.Box3().setFromObject(gltf.scene).min.y;
       resolve(key);
     }, undefined, err => {
-      console.error(`prop load failed: ${key}`, err);
+      // If request was aborted (e.g. page navigation, reload, HMR), ignore silently
+      const isAbort = err && (err.name === 'AbortError' || String(err).includes('aborted') || String(err).includes('ReadableStream'));
+      if(isAbort){
+        resolve(null);
+        return;
+      }
+      if(retries > 0){
+        setTimeout(() => {
+          registerProp(key, url, scaleMult, retries - 1).then(resolve).catch(reject);
+        }, 350);
+        return;
+      }
+      console.warn(`prop load failed: ${key}`, err);
       reject(err);
     });
   });
 }
 export function registeredProps(){ return Object.keys(propAssets); }
 
-for(const folder in BIOME_PROP_FILES){
+const loadedBiomes = new Set();
+
+/** Load only the 3D models required by the current theme/biome. */
+export function preloadBiomeProps(biomeKey){
+  if(!biomeKey) return Promise.resolve();
+  const folder = Object.keys(BIOME_PROP_FILES).find(k => k.toLowerCase() === biomeKey.toLowerCase())
+    || (biomeKey.toLowerCase() === 'holdfast' ? 'Forest' : null);
+  if(!folder || loadedBiomes.has(folder)) return Promise.resolve();
+  loadedBiomes.add(folder);
+  const promises = [];
   for(const [key, file] of Object.entries(BIOME_PROP_FILES[folder])){
-    registerProp(key, `/3d/${folder}/${file}`).catch(() => {});
+    if(!propAssets[key]){
+      promises.push(registerProp(key, `/3d/${folder}/${file}`).catch(() => {}));
+    }
   }
+  return Promise.all(promises);
 }
-/* Models imported through the dungeon editor. Same shape as BIOME_PROP_FILES
-   entries but with an explicit url + scale, so they survive a reload and work
-   in the game, not just in the editor. */
-for(const [key, def] of Object.entries(CUSTOM_PROPS || {})){
-  if(def && def.url) registerProp(key, def.url, def.scale).catch(() => {});
+
+// Background idle preload of remaining biomes after page startup
+if(typeof window !== 'undefined'){
+  const bgPreload = () => {
+    for(const folder in BIOME_PROP_FILES){
+      if(!loadedBiomes.has(folder)){
+        preloadBiomeProps(folder);
+      }
+    }
+    for(const [key, def] of Object.entries(CUSTOM_PROPS || {})){
+      if(def && def.url && !propAssets[key]) registerProp(key, def.url, def.scale).catch(() => {});
+    }
+  };
+  if(typeof window.requestIdleCallback === 'function'){
+    window.requestIdleCallback(bgPreload, { timeout: 4000 });
+  } else {
+    setTimeout(bgPreload, 2000);
+  }
 }
 
 function showWebGLErrorOverlay(err) {
@@ -173,8 +223,13 @@ let curBg = new THREE.Color(canvasBg);
 const _cBg = new THREE.Color();
 
 const BASE_HALF = 55;
+export const MIN_CAM_ZOOM = 1.0;
+export const MAX_CAM_ZOOM = 14.0;
+export const DEFAULT_CAM_ZOOM = 9.67; // 2/3 between 1.0 (min) and 14.0 (max)
 let aspect = innerWidth/innerHeight;
 export const cam = new THREE.OrthographicCamera(-BASE_HALF*aspect, BASE_HALF*aspect, BASE_HALF, -BASE_HALF, -400, 800);
+cam.zoom = DEFAULT_CAM_ZOOM;
+cam.updateProjectionMatrix();
 export let yaw = Math.PI/4, pitch = 0.64;
 
 export function setYawPitch(y, p) { yaw = y; pitch = p; updateCam(); }
@@ -212,11 +267,8 @@ updateCam();
 
 const LIGHT_K = 4 * Math.PI;
 
-/* Torch pool lights used to hard-code 2.2 / 18 and ignore the theme's
-   torchLight:[colour, intensity, range] entirely. These factors make ancient's
-   authored 1.5 / 9.5 land on exactly the old numbers, so nothing shifts by
-   default while the per-theme values (and the editor sliders) now do something. */
-const TORCH_I_K = 2.2 / 1.5, TORCH_R_K = 18 / 9.5;
+/* Torch pool intensity multiplier & range balanced between original bright and dimmed values */
+const TORCH_I_K = 1.5 / 1.5, TORCH_R_K = 16 / 9.5;
 const torchPoolIntensity = TH => ((TH && TH.torchLight && TH.torchLight[1]) ?? 1.5) * TORCH_I_K;
 const torchPoolRange     = TH => ((TH && TH.torchLight && TH.torchLight[2]) ?? 9.5) * TORCH_R_K;
 
@@ -277,12 +329,76 @@ if(renderer && renderer.domElement){
     _clickRay.setFromCamera(_clickNdc, cam);
 
     if (game.updateSpellTargeting && game.targetingState && game.targetingState.active) {
+      const ts = game.targetingState;
       if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
         game.updateSpellTargeting(_clickPt.x, _clickPt.z);
       }
-      _hoverMarkerGroup.visible = false;
+      /* Highlight the monster under the cursor so single-target spells give
+         feedback (the AoE reticle alone is too small for them). Grid-based
+         hit-test matches the click resolver. */
+      const tgx = _clickPt.x, tgz = _clickPt.z;
+      const tCell = (game.cellOf && game.D) ? game.cellOf(tgx, tgz) : -1;
+      const tgtMonster = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
+        && ((tCell >= 0 && game.cellOf(m.x, m.z) === tCell) || Math.hypot(m.x - tgx, m.z - tgz) < 0.6));
       const tooltip = document.getElementById('hover-cursor-tooltip');
-      if (tooltip) tooltip.style.display = 'none';
+      if (tgtMonster) {
+        _hoverMarkerGroup.visible = true;
+        _hoverMarkerGroup.position.set(tgtMonster.x, 0.04, tgtMonster.z);
+        _hoverTileMat.color.setHex(0xffaa30);
+        _hoverBorderMat.color.setHex(0xffe0a0);
+        if (tooltip) {
+          const dart = ts.isMultiTarget ? ` (Dart ${(ts.assignedTargets?.length || 0) + 1}/${ts.totalDarts})` : '';
+          tooltip.style.display = 'block';
+          tooltip.style.left = `${e.clientX}px`;
+          tooltip.style.top = `${e.clientY}px`;
+          tooltip.textContent = `🎯 ${ts.isAoE ? 'Place' : 'Target'} ${tgtMonster.data.name}${dart}`;
+        }
+      } else {
+        _hoverMarkerGroup.visible = false;
+        if (tooltip) {
+          tooltip.style.display = 'block';
+          tooltip.style.left = `${e.clientX}px`;
+          tooltip.style.top = `${e.clientY}px`;
+          tooltip.textContent = ts.isAoE ? `🎯 Click to place (${Math.round((ts.radius || 0) * 5)} ft)` : `🎯 Click a target`;
+        }
+      }
+      return;
+    }
+
+    /* Manual attack targeting (melee/thrown option selected): highlight the
+       monster under the cursor + range tooltip, mirroring spell targeting. */
+    if (game.attackTargetingState && game.attackTargetingState.active) {
+      const at = game.attackTargetingState;
+      const prof = at.profile || {};
+      const ranged = !prof.melee;
+      const reachTiles = ranged ? Math.max(1, Math.round(prof.range || 6)) : 1;
+      const tooltip = document.getElementById('hover-cursor-tooltip');
+      if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
+        const tgx = _clickPt.x, tgz = _clickPt.z;
+        const tCell = (game.cellOf && game.D) ? game.cellOf(tgx, tgz) : -1;
+        const tgt = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
+          && ((tCell >= 0 && game.cellOf(m.x, m.z) === tCell) || Math.hypot(m.x - tgx, m.z - tgz) < 0.6));
+        if (tgt) {
+          _hoverMarkerGroup.visible = true;
+          _hoverMarkerGroup.position.set(tgt.x, 0.04, tgt.z);
+          _hoverTileMat.color.setHex(0xff3344);
+          _hoverBorderMat.color.setHex(0xffaaaa);
+          if (tooltip) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
+            tooltip.textContent = `${ranged ? '🎯 Throw at' : '⚔️ Attack'} ${tgt.data.name}`;
+          }
+        } else {
+          _hoverMarkerGroup.visible = false;
+          if (tooltip) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
+            tooltip.textContent = ranged ? `🎯 Click a target (range ${reachTiles * 5} ft)` : `🎯 Click a target`;
+          }
+        }
+      }
       return;
     }
 
@@ -299,9 +415,15 @@ if(renderer && renderer.domElement){
 
     if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
       const gx = _clickPt.x, gz = _clickPt.z;
-      const clickedMonster = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0 && Math.hypot(m.x - gx, m.z - gz) < 1.3);
+      /* Grid-based monster hit-test: only show the attack reticle when the
+         cursor is actually on the monster's tile (or very close to its
+         centre), so adjacent floor tiles remain usable for movement. Must
+         match the click resolver in explore.js commandMove. */
+      const rawCell = (game.cellOf && game.D) ? game.cellOf(gx, gz) : -1;
+      const clickedMonster = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
+        && ((rawCell >= 0 && game.cellOf(m.x, m.z) === rawCell) || Math.hypot(m.x - gx, m.z - gz) < 0.6));
 
-      if (clickedMonster) {
+      if (clickedMonster && !cur.actUsed) {
         _hoverMarkerGroup.visible = true;
         _hoverMarkerGroup.position.set(clickedMonster.x, 0.04, clickedMonster.z);
         _hoverTileMat.color.setHex(0xff3333);
@@ -329,23 +451,24 @@ if(renderer && renderer.domElement){
         const inBudget = distFt <= moveLeftFt;
 
         if (game && game.controlMode === 'manual' && game.initiative && game.initiative.active && (cur.moveLeft || 0) > 0) {
-          if (!game.pendingMoveState) {
-            const curCell = game.cellOf(cur.x, cur.z);
-            if (cell >= 0 && cell !== curCell && game.D && game.D.grid && game.D.grid[cell] === 0) {
-              const rawPath = game.findPath ? game.findPath(curCell, cell) : null;
-              if (rawPath && rawPath.length >= 2) {
-                const maxSteps = Math.min(cur.moveLeft || game.cellsForSpeed(cur), rawPath.length - 1);
-                const actualPath = rawPath.slice(0, maxSteps + 1);
-                const costFt = maxSteps * 5;
-                game.updatePathVisual(actualPath, costFt);
-              } else if (game.clearPathVisual) {
-                game.clearPathVisual();
-              }
+          /* Live path preview on hover — refresh even while a pending move is
+             armed, so the player can re-aim before confirming. The pending
+             move's own path is held in pendingMoveState; this is just visual. */
+          const curCell = game.cellOf(cur.x, cur.z);
+          if (cell >= 0 && cell !== curCell && game.D && game.D.grid && game.D.grid[cell] === FLOOR) {
+            const rawPath = game.findPath ? game.findPath(curCell, cell) : null;
+            if (rawPath && rawPath.length >= 2) {
+              const maxSteps = Math.min(cur.moveLeft || game.cellsForSpeed(cur), rawPath.length - 1);
+              const actualPath = rawPath.slice(0, maxSteps + 1);
+              const costFt = maxSteps * 5;
+              game.updatePathVisual(actualPath, costFt);
             } else if (game.clearPathVisual) {
               game.clearPathVisual();
             }
+          } else if (game.clearPathVisual) {
+            game.clearPathVisual();
           }
-        } else if (game && game.clearPathVisual && !game.pendingMoveState) {
+        } else if (game && game.clearPathVisual) {
           game.clearPathVisual();
         }
 
@@ -401,10 +524,8 @@ if(renderer && renderer.domElement){
   cnv.addEventListener('wheel', e=>{
     e.preventDefault();
     /* Orthographic zoom: higher = closer. The visible half-height is
-       BASE_HALF/zoom, so the min clamp caps how far out you can pull.
-       Zoom-out reach cut to roughly a third (0.12 -> 0.36) and zoom-in
-       pushed ~30% nearer (6 -> 7.8). */
-    cam.zoom = Math.min(7.8, Math.max(0.36, cam.zoom*Math.exp(-e.deltaY*0.0012)));
+       BASE_HALF/zoom, so the min clamp caps how far out you can pull. */
+    cam.zoom = Math.min(MAX_CAM_ZOOM, Math.max(MIN_CAM_ZOOM, cam.zoom*Math.exp(-e.deltaY*0.0012)));
     cam.updateProjectionMatrix();
   }, {passive:false});
 }
@@ -479,6 +600,9 @@ export let group = null;
 export let meshes = {};
 export let overlay = null;
 export let lights = [];
+/* Campfire/shrine lights tagged with the room that owns them. Collected in
+   buildScene's prop pass; see the 'shrineCrystal' case. */
+export let roomLights = [];
 export let standaloneRooms = [];
 export let floorColorsBase = null, floorColorsHeat = null;
 export let animT = Infinity, animEnd = 0, animating = false;
@@ -491,6 +615,7 @@ export function isAnimating() {
 }
 
 export function disposeLevel(){
+  clearAmbientFX();
   if(group){ scene.remove(group);
     group.traverse(o=>{
       if(o.isInstancedMesh) o.dispose();
@@ -501,12 +626,14 @@ export function disposeLevel(){
   levelGeos = [];
   group = null; meshes = {}; overlay = null;
   lights = [];
+  roomLights = [];
   standaloneRooms = [];
   fx = { liquids:[], shafts:[], spinners:[], parts:null };
 }
 
 export function applyThemeEnv(TH){
   scene.fog.color.set(TH.fog);
+  scene.fog.density = TH.fogD || 0.0025;
   curBg.set(TH.bg);
   hemi.color.set(TH.hemi[0]); hemi.groundColor.set(TH.hemi[1]); hemi.intensity = TH.hemi[2] * LIGHT_K;
   dirL.color.set(TH.dir[0]); dirL.intensity = TH.dir[1] * LIGHT_K;
@@ -538,10 +665,23 @@ export function buildLiquidMesh(cells, wx, wz, y){
 export function buildScene(d){
   disposeLevel();
   D = d;
+  cam.zoom = DEFAULT_CAM_ZOOM;
+  cam.updateProjectionMatrix();
+  initNixieVfx(scene, cam);
+  clearPersistentNixieEffects();
+  const W = d.W, H = d.H;
+  const wx = x => x - W / 2 + 0.5, wz = y => y - H / 2 + 0.5;
+  const er = (d.rooms && d.entrance >= 0 && d.rooms[d.entrance]) || (d.rooms && d.rooms[0]);
+  if (er) {
+    camTarget.set(wx(er.cx), 0, wz(er.cy));
+    updateCam();
+  }
+  initAmbientFX(scene, cam, d.params.themeKey || d.themeKey, er ? new THREE.Vector3(wx(er.cx), 1.2, wz(er.cy)) : null);
   const TH = THEMES[d.params.themeKey || d.themeKey] || THEMES.ancient;
   const accC = parseInt(TH.accent.slice(1),16);
   applyThemeEnv(TH);
   applyTileTheme(d.params.themeKey || d.themeKey);
+  preloadBiomeProps(d.params?.themeKey || d.themeKey);
   group = new THREE.Group(); scene.add(group);
 
   if(!heroLight){
@@ -550,20 +690,20 @@ export function buildScene(d){
     scene.add(heroLight);
   }
 
-  const W=d.W, H=d.H, grid=d.grid, roomId=d.roomId, corridor=d.corridor,
+  const grid=d.grid, roomId=d.roomId, corridor=d.corridor,
         doorway=d.doorway, bfs=d.bfs, maxBfs=d.maxBfs, rooms=d.rooms,
         lakeMask=d.lakeMask;
-  const idx=(x,y)=>y*W+x, wx=x=>x-W/2+0.5, wz=y=>y-H/2+0.5;
+  const idx=(x,y)=>y*W+x;
   const cellRng = makeRng(d.seed ^ 0x9e3779b9);
   const dStep = 0.016;
 
   const floorAnchor = (gx, gy)=>{
     gx = Math.max(0, Math.min(W-1, Math.round(gx)));
     gy = Math.max(0, Math.min(H-1, Math.round(gy)));
-    if(grid[idx(gx,gy)]===FLOOR) return idx(gx,gy);
+    if(grid[idx(gx,gy)]===FLOOR || grid[idx(gx,gy)]===POOL) return idx(gx,gy);
     for(const o of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
       const nx=gx+o[0], ny=gy+o[1];
-      if(nx>=0&&ny>=0&&nx<W&&ny<H && grid[idx(nx,ny)]===FLOOR) return idx(nx,ny);
+      if(nx>=0&&ny>=0&&nx<W&&ny<H && (grid[idx(nx,ny)]===FLOOR || grid[idx(nx,ny)]===POOL)) return idx(nx,ny);
     }
     return -1;
   };
@@ -576,6 +716,41 @@ export function buildScene(d){
            (y<H-1 && grid[c+W]===POOL) || (y>0 && grid[c-W]===POOL);
   };
 
+  const nearFloorBfs = (x,y)=>{ let b=1e4;
+    for(let oy=-1;oy<=1;oy++) for(let ox=-1;ox<=1;ox++){
+      const nx=x+ox, ny=y+oy;
+      if(nx>=0&&ny>=0&&nx<W&&ny<H && bfs[idx(nx,ny)]>=0) b=Math.min(b,bfs[idx(nx,ny)]);
+    } return b===1e4?0:b; };
+
+  /* Distance-from-floor BFS for culling off-screen void trees and ground */
+  const wallDist = new Int16Array(W*H).fill(-1);
+  const qDist = [];
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const c=idx(x,y);
+    if(grid[c]===FLOOR){
+      wallDist[c] = 0;
+      qDist.push(x, y);
+    }
+  }
+  let qdHead = 0;
+  while(qdHead < qDist.length){
+    const qx = qDist[qdHead++];
+    const qy = qDist[qdHead++];
+    const dCur = wallDist[idx(qx, qy)];
+    if(dCur >= 3) continue;
+    for(let oy=-1; oy<=1; oy++) for(let ox=-1; ox<=1; ox++){
+      if(!ox && !oy) continue;
+      const nx = qx + ox, ny = qy + oy;
+      if(nx>=0 && ny>=0 && nx<W && ny<H){
+        const nc = idx(nx, ny);
+        if(wallDist[nc] === -1){
+          wallDist[nc] = dCur + 1;
+          qDist.push(nx, ny);
+        }
+      }
+    }
+  }
+
   /* floors */
   const fs = instSet(); floorColorsBase=[]; floorColorsHeat=[];
   const fUv=[], pushVar=(arr,rng)=>{ const v=rng.i(0,3); arr.push((v&1)*0.5, (v>>1)*0.5); };
@@ -583,7 +758,10 @@ export function buildScene(d){
   const base = new THREE.Color(), tint = new THREE.Color(),
         heatA = new THREE.Color(0x2f4bb0), heatB = new THREE.Color(0xe8502f);
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    const c=idx(x,y); if(grid[c]!==FLOOR || lakeMask[c]) continue;
+    const c=idx(x,y);
+    const isWall = grid[c]===WALL;
+    if((!isWall && grid[c]!==FLOOR) || lakeMask[c]) continue;
+    if(isWall && (!TH.overland || wallDist[c] < 0 || wallDist[c] > 3)) continue;
     let walls8=0;
     for(let oy=-1;oy<=1;oy++) for(let ox=-1;ox<=1;ox++){
       if(!ox&&!oy) continue;
@@ -591,20 +769,29 @@ export function buildScene(d){
       if(nx<0||ny<0||nx>=W||ny>=H || grid[idx(nx,ny)]===WALL) walls8++;
     }
     const rid = roomId[c];
-    base.set(corridor[c] ? TH.corridor : TH.floor);
-    if(rid>=0 && rooms[rid].type!==TYPE.COMBAT) base.lerp(tint.set(TINT[rooms[rid].type]), 0.17);
-    if(doorway[c]) base.multiplyScalar(1.14);
-    if(mossMask[c]) base.lerp(tint.set(0x4c7a42), 0.32);
-    if(TH.pools && TH.pools.mode===0 && poolAdj(x,y)) base.lerp(tint.set(0xff7a33), 0.3);
-    base.multiplyScalar(1 - 0.11*Math.min(walls8,4));
-    base.multiplyScalar(((x+y)&1) ? 0.965 : 1.0);
-    base.multiplyScalar(cellRng.f(0.94,1.06));
-    floorColorsBase.push(base.getHex());
-    const diff = rid>=0 ? rooms[rid].difficulty : (maxBfs ? bfs[c]/maxBfs : 0.5);
-    floorColorsHeat.push(heatA.clone().lerp(heatB, Math.min(1,diff)).multiplyScalar(0.55 + 0.45*(1-0.09*Math.min(walls8,4))).getHex());
-    fs.add(wx(x), cellRng.f(-0.02,0.008), wz(y), 1,1,1, cellRng.i(0,3)*(Math.PI/2), floorColorsBase[floorColorsBase.length-1], Math.max(0,bfs[c])*dStep);
-    pushVar(fUv, cellRng);
-    decCand.push({x, y, rid, walls8});
+    if(isWall){
+      base.set(TH.floor).multiplyScalar(cellRng.f(0.85,1.02));
+      floorColorsBase.push(base.getHex());
+      floorColorsHeat.push(base.getHex());
+      const dl = nearFloorBfs(x,y)*dStep + 0.28;
+      fs.add(wx(x), cellRng.f(-0.02,0.008), wz(y), 1,1,1, cellRng.i(0,3)*(Math.PI/2), base.getHex(), dl);
+      pushVar(fUv, cellRng);
+    } else {
+      base.set(corridor[c] ? TH.corridor : TH.floor);
+      if(rid>=0 && rooms[rid].type!==TYPE.COMBAT) base.lerp(tint.set(TINT[rooms[rid].type]), 0.17);
+      if(doorway[c]) base.multiplyScalar(1.14);
+      if(mossMask[c]) base.lerp(tint.set(0x4c7a42), 0.32);
+      if(TH.pools && TH.pools.mode===0 && poolAdj(x,y)) base.lerp(tint.set(0xff7a33), 0.3);
+      base.multiplyScalar(1 - 0.11*Math.min(walls8,4));
+      base.multiplyScalar(((x+y)&1) ? 0.965 : 1.0);
+      base.multiplyScalar(cellRng.f(0.94,1.06));
+      floorColorsBase.push(base.getHex());
+      const diff = rid>=0 ? rooms[rid].difficulty : (maxBfs ? bfs[c]/maxBfs : 0.5);
+      floorColorsHeat.push(heatA.clone().lerp(heatB, Math.min(1,diff)).multiplyScalar(0.55 + 0.45*(1-0.09*Math.min(walls8,4))).getHex());
+      fs.add(wx(x), cellRng.f(-0.02,0.008), wz(y), 1,1,1, cellRng.i(0,3)*(Math.PI/2), floorColorsBase[floorColorsBase.length-1], Math.max(0,bfs[c])*dStep);
+      pushVar(fUv, cellRng);
+      decCand.push({x, y, rid, walls8});
+    }
   }
   /* Overland ground defaults to the untextured grass material (per-instance
      tinted from TH.floor); themes over bare earth, ash or dust ask for the
@@ -616,11 +803,6 @@ export function buildScene(d){
   setAtlasAttr(GEO.floor, fUv, fs.n);
 
   /* walls + trim caps */
-  const nearFloorBfs = (x,y)=>{ let b=1e4;
-    for(let oy=-1;oy<=1;oy++) for(let ox=-1;ox<=1;ox++){
-      const nx=x+ox, ny=y+oy;
-      if(nx>=0&&ny>=0&&nx<W&&ny<H && bfs[idx(nx,ny)]>=0) b=Math.min(b,bfs[idx(nx,ny)]);
-    } return b===1e4?0:b; };
   const ws = instSet(), cs = instSet();
   const wUv=[], cUv=[];
   const wcol = new THREE.Color();
@@ -629,9 +811,52 @@ export function buildScene(d){
   const blockGeo = TH.overland && TH.blockerGeo === 'block';
   if(TH.overland){
     const pal = d.palisadeMask;
+    const isWinter = TH.label === 'SNOWFIELD' || TH.label === 'FROST' || d.params?.themeKey === 'snowfield' || d.themeKey === 'frost';
+    const isForest = TH.label === 'FOREST' || d.params?.themeKey === 'forest' || d.themeKey === 'forest';
+    const isMoor = TH.label === 'MOOR' || d.params?.themeKey === 'moor' || d.themeKey === 'moor';
+    const isMire = TH.label === 'MIRE' || d.params?.themeKey === 'mire' || d.themeKey === 'mire';
+    const isSporewood = TH.label === 'SPOREWOOD' || d.params?.themeKey === 'sporewood' || d.themeKey === 'sporewood';
+
+    const treeOptions = [];
+    if (isWinter) {
+      const wAsset = propAssets.snowtree || propAssets.tree_winter || propAssets.tree;
+      if (wAsset) treeOptions.push(wAsset);
+    } else if (isMoor) {
+      // Moor: mix of plain pine trees and swamp trees
+      if (propAssets.tree) treeOptions.push(propAssets.tree);
+      if (propAssets.swamptree) treeOptions.push(propAssets.swamptree);
+    } else if (isMire) {
+      // Mire: mix of swamp trees and dead trees
+      if (propAssets.swamptree) treeOptions.push(propAssets.swamptree);
+      if (propAssets.deadtree) treeOptions.push(propAssets.deadtree);
+    } else if (isSporewood) {
+      if (propAssets.swamptree) treeOptions.push(propAssets.swamptree);
+      else if (propAssets.tree) treeOptions.push(propAssets.tree);
+    } else if (isForest) {
+      if (propAssets.tree) treeOptions.push(propAssets.tree);
+    }
+
+    const treeMeshes = [];
+    for (const opt of treeOptions) {
+      let mesh = null;
+      opt.traverse(o => {
+        if (o.isMesh && !mesh) {
+          mesh = o;
+          if (mesh.material) {
+            mesh.material.roughness = 0.94;
+            mesh.material.metalness = 0.0;
+          }
+        }
+      });
+      if (mesh) {
+        treeMeshes.push({ mesh, set: instSet() });
+      }
+    }
+
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){
       const c=idx(x,y);
       if(grid[c]!==WALL) continue;
+      if(treeMeshes.length > 0 && (wallDist[c] < 0 || wallDist[c] > 3)) continue;
       const dl = nearFloorBfs(x,y)*dStep + 0.30;
       if(pal && pal[c]){
         const hh = 1.5 + cellRng.f(-0.1,0.18);
@@ -657,7 +882,28 @@ export function buildScene(d){
         cs.add(wx(x)+jx, hh, wz(y)+jz, sxz*capMul,capMul,sxz*capMul,
                cellRng.f(0,6.28), wcol.getHex(), dl+0.12);
         pushVar(cUv, cellRng);
+      } else if(treeMeshes.length > 0){
+        /* 3D Model Trees (Forest, Frost, Moor, Mire, Sporewood) */
+        // Density reduced by 20%: front row 0.80, row 2 0.68, row 3 0.48
+        const keepProb = wallDist[c] === 1 ? 0.80 : (wallDist[c] === 2 ? 0.68 : 0.48);
+        if(cellRng.f(0, 1) <= keepProb){
+          const chosen = treeMeshes[cellRng.i(0, treeMeshes.length - 1)];
+          const baseScale = cellRng.f(2.0, 3.4);
+          // Scale variance: independent horizontal (skinny/wide) and vertical (short/tall)
+          const sx = baseScale * cellRng.f(0.70, 1.05);
+          const sz = baseScale * cellRng.f(0.70, 1.05);
+          const sy = baseScale * cellRng.f(0.88, 1.35);
+          // Angle variance: 0 to 5 degrees (0.087 rad) random tilt + 360 yaw
+          const tiltMag = cellRng.f(0.0, 0.087);
+          const tiltDir = cellRng.f(0, 6.28);
+          const rx = Math.sin(tiltDir) * tiltMag;
+          const rz = Math.cos(tiltDir) * tiltMag;
+          const ry = cellRng.f(0, 6.28);
+          const jx = cellRng.f(-0.22, 0.22), jz = cellRng.f(-0.22, 0.22);
+          chosen.set.addT(wx(x)+jx, 0, wz(y)+jz, sx, sy, sz, rx, ry, rz, 0xffffff, dl);
+        }
       } else {
+        /* Procedural conifer trees (Snowfield, Sporewood, Mire, Moor) */
         const bl = TH.blocker || { trunkH:1, trunkR:1, canopyS:1, canopyY:0.42 };
         const hh = (1.9 + cellRng.f(-0.45,0.75)) * (bl.trunkH ?? 1);
         const tr = bl.trunkR ?? 1;
@@ -676,6 +922,16 @@ export function buildScene(d){
       setAtlasAttr(GEO.wall, wUv, ws.n);
       meshes.wallCap = buildMesh(cs, GEO.wallCap, matWallCap, 'pop', 0.3, 1);
       setAtlasAttr(GEO.wallCap, cUv, cs.n);
+    } else if(treeMeshes.length > 0 && treeMeshes.some(tm => tm.set.n > 0)){
+      let meshIdx = 0;
+      treeMeshes.forEach(tm => {
+        if(tm.set.n > 0){
+          const m = buildMesh(tm.set, tm.mesh.geometry, tm.mesh.material, 'rise', 0.42, 2);
+          if(meshIdx === 0) meshes.wall = m;
+          else meshes[`wall_tree_${meshIdx}`] = m;
+          meshIdx++;
+        }
+      });
     } else {
       meshes.wall    = buildMesh(ws, GEO.treeTrunk, matBark, 'rise', 0.42, 1);
       meshes.wallCap = buildMesh(cs, GEO.treeCanopy, matLeaf, 'pop', 0.3, 1);
@@ -710,13 +966,19 @@ export function buildScene(d){
               spawn1:instSet(), spawn2:instSet(), spawn3:instSet(), band2:instSet(), band3:instSet(),
               crystal:instSet(), ring:instSet(), plinth:instSet(), platform:instSet(),
               brazier:instSet(), coals:instSet(), basin:instSet(), tent:instSet(),
+              campfireStones:instSet(), campfireLogs:instSet(), campfireCoals:instSet(), campfireFlames:instSet(), campfireFlameCore:instSet(),
               bossGlow:instSet(), bossRock:instSet(),
               runeSeal:instSet(), ember:instSet(), rime:instSet(), stain:instSet(), growth:instSet(),
               barrel:instSet(), crate:instSet(), table:instSet(), bench:instSet(), chair:instSet(),
               bookshelf:instSet(), weaponRack:instSet(), statue:instSet(), urn:instSet(),
               rug:instSet(), magicCircle:instSet(), tapestry:instSet(), sconce:instSet(),
-              forge:instSet(), cauldron:instSet(), ossuaryWall:instSet(), sporePod:instSet(),
-              megalith:instSet(), wagon:instSet(), altarTable:instSet(), iceThrone:instSet(), globe:instSet() };
+              forge:instSet(), cauldron:instSet(), ossuaryFrame:instSet(), ossuaryBones:instSet(), sporePod:instSet(),
+              megalith:instSet(), wagon:instSet(), altarTable:instSet(), iceThrone:instSet(), globe:instSet(),
+              sepulcherDais:instSet(),
+              stalagmite:instSet(), boulderPile:instSet(), forgeChains:instSet(), hangingChains:instSet(), bridgeRailing:instSet(),
+              magmaBridge:instSet(), magmaBridgeApproach:instSet(),
+              mammothTusks:instSet(), runicObelisk:instSet(), runicObeliskGlow:instSet(), shieldRack:instSet(), hearthPit:instSet(), boneTotem:instSet(), glacialSpire:instSet(),
+              ingotStack:instSet(), smeltingCrucible:instSet(), crucibleLiquid:instSet() };
   const pd = (x,y)=> Math.max(0,bfs[idx(x,y)])*dStep + 0.62;
   const shaftAt = [];
   let portalXZ = null, runeXZ = null;
@@ -743,9 +1005,21 @@ export function buildScene(d){
         if(!asset) break;
         const inst = asset.clone(true);
         const s = p.scale * (PROP_SCALE_MULTIPLIER[p.kind] || 1);
-        inst.position.set(X, (propBaseOffset[p.kind]||0) * s, Z);
-        inst.rotation.y = p.rot;
-        inst.scale.setScalar(s);
+        const isTreeProp = p.kind === 'tree' || p.kind === 'snowtree' || p.kind === 'tree_winter' || p.kind === 'swamptree' || p.kind === 'deadtree';
+        if(isTreeProp){
+          const sx = s * cellRng.f(0.70, 1.05);
+          const sz = s * cellRng.f(0.70, 1.05);
+          const sy = s * cellRng.f(0.88, 1.35);
+          inst.scale.set(sx, sy, sz);
+          const tiltMag = cellRng.f(0.0, 0.087);
+          const tiltDir = cellRng.f(0, 6.28);
+          inst.rotation.set(Math.sin(tiltDir)*tiltMag, p.rot || cellRng.f(0, 6.28), Math.cos(tiltDir)*tiltMag);
+          inst.position.set(X, (propBaseOffset[p.kind]||0) * sy + (p.oy || 0), Z);
+        } else {
+          inst.scale.setScalar(s);
+          inst.rotation.y = p.rot;
+          inst.position.set(X, (propBaseOffset[p.kind]||0) * s + (p.oy || 0), Z);
+        }
         inst.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
         group.add(inst);
         if(propRoom>=0) standaloneRooms.push({mesh:inst, rid:propRoom});
@@ -757,18 +1031,25 @@ export function buildScene(d){
         S.chestGlow.add(X,0,Z, 1,1,1, p.rot, 0xffd27a, dl+0.15, propRoom);
         break;
       case 'shrineCrystal': {
-        S.plinth.add(X,0,Z, 1,1,1, p.rot, lerpC(TH.pillar,0xffffff,0.12), dl, propRoom);
-        S.crystal.add(X, 1.4, Z, 1.05,1.05,1.05, p.rot, 0x8fbcff, dl+0.2, propRoom);
-        for(let k=0;k<4;k++){
-          const a = k*Math.PI/2 + Math.PI/4, cx = X+Math.cos(a)*0.36, cz = Z+Math.sin(a)*0.36;
-          S.candle.add(cx, 0.5, cz, 0.8,0.8,0.8, 0, 0xd8cba8, dl+0.15, propRoom);
-          S.flameCore.add(cx, 0.65, cz, 0.5,0.5,0.5, 0, TH.flameCore, dl+0.25, propRoom);
-        }
-        shaftAt.push({x:X, z:Z, s:1, rid: propRoom});
+        const stoneCol = lerpC(TH.pillar || 0x6e6860, 0x3a3430, 0.35);
+        const logCol = 0x5a3e28;
+        S.campfireStones.add(X,0,Z, 1,1,1, p.rot, stoneCol, dl, propRoom);
+        S.campfireLogs.add(X,0,Z, 1,1,1, p.rot, logCol, dl+0.1, propRoom);
+        S.campfireCoals.add(X,0,Z, 1,1,1, p.rot, 0xff4210, dl+0.15, propRoom);
+        S.campfireFlames.add(X,0,Z, 1,1,1, p.rot, 0xff7a20, dl+0.2, propRoom);
+        S.campfireFlameCore.add(X,0,Z, 1,1,1, p.rot, 0xffdf78, dl+0.25, propRoom);
+
+        const campLight = new THREE.PointLight(0xff7a26, 2.6 * LIGHT_K, 12, 1.8);
+        campLight.position.set(X, 0.35, Z);
+        campLight.userData = { base: 2.6, ph: cellRng.f(0, 6.28), ramp: 1, fogMult: 1, isCampfire: true };
+        group.add(campLight);
+        lights.push(campLight);
+        if (propRoom >= 0) roomLights.push({ light: campLight, rid: propRoom });
+        registerPersistentNixieEffect('campfire_embers', { x: X, y: 0.35, z: Z });
         break; }
       case 'ring':
         S.platform.add(X,-0.02,Z, 1,1,1, 0, lerpC(TH.floor,0xffffff,0.1), dl, propRoom);
-        S.ring.add(X, 0.16, Z, 1,1,1, 0, 0x3fd0bb, dl+0.1, propRoom);
+        S.ring.add(X, 0.012, Z, 1,1,1, 0, 0x3fd0bb, dl+0.1, propRoom);
         S.pillar.add(X-1.45, 0.1, Z, 0.72,0.72,0.72, 0, TH.pillar, dl+0.15, propRoom);
         S.pillar.add(X+1.45, 0.1, Z, 0.72,0.72,0.72, 0, TH.pillar, dl+0.15, propRoom);
         portalXZ = [X,Z];
@@ -780,16 +1061,20 @@ export function buildScene(d){
         S.bossRock.addT(X-0.62,0,Z+0.42, 0.75,0.8,0.75, 0.05,p.rot+2.1,-0.06, 0x4a3336, dl+0.15, propRoom);
         S.bossRock.addT(X+0.75,0,Z+0.55, 0.55,0.6,0.55, -0.06,p.rot+3.6,0.05, 0x51383a, dl+0.2, propRoom);
         break; }
+      case 'sepulcherDais':
+        S.sepulcherDais.add(X,-0.02,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, lerpC(TH.floor, 0x222a22, 0.35), dl, propRoom);
+        break;
       case 'grave':
         S.grave.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, lerpC(TH.pillar,0x4a3b32,cellRng.raw()), dl, propRoom);
         break;
       case 'sarco':
         S.sarco.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, lerpC(TH.pillar,0x3a3028,cellRng.raw()), dl, propRoom);
         break;
-      case 'candle':
-        S.candle.add(X,0,Z, p.scale,p.scale,p.scale, p.rot, 0xd8cba8, dl, propRoom);
-        S.flameCore.add(X, 0.22*p.scale, Z, 0.5*p.scale,0.5*p.scale,0.5*p.scale, 0, TH.flameCore, dl+0.05, propRoom);
-        break;
+      case 'candle': {
+        const cY = (p.oy || 0);
+        S.candle.add(X, cY, Z, p.scale, p.scale, p.scale, p.rot, 0xd8cba8, dl, propRoom);
+        S.flameCore.add(X, cY + 0.28*p.scale, Z, 0.6*p.scale, 0.6*p.scale, 0.6*p.scale, 0, 0xffdf78, dl+0.05, propRoom);
+        break; }
       case 'icicle':
         /* oy lets overland hang them off shorter blockers than a dungeon wall. */
         S.icicle.addT(X, 1.9 + (p.oy||0), Z, p.scale,p.scale,p.scale,
@@ -887,18 +1172,24 @@ export function buildScene(d){
         S.flame.add(sx+(p.dx||0)*0.12, 1.06, sz+(p.dy||0)*0.12, 0.8,0.8,0.8, 0, TH.flame, dl+0.05, propRoom);
         S.flameCore.add(sx+(p.dx||0)*0.12, 1.08, sz+(p.dy||0)*0.12, 0.8,0.8,0.8, 0, TH.flameCore, dl+0.05, propRoom);
         break; }
-      case 'forge':
-        S.forge.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x4a4540, dl, propRoom);
-        S.coals.add(X,0.55,Z, 0.8,0.8,0.8, 0, 0xff5a1f, dl+0.1, propRoom);
-        S.flame.add(X, 0.65, Z, 0.9,0.9,0.9, 0, TH.flame, dl+0.12, propRoom);
-        break;
+      case 'forge': {
+        const fY = p.oy || 0;
+        S.forge.add(X, fY, Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x4a4540, dl, propRoom);
+        S.coals.add(X, fY + 0.55*(p.scale||1), Z, 0.8*(p.scale||1), 0.8*(p.scale||1), 0.8*(p.scale||1), 0, 0xff5a1f, dl+0.1, propRoom);
+        S.flame.add(X, fY + 0.65*(p.scale||1), Z, 0.9*(p.scale||1), 0.9*(p.scale||1), 0.9*(p.scale||1), 0, TH.flame, dl+0.12, propRoom);
+        break; }
       case 'cauldron':
-        S.cauldron.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x2a2826, dl, propRoom);
+        S.cauldron.add(X, p.oy||0, Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x2a2826, dl, propRoom);
         break;
       case 'ossuaryWall': {
-        const ry = Math.atan2(p.dx||0, p.dy||1);
-        const ox = wx(p.x)+(p.dx||0)*0.48, oz = wz(p.y)+(p.dy||0)*0.48;
-        S.ossuaryWall.add(ox,0,oz, p.scale||1,p.scale||1,p.scale||1, ry, lerpC(TH.wall, 0x3a3028, 0.35), dl, propRoom);
+        // Enforce pure cardinal wall normal facing into the room
+        let dx = p.dx || 0, dy = p.dy || 0;
+        if (Math.abs(dx) >= Math.abs(dy)) { dx = dx >= 0 ? 1 : -1; dy = 0; }
+        else { dy = dy > 0 ? 1 : -1; dx = 0; }
+        const ry = Math.atan2(-dx, -dy);
+        const ox = wx(p.x) + dx * 0.48, oz = wz(p.y) + dy * 0.48;
+        S.ossuaryFrame.add(ox, 0, oz, p.scale||1, p.scale||1, p.scale||1, ry, TH.wall, dl, propRoom);
+        S.ossuaryBones.add(ox, 0, oz, p.scale||1, p.scale||1, p.scale||1, ry, 0xfff8ee, dl+0.04, propRoom);
         break; }
       case 'sporePod':
         S.sporePod.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x59d68f, dl, propRoom);
@@ -918,6 +1209,59 @@ export function buildScene(d){
       case 'globe':
         S.globe.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0xc8a24a, dl, propRoom);
         break;
+      case 'stalagmite':
+        S.stalagmite.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, lerpC(TH.wall, 0x22242b, 0.4), dl, propRoom);
+        break;
+      case 'boulderPile':
+        S.boulderPile.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, lerpC(TH.debris[0], TH.debris[1], cellRng.raw()), dl, propRoom);
+        break;
+      case 'forgeChains':
+        S.forgeChains.add(X,0,Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x3d4148, dl, propRoom);
+        break;
+      case 'hangingChains': {
+        let dx = p.dx || 0, dy = p.dy || 0;
+        if (Math.abs(dx) >= Math.abs(dy)) { dx = dx >= 0 ? 1 : -1; dy = 0; }
+        else { dy = dy > 0 ? 1 : -1; dx = 0; }
+        const ry = Math.atan2(-dx, -dy);
+        const hx = wx(p.x) + dx * 0.48, hz = wz(p.y) + dy * 0.48;
+        S.hangingChains.add(hx, p.oy||0, hz, p.scale||1, p.scale||1, p.scale||1, ry, 0x3a3d44, dl, propRoom);
+        break; }
+      case 'magmaBridge':
+        S.magmaBridge.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x484c56, dl, propRoom);
+        break;
+      case 'magmaBridgeApproach':
+        S.magmaBridgeApproach.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x5a544c, dl, propRoom);
+        break;
+      case 'ingotStack': {
+        const iY = p.oy || 0;
+        S.ingotStack.add(X, iY, Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x5a5f6b, dl, propRoom);
+        break; }
+      case 'smeltingCrucible': {
+        const scY = p.oy || 0;
+        S.smeltingCrucible.add(X, scY, Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0x2a2826, dl, propRoom);
+        S.crucibleLiquid.add(X, scY, Z, p.scale||1,p.scale||1,p.scale||1, p.rot||0, 0xff7a20, dl+0.15, propRoom);
+        break; }
+      case 'mammothTusks':
+        S.mammothTusks.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0xf0ebe1, dl, propRoom);
+        break;
+      case 'runicObelisk': {
+        const obY = p.oy || 0;
+        S.runicObelisk.add(X, obY, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x4e5866, dl, propRoom);
+        S.runicObeliskGlow.add(X, obY, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x38bdf8, dl+0.25, propRoom);
+        break; }
+      case 'shieldRack':
+        S.shieldRack.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x5a4432, dl, propRoom);
+        break;
+      case 'hearthPit':
+        S.hearthPit.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x3d3835, dl, propRoom);
+        S.flame.add(X, (p.oy||0)+0.25, Z, (p.scale||1)*0.9, (p.scale||1)*0.9, (p.scale||1)*0.9, 0, 0x38bdf8, dl+0.1, propRoom);
+        break;
+      case 'boneTotem':
+        S.boneTotem.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x9a8e80, dl, propRoom);
+        break;
+      case 'glacialSpire':
+        S.glacialSpire.add(X, p.oy||0, Z, p.scale||1, p.scale||1, p.scale||1, p.rot||0, 0x7de6ff, dl+0.1, propRoom);
+        break;
     }
   }
 
@@ -931,25 +1275,7 @@ export function buildScene(d){
     S.flameCore.add(X+t.dx*0.16, 1.53, Z+t.dy*0.16, 1.2,1.2,1.2, 0, TH.flameCore, dl+0.08, trid);
   }
 
-  for(const sp of d.spawns){
-    const X=wx(sp.x), Z=wz(sp.y), dl=pd(sp.x,sp.y)+0.1, rot=cellRng.f(0,6.28);
-    const sth = SPAWN_THEMES[d.params.themeKey] || SPAWN_THEMES.ancient;
-    /* Portal mesh tier is derived from the spawn's target CR (formerly a literal
-       `tier` field). Low CR -> small ground rune, mid -> pillar, high -> crystal. */
-    const cr = sp.targetCR != null ? sp.targetCR : 0.25;
-    const portalTier = cr < 0.6 ? 1 : (cr < 2 ? 2 : 3);
-    if(portalTier===1){
-      S.spawn1.add(X,0,Z, 1,1,1, rot, sth.baseCol, dl, sp.roomId);
-      S.band2.add(X, 0.14, Z, 0.7,0.7,0.7, rot, sth.ringCol, dl+0.08, sp.roomId);
-    } else if(portalTier===2){
-      S.spawn2.add(X,0,Z, 1,1,1, rot, sth.baseCol, dl, sp.roomId);
-      S.band2.add(X, 0.55, Z, 1,1,1, rot, sth.ringCol, dl+0.1, sp.roomId);
-    } else {
-      S.spawn3.add(X,0,Z, 1,1,1, rot, sth.baseCol, dl, sp.roomId);
-      S.band3.add(X, 0.62, Z, 1,1,1, rot, sth.ringCol, dl+0.1, sp.roomId);
-      S.crystal.add(X, 1.98, Z, 0.42,0.42,0.42, rot, sth.crystalCol, dl+0.2, sp.roomId);
-    }
-  }
+  /* Mob spawn visual markers (pedestals & floating crystals) removed per user request */
 
   /* Themed doorways: post/lintel silhouette + material per theme, same
      resolution pattern as the spawn portals below. Declared here because the
@@ -973,15 +1299,15 @@ export function buildScene(d){
        keeps asymmetric silhouettes (leaning stones, side roots) reading as a
        matched pair rather than two copies pointing the same way. */
     if(a.px===1){
-      S.arch.add(X-half,0,Z, 1,1,1, 0, postCol, dlA, dcell);
-      S.arch.add(X+half,0,Z, 1,1,1, Math.PI, postCol, dlA, dcell);
-      S.archL.add(X,1.62,Z, a.len+0.08,1,1, 0, lintelCol, dlA+0.1, dcell);
+      S.arch.add(X-half,0,Z, 1,1.08,1, 0, postCol, dlA, dcell);
+      S.arch.add(X+half,0,Z, 1,1.08,1, Math.PI, postCol, dlA, dcell);
+      S.archL.add(X,1.88,Z, a.len+0.08,1,1, 0, lintelCol, dlA+0.1, dcell);
     } else {
-      S.arch.add(X,0,Z-half, 1,1,1, Math.PI/2, postCol, dlA, dcell);
-      S.arch.add(X,0,Z+half, 1,1,1, -Math.PI/2, postCol, dlA, dcell);
-      S.archL.add(X,1.62,Z, a.len+0.08,1,1, Math.PI/2, lintelCol, dlA+0.1, dcell);
+      S.arch.add(X,0,Z-half, 1,1.08,1, Math.PI/2, postCol, dlA, dcell);
+      S.arch.add(X,0,Z+half, 1,1.08,1, -Math.PI/2, postCol, dlA, dcell);
+      S.archL.add(X,1.88,Z, a.len+0.08,1,1, Math.PI/2, lintelCol, dlA+0.1, dcell);
     }
-    S.gate.add(X, 0, Z, a.len, 1.5, 1, rot, lerpC(TH.wall, 0x000000, dth.gateMix ?? 0.2), dlA+0.05, dcell);
+    S.gate.add(X, 0, Z, a.len, 1.8, 1, rot, lerpC(TH.wall, 0x000000, dth.gateMix ?? 0.2), dlA+0.05, dcell);
   }
 
   if(TH.pools){
@@ -1134,9 +1460,15 @@ export function buildScene(d){
     ['ring',     GEO.ring,      matGlow,   'pop',  0.4,  0],
     ['plinth',   GEO.plinth,    matStone,  'pop',  0.4,  1],
     ['platform', GEO.platform,  matStone,  'pop',  0.45, 2],
+    ['sepulcherDais', GEO.sepulcherDais, matStone, 'rise', 0.4, 2],
     ['brazier',  GEO.brazier,   matTrim,   'pop',  0.35, 1],
     ['tent',     GEO.tent,      matCloth,  'rise', 0.4,  1],
     ['coals',    GEO.coals,     matGlow,   'pop',  0.35, 0],
+    ['campfireStones',   GEO.campfireStones,    matStone,  'pop', 0.35, 1],
+    ['campfireLogs',     GEO.campfireLogs,      matBark,   'rise',0.4,  1],
+    ['campfireCoals',    GEO.campfireCoals,     matEmber,  'pop', 0.35, 0],
+    ['campfireFlames',   GEO.campfireFlames,    matGlow,   'pop', 0.3,  0],
+    ['campfireFlameCore',GEO.campfireFlameCore, matGlow,   'pop', 0.3,  0],
     ['basin',    GEO.basin,     matStone,  'pop',  0.3,  0],
     ['bossGlow', GEO.bossShard, matGlow,   'rise', 0.5,  0],
     ['bossRock', GEO.bossShard, matStone,  'rise', 0.5,  1],
@@ -1160,13 +1492,31 @@ export function buildScene(d){
     ['sconce',   GEO.sconce,    matSconce, 'pop',  0.3,  0],
     ['forge',    GEO.forge,     matMetal,  'pop',  0.4,  1],
     ['cauldron', GEO.cauldron,  matMetal,  'pop',  0.35, 1],
-    ['ossuaryWall',GEO.ossuaryWall,matBoneStone,'rise',0.45,1],
+    ['ossuaryFrame',GEO.ossuaryFrame,matStone,'rise',0.45,1],
+    ['ossuaryBones',GEO.ossuaryBones,matBoneStone,'rise',0.45,1],
     ['sporePod', GEO.sporePod,  matBiolum, 'pop',  0.4,  0],
     ['megalith', GEO.megalith,  matStone,  'rise', 0.5,  1],
     ['wagon',    GEO.wagon,     matWood,   'pop',  0.45, 1],
     ['altarTable',GEO.altarTable,matStone, 'pop',  0.4,  1],
     ['iceThrone',GEO.iceThrone, matGlacialIce,'rise',0.45,1],
-    ['globe',    GEO.globe,     matMetal,  'pop',  0.35, 1]
+    ['globe',    GEO.globe,     matMetal,  'pop',  0.35, 1],
+    ['stalagmite',GEO.stalagmite,matStone, 'rise', 0.45, 1],
+    ['boulderPile',GEO.boulderPile,matStone,'pop', 0.35, 1],
+    ['forgeChains',GEO.forgeChains,matMetal,'pop', 0.35, 0],
+    ['hangingChains',GEO.hangingChains,matMetal,'pop',0.35, 0],
+    ['bridgeRailing',GEO.bridgeRailing,matMetal,'rise',0.4, 0],
+    ['magmaBridge',GEO.magmaBridge,matMetal,'rise',0.45, 1],
+    ['magmaBridgeApproach',GEO.magmaBridgeApproach,matStone,'rise',0.4, 1],
+    ['ingotStack',GEO.ingotStack,matMetal, 'pop',  0.35, 1],
+    ['smeltingCrucible',GEO.smeltingCrucible,matMetal,'pop',0.4,1],
+    ['crucibleLiquid',GEO.crucibleLiquid,matGlow,'pop',0.35,0],
+    ['mammothTusks',GEO.mammothTusks,matBoneStone,'rise',0.45,1],
+    ['runicObelisk',GEO.runicObelisk,matStone,'rise',0.5,1],
+    ['runicObeliskGlow',GEO.runicObeliskGlow,matGlow,'pop',0.4,0],
+    ['shieldRack',GEO.shieldRack,matWood,'pop',0.4,1],
+    ['hearthPit',GEO.hearthPit,matStone,'pop',0.35,1],
+    ['boneTotem',GEO.boneTotem,matBoneStone,'rise',0.45,1],
+    ['glacialSpire',GEO.glacialSpire,matGlacialIce,'rise',0.45,1]
   ];
   for(const [k, geo, mat, mode, dur, sh] of setDefs) meshes[k] = buildMesh(S[k], geo, mat, mode, dur, sh);
   for(const k in meshes) group.add(meshes[k]);
@@ -1181,7 +1531,7 @@ export function buildScene(d){
   if(portalXZ){
     matPortal.color.set(0x3fd0bb);
     const m = new THREE.Mesh(GEO.portal, matPortal);
-    m.position.set(portalXZ[0], 0.12, portalXZ[1]);
+    m.position.set(portalXZ[0], 0.01, portalXZ[1]);
     group.add(m); fx.spinners.push({m, spd:0.55});
     standaloneRooms.push({mesh:m, rid: d.entrance});
   }
@@ -1205,39 +1555,55 @@ export function buildScene(d){
     standaloneRooms.push({mesh:m, rid: s.rid !== undefined ? s.rid : -1});
   }
 
-  { const spec = TH.particles;
+  if(TH.particles){
+    const spec = TH.particles;
     const pts = [];
     const pp = (x,z,y)=>pts.push({x,z,y, cell: floorAnchor(x + W/2 - 0.5, z + H/2 - 0.5)});
     if(spec.kind===1){
-      for(const p of d.pools) pp(wx(p.x)+cellRng.f(-0.3,0.3), wz(p.y)+cellRng.f(-0.3,0.3), -0.02);
+      for(const p of d.pools){
+        for(let k=0; k<4; k++){
+          pp(wx(p.x)+cellRng.f(-0.45,0.45), wz(p.y)+cellRng.f(-0.45,0.45), -0.02);
+        }
+      }
       for(const t of d.torches) pp(wx(t.x)+t.dx*0.66, wz(t.y)+t.dy*0.66, 1.5);
       for(const p of d.props) if(p.kind==='brazier') pp(wx(p.x), wz(p.y), 0.62);
     } else if(spec.kind===3){
       for(const p of d.props){
-        if(p.kind==='grave' || p.kind==='sarco') pp(wx(p.x)+cellRng.f(-0.2,0.2), wz(p.y)+cellRng.f(-0.2,0.2), 0.3);
+        if(p.kind==='grave' || p.kind==='sarco' || p.kind==='tombstone') pp(wx(p.x)+cellRng.f(-0.2,0.2), wz(p.y)+cellRng.f(-0.2,0.2), 0.3);
         else if(p.kind==='candle') pp(wx(p.x), wz(p.y), 0.25);
         else if(p.kind==='bones') pp(wx(p.x), wz(p.y), 0.1);
       }
       for(const p of d.pools) pp(wx(p.x), wz(p.y), 0);
     } else if(spec.kind===4){
       for(const p of d.props){
-        if(p.kind==='moss') pp(wx(p.x)+cellRng.f(-0.25,0.25), wz(p.y)+cellRng.f(-0.25,0.25), 0.05);
-        else if(p.kind==='roots') pp(wx(p.x)+p.dx*0.8, wz(p.y)+p.dy*0.8, cellRng.f(0.2,1.4));
+        if(p.kind==='moss' || p.kind==='mushroomA' || p.kind==='mushroomB') pp(wx(p.x)+cellRng.f(-0.25,0.25), wz(p.y)+cellRng.f(-0.25,0.25), 0.05);
+        else if(p.kind==='roots' || p.kind==='rootsA' || p.kind==='rootsB') pp(wx(p.x)+p.dx*0.8, wz(p.y)+p.dy*0.8, cellRng.f(0.2,1.4));
       }
       for(const p of d.pools) pp(wx(p.x), wz(p.y), 0);
     } else if(spec.kind===0){
       for(const s of shaftAt) for(let k=0;k<10;k++)
         pp(s.x+cellRng.f(-0.8,0.8)*s.s, s.z+cellRng.f(-0.8,0.8)*s.s, cellRng.f(0.3,2.4));
       for(const t of d.torches) pp(wx(t.x)+t.dx*0.7, wz(t.y)+t.dy*0.7, cellRng.f(1.2,1.9));
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++)
+        if(grid[idx(x,y)]===FLOOR && cellRng.chance(0.12)) pp(wx(x)+cellRng.f(-0.3,0.3), wz(y)+cellRng.f(-0.3,0.3), cellRng.f(0.2,1.8));
+    } else if(spec.kind===2 || spec.kind===5 || spec.kind===6){
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+        if(grid[idx(x,y)]===FLOOR){
+          for(let k=0; k<3; k++){
+            pp(wx(x)+cellRng.f(-0.45,0.45), wz(y)+cellRng.f(-0.45,0.45), cellRng.f(0, 0.4));
+          }
+        }
+      }
     } else {
       for(let y=0;y<H;y++) for(let x=0;x<W;x++)
-        if(grid[idx(x,y)]===FLOOR && cellRng.chance(0.25)) pp(wx(x), wz(y), 0);
+        if(grid[idx(x,y)]===FLOOR && cellRng.chance(0.35)) pp(wx(x)+cellRng.f(-0.4,0.4), wz(y)+cellRng.f(-0.4,0.4), cellRng.f(0, 0.5));
     }
     if(!pts.length)
       for(let y=0;y<H;y++) for(let x=0;x<W;x++)
-        if(grid[idx(x,y)]===FLOOR && cellRng.chance(0.1)) pp(wx(x), wz(y), 0);
+        if(grid[idx(x,y)]===FLOOR && cellRng.chance(0.15)) pp(wx(x), wz(y), 0);
     if(pts.length){
-      const n = Math.min(spec.n, Math.max(40, pts.length*6));
+      const maxPts = spec.n ? spec.n : Math.min(240, pts.length*6);
+      const n = Math.min(maxPts, Math.max(40, pts.length));
       const pos = new Float32Array(n*3), seed = new Float32Array(n);
       const fogCells = new Int32Array(n), origY = new Float32Array(n);
       for(let i=0;i<n;i++){
@@ -1254,9 +1620,24 @@ export function buildScene(d){
       partMat.uniforms.uColor.value.set(spec.color);
       const pm = new THREE.Points(g, partMat);
       pm.frustumCulled = false;
+      pm.renderOrder = 20;
       pm.userData.fogCells = fogCells; pm.userData.origY = origY;
       group.add(pm); fx.parts = pm;
     }
+  }
+
+  if(TH.groundFog){
+    const fg = new THREE.PlaneGeometry(W + 20, H + 20).rotateX(-Math.PI / 2);
+    fogPlaneMat.uniforms.uColor.value.set(TH.groundFog.color !== undefined ? TH.groundFog.color : 0xd4dad0);
+    fogPlaneMat.uniforms.uDensity.value = TH.groundFog.density !== undefined ? TH.groundFog.density : 0.28;
+    fogPlaneMat.uniforms.uSpeed.value = TH.groundFog.speed !== undefined ? TH.groundFog.speed : 0.035;
+    fogPlaneMat.uniforms.uScale.value = TH.groundFog.scale !== undefined ? TH.groundFog.scale : 0.10;
+    const fogMesh = new THREE.Mesh(fg, fogPlaneMat);
+    fogMesh.position.set(0, TH.groundFog.height !== undefined ? TH.groundFog.height : 0.24, 0);
+    fogMesh.renderOrder = 15;
+    levelGeos.push(fg);
+    group.add(fogMesh);
+    fx.fogPlane = fogMesh;
   }
 
   const shHalf = Math.max(W,H)*0.62 + 6;
@@ -1293,7 +1674,7 @@ export function buildScene(d){
   const tI = torchPoolIntensity(TH), tR = torchPoolRange(TH);
   for(let i=0; i<16; i++){
     const L = new THREE.PointLight(torchCol, 0, tR, 2);
-    L.userData = { isTorchPool: true, base: tI, ph: i*1.7, ramp: 1, fogMult: 1 };
+    L.userData = { isTorchPool: true, base: tI, ph: i*1.73, ramp: 1, fogMult: 1 };
     group.add(L); lights.push(L);
   }
 
@@ -1356,8 +1737,8 @@ export function applyReveal(visibleRoomSet, heroPositions = []){
   }
 }
 
-export function liveUpdate(time, tt){
-  for(const key of ['flame','flameCore']){
+export function liveUpdate(time, tt, dt = 0.016){
+  for(const key of ['flame','flameCore','campfireFlames','campfireFlameCore']){
     const fm = meshes[key];
     if(!fm || !fm.userData.set.n) continue;
     const fu = fm.userData, s = fu.set;
@@ -1400,27 +1781,33 @@ export function liveUpdate(time, tt){
   }
   liquidMat.uniforms.uTime.value = time;
   partMat.uniforms.uTime.value = time;
+  fogPlaneMat.uniforms.uTime.value = time;
   matEmber.opacity = 0.72 + 0.24*Math.sin(time*2.3)*Math.sin(time*1.13);
+  updateNixieVfx(dt);
   if(renderer){
-    partMat.uniforms.uZoom.value = renderer.domElement.height * cam.zoom / (2*BASE_HALF);
+    const ch = (renderer.domElement && renderer.domElement.height) || (window.innerHeight * (window.devicePixelRatio || 1)) || 1080;
+    partMat.uniforms.uZoom.value = ch * cam.zoom / (2*BASE_HALF);
   }
   for(const sp of fx.spinners) sp.m.rotation.y = time * sp.spd;
   for(const L of lights){
     if(L.userData && L.userData.isTorchPool) continue;
+    if(L.userData && L.userData.extinguished) { L.intensity = 0; continue; }
     const base = L.userData.base !== undefined ? L.userData.base : 1.5;
     const ph = L.userData.ph !== undefined ? L.userData.ph : 0;
     const ramp = L.userData.ramp === undefined ? 1 : L.userData.ramp;
     const fogM = L.userData.fogMult !== undefined ? L.userData.fogMult : 1;
-    L.intensity = base * LIGHT_K * ramp * fogM * (0.84 + 0.22*Math.sin(time*9 + ph)*Math.sin(time*4.7 + ph*1.7));
+    const fWave = 0.78 + 0.15*Math.sin(time*9.8 + ph)*Math.cos(time*5.2 + ph*1.7) + 0.07*Math.sin(time*20.0 + ph*2.5);
+    L.intensity = base * LIGHT_K * ramp * fogM * Math.max(0.3, fWave);
   }
 
-  if(D && D.torches && D.torches.length){
+  if(D && ((D.torches && D.torches.length) || (D.props && D.props.length))){
     const wx = x => x - D.W/2 + 0.5;
     const wz = y => y - D.H/2 + 0.5;
     const idx = (x,y) => y*D.W + x;
 
-    let lx = 0, lz = 0;
-    if(game && game.heroes){
+    let lx = (camTarget && camTarget.x !== undefined) ? camTarget.x : 0;
+    let lz = (camTarget && camTarget.z !== undefined) ? camTarget.z : 0;
+    if((lx === 0 && lz === 0) && game && game.heroes){
       const alive = game.heroes.filter(h => h.data.hp > 0);
       const leader = alive[game.leaderIdx] || alive[0];
       if(leader && leader.x !== undefined){ lx = leader.x; lz = leader.z; }
@@ -1428,42 +1815,119 @@ export function liveUpdate(time, tt){
 
     const TH = THEMES[D.params.themeKey || D.themeKey] || THEMES.ancient;
     const torchCol = TH.flame || (TH.torchLight && TH.torchLight[0]) || 0xff8c3a;
-    const activeTorches = [];
+    const candleCol = 0xffbe58;
+    const tR = torchPoolRange(TH);
+    const activeEmitters = [];
 
-    for(const t of D.torches){
-      const tx = wx(t.x) + t.dx * 0.7;
-      const tz = wz(t.y) + t.dy * 0.7;
-      const distSq = (tx - lx)*(tx - lx) + (tz - lz)*(tz - lz);
+    if(D.torches && D.torches.length){
+      for(const t of D.torches){
+        const tx = wx(t.x) + t.dx * 0.65;
+        const tz = wz(t.y) + t.dy * 0.65;
+        const distSq = (tx - lx)*(tx - lx) + (tz - lz)*(tz - lz);
 
-      const tc = idx(t.x + t.dx, t.y + t.dy);
-      const trid = D.roomId[tc] >= 0 ? D.roomId[tc] : -2 - tc;
+        const tc = idx(t.x + t.dx, t.y + t.dy);
+        const trid = D.roomId[tc] >= 0 ? D.roomId[tc] : (D.roomId[idx(t.x, t.y)] >= 0 ? D.roomId[idx(t.x, t.y)] : (t.roomId !== undefined ? t.roomId : -2 - tc));
 
-      let isVis = false;
-      if(trid >= 0 && game && game.visitedRooms){
-        isVis = !!game.visitedRooms[trid];
-      }
-      if(isVis){
-        activeTorches.push({ t, tx, tz, distSq });
+        let isVis = false;
+        if(game){
+          if(trid >= 0 && game.visitedRooms && game.visitedRooms[trid]){
+            isVis = true;
+          }
+          if(!isVis && game.revealed){
+            isVis = (game.revealed[tc] > 0) || (game.revealed[idx(t.x, t.y)] > 0);
+          }
+          if(!isVis && distSq < 1600){
+            isVis = true;
+          }
+        } else {
+          isVis = true;
+        }
+        if(isVis){
+          activeEmitters.push({ tx, ty: 1.45, tz, distSq, color: torchCol, dist: tR || 11, intensity: Math.max(1.8, (TH.torchIntensity || 1.6)), kind: 'torch' });
+        }
       }
     }
 
-    activeTorches.sort((a,b) => a.distSq - b.distSq);
+    if(D.props && D.props.length){
+      for(const p of D.props){
+        if(p.kind !== 'candle' && p.kind !== 'brazier') continue;
+        const px = wx(p.x);
+        const pz = wz(p.y);
+        const distSq = (px - lx)*(px - lx) + (pz - lz)*(pz - lz);
+        const cellX = Math.round(p.x), cellY = Math.round(p.y);
+        const tc = idx(Math.max(0, Math.min(D.W - 1, cellX)), Math.max(0, Math.min(D.H - 1, cellY)));
+        const trid = p.roomId !== undefined ? p.roomId : (D.roomId && D.roomId[tc] >= 0 ? D.roomId[tc] : -1);
+
+        let isVis = false;
+        if(game){
+          if(trid >= 0 && game.visitedRooms && game.visitedRooms[trid]){
+            isVis = true;
+          }
+          if(!isVis && game.revealed){
+            isVis = (tc >= 0 && tc < game.revealed.length && game.revealed[tc] > 0);
+          }
+          if(!isVis && distSq < 1600){
+            isVis = true;
+          }
+        } else {
+          isVis = true;
+        }
+
+        if(isVis){
+          if(p.kind === 'candle'){
+            const sc = p.scale || 1;
+            activeEmitters.push({
+              tx: px,
+              ty: (p.oy || 0) + 0.38 * sc,
+              tz: pz,
+              distSq,
+              color: candleCol,
+              dist: 6.2 * Math.sqrt(sc),
+              intensity: 1.45 * sc,
+              kind: 'candle'
+            });
+          } else if(p.kind === 'brazier'){
+            const sc = p.scale || 1;
+            activeEmitters.push({
+              tx: px,
+              ty: (p.oy || 0) + 0.75 * sc,
+              tz: pz,
+              distSq,
+              color: torchCol,
+              dist: 10.0 * Math.sqrt(sc),
+              intensity: 2.0 * sc,
+              kind: 'brazier'
+            });
+          }
+        }
+      }
+    }
+
+    activeEmitters.sort((a,b) => a.distSq - b.distSq);
 
     let poolIdx = 0;
     for(const L of lights){
       if(!L.userData || !L.userData.isTorchPool) continue;
-      if(poolIdx < activeTorches.length){
-        const item = activeTorches[poolIdx];
-        L.color.set(torchCol);
-        L.position.set(item.tx, 1.7, item.tz);
-        const base = L.userData.base || 2.2;
-        const ph = L.userData.ph || (poolIdx * 1.7);
-        L.intensity = base * LIGHT_K * (0.84 + 0.22*Math.sin(time*9 + ph)*Math.sin(time*4.7 + ph*1.7));
+      if(poolIdx < activeEmitters.length){
+        const item = activeEmitters[poolIdx];
+        L.color.set(item.color);
+        L.position.set(item.tx, item.ty, item.tz);
+        L.distance = item.dist;
+        const base = item.intensity;
+        const ph = L.userData.ph || (poolIdx * 1.73);
+        const fWave = item.kind === 'candle'
+          ? 0.82 + 0.12*Math.sin(time*8.5 + ph)*Math.cos(time*4.6 + ph*1.5) + 0.06*Math.sin(time*17.0 + ph*2.2)
+          : 0.78 + 0.16*Math.sin(time*10.2 + ph)*Math.cos(time*5.8 + ph*1.7) + 0.08*Math.sin(time*21.0 + ph*2.8);
+        L.intensity = base * LIGHT_K * Math.max(0.4, fWave);
       } else {
         L.intensity = 0;
       }
       poolIdx++;
     }
+
+    updateAmbientFX(camTarget, activeEmitters.map(a => ({ x: a.tx, z: a.tz, y: a.ty })), dt);
+  } else {
+    updateAmbientFX(camTarget, [], dt);
   }
 
   if(heroLight && game && game.heroes){
@@ -1471,9 +1935,46 @@ export function liveUpdate(time, tt){
     const leader = alive[game.leaderIdx] || alive[0];
     if(leader && leader.x !== undefined){
       heroLight.position.set(leader.x, 1.8, leader.z);
-      heroLight.intensity = 2.0 * LIGHT_K * (game.state === 'crawl' ? 1 : 0) * (0.88 + 0.12*Math.sin(time*10));
+      const hWave = 0.80 + 0.14*Math.sin(time*9.5)*Math.cos(time*5.4) + 0.06*Math.sin(time*19.0);
+      heroLight.intensity = 1.6 * LIGHT_K * (game.state === 'crawl' ? 1 : 0) * Math.max(0.3, hWave);
     }
   }
+}
+
+export function extinguishCampfire(x, z, radius = 2.5) {
+  // 1. Hide/sink campfire flames and glowing coals near (x, z)
+  for (const key of ['campfireFlames', 'campfireFlameCore', 'campfireCoals']) {
+    const fm = meshes[key];
+    if (!fm || !fm.userData || !fm.userData.set) continue;
+    const s = fm.userData.set;
+    for (let i = 0; i < s.n; i++) {
+      if (Math.hypot(s.px[i] - x, s.pz[i] - z) <= radius) {
+        s.py[i] = -999;
+        s.sy[i] = 0;
+        _q.set(0, 0, 0, 1);
+        _p.set(s.px[i], -999, s.pz[i]);
+        _s.set(0, 0, 0);
+        _m.compose(_p, _q, _s);
+        fm.setMatrixAt(i, _m);
+      }
+    }
+    fm.instanceMatrix.needsUpdate = true;
+  }
+
+  // 2. Extinguish the campfire point lights near (x, z)
+  if (Array.isArray(lights)) {
+    for (const l of lights) {
+      if (l.userData?.isCampfire && Math.hypot(l.position.x - x, l.position.z - z) <= radius) {
+        l.intensity = 0;
+        l.userData.base = 0;
+        l.userData.extinguished = true;
+        l.visible = false;
+      }
+    }
+  }
+
+  // 3. Stop persistent embers near (x, z)
+  stopPersistentNixieEffectsNear(x, z, radius);
 }
 
 export function setupRTs(){
@@ -1543,7 +2044,7 @@ export function tick(){
     writeInstancesAll(animT);
     if(animT > animEnd + 0.35) finishAnim();
   }
-  liveUpdate(elapsed, animating ? animT - 2.3 : Infinity);
+  liveUpdate(elapsed, animating ? animT - 2.3 : Infinity, rawDt);
   if(game && typeof game.update === 'function'){
     game.update(gameDt, elapsed);
   }

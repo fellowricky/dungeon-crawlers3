@@ -10,6 +10,7 @@ import { slotsFor, migrateItem, migrateInventory, itemCategory } from './items.j
 import { drawBar, makeFloatText } from './entities.js';
 import { log, updatePartyFrames, updateResources } from './ui.js';
 import { SAVE_KEY } from './constants.js';
+import { saveSlotRaw, loadSlotRaw, getActiveSlot, setActiveSlot } from './save_slots.js';
 import { serializeRunStats } from './run_stats.js';
 import { clearCombatEffects } from './conditions.js';
 import { _v } from './shared.js';
@@ -258,7 +259,7 @@ export const inventoryMethods = {
     if (!res.ok) return false;
     const { choice, opt } = res;
     if (choice.pick === 'asiOrFeat') {
-      if (opt.kind === 'asi') log(`📈 ${hero.name} gains ${opt.amount} ability points to allot.`, 'level');
+      if (opt.kind === 'asi') log(`📈 ${hero.name} gains ${opt.amount} ability point${opt.amount === 1 ? '' : 's'} to allot.`, 'level');
       else log(`🏅 ${hero.name} takes the ${opt.label} feat!`, 'level');
     } else if (choice.pick === 'fightingStyle') {
       log(`⚔ ${hero.name} adopts the ${opt.label} fighting style.`, 'level');
@@ -273,9 +274,11 @@ export const inventoryMethods = {
     return true;
   },
 
-  saveGame() {
+  saveGame(targetSlotId) {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      const slotId = targetSlotId != null ? targetSlotId : (this.activeSaveSlot || getActiveSlot());
+      this.activeSaveSlot = slotId;
+      saveSlotRaw(slotId, {
         /* h.temp = one-floor quest ally, h.companion = summoned companion —
            neither is persisted inside `heroes` (companions are saved in their
            own slot below so they survive load). */
@@ -292,18 +295,20 @@ export const inventoryMethods = {
         questChains: this.questChains || { active: [], log: [] },
         legendaryPity: this.legendaryPity || 0,
         storyProgress: this.storyProgress || {},
+        controlMode: this.controlMode || 'auto',
         bestiary: this.bestiary || {},
         guildData: this.guild ? this.guild.serialize() : null,
         runStats: serializeRunStats(this)
-      }));
+      });
     } catch (e) { /* storage full/blocked — play on without saves */ }
   },
 
-  loadSave() {
+  loadSave(targetSlotId) {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      if (!raw) return null;
-      const data = JSON.parse(raw);
+      const slotId = targetSlotId != null ? targetSlotId : (this.activeSaveSlot || getActiveSlot());
+      const data = loadSlotRaw(slotId);
+      if (!data) return null;
+      this.activeSaveSlot = slotId;
       if (data.inventory) migrateInventory(data.inventory);
       /* Armory contents are gear too — migrate them to the current item schema
          or stored legacy loot would come back out broken. */

@@ -22,7 +22,7 @@ const ABILITY_LABEL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WI
 const MELEE_CLASSES = new Set(['fighter', 'barbarian', 'monk', 'paladin', 'rogue', 'bard']);
 /* Skill points banked per level-up, spent on the 5e skill checks (see SKILLS in
    srd.js, which re-exports this). Defined here because srd.js imports us. */
-export const SKILL_POINTS_PER_LEVEL = 2;
+export const SKILL_POINTS_PER_LEVEL = 1;
 
 /* ================================================================
    Fighting styles (Fighter L1, Ranger L2, Paladin L2, etc.)
@@ -1014,18 +1014,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('cleric_sp4', 'cleric', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('cleric_sp4b', 'cleric', 4, 'Additional domain spell')],
-      12: [asi(12)],
-      13: [learnSpell('cleric_sp5b', 'cleric', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14), auto('destroyUndeadGreater')],
-      15: [],
-      16: [asi(16)],
-      17: [learnSpell('cleric_sp5c', 'cleric', 5, 'Mastery spell')],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('divineInterventionImproved')]
+    9: [learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('cleric_sp6', 'cleric', 6, 'Learn a 6th-level prayer')],
+    12: [asi(12)],
+    13: [learnSpell('cleric_sp7', 'cleric', 7, 'Learn a 7th-level prayer')],
+    14: [asi(14), milestone(14), auto('destroyUndeadGreater')],
+    15: [learnSpell('cleric_sp8', 'cleric', 8, 'Learn an 8th-level prayer')],
+    16: [asi(16)],
+    17: [learnSpell('cleric_sp9', 'cleric', 9, 'Divine Miracle: 9th-level prayer')],
+    18: [asi(18), milestone(18)],
+    19: [learnSpell('cleric_sp9b', 'cleric', 9, 'Divine Miracle: high-tier prayer')],
+    20: [asi(20), auto('divineInterventionImproved')]
   },
   wizard: {
     1: [learnSpell('wiz_sp1', 'wizard', 1, 'Learn a 1st-level spell'), auto('arcaneRecovery')],
@@ -1036,18 +1036,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('wiz_sp4', 'wizard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('wiz_sp4b', 'wizard', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('wiz_sp5b', 'wizard', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [],
-      16: [asi(16)],
-      17: [learnSpell('wiz_sp5c', 'wizard', 5, 'Mastery spell')],
-      18: [asi(18), milestone(18), auto('spellMastery')],
-      19: [],
-      20: [asi(20), auto('signatureSpells')]
+    9: [learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('wiz_sp6', 'wizard', 6, 'Learn a 6th-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('wiz_sp7', 'wizard', 7, 'Learn a 7th-level spell')],
+    14: [asi(14), milestone(14)],
+    15: [learnSpell('wiz_sp8', 'wizard', 8, 'Learn an 8th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('wiz_sp9', 'wizard', 9, 'Mastery: 9th-level spell')],
+    18: [asi(18), milestone(18), auto('spellMastery')],
+    19: [learnSpell('wiz_sp9b', 'wizard', 9, 'Mastery: high-tier spell')],
+    20: [asi(20), auto('signatureSpells')]
   },
   barbarian: {
     1: [auto('rage')],
@@ -1058,18 +1058,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [auto('brutalCritical')],
     8: [asi(8)],
-       9: [],
-       10: [asi(10), milestone(10)],
-       11: [auto('relentlessRage')],
-       12: [asi(12)],
-       13: [auto('brutalCritical2')],
-       14: [asi(14), milestone(14)],
-       15: [auto('persistentRage')],
-       16: [asi(16)],
-       17: [auto('brutalCritical3')],
-       18: [asi(18), auto('indomitableMight'), milestone(18)],
-       19: [],
-       20: [asi(20), auto('primalChampion')]
+    9: [],
+    10: [asi(10), milestone(10)],
+    11: [auto('relentlessRage')],
+    12: [asi(12)],
+    13: [auto('brutalCritical2')],
+    14: [asi(14), milestone(14)],
+    15: [auto('persistentRage')],
+    16: [asi(16)],
+    17: [auto('brutalCritical3')],
+    18: [asi(18), auto('indomitableMight'), milestone(18)],
+    19: [],
+    20: [asi(20), auto('primalChampion')]
   },
   bard: {
     1: [auto('bardicInspiration'), learnSpell('bard_sp1', 'bard', 1)],
@@ -1080,18 +1080,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('bard_sp4', 'bard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('bard_sp5', 'bard', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('bard_sp4b', 'bard', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('bard_sp5b', 'bard', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [auto('inspiredPerformance')],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('superiorInspiration')]
+    9: [learnSpell('bard_sp5', 'bard', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('bard_sp6', 'bard', 6, 'Learn a 6th-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('bard_sp7', 'bard', 7, 'Learn a 7th-level spell')],
+    14: [asi(14), milestone(14)],
+    15: [auto('inspiredPerformance'), learnSpell('bard_sp8', 'bard', 8, 'Learn an 8th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('bard_sp9', 'bard', 9, 'Mastery: 9th-level spell')],
+    18: [asi(18), milestone(18)],
+    19: [learnSpell('bard_sp9b', 'bard', 9, 'Mastery: high-tier spell')],
+    20: [asi(20), auto('superiorInspiration')]
   },
   druid: {
     1: [wildShapeFormChoice(), learnSpell('druid_sp1', 'druid', 1)],
@@ -1102,18 +1102,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('druid_sp4', 'druid', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('druid_sp4b', 'druid', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('druid_sp5b', 'druid', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('beastSpells')],
-      19: [],
-      20: [asi(20), auto('archdruid')]
+    9: [learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('druid_sp6', 'druid', 6, 'Learn a 6th-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('druid_sp7', 'druid', 7, 'Learn a 7th-level spell')],
+    14: [asi(14), milestone(14)],
+    15: [learnSpell('druid_sp8', 'druid', 8, 'Learn an 8th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('druid_sp9', 'druid', 9, 'Archdruid: 9th-level spell')],
+    18: [asi(18), milestone(18), auto('beastSpells')],
+    19: [learnSpell('druid_sp9b', 'druid', 9, 'Archdruid: high-tier spell')],
+    20: [asi(20), auto('archdruid')]
   },
   monk: {
     1: [auto('martialArts'), auto('ki')],
@@ -1124,62 +1124,62 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [auto('stillMind')],
     8: [asi(8)],
-      9: [],
-      10: [asi(10), milestone(10)],
-      11: [],
-      12: [asi(12)],
-      13: [auto('tongueSunMoon')],
-      14: [asi(14), milestone(14), auto('diamondSoul')],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('emptyBody')],
-      19: [],
-      20: [asi(20), auto('perfectSelf')]
+    9: [],
+    10: [asi(10), milestone(10)],
+    11: [],
+    12: [asi(12)],
+    13: [auto('tongueSunMoon')],
+    14: [asi(14), milestone(14), auto('diamondSoul')],
+    15: [],
+    16: [asi(16)],
+    17: [],
+    18: [asi(18), milestone(18), auto('emptyBody')],
+    19: [],
+    20: [asi(20), auto('perfectSelf')]
   },
   paladin: {
     1: [auto('divineSmite'), auto('layOnHands')],
-    2: [fightingStyle('fs_paladin', FS_MELEE), learnSpell('pal_sp1', 'paladin', 1)],
-    3: [subclass()],
+    2: [fightingStyle('fs_paladin', FS_MELEE), learnSpell('pal_sp1', 'paladin', 1, 'Learn a 1st-level prayer'), learnSpell('pal_sp1b', 'paladin', 1, 'Learn another 1st-level prayer')],
+    3: [subclass(), learnSpell('pal_sp1c', 'paladin', 1, 'Learn a 1st-level prayer')],
     4: [asi(4)],
-    5: [auto('extraAttack')],
+    5: [auto('extraAttack'), learnSpell('pal_sp2', 'paladin', 2, 'Learn a 2nd-level prayer')],
     6: [auto('auraProtection'), milestone(6)],
-    7: [auto('divineHealth')],
+    7: [auto('divineHealth'), learnSpell('pal_sp2b', 'paladin', 2, 'Learn a 2nd-level prayer')],
     8: [asi(8)],
-      9: [learnSpell('pal_sp2', 'paladin', 2)],
-      10: [asi(10), milestone(10)],
-      11: [auto('improvedDivineSmite'), learnSpell('pal_sp3', 'paladin', 3, 'Higher prayer')],
-      12: [asi(12)],
-      13: [],
-      14: [asi(14), milestone(14), auto('cleansingTouch')],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('auraImproved')],
-      19: [],
-      20: [asi(20), auto('oathCapstone')]
+    9: [learnSpell('pal_sp3', 'paladin', 3, 'Learn a 3rd-level prayer')],
+    10: [asi(10), milestone(10)],
+    11: [auto('improvedDivineSmite'), learnSpell('pal_sp3b', 'paladin', 3, 'Higher prayer')],
+    12: [asi(12)],
+    13: [learnSpell('pal_sp4', 'paladin', 4, 'Learn a 4th-level prayer')],
+    14: [asi(14), milestone(14), auto('cleansingTouch')],
+    15: [learnSpell('pal_sp4b', 'paladin', 4, 'Learn a 4th-level prayer')],
+    16: [asi(16)],
+    17: [learnSpell('pal_sp5', 'paladin', 5, 'Learn a 5th-level prayer')],
+    18: [asi(18), milestone(18), auto('auraImproved')],
+    19: [learnSpell('pal_sp5b', 'paladin', 5, 'Learn a 5th-level prayer')],
+    20: [asi(20), auto('oathCapstone')]
   },
   ranger: {
     1: [auto('favoredEnemy'), auto('naturalExplorer')],
-    2: [fightingStyle('fs_ranger', FS_RANGED), learnSpell('rng_sp1', 'ranger', 1)],
-    3: [subclass()],
+    2: [fightingStyle('fs_ranger', FS_RANGED), learnSpell('rng_sp1', 'ranger', 1, 'Learn a 1st-level spell'), learnSpell('rng_sp1b', 'ranger', 1, 'Learn another 1st-level spell')],
+    3: [subclass(), learnSpell('rng_sp1c', 'ranger', 1, 'Learn a 1st-level spell')],
     4: [asi(4)],
-    5: [auto('extraAttack')],
+    5: [auto('extraAttack'), learnSpell('rng_sp2', 'ranger', 2, 'Learn a 2nd-level spell')],
     6: [milestone(6)],
-    7: [auto('primevalAwareness')],
+    7: [auto('primevalAwareness'), learnSpell('rng_sp2b', 'ranger', 2, 'Learn a 2nd-level spell')],
     8: [asi(8)],
-      9: [learnSpell('rng_sp2', 'ranger', 2)],
-      10: [asi(10), milestone(10), auto('colossusSlayerClass')],
-      11: [],
-      12: [asi(12)],
-      13: [],
-      14: [asi(14), milestone(14), auto('vanish')],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('feralSenses')],
-      19: [],
-      20: [asi(20), auto('foeSlayer')]
+    9: [learnSpell('rng_sp3', 'ranger', 3, 'Learn a 3rd-level spell')],
+    10: [asi(10), milestone(10), auto('colossusSlayerClass')],
+    11: [learnSpell('rng_sp3b', 'ranger', 3, 'Learn a 3rd-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('rng_sp4', 'ranger', 4, 'Learn a 4th-level spell')],
+    14: [asi(14), milestone(14), auto('vanish')],
+    15: [learnSpell('rng_sp4b', 'ranger', 4, 'Learn a 4th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('rng_sp5', 'ranger', 5, 'Learn a 5th-level spell')],
+    18: [asi(18), milestone(18), auto('feralSenses')],
+    19: [learnSpell('rng_sp5b', 'ranger', 5, 'Learn a 5th-level spell')],
+    20: [asi(20), auto('foeSlayer')]
   },
   sorcerer: {
     1: [learnSpell('sorc_sp1', 'sorcerer', 1), auto('tidesOfChaos')],
@@ -1190,18 +1190,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('sorc_sp4', 'sorcerer', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-      9: [learnSpell('sorc_sp5', 'sorcerer', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('sorc_sp4b', 'sorcerer', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('sorc_sp5b', 'sorcerer', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [],
-      16: [asi(16)],
-      17: [auto('metamagicExpert')],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('sorcerousRestoration')]
+    9: [learnSpell('sorc_sp5', 'sorcerer', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('sorc_sp6', 'sorcerer', 6, 'Learn a 6th-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('sorc_sp7', 'sorcerer', 7, 'Learn a 7th-level spell')],
+    14: [asi(14), milestone(14)],
+    15: [learnSpell('sorc_sp8', 'sorcerer', 8, 'Learn an 8th-level spell')],
+    16: [asi(16)],
+    17: [auto('metamagicExpert'), learnSpell('sorc_sp9', 'sorcerer', 9, 'Mastery: 9th-level spell')],
+    18: [asi(18), milestone(18)],
+    19: [learnSpell('sorc_sp9b', 'sorcerer', 9, 'Mastery: high-tier spell')],
+    20: [asi(20), auto('sorcerousRestoration')]
   },
   warlock: {
     1: [auto('pactMagic'), auto('eldritchBlast'), learnSpell('wlk_sp1', 'warlock', 1)],
@@ -1213,17 +1213,17 @@ export const CLASS_PROGRESSION = {
     7: [auto('graspOfHadar'), learnSpell('wlk_sp4', 'warlock', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
     9: [auto('lanceOfLethargy')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('wlk_sp4b', 'warlock', 4, 'Mystic Arcanum')],
-      12: [asi(12)],
-      13: [learnSpell('wlk_mystic7', 'warlock', 5, 'Mystic Arcanum (7th)')],
-      14: [asi(14), milestone(14)],
-      15: [learnSpell('wlk_mystic8', 'warlock', 5, 'Mystic Arcanum (8th)')],
-      16: [asi(16)],
-      17: [learnSpell('wlk_mystic9', 'warlock', 5, 'Mystic Arcanum (9th)')],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('eldritchMaster')]
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('wlk_mystic6', 'warlock', 6, 'Mystic Arcanum (6th)')],
+    12: [asi(12)],
+    13: [learnSpell('wlk_mystic7', 'warlock', 7, 'Mystic Arcanum (7th)')],
+    14: [asi(14), milestone(14)],
+    15: [learnSpell('wlk_mystic8', 'warlock', 8, 'Mystic Arcanum (8th)')],
+    16: [asi(16)],
+    17: [learnSpell('wlk_mystic9', 'warlock', 9, 'Mystic Arcanum (9th)')],
+    18: [asi(18), milestone(18)],
+    19: [learnSpell('wlk_mystic9b', 'warlock', 9, 'Mystic Arcanum (high-tier)')],
+    20: [asi(20), auto('eldritchMaster')]
   }
 };
 
@@ -1467,6 +1467,7 @@ export function initProgressionFields(h) {
   if (!h.feats) h.feats = [];
   if (!h.knownSpells) h.knownSpells = [];
   if (!h.pendingChoices) h.pendingChoices = [];
+  if (!h.resolvedChoices) h.resolvedChoices = [];
   if (!h.subclassMilestones) h.subclassMilestones = [];
   if (h.fightingStyle === undefined) h.fightingStyle = null;
   if (h.spellCd === undefined) h.spellCd = {};
@@ -1488,20 +1489,23 @@ export function initProgressionFields(h) {
 export function grantHealerCureWounds(h) {
   if (!h || !CLASSES[h.classKey]?.healer) return;
   if (!h.knownSpells) h.knownSpells = [];
-  if (!h.knownSpells.includes('cureWounds')) h.knownSpells.push('cureWounds');
+  if (!h.knownSpells.includes('cureWounds') && SPELLS['cureWounds']) {
+    h.knownSpells.push('cureWounds');
+  }
 }
 
-function unlockFeature(h, key, log) {
-  if (!key || hasFeature(h, key)) return;
+function unlockFeature(h, key, log = null) {
+  initProgressionFields(h);
+  if (h.features.includes(key)) return;
   h.features.push(key);
-  const f = FEATURES[key];
-  if (log && f) log(`✨ ${h.name} gains ${f.label}: ${f.desc}`, 'level');
-  /* class flags used by older combat code */
+  const feat = FEATURES[key];
+  if (log && feat) log(`✨ ${h.name} unlocked feature: ${feat.label}`, 'feature');
   if (key === 'secondWind') h.secondWind = true;
 }
 
 function queueChoice(h, grant) {
-  /* don't double-queue the same choice id */
+  /* don't double-queue the same choice id or re-queue already resolved choice */
+  if (h.resolvedChoices && h.resolvedChoices.includes(grant.id)) return;
   if (h.pendingChoices.some(c => c.id === grant.id)) return;
   const choice = { ...grant };
   /* materialize options for UI */
@@ -1543,9 +1547,9 @@ function buildAsiFeatOptions(h) {
     opts.push({
       key: 'asi',
       label: 'Ability Score Improvement',
-      desc: 'Gain 2 ability points to allot among your stats (cap 20).',
+      desc: 'Gain 1 ability point to allot among your stats (cap 20).',
       kind: 'asi',
-      amount: 2
+      amount: 1
     });
   }
   /* Effective equipment tiers = best of class (stamped on the hero in recalc)
@@ -1602,7 +1606,7 @@ export function applyLevelGrants(h, level, log = null, opts = {}) {
      of class. Migration/re-apply must not double-bank points. */
   if (level > 1 && !opts.autosOnly) {
     h.pendingSkillRank = (h.pendingSkillRank || 0) + SKILL_POINTS_PER_LEVEL;
-    if (log) log(`📘 ${h.name} gained ${SKILL_POINTS_PER_LEVEL} skill points.`, 'level');
+    if (log) log(`📘 ${h.name} gained ${SKILL_POINTS_PER_LEVEL === 1 ? '1 skill point' : `${SKILL_POINTS_PER_LEVEL} skill points`}.`, 'level');
   }
 
   /* Class talents are the stopgap for dead levels: if this level's progression
@@ -1636,11 +1640,58 @@ export function seedNewHeroProgression(h, log = null) {
 }
 
 /**
+ * Count total spell choice grants configured for a class up through a given level.
+ */
+export function countSpellGrantsUpTo(classKey, maxLevel) {
+  const table = CLASS_PROGRESSION[classKey];
+  if (!table) return 0;
+  let count = 0;
+  for (let lv = 1; lv <= maxLevel; lv++) {
+    const grants = table[lv] || [];
+    for (const g of grants) {
+      if (g.type === 'choice' && g.pick === 'spell') count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Synchronize any missing leveled spell choices for heroes (such as Rangers/Paladins
+ * who leveled up under earlier progression tables that had fewer spell grants).
+ */
+export function syncMissingSpellChoices(h) {
+  initProgressionFields(h);
+  const table = CLASS_PROGRESSION[h.classKey];
+  if (!table) return;
+
+  const currentLevel = Math.max(1, h.level || 1);
+  for (let lv = 1; lv <= currentLevel; lv++) {
+    const grants = table[lv] || [];
+    for (const g of grants) {
+      if (g.type === 'choice' && g.pick === 'spell') {
+        if (!h.resolvedChoices) h.resolvedChoices = [];
+        if (h.resolvedChoices.includes(g.id)) continue;
+        if (h.pendingChoices.some(c => c.id === g.id)) continue;
+
+        const totalGrantsSoFar = countSpellGrantsUpTo(h.classKey, lv);
+        const currentTotal = (h.knownSpells?.length || 0) + (h.pendingChoices?.filter(c => c.pick === 'spell').length || 0);
+        if (currentTotal < totalGrantsSoFar) {
+          queueChoice(h, g);
+        } else {
+          h.resolvedChoices.push(g.id);
+        }
+      }
+    }
+  }
+}
+
+/**
  * Migrate legacy heroes: unlock auto features for levels already gained,
  * do not dump every historical choice on them.
  */
 export function migrateProgression(h) {
   initProgressionFields(h);
+  syncMissingSpellChoices(h);
   if (h.progressionVersion >= 1) return;
   for (let lv = 1; lv <= h.level; lv++) {
     applyLevelGrants(h, lv, null, { autosOnly: true });
@@ -1684,6 +1735,9 @@ export function resolveChoice(h, choiceId, optionKey) {
   } else {
     return { ok: false, reason: 'Unknown choice type.' };
   }
+
+  if (!h.resolvedChoices) h.resolvedChoices = [];
+  if (!h.resolvedChoices.includes(choiceId)) h.resolvedChoices.push(choiceId);
 
   h.pendingChoices.splice(idx, 1);
   return { ok: true, choice, opt };

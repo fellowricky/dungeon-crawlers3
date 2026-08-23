@@ -6,7 +6,7 @@
  * hardest offered quest always guarantees a legendary reward.
  */
 import { rollItem, rollLegendary, perkText, ilvlText, bonusText, TIER } from './items.js';
-import { BOSS_IDS, BOSS_MONSTERS, MONSTER_THEMES, DUNGEON_MONSTER_MAP, monsterSpawnsIn, dungeonMonsterIds, monsterName, getCuratedBossEncounter, getCuratedMonsterRoster, MONSTERS_ALL, getThemeForMonster } from './srd.js';
+import { MONSTER_THEMES, DUNGEON_MONSTER_MAP, monsterSpawnsIn, dungeonMonsterIds, monsterName, getCuratedBossEncounter, getCuratedMonsterRoster, MONSTERS_ALL, getThemeForMonster } from './srd.js';
 
 import {
   QUEST_EMBARK, QUEST_VICTORY, PHASE_RUMORS, ALLY_PERSONAS,

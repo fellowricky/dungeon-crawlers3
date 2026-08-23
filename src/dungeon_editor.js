@@ -16,7 +16,8 @@ import { THEMES, generateDungeon } from './dungeon/dungeon_generator.js';
 import SAVED_OVERRIDES from './game/theme_overrides.json' with { type: 'json' };
 import {
   renderer, cam, camTarget, updateCam, buildScene, renderFrame, liveUpdate,
-  finishAnim, applyThemeEnv, applyTorchSettings, lights, registerProp, registeredProps
+  finishAnim, applyThemeEnv, applyTorchSettings, lights, registerProp, registeredProps,
+  DEFAULT_CAM_ZOOM, MIN_CAM_ZOOM, MAX_CAM_ZOOM
 } from './render/dungeon_scene.js';
 import SAVED_CUSTOM_PROPS from './game/custom_props.json' with { type: 'json' };
 import { matFloor, matWall, matWallCap, setTileOverride } from './render/dungeon_materials.js';
@@ -31,7 +32,7 @@ const state = {
   tab: 'generate',
   gen: { roomCount: 16, loopChance: 0.18, decorDensity: 1, threatMult: 1,
          level: 1, mapW: 0, mapH: 0, zones: 0 },
-  zoom: 3.2,
+  zoom: DEFAULT_CAM_ZOOM,
   animate: false
 };
 
@@ -319,7 +320,7 @@ function tabGenerate() {
   }
 
   const v = group('View');
-  slider(v, 'Camera zoom', { min: 1, max: 14, step: 0.1,
+  slider(v, 'Camera zoom', { min: MIN_CAM_ZOOM, max: MAX_CAM_ZOOM, step: 0.1,
     get: () => state.zoom, set: val => { state.zoom = val; },
     live: () => { cam.zoom = state.zoom; cam.updateProjectionMatrix(); } });
   hint(v, 'Drag to orbit, wheel to zoom — same controls as the game view.');

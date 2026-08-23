@@ -1,4 +1,18 @@
 export const GIGAPACK_REGISTRY = {
+  "wall_of_fire_fire": {
+    "key": "wall_of_fire_fire",
+    "category": "Explosions",
+    "baseName": "wall_of_fire_fire",
+    "url": "Sprites/spells/11_fire_spritesheet.png",
+    "w": 800,
+    "h": 800,
+    "fw": 100,
+    "fh": 100,
+    "cols": 8,
+    "rows": 8,
+    "frames": 61,
+    "fps": 12
+  },
   "epic_explosion_001_large_orange": {
     "key": "epic_explosion_001_large_orange",
     "category": "Explosions",
@@ -961,7 +975,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 96,
     "fh": 96,
     "cols": 5,
-    "rows": 5,
+    "rows": 3,
     "frames": 15,
     "fps": 20
   },
@@ -975,7 +989,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 48,
     "fh": 48,
     "cols": 5,
-    "rows": 5,
+    "rows": 3,
     "frames": 15,
     "fps": 20
   },
@@ -988,8 +1002,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 512,
     "fw": 96,
     "fh": 96,
-    "cols": 11,
-    "rows": 5,
+    "cols": 10,
+    "rows": 3,
     "frames": 27,
     "fps": 20
   },
@@ -1002,8 +1016,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 256,
     "fw": 48,
     "fh": 48,
-    "cols": 11,
-    "rows": 5,
+    "cols": 10,
+    "rows": 3,
     "frames": 27,
     "fps": 20
   },
@@ -1521,7 +1535,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 96,
     "fh": 96,
     "cols": 5,
-    "rows": 3,
+    "rows": 2,
     "frames": 8,
     "fps": 20
   },
@@ -1535,7 +1549,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 48,
     "fh": 48,
     "cols": 5,
-    "rows": 3,
+    "rows": 2,
     "frames": 8,
     "fps": 20
   },
@@ -1577,7 +1591,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 48,
     "fh": 48,
     "cols": 5,
-    "rows": 3,
+    "rows": 2,
     "frames": 7,
     "fps": 20
   },
@@ -1591,7 +1605,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 24,
     "fh": 24,
     "cols": 5,
-    "rows": 3,
+    "rows": 2,
     "frames": 7,
     "fps": 20
   },
@@ -1689,7 +1703,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 256,
     "fh": 128,
     "cols": 8,
-    "rows": 8,
+    "rows": 5,
     "frames": 38,
     "fps": 20
   },
@@ -1703,7 +1717,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 128,
     "fh": 64,
     "cols": 8,
-    "rows": 8,
+    "rows": 5,
     "frames": 37,
     "fps": 20
   },
@@ -1717,7 +1731,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 256,
     "fh": 96,
     "cols": 8,
-    "rows": 11,
+    "rows": 6,
     "frames": 44,
     "fps": 20
   },
@@ -1731,7 +1745,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 128,
     "fh": 48,
     "cols": 8,
-    "rows": 11,
+    "rows": 6,
     "frames": 43,
     "fps": 20
   },
@@ -1745,7 +1759,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 320,
     "fh": 96,
     "cols": 6,
-    "rows": 11,
+    "rows": 10,
     "frames": 56,
     "fps": 20
   },
@@ -1759,7 +1773,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 160,
     "fh": 48,
     "cols": 6,
-    "rows": 11,
+    "rows": 10,
     "frames": 55,
     "fps": 20
   },
@@ -1773,7 +1787,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 160,
     "fh": 128,
     "cols": 6,
-    "rows": 8,
+    "rows": 6,
     "frames": 36,
     "fps": 20
   },
@@ -1787,7 +1801,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 80,
     "fh": 64,
     "cols": 6,
-    "rows": 8,
+    "rows": 6,
     "frames": 35,
     "fps": 20
   },
@@ -1801,7 +1815,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 64,
     "fh": 48,
     "cols": 8,
-    "rows": 11,
+    "rows": 6,
     "frames": 45,
     "fps": 20
   },
@@ -1815,7 +1829,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 32,
     "fh": 24,
     "cols": 8,
-    "rows": 11,
+    "rows": 6,
     "frames": 45,
     "fps": 20
   },
@@ -1856,8 +1870,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 2048,
     "fw": 416,
     "fh": 128,
-    "cols": 5,
-    "rows": 16,
+    "cols": 4,
+    "rows": 11,
     "frames": 44,
     "fps": 20
   },
@@ -1870,8 +1884,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 1024,
     "fw": 208,
     "fh": 64,
-    "cols": 5,
-    "rows": 16,
+    "cols": 4,
+    "rows": 11,
     "frames": 44,
     "fps": 20
   },
@@ -1884,8 +1898,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 2048,
     "fw": 352,
     "fh": 96,
-    "cols": 6,
-    "rows": 21,
+    "cols": 5,
+    "rows": 12,
     "frames": 60,
     "fps": 20
   },
@@ -1898,8 +1912,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 1024,
     "fw": 176,
     "fh": 48,
-    "cols": 6,
-    "rows": 21,
+    "cols": 5,
+    "rows": 12,
     "frames": 59,
     "fps": 20
   },
@@ -2164,8 +2178,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 512,
     "fw": 96,
     "fh": 96,
-    "cols": 11,
-    "rows": 5,
+    "cols": 10,
+    "rows": 3,
     "frames": 30,
     "fps": 20
   },
@@ -2178,8 +2192,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 256,
     "fw": 48,
     "fh": 48,
-    "cols": 11,
-    "rows": 5,
+    "cols": 10,
+    "rows": 3,
     "frames": 30,
     "fps": 20
   },
@@ -2473,7 +2487,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 160,
     "fh": 128,
     "cols": 6,
-    "rows": 8,
+    "rows": 6,
     "frames": 34,
     "fps": 20
   },
@@ -2487,7 +2501,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 80,
     "fh": 64,
     "cols": 6,
-    "rows": 8,
+    "rows": 6,
     "frames": 33,
     "fps": 20
   },
@@ -2500,8 +2514,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 2048,
     "fw": 360,
     "fh": 128,
-    "cols": 6,
-    "rows": 16,
+    "cols": 5,
+    "rows": 10,
     "frames": 48,
     "fps": 20
   },
@@ -2514,8 +2528,8 @@ export const GIGAPACK_REGISTRY = {
     "h": 1024,
     "fw": 180,
     "fh": 64,
-    "cols": 6,
-    "rows": 16,
+    "cols": 5,
+    "rows": 10,
     "frames": 47,
     "fps": 20
   },
@@ -2529,7 +2543,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 288,
     "fh": 128,
     "cols": 7,
-    "rows": 8,
+    "rows": 6,
     "frames": 42,
     "fps": 20
   },
@@ -2543,7 +2557,7 @@ export const GIGAPACK_REGISTRY = {
     "fw": 144,
     "fh": 64,
     "cols": 7,
-    "rows": 8,
+    "rows": 6,
     "frames": 41,
     "fps": 20
   }

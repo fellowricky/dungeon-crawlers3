@@ -4,7 +4,8 @@
  * Methods are mixed onto Game — they expect `this.D`, `this.cellOf`,
  * `this.wx` / `this.wz`, and FLOOR/WALL tile constants on the dungeon grid.
  */
-import { FLOOR, WALL, CHOKEPOINT_COST, HAZARD_COST, AGENT_R, TIGHT_R } from './constants.js';
+import { FLOOR, WALL, CHOKEPOINT_COST, HAZARD_COST, ALLY_PASS_COST, AGENT_R, TIGHT_R } from './constants.js';
+import { isPointInAoEZone } from './aoe_system.js';
 
 /** Precompute wall-adjacency for BFS tiebreaking (prefer centre-room paths). */
 export function buildWallAdj(grid, W, H) {
@@ -13,20 +14,16 @@ export function buildWallAdj(grid, W, H) {
   for (let i = 0; i < total; i++) {
     if (grid[i] !== FLOOR) continue;
     const x = i % W;
-    if ((x > 0 && grid[i - 1] === WALL) ||
-        (x < W - 1 && grid[i + 1] === WALL) ||
-        (i >= W && grid[i - W] === WALL) ||
-        (i < total - W && grid[i + W] === WALL)) {
+    if ((x > 0 && grid[i - 1] !== FLOOR) ||
+        (x < W - 1 && grid[i + 1] !== FLOOR) ||
+        (i >= W && grid[i - W] !== FLOOR) ||
+        (i < total - W && grid[i + W] !== FLOOR)) {
       wallAdj[i] = 1;
     }
   }
   return wallAdj;
 }
 
-/** Precompute chokepoint cells: 1-wide corridors and doorways where
- *  entities are likely to jam.  A cell is a chokepoint if it is a
- *  floor cell with neighbours that are walls on two opposite sides,
- *  i.e. it sits in a 1-tile-wide passage. */
 /** Precompute chokepoint cells: any floor cell with ≥ 2 adjacent walls
  *  is considered "tight" — this catches doorways, 1-wide corridors,
  *  corridor turns, and cells pinched between pillars.  The BFS uses
@@ -39,10 +36,10 @@ export function buildChokepoints(grid, W, H) {
     if (grid[i] !== FLOOR) continue;
     const x = i % W;
     let walls = 0;
-    if (x === 0 || grid[i - 1] === WALL) walls++;
-    if (x === W - 1 || grid[i + 1] === WALL) walls++;
-    if (i < W || grid[i - W] === WALL) walls++;
-    if (i >= total - W || grid[i + W] === WALL) walls++;
+    if (x === 0 || grid[i - 1] !== FLOOR) walls++;
+    if (x === W - 1 || grid[i + 1] !== FLOOR) walls++;
+    if (i < W || grid[i - W] !== FLOOR) walls++;
+    if (i >= total - W || grid[i + W] !== FLOOR) walls++;
     if (walls >= 2) ch[i] = 1;
   }
   return ch;
@@ -52,10 +49,12 @@ export function buildChokepoints(grid, W, H) {
  *  Small scatter (skeletons, bones, debris, rocks, moss, plant scatter) remain walkable. */
 export const SOLID_PROP_KINDS = new Set([
   'pillar', 'pillarA', 'pillarB', 'table', 'altarTable', 'coffin', 'sarco',
-  'statue', 'tombstone', 'chest', 'shrineCrystal', 'bossCrystal', 'forge',
+  'statue', 'tombstone', 'chest', 'shrineCrystal', 'forge',
   'iceThrone', 'sporePod', 'megalith', 'cauldron', 'wagon', 'bookshelf',
-  'weaponRack', 'brazier', 'crate', 'barrel', 'urn', 'bench', 'chair',
-  'globe', 'anvil', 'ossuaryWall'
+  'weaponRack', 'shieldRack', 'brazier', 'crate', 'barrel', 'urn', 'vase',
+  'bench', 'chair', 'globe', 'anvil', 'ossuaryWall', 'runicObelisk',
+  'glacialSpire', 'stalagmite', 'hearthPit', 'smeltingCrucible', 'cairn',
+  'skulltotem', 'boulderPile', 'tree', 'snowtree', 'tree_winter', 'swamptree', 'deadtree'
 ]);
 
 /** Precompute solidProps map (1 = impassable prop obstacle) for the dungeon grid. */
@@ -83,43 +82,94 @@ export function buildSolidProps(d) {
     solid[c] = 1;
   }
 
-  // Connectivity guard: ensure all rooms remain reachable from the entrance.
+  /* Connectivity guard: ensure every room stays reachable from the entrance.
+     A room is only "sealed" when NONE of its floor cells can be reached — a
+     solid prop sitting on a room's centre (chest, shrine crystal, boss
+     sarcophagus…) must NOT unmark the whole room. When a room is genuinely
+     sealed we clear the solid prop nearest the reachable frontier (multi-source
+     BFS), re-flood, and repeat, so only the actual blocker is removed — even
+     when the blocker is a prop in the corridor outside the room. */
   if (rooms && rooms.length > 0) {
     const startC = (entCell >= 0 && grid[entCell] === FLOOR && !solid[entCell])
       ? entCell
       : (rooms[0].cy * W + rooms[0].cx);
     if (startC >= 0 && startC < total && grid[startC] === FLOOR) {
-      const reached = new Uint8Array(total);
-      const q = [startC];
-      reached[startC] = 1;
-      let head = 0;
-      while (head < q.length) {
-        const curr = q[head++];
-        const cx = curr % W, cy = Math.floor(curr / W);
-        const neighbors = [];
-        if (cx > 0) neighbors.push(curr - 1);
-        if (cx < W - 1) neighbors.push(curr + 1);
-        if (cy > 0) neighbors.push(curr - W);
-        if (cy < H - 1) neighbors.push(curr + W);
-        for (const n of neighbors) {
-          if (grid[n] === FLOOR && !solid[n] && !reached[n]) {
-            reached[n] = 1;
-            q.push(n);
-          }
+      const flood = () => {
+        const reached = new Uint8Array(total);
+        const q = [startC];
+        reached[startC] = 1;
+        let head = 0;
+        while (head < q.length) {
+          const curr = q[head++];
+          const cx = curr % W, cy = Math.floor(curr / W);
+          if (cx > 0 && grid[curr - 1] === FLOOR && !solid[curr - 1] && !reached[curr - 1]) { reached[curr - 1] = 1; q.push(curr - 1); }
+          if (cx < W - 1 && grid[curr + 1] === FLOOR && !solid[curr + 1] && !reached[curr + 1]) { reached[curr + 1] = 1; q.push(curr + 1); }
+          if (cy > 0 && grid[curr - W] === FLOOR && !solid[curr - W] && !reached[curr - W]) { reached[curr - W] = 1; q.push(curr - W); }
+          if (cy < H - 1 && grid[curr + W] === FLOOR && !solid[curr + W] && !reached[curr + W]) { reached[curr + W] = 1; q.push(curr + W); }
         }
-      }
+        return reached;
+      };
+      let reached = flood();
 
-      for (const r of rooms) {
-        const rc = r.cy * W + r.cx;
-        if (grid[rc] === FLOOR && !reached[rc]) {
-          // Unmark solid props in isolated room area to restore reachability
-          for (const p of props) {
-            if (p.roomId === r.id || (Math.abs(p.x - r.cx) <= r.w && Math.abs(p.y - r.cy) <= r.h)) {
-              const pc = Math.round(p.y) * W + Math.round(p.x);
-              if (pc >= 0 && pc < total) solid[pc] = 0;
-            }
+      const roomSealed = (r) => {
+        const rw = r.w || 0, rh = r.h || 0;
+        let hasFloor = false;
+        for (let oy = -rh; oy <= rh; oy++) {
+          for (let ox = -rw; ox <= rw; ox++) {
+            const x = r.cx + ox, y = r.cy + oy;
+            if (x < 0 || y < 0 || x >= W || y >= H) continue;
+            const c = y * W + x;
+            if (grid[c] !== FLOOR) continue;
+            hasFloor = true;
+            if (reached[c]) return false; // at least one reachable floor cell
           }
         }
+        return hasFloor; // has floor cells but none reachable
+      };
+
+      for (let iter = 0; iter <= props.length; iter++) {
+        let sealed = -1;
+        for (let i = 0; i < rooms.length; i++) {
+          if (roomSealed(rooms[i])) { sealed = i; break; }
+        }
+        if (sealed < 0) break;
+
+        /* Distance (in walkable, non-solid floor steps) from every cell to the
+           reachable frontier, so we can pick the solid prop that is actually
+           cutting off the room. */
+        const dist = new Int32Array(total).fill(-1);
+        const fq = [];
+        for (let c = 0; c < total; c++) if (reached[c]) { dist[c] = 0; fq.push(c); }
+        let fh = 0;
+        while (fh < fq.length) {
+          const c = fq[fh++];
+          const cx = c % W, cy = Math.floor(c / W), nd = dist[c] + 1;
+          const tryPush = (n) => {
+            if (dist[n] < 0 && grid[n] === FLOOR && !solid[n]) { dist[n] = nd; fq.push(n); }
+          };
+          if (cx > 0) tryPush(c - 1);
+          if (cx < W - 1) tryPush(c + 1);
+          if (cy > 0) tryPush(c - W);
+          if (cy < H - 1) tryPush(c + W);
+        }
+
+        let bestC = -1, bestD = Infinity;
+        for (const p of props) {
+          if (!p || !p.kind || !SOLID_PROP_KINDS.has(p.kind)) continue;
+          const x = Math.round(p.x), y = Math.round(p.y);
+          if (x < 0 || x >= W || y < 0 || y >= H) continue;
+          const c = y * W + x;
+          if (solid[c] !== 1) continue;
+          let d = Infinity;
+          if (x > 0 && dist[c - 1] >= 0 && dist[c - 1] < d) d = dist[c - 1];
+          if (x < W - 1 && dist[c + 1] >= 0 && dist[c + 1] < d) d = dist[c + 1];
+          if (y > 0 && dist[c - W] >= 0 && dist[c - W] < d) d = dist[c - W];
+          if (y < H - 1 && dist[c + W] >= 0 && dist[c + W] < d) d = dist[c + W];
+          if (d < bestD) { bestD = d; bestC = c; }
+        }
+        if (bestC < 0) break; // sealed by the grid itself — nothing to clear
+        solid[bestC] = 0;
+        reached = flood();
       }
     }
   }
@@ -151,31 +201,51 @@ export const pathfindingMethods = {
     const total = W * H;
     const wallAdj = this.D.wallAdj;
     const chokepoint = this.D.chokepoint;
-    const avoidDoors = !!(opts && opts.avoidClosedDoors) && (typeof this.isCellDoorClosed === 'function');
+    const inCombat = typeof this.isCombatActive === 'function' ? this.isCombatActive() : !!(this.combat || (this.initiative && this.initiative.active));
+    const avoidDoors = (inCombat || !!(opts && opts.avoidClosedDoors)) && (typeof this.isCellDoorClosed === 'function');
 
     const mover = opts && opts.mover;
     const isHeroMover = mover && (Array.isArray(this.heroes) && this.heroes.includes(mover));
     const isMonsterMover = mover && (Array.isArray(this.monsters) && this.monsters.includes(mover));
 
-    // Build set of enemy-occupied cells to route around
+    /* Bodies, split the way 5e splits them: you may move THROUGH an ally's
+       square but not stop there, and you may not pass through an enemy at all.
+       Hard-blocking allies too (the first cut of this) sent heroes on long
+       detours around their own party — a target 4 tiles away would route 9
+       tiles the wrong way round, which is most of what "the paladin runs
+       around instead of attacking" looked like.
+       Allies are therefore a COST, not a wall; the destination is validated
+       separately below, so nobody ends their move inside a teammate. */
     const enemyCells = new Set();
-    if (isHeroMover || (opts && opts.avoidOpponents === 'hero')) {
-      if (Array.isArray(this.monsters)) {
-        for (const m of this.monsters) {
-          if (m.active && m.data && m.data.hp > 0) {
-            const mc = this.cellOf(m.x, m.z);
-            if (mc >= 0) enemyCells.add(mc);
-          }
-        }
-      }
-    } else if (isMonsterMover || (opts && opts.avoidOpponents === 'monster')) {
-      if (Array.isArray(this.heroes)) {
-        for (const h of this.heroes) {
-          if (h.data && h.data.hp > 0) {
-            const hc = this.cellOf(h.x, h.z);
-            if (hc >= 0) enemyCells.add(hc);
-          }
-        }
+    const allyCells = new Set();
+    const sideOf = (b) => (Array.isArray(this.monsters) && this.monsters.includes(b)) ? 'mon' : 'hero';
+    const moverSide = mover ? sideOf(mover) : null;
+    const addBody = (b) => {
+      if (b === mover) return;
+      if (!b || !b.data || b.data.hp <= 0) return;
+      if (b.active === false) return;
+      const c = this.cellOf(b.x, b.z);
+      if (c < 0) return;
+      if (moverSide && sideOf(b) === moverSide) allyCells.add(c);
+      else enemyCells.add(c);
+    };
+    if (Array.isArray(this.monsters)) for (const m of this.monsters) addBody(m);
+    if (Array.isArray(this.heroes)) for (const h of this.heroes) addBody(h);
+    void isHeroMover; void isMonsterMover;
+    /* Nobody may FINISH on an occupied tile, ally or enemy. */
+    if (allyCells.has(to) || enemyCells.has(to)) return null;
+
+    /* Build set of cells reserved by OTHERS (intent-aware occupancy).
+       findPath runs BEFORE setEntityPath commits a new reservation, so the
+       mover's own current reservation is excluded — it represents a heading
+       the mover is about to abandon. Without this, repathing would be blocked
+       by the mover's own stale destination. */
+    const reservedCells = new Set();
+    if (mover && typeof this.isCellReserved === 'function' && this._reservedCells) {
+      for (const [cell, owner] of this._reservedCells) {
+        if (owner === mover) continue;
+        if (owner && owner.data && owner.data.hp <= 0 && !owner._dying) continue;
+        reservedCells.add(cell);
       }
     }
 
@@ -228,9 +298,7 @@ export const pathfindingMethods = {
       if (!hasAoE) return false;
       const wx = this.wx(cell % W), wz = this.wz(Math.floor(cell / W));
       for (const z of this.activeAoEZones) {
-        const cx = z.spellKey === 'spiritGuardians' ? z.caster?.x ?? z.x : z.x;
-        const cz = z.spellKey === 'spiritGuardians' ? z.caster?.z ?? z.z : z.z;
-        if (Math.hypot(wx - cx, wz - cz) <= (z.radius || 2.0)) return true;
+        if (isPointInAoEZone(wx, wz, z)) return true;
       }
       return false;
     };
@@ -244,13 +312,25 @@ export const pathfindingMethods = {
       const isWalkable = (n) => {
         if (grid[n] !== FLOOR || (this.D.solidProps && this.D.solidProps[n])) return false;
         if (avoidDoors && this.isCellDoorClosed(n)) return false;
-        if (enemyCells.size > 0 && enemyCells.has(n) && n !== to) return false;
+        /* No destination exemption: a cell with a body on it is not a place to
+           stand, goal or not. Callers that want to reach a creature ask
+           approachCellNear/getUnoccupiedCellNear for a free neighbouring tile
+           instead — the old `n !== to` escape hatch was how two bodies ended up
+           finishing their paths on the same square. */
+        if (enemyCells.size > 0 && enemyCells.has(n)) return false;
+        /* Reserved-by-another cells are blocked. No destination exception —
+           a destination reserved by someone else is genuinely taken; callers
+           must use approachCellNear/getUnoccupiedCellNear to pick a free one. */
+        if (reservedCells.size > 0 && reservedCells.has(n)) return false;
         return true;
       };
       const hasDoorCheck = typeof this.isCellDoorClosed === 'function';
       const relax = (n) => {
         if (!isWalkable(n)) return;
         let step = (chokepoint && chokepoint[n]) ? CHOKEPOINT_COST : 1;
+        /* Squeezing past a teammate is allowed but awkward — prefer a clear
+           lane when one exists, take the shove when the detour is worse. */
+        if (allyCells.size > 0 && allyCells.has(n)) step += ALLY_PASS_COST;
         if (!avoidDoors && hasDoorCheck && this.isCellDoorClosed(n)) step += 5.0;
         if (hasAoE && isHazard(n)) step += HAZARD_COST;
         if (wallAdj && wallAdj[n]) step += 0.001; /* centre-room tiebreak */
@@ -269,11 +349,31 @@ export const pathfindingMethods = {
       if (x > 0 && c < total - W && isWalkable(c - 1) && isWalkable(c + W)) relax(c + W - 1);
       if (x < W - 1 && c < total - W && isWalkable(c + 1) && isWalkable(c + W)) relax(c + W + 1);
     }
-    if (dist[to] === Infinity) return null;
+    let goal = to;
+    if (dist[to] === Infinity) {
+      /* The exact goal is unreachable — usually because somebody is standing on
+         it or on the only way in. Giving up here made heroes freeze mid-fight
+         once bodies started blocking properly, so with opts.nearest we fall
+         back to the reachable cell closest to the goal and at least keep
+         closing the distance. */
+      if (!opts || !opts.nearest) return null;
+      const gx = to % W, gy = Math.floor(to / W);
+      let bestCell = -1, bestScore = Infinity;
+      for (let c = 0; c < total; c++) {
+        if (dist[c] === Infinity || c === from) continue;
+        const dx = (c % W) - gx, dy = Math.floor(c / W) - gy;
+        /* Closeness to the goal dominates; travel cost breaks ties so we don't
+           take a scenic route to an equally-near tile. */
+        const score = Math.hypot(dx, dy) * 4 + dist[c] * 0.1;
+        if (score < bestScore) { bestScore = score; bestCell = c; }
+      }
+      if (bestCell < 0) return null;
+      goal = bestCell;
+    }
     const path = [];
-    for (let c = to; c !== -1; c = par[c]) path.push(c);
+    for (let c = goal; c !== -1; c = par[c]) path.push(c);
     path.reverse();
-    return path;
+    return path.length > 1 ? path : null;
   },
 
   isCellOccupiedAny(cell, excludeEntity) {
@@ -290,6 +390,9 @@ export const pathfindingMethods = {
         if (this.cellOf(m.x, m.z) === cell) return true;
       }
     }
+    /* Reservations count as occupancy: a cell someone is animating ONTO is
+       not free even though no body has float-landed on it yet. */
+    if (typeof this.isCellReserved === 'function' && this.isCellReserved(cell, excludeEntity)) return true;
     return false;
   },
 
@@ -316,6 +419,58 @@ export const pathfindingMethods = {
     return cell;
   },
 
+  /* Pick a floor cell near `cell` for `mover` to path to.
+     Prefers an unoccupied ring-1 (adjacent) cell. If every ring-1 cell is
+     taken (a common situation when 8 melee already surround a target), the
+     search expands to ring-2 and ring-3 before giving up. NEVER returns a
+     cell that is occupied or reserved by another body — the old fallback that
+     returned an occupied neighbour was the structural cause of two sprites
+     stacking on one square. Only returns `cell` itself as an absolute last
+     resort (callers treat goal===targetCell as "abort approach"). */
+  approachCellNear(cell, mover, opts = {}) {
+    if (cell < 0 || !this.D) return cell;
+    /* Ring 4 matters now that a body genuinely blocks its tile: with 3 rings a
+       well-surrounded target left approachers with no legal stance at all, and
+       they simply stopped. */
+    const maxRing = opts.maxRing || 4;
+    const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
+    const cx = cell % W, cy = Math.floor(cell / W);
+    const solid = this.D.solidProps;
+    const hasDoorCheck = typeof this.isCellDoorClosed === 'function';
+    const isFree = (nc) => {
+      if (nc < 0 || this.D.grid[nc] !== FLOOR) return false;
+      if (solid && solid[nc]) return false;
+      if (hasDoorCheck && this.isCellDoorClosed(nc)) return false;
+      if (typeof this.isCellOccupiedAny === 'function' && this.isCellOccupiedAny(nc, mover)) return false;
+      return true;
+    };
+
+    /* Ring-1 pass first (preserve original nearest-neighbour preference). */
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        if (ox === 0 && oy === 0) continue;                 /* never the target cell */
+        const nx = cx + ox, ny = cy + oy;
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+        if (isFree(ny * W + nx)) return ny * W + nx;
+      }
+    }
+    /* Rings 2..maxRing — expanding search so a packed ring-1 doesn't force a
+       collision. Spiral outward; nearest wins. */
+    for (let r = 2; r <= maxRing; r++) {
+      for (let oy = -r; oy <= r; oy++) {
+        for (let ox = -r; ox <= r; ox++) {
+          if (Math.abs(ox) !== r && Math.abs(oy) !== r) continue; /* ring perimeter */
+          const nx = cx + ox, ny = cy + oy;
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          if (isFree(ny * W + nx)) return ny * W + nx;
+        }
+      }
+    }
+    /* Absolute last resort. Callers should treat this as "no free cell found"
+       and hold position rather than path onto an occupied tile. */
+    return cell;
+  },
+
   /* Line of sight. A still-closed doorway gate is as opaque as a wall — this
      is what tryActivateMonster relies on to avoid waking a room through a
      locked door (and, with it, latching this.combat on while the party is
@@ -329,10 +484,60 @@ export const pathfindingMethods = {
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
       const c = this.cellOf(x0 + dx * t, z0 + dz * t);
-      if (c < 0 || this.D.grid[c] === WALL || (this.D.solidProps && this.D.solidProps[c])) return false;
+      if (c < 0 || this.D.grid[c] !== FLOOR || (this.D.solidProps && this.D.solidProps[c])) return false;
       if (hasDoorCheck && this.isCellDoorClosed(c)) return false;
     }
     return true;
+  },
+
+  /* Smoothly rotate `e` toward the direction of (tx,tz). Replaces the hard
+     `rotation.y = atan2(...)` snaps that made monsters/heroes flick their
+     facing 180° when toggling between chase/melee/kite at range boundaries.
+     Uses the same hysteresis + eased lerp as stepAlong's facing code, so a
+     target-side change eases in over a few frames instead of cutting. */
+  faceTowards(e, tx, tz, dt = 0.016) {
+    if (!e || !e.ent || !e.ent.grp) return;
+    const targetAngle = Math.atan2(tx - e.x, tz - e.z);
+    let delta = targetAngle - e.ent.grp.rotation.y;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    if (Math.abs(delta) > 0.12) {
+      e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+    }
+  },
+
+  /* ── Reservation shims (overridden by reservationMethods in production).
+     These let pathfindingMethods stand alone in unit tests — without them,
+     every test fixture that exercises explore/combat code would need the
+     reservation mixin too. In production, reservationMethods is mixed onto
+     Game.prototype AFTER pathfindingMethods, so these are shadowed. */
+  setEntityPath(e, path) {
+    if (!e) return;
+    e.path = path || null;
+    e.pathI = 0;
+  },
+  clearEntityPath(e) {
+    if (!e) return;
+    e.path = null;
+    e.pathI = 0;
+  },
+  releaseReservation(e) { /* no-op without the reservation map */ },
+  reserveCell(e, cell) { /* no-op without the reservation map */ },
+  isCellReserved(cell, excludeEntity) { return false; },
+  reapReservations() { /* no-op without the reservation map */ },
+  placeAtFreeCell(e, x, z, opts) {
+    if (!e) return e;
+    e.x = x; e.z = z;
+    return e;
+  },
+  pushEntity(target, fromX, fromZ, cells, dir = 1) {
+    if (!target) return 0;
+    let dx = (target.x - fromX), dz = (target.z - fromZ);
+    if (dir < 0) { dx = -dx; dz = -dz; }
+    const len = Math.hypot(dx, dz) || 1;
+    target.x += (dx / len) * cells;
+    target.z += (dz / len) * cells;
+    return cells;
   },
 
   /* move entity along its path; returns true if moving.
@@ -344,10 +549,51 @@ export const pathfindingMethods = {
      giving up — this helps entities slide past corners and through
      tight doorways without a full repath. */
   stepAlong(e, speed, dt) {
+    /* ── Position tween integration ───────────────────────────────────
+       A short smooth glide used by stuck-recovery (handleStuck) and spell
+       knockback fall-backs, replacing the old instant ±0.45 sidestep that
+       read as a "teleport to another square". While a tween is active the
+       entity glides toward the target over `dur` seconds and then clears it. */
+    if (e._posTween && e._posTween.dur > 0) {
+      const tw = e._posTween;
+      tw.t += dt;
+      const k = Math.min(1, tw.t / tw.dur);
+      const nx = tw.fromX + (tw.toX - tw.fromX) * k;
+      const nz = tw.fromZ + (tw.toZ - tw.fromZ) * k;
+      if (!this.blockedForEntity(nx, nz, e, TIGHT_R)) { e.x = nx; e.z = nz; }
+      if (k >= 1) e._posTween = null;
+      /* Reflect tween velocity so facing follows the glide. */
+      const velX = (tw.toX - tw.fromX), velZ = (tw.toZ - tw.fromZ);
+      if (e.ent && e.ent.grp && (velX || velZ)) {
+        const targetAngle = Math.atan2(velX, velZ);
+        let delta = targetAngle - e.ent.grp.rotation.y;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        if (Math.abs(delta) > 0.12) e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+      }
+      return true; /* still moving */
+    }
+
     if (!e.path || e.pathI >= e.path.length) return false;
 
     const prevX = e.x, prevZ = e.z;
     const { W } = this.D;
+
+    /* ── Path[0] skip ──────────────────────────────────────────────────
+       The #1 cause of exploration jitter was here: every repath produces a
+       fresh path whose node 0 is the entity's OWN cell. If the entity has
+       already walked past that cell's centre (distance > CAPTURE), it would
+       briefly turn BACK toward its own cell centre — a visible 180° flip +
+       tiny backstep on every repath (followers repath every 0.35 s).
+       Fix: if pathI===0 and the entity is closer to path[1] than to path[0],
+       jump straight to path[1]. The entity never targets a node behind it. */
+    if (e.pathI === 0 && e.path.length > 1) {
+      const c0 = e.path[0], c1 = e.path[1];
+      const d0 = Math.hypot(this.wx(c0 % W) - e.x, this.wz(Math.floor(c0 / W)) - e.z);
+      const d1 = Math.hypot(this.wx(c1 % W) - e.x, this.wz(Math.floor(c1 / W)) - e.z);
+      if (d1 < d0) e.pathI = 1;
+    }
+
     const isFinalNode = (e.pathI >= e.path.length - 1);
     const CAPTURE = isFinalNode ? 0.05 : 0.35;
 
@@ -361,6 +607,20 @@ export const pathfindingMethods = {
     let dist = Math.hypot(dx, dz);
 
     e._blockedByDoor = false;
+
+    /* Arriving at the LAST node: land exactly on the tile centre and stop.
+       Previously the walk ended anywhere within 0.05 of centre and the residue
+       was cleaned up later by snapToTileCenter's lerp — which is the little
+       shuffle you see after a creature stops. A tile centre is by definition a
+       legal position (the cell is floor and unoccupied, both already checked),
+       so there is nothing to slide around: just land on it. */
+    if (isFinalNode && dist <= CAPTURE) {
+      e.x = tx; e.z = tz;
+      e._lastDx = e._dx; e._lastDz = e._dz;
+      e._dx = 0; e._dz = 0;
+      e.pathI++;
+      return false;
+    }
 
     if (dist <= CAPTURE) {
       const nextNode = e.path[e.pathI + 1];
@@ -423,34 +683,73 @@ export const pathfindingMethods = {
     let bestX = e.x + dirX;
     let bestZ = e.z + dirZ;
     let moved = true;
-    if (this.blocked(bestX, bestZ, TIGHT_R)) {
+    /* Bodies block where you come to REST, not where you pass through.
+       Two creatures crossing the same tile mid-stride is invisible at this
+       speed; two creatures *standing* on it is the artefact worth preventing.
+       Blocking every step outright instead gridlocked corridors — everyone
+       stalled behind whoever was in front and fights dragged on — so the body
+       check is applied only to the final node of the path. Resting overlap is
+       then caught for good by snapToTileCenter, which steps aside rather than
+       centring two bodies on the same point. */
+    const bodyAware = isFinalNode;
+    const isBlocked = (x, z) => bodyAware
+      ? this.blockedForEntity(x, z, e, TIGHT_R)
+      : this.blocked(x, z, TIGHT_R);
+    if (isBlocked(bestX, bestZ)) {
       let found = false;
       const angles = [0.26, -0.26, 0.52, -0.52, 0.79, -0.79];
       for (const angle of angles) {
         const ax = e.x + Math.sin(baseAngle + angle) * step;
         const az = e.z + Math.cos(baseAngle + angle) * step;
-        if (!this.blocked(ax, az, TIGHT_R)) {
+        if (!isBlocked(ax, az)) {
           bestX = ax; bestZ = az; found = true;
           break;
         }
       }
       if (!found) {
         /* axis-slide: keep whichever single-axis component is unobstructed */
-        if (!this.blocked(e.x + dirX, e.z, TIGHT_R)) { bestX = e.x + dirX; bestZ = e.z; found = true; }
-        else if (!this.blocked(e.x, e.z + dirZ, TIGHT_R)) { bestX = e.x; bestZ = e.z + dirZ; found = true; }
+        if (!isBlocked(e.x + dirX, e.z)) { bestX = e.x + dirX; bestZ = e.z; found = true; }
+        else if (!isBlocked(e.x, e.z + dirZ)) { bestX = e.x; bestZ = e.z + dirZ; found = true; }
       }
-      if (!found) { bestX = e.x; bestZ = e.z; moved = false; }
+      if (!found) {
+        /* Genuinely wedged. Drop the path so the next tick replans around
+           whoever is in the way instead of grinding against them. */
+        bestX = e.x; bestZ = e.z; moved = false;
+        if (this.isCellBodyOccupied(this.cellOf(e.x + dirX, e.z + dirZ), e)) {
+          e._bodyBlockT = (e._bodyBlockT || 0) + dt;
+          if (e._bodyBlockT > 0.4) { e._bodyBlockT = 0; this.clearEntityPath(e); }
+        }
+      }
+    } else {
+      e._bodyBlockT = 0;
     }
     e.x = bestX; e.z = bestZ;
     this.wallRepel(e);
 
-    const targetAngle = Math.atan2(dx, dz);
-    let delta = targetAngle - e.ent.grp.rotation.y;
-    while (delta > Math.PI) delta -= Math.PI * 2;
-    while (delta < -Math.PI) delta += Math.PI * 2;
-    e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+    /* ── Facing: velocity-gated with hysteresis ────────────────────────
+       Old code derived facing from the PATH-TARGET direction (dx,dz toward
+       the next cell centre). Any frame where that target flipped (e.g. the
+       path[0] skip above, or a repath) instantly started rotating the sprite
+       — a visible 180° flick. Now we derive facing from ACTUAL velocity this
+       frame, and only update rotation when the entity genuinely moved. A
+       small deadzone + hysteresis latch suppresses sub-pixel noise. */
+    const velX = e.x - prevX, velZ = e.z - prevZ;
+    const speed2 = Math.hypot(velX, velZ);
     e._lastDx = e._dx; e._lastDz = e._dz;
-    e._dx = e.x - prevX; e._dz = e.z - prevZ;
+    e._dx = velX; e._dz = velZ;
+    if (e.ent && e.ent.grp && speed2 > 0.004) {
+      /* Use actual velocity direction — robust against path-target flips. */
+      const targetAngle = Math.atan2(velX, velZ);
+      let delta = targetAngle - e.ent.grp.rotation.y;
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      /* Hysteresis: ignore tiny angular changes (< 0.12 rad ≈ 7°) so the
+         sprite doesn't quiver near axis boundaries. Large turns ease in
+         over a few frames via the dt*8 lerp. */
+      if (Math.abs(delta) > 0.12) {
+        e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
+      }
+    }
     return moved;
   },
 
@@ -471,8 +770,8 @@ export const pathfindingMethods = {
       const nx = cxX + dx, ny = cxY + dz;
       if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
       const nidx = ny * W + nx;
-      if (grid[nidx] !== WALL && (!this.D.solidProps || !this.D.solidProps[nidx])) continue;
-      const isProp = grid[nidx] !== WALL && this.D.solidProps && this.D.solidProps[nidx];
+      if (grid[nidx] === FLOOR && (!this.D.solidProps || !this.D.solidProps[nidx])) continue;
+      const isProp = grid[nidx] === FLOOR && this.D.solidProps && this.D.solidProps[nidx];
       const maxDist = isProp ? 0.38 : 0.48;
       const wx = this.wx(nx), wz = this.wz(ny);
       const tox = e.x - wx, toz = e.z - wz;
@@ -485,18 +784,23 @@ export const pathfindingMethods = {
     }
 
     /* Corridor centring: if both cardinal neighbours in an axis are walls
-       (1-wide corridor), add a gentle pull toward the cell centreline. */
-    const xWalled = (cxX > 0 && grid[cx - 1] === WALL) && (cxX < W - 1 && grid[cx + 1] === WALL);
-    const zWalled = (cxY > 0 && grid[cx - W] === WALL) && (cxY < H - 1 && grid[cx + W] === WALL);
-    if (xWalled || zWalled) {
-      const midX = this.wx(cxX), midZ = this.wz(cxY);
-      const toMidX = midX - e.x, toMidZ = midZ - e.z;
-      const midDist = Math.hypot(toMidX, toMidZ);
-      if (midDist > 0.01) {
-        const midForce = Math.min(midDist * 0.25, 0.025);
-        pushX += (toMidX / midDist) * midForce;
-        pushZ += (toMidZ / midDist) * midForce;
-      }
+       (1-wide corridor), pull toward that axis's centreline. This must be
+       axis-specific — centring BOTH axes toward the cell centre fights
+       straight-line travel: in a 1-wide corridor the confined axis is walled,
+       so the old code also applied a cross-axis pull toward the current cell's
+       centre, which opposed forward motion and stalled the entity mid-cell
+       (e.g. a single walkable tile between a doorway and a liquid pit). */
+    const xWalled = (cxX > 0 && grid[cx - 1] !== FLOOR) && (cxX < W - 1 && grid[cx + 1] !== FLOOR);
+    const zWalled = (cxY > 0 && grid[cx - W] !== FLOOR) && (cxY < H - 1 && grid[cx + W] !== FLOOR);
+    if (xWalled) {
+      const toMidX = this.wx(cxX) - e.x;
+      const d = Math.abs(toMidX);
+      if (d > 0.01) pushX += (toMidX / d) * Math.min(d * 0.25, 0.025);
+    }
+    if (zWalled) {
+      const toMidZ = this.wz(cxY) - e.z;
+      const d = Math.abs(toMidZ);
+      if (d > 0.01) pushZ += (toMidZ / d) * Math.min(d * 0.25, 0.025);
     }
 
     const mag = Math.hypot(pushX, pushZ);
@@ -508,11 +812,50 @@ export const pathfindingMethods = {
     if (!this.blocked(nx, nz, TIGHT_R)) { e.x = nx; e.z = nz; }
   },
 
+  /** True if a live body OTHER than `excludeEntity` is standing on `cell`.
+   *  Position-only — deliberately ignores reservations, so an entity is never
+   *  blocked by its own booked destination. */
+  isCellBodyOccupied(cell, excludeEntity) {
+    if (cell < 0 || !this.D) return false;
+    if (Array.isArray(this.heroes)) {
+      for (const h of this.heroes) {
+        if (h === excludeEntity || !h.data || h.data.hp <= 0) continue;
+        if (this.cellOf(h.x, h.z) === cell) return true;
+      }
+    }
+    if (Array.isArray(this.monsters)) {
+      for (const m of this.monsters) {
+        if (m === excludeEntity || !m.active || !m.data || m.data.hp <= 0) continue;
+        if (this.cellOf(m.x, m.z) === cell) return true;
+      }
+    }
+    return false;
+  },
+
+  /** Wall probe PLUS bodies. Walls are probed at radius `r` (a body has width);
+   *  occupancy is judged on the destination cell alone, because a neighbouring
+   *  creature's cell overlaps our probe radius constantly and would wedge
+   *  everyone in place.
+   *
+   *  This is the check that actually stops two sprites standing on one square.
+   *  `blocked()` only ever knew about walls, props and doors, so stepAlong /
+   *  nudgeToward / the tween glide would happily walk one body straight through
+   *  another; reservations covered the *destination* of a path but nothing in
+   *  between. */
+  blockedForEntity(nx, nz, e, r = AGENT_R) {
+    if (this.blocked(nx, nz, r)) return true;
+    const target = this.cellOf(nx, nz);
+    if (target < 0) return true;
+    /* Already standing there (mid-cell drift) — never block our own square. */
+    if (target === this.cellOf(e.x, e.z)) return false;
+    return this.isCellBodyOccupied(target, e);
+  },
+
   /* 4-point wall probe used by local (non-pathfinding) movement */
   blocked(nx, nz, r = AGENT_R) {
-    let c;
+    if (!this.D || !this.D.grid) return true;
     const hasDoorCheck = typeof this.isCellDoorClosed === 'function';
-    const isB = (cell) => cell < 0 || this.D.grid[cell] === WALL || (this.D.solidProps && this.D.solidProps[cell]) || (hasDoorCheck && this.isCellDoorClosed(cell));
+    const isB = (cell) => cell < 0 || this.D.grid[cell] !== FLOOR || (this.D.solidProps && this.D.solidProps[cell]) || (hasDoorCheck && this.isCellDoorClosed(cell));
     if (isB(this.cellOf(nx - r, nz))) return true;
     if (isB(this.cellOf(nx + r, nz))) return true;
     if (isB(this.cellOf(nx, nz - r))) return true;
@@ -550,156 +893,68 @@ export const pathfindingMethods = {
     return false;
   },
 
-  /* soft pairwise separation so heroes and monsters never stand on the same
-     spot — overlapping bodies push each other apart a little each frame,
-     which spreads melee scrums into a readable ring. Wall-aware.
-     Includes predictive separation: if two entities are moving toward each
-     other, separation triggers at 1.25× the overlap radius to gently avoid
-     collision before it happens.  Push force is clamped low per-frame so
-     entities slide apart smoothly rather than jittering.
-
-     Push-destination validation uses the tight doorway radius (TIGHT_R) so a
-     push can complete inside a 1-wide passage — the old 0.3 probe rejected
-     every push position in a doorway, so head-on hero/monster pairs jammed.
-
-     Hero right-of-way: during exploration (this.state === 'crawl'), when a
-     hero and a monster are separating and one of them is in a chokepoint,
-     the monster yields — it takes the full push while the hero keeps its
-     ground. This stops the deadlock where both slow to a crawl in the same
-     doorway cell. In combat the push stays symmetric so melee rings form. */
-  applySeparation(alive, dt) {
-    /* In manual mode during initiative combat, combatants strictly adhere to tile centers */
-    if (this.controlMode === 'manual' && this.initiative && this.initiative.active) {
-      for (const h of alive) {
-        if (!h.moving && this.snapToTileCenter) this.snapToTileCenter(h, dt, true);
-      }
-      for (const m of this.monsters) {
-        if (m.active && m.data && m.data.hp > 0 && !m.moving && this.snapToTileCenter) this.snapToTileCenter(m, dt, true);
-      }
-      return;
+  /* Strict tile-lock replacement for the old soft-body applySeparation.
+     Called every frame (game.js) but only acts in manual tactical mode: it
+     lerps each STATIONARY combatant toward its own tile centre so manual-mode
+     tactical combat still feels "snapped" without the old pairwise shove.
+     Never mutates a moving entity (stepAlong owns those), and never shoves a
+     body off its square onto a neighbour — it only recentres within the cell
+     the entity already occupies. */
+  snapStationaryToTiles(alive, dt) {
+    if (!this.initiative || !this.initiative.active) return;
+    /* Used to be manual-mode only. The game is grid-based in ALL modes, so a
+       body that has stopped belongs on its tile centre either way — leaving
+       auto-mode combatants parked wherever their last step ended is what makes
+       them look like they are drifting and then twitching into place. */
+    if (!this.snapToTileCenter) return;
+    for (const h of alive) {
+      if (!h.moving) this.snapToTileCenter(h, dt, true);
     }
-    const ents = [];
-    for (const h of alive) ents.push({ e: h, r: 0.36, hero: true });
-    for (const m of this.monsters)
-      if (m.data.hp > 0 && m.active) ents.push({ e: m, r: 0.34 * (m.data.scale || 1), hero: false });
-    const maxPush = 2.8 * dt; /* gentler than 4.5 — less jitter */
-    const choke = this.D && this.D.chokepoint;
-    const cellOf = (x, z) => this.cellOf(x, z);
-    const explore = this.state === 'crawl';
-    for (let i = 0; i < ents.length; i++) for (let j = i + 1; j < ents.length; j++) {
-      const A = ents[i], B = ents[j];
-      if (A.hero && B.hero) {
-        /* Heroes pass through each other while moving.
-           When stationary, apply separation so they don't stack on the exact same spot. */
-        if (A.e.moving || B.e.moving) continue;
-      }
-      let dx = B.e.x - A.e.x, dz = B.e.z - A.e.z;
-      let dd = Math.hypot(dx, dz);
-      let min = A.r + B.r;
-
-      /* Predictive expansion: if entities are moving toward each
-         other, gently expand the separation radius. */
-      if (A.e.moving || B.e.moving) {
-        const vAx = A.e.x - ((A.e._prevX !== undefined) ? A.e._prevX : A.e.x);
-        const vAz = A.e.z - ((A.e._prevZ !== undefined) ? A.e._prevZ : A.e.z);
-        const vBx = B.e.x - ((B.e._prevX !== undefined) ? B.e._prevX : B.e.x);
-        const vBz = B.e.z - ((B.e._prevZ !== undefined) ? B.e._prevZ : B.e.z);
-        const relVx = vAx - vBx, relVz = vAz - vBz;
-        if (dx * relVx + dz * relVz < 0) {
-          min *= 1.25;
-        }
-      }
-
-      if (dd >= min) continue;
-      if (dd < 1e-4) {
-        const a = Math.random() * Math.PI * 2;
-        dx = Math.cos(a); dz = Math.sin(a); dd = 1;
-      }
-      let push = Math.min((min - dd) * 0.5, maxPush);
-
-      /* Hero right-of-way through chokepoints during exploration: the
-         monster takes the full push, the hero a quarter — so the hero
-         advances through the doorway while the monster backs out. */
-      let pushA = push, pushB = push;
-      if (explore && choke && (A.hero !== B.hero)) {
-        const aChoke = A.e.x !== undefined && choke[cellOf(A.e.x, A.e.z)] > 0;
-        const bChoke = B.e.x !== undefined && choke[cellOf(B.e.x, B.e.z)] > 0;
-        if (aChoke || bChoke) {
-          if (A.hero) { pushA = push * 0.25; pushB = push; }
-          else        { pushA = push;        pushB = push * 0.25; }
-        }
-      }
-
-      /* Tactical freeze (Phase 1): during a turn-locked spotlight, off-turn
-         actors hold their ground — separation must not drift them off their
-         square. Only the current actor yields; if both are off-turn neither
-         moves. Outside initiative canMove() is always true, so exploration
-         separation is unchanged. */
-      if (this.initiative && this.initiative.active) {
-        if (!this.canMove(A.e)) pushA = 0;
-        if (!this.canMove(B.e)) pushB = 0;
-      }
-
-      const px = dx / dd, pz = dz / dd;
-      if (!this.blocked(A.e.x - px * pushA, A.e.z - pz * pushA, TIGHT_R)) { A.e.x -= px * pushA; A.e.z -= pz * pushA; }
-      if (!this.blocked(B.e.x + px * pushB, B.e.z + pz * pushB, TIGHT_R)) { B.e.x += px * pushB; B.e.z += pz * pushB; }
-    }
-
-    /* Wall Repulsion: push entities gently away from nearby WALL cells into open space */
-    if (this.D && this.D.grid) {
-      const W = this.D.W, H = this.D.H, grid = this.D.grid;
-      const tacticalFreeze = !!(this.initiative && this.initiative.active);
-      for (const ent of ents) {
-        /* Off-turn actors are pinned during a tactical spotlight (Phase 1). */
-        if (tacticalFreeze && !this.canMove(ent.e)) continue;
-        const ex = ent.e.x, ez = ent.e.z;
-        const gx = Math.floor(ex), gy = Math.floor(ez);
-        let repX = 0, repZ = 0;
-
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = gx + dx, ny = gy + dy;
-            if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
-              const nidx = ny * W + nx;
-              if (grid[nidx] === WALL || (this.D.solidProps && this.D.solidProps[nidx])) {
-                const wallWx = this.wx(nx), wallWz = this.wz(ny);
-                const dX = ex - wallWx, dZ = ez - wallWz;
-                const d = Math.hypot(dX, dZ);
-                if (d < 1.15 && d > 0.01) {
-                  const force = (1.15 - d) * 2.2 * dt;
-                  repX += (dX / d) * force;
-                  repZ += (dZ / d) * force;
-                }
-              }
-            }
-          }
-        }
-        if (repX !== 0 || repZ !== 0) {
-          const nx = ent.e.x + repX, nz = ent.e.z + repZ;
-          if (!this.blocked(nx, nz, TIGHT_R)) {
-            ent.e.x = nx; ent.e.z = nz;
-          }
-        }
-      }
-    }
-
-    /* Store previous positions for next frame's velocity estimate */
-    for (const ent of ents) {
-      ent.e._prevX = ent.e.x;
-      ent.e._prevZ = ent.e.z;
+    for (const m of this.monsters) {
+      if (m.active && m.data && m.data.hp > 0 && !m.moving) this.snapToTileCenter(m, dt, true);
     }
   },
 
-  /** Whether a world position is beyond the combat-room leash radius.
-   *  Uses the room's diagonal/2 + a 2-tile buffer so the leash area is
-   *  a circle that fully encompasses the room with a small doorway
-   *  margin.  Returns false (no leash) when no combat room is tracked
-   *  or the position is inside the radius — callers use this to decide
-   *  whether to give up a chase, not to apply physics forces. */
-  beyondCombatLeash(x, z) {
-    return false;
+  /**
+   * Un-stack any two STOPPED bodies sharing a tile.
+   *
+   * Everything else in the occupancy layer is preventative — pathing avoids
+   * bodies, paths may not end on one, movement refuses the final step onto one.
+   * This is the cleanup for stacks that appear anyway: an actor whose movement
+   * budget expires mid-stride and stops wherever it happens to be, a knockback,
+   * a summon, a monster waking up under someone. Those never move again on
+   * their own, so nothing was ever going to separate them.
+   *
+   * Only stationary bodies are touched — a pair crossing the same square is
+   * legal and resolves itself. Cheap: one pass over the entity list, and it
+   * only does work when a collision actually exists.
+   */
+  resolveRestingOverlaps() {
+    if (!this.D) return;
+    const seen = new Map();
+    const consider = (e) => {
+      if (!e || !e.data || e.data.hp <= 0 || e.active === false) return;
+      if (e.moving || e.walk) return;                 /* in transit — leave it */
+      const c = this.cellOf(e.x, e.z);
+      if (c < 0) return;
+      const other = seen.get(c);
+      if (!other) { seen.set(c, e); return; }
+      /* Move the one that is NOT the current actor, so we never shove the
+         creature whose turn it is out from under its own decision. */
+      const mover = (typeof this.isCurrentActor === 'function' && this.isCurrentActor(e)) ? other : e;
+      const free = this.getUnoccupiedCellNear(c, mover, 3);
+      if (free < 0 || free === c) return;             /* genuinely nowhere to go */
+      const W = this.D.W;
+      mover.x = this.wx(free % W);
+      mover.z = this.wz(Math.floor(free / W));
+      if (typeof this.releaseReservation === 'function') this.releaseReservation(mover);
+      if (typeof this.reserveCell === 'function') this.reserveCell(mover, free);
+      seen.set(free, mover);
+    };
+    if (Array.isArray(this.heroes)) for (const h of this.heroes) consider(h);
+    if (Array.isArray(this.monsters)) for (const m of this.monsters) consider(m);
   },
+
 
   /**
    * Compute a flee/retreat path away from hostile threats.
@@ -799,11 +1054,12 @@ export const pathfindingMethods = {
     const cxX = cx % W, cxY = Math.floor(cx / W);
 
     /* wall-blocked: ≥3 of 4 cardinal neighbours are walls */
+    /* wall-blocked: ≥3 of 4 cardinal neighbours are walls / boundaries */
     let wallCount = 0;
-    if (cxX > 0 && grid[cx - 1] === WALL) wallCount++;
-    if (cxX < W - 1 && grid[cx + 1] === WALL) wallCount++;
-    if (cxY > 0 && grid[cx - W] === WALL) wallCount++;
-    if (cxY < this.D.H - 1 && grid[cx + W] === WALL) wallCount++;
+    if (cxX > 0 && grid[cx - 1] !== FLOOR) wallCount++;
+    if (cxX < W - 1 && grid[cx + 1] !== FLOOR) wallCount++;
+    if (cxY > 0 && grid[cx - W] !== FLOOR) wallCount++;
+    if (cxY < this.D.H - 1 && grid[cx + W] !== FLOOR) wallCount++;
     if (wallCount >= 3) return 'wall';
 
     /* entity-blocked: another living entity within 0.55 tiles */
@@ -828,18 +1084,27 @@ export const pathfindingMethods = {
   /* snap a cell to the nearest walkable floor cell within `rad` (props like
      chests can sit on non-floor tiles that BFS refuses as a destination) */
   nearFloorCell(cell, rad = 3) {
-    if (cell < 0) return -1;
+    if (!this.D || !this.D.grid) return -1;
     const { W, H, grid } = this.D;
     const solid = this.D.solidProps;
-    if (grid[cell] === FLOOR && (!solid || !solid[cell])) return cell;
-    const cx = cell % W, cy = Math.floor(cell / W);
-    for (let r = 1; r <= rad; r++)
-      for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
-        const nx = cx + ox, ny = cy + oy;
-        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-        const nc = ny * W + nx;
-        if (grid[nc] === FLOOR && (!solid || !solid[nc])) return nc;
+    if (cell >= 0 && cell < grid.length && grid[cell] === FLOOR && (!solid || !solid[cell])) return cell;
+    const cx = (cell >= 0 && cell < grid.length) ? (cell % W) : Math.floor(W / 2);
+    const cy = (cell >= 0 && cell < grid.length) ? Math.floor(cell / W) : Math.floor(H / 2);
+    const maxR = (cell >= 0 && cell < grid.length) ? rad : Math.max(rad, Math.max(W, H));
+    for (let r = 1; r <= maxR; r++) {
+      for (let oy = -r; oy <= r; oy++) {
+        for (let ox = -r; ox <= r; ox++) {
+          if (Math.abs(ox) !== r && Math.abs(oy) !== r) continue;
+          const nx = cx + ox, ny = cy + oy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const nc = ny * W + nx;
+          if (grid[nc] === FLOOR && (!solid || !solid[nc])) return nc;
+        }
       }
+    }
+    if (this.roomAnchor && this.roomAnchor.length > 0 && this.roomAnchor[0] >= 0) {
+      return this.roomAnchor[0];
+    }
     return -1;
   }
 };

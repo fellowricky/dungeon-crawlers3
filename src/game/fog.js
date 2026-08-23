@@ -20,6 +20,7 @@ const _q = new THREE.Quaternion();
 const _s = new THREE.Vector3();
 const _m = new THREE.Matrix4();
 const _E = new THREE.Euler();
+const _c = new THREE.Color();
 
 /** Build floor/wall instance index maps (must match engine buildScene order). */
 export function buildFogMaps(d) {
@@ -46,10 +47,9 @@ export const fogMethods = {
   dimInstances(mesh, only) {
     if (!mesh) return;
     const set = mesh.userData.set;
-    const c = new THREE.Color();
     for (let i = 0; i < set.n; i++) {
       if (only && !only.has(i)) continue;
-      mesh.setColorAt(i, c.set(set.col[i]).multiplyScalar(FRONTIER_DIM));
+      mesh.setColorAt(i, _c.set(set.col[i]).multiplyScalar(FRONTIER_DIM));
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   },
@@ -106,16 +106,15 @@ export const fogMethods = {
     } else {
       this.showCell(c);
       const { floor, wall, wallCap } = this.engine.getMeshes();
-      const col = new THREE.Color();
       const fi = this.floorInst[c];
       if (fi >= 0 && floor) {
-        floor.setColorAt(fi, col.set(floor.userData.set.col[fi]).multiplyScalar(multiplier));
+        floor.setColorAt(fi, _c.set(floor.userData.set.col[fi]).multiplyScalar(multiplier));
         floor.instanceColor.needsUpdate = true;
       }
       const wi = this.wallInst[c];
       if (wi >= 0) {
-        if (wall) { wall.setColorAt(wi, col.set(wall.userData.set.col[wi]).multiplyScalar(multiplier)); wall.instanceColor.needsUpdate = true; }
-        if (wallCap) { wallCap.setColorAt(wi, col.set(wallCap.userData.set.col[wi]).multiplyScalar(multiplier)); wallCap.instanceColor.needsUpdate = true; }
+        if (wall) { wall.setColorAt(wi, _c.set(wall.userData.set.col[wi]).multiplyScalar(multiplier)); wall.instanceColor.needsUpdate = true; }
+        if (wallCap) { wallCap.setColorAt(wi, _c.set(wallCap.userData.set.col[wi]).multiplyScalar(multiplier)); wallCap.instanceColor.needsUpdate = true; }
       }
     }
     this.revealed[c] = multiplier >= 1.0 ? 1 : 0;
@@ -133,16 +132,15 @@ export const fogMethods = {
     this.showCell(c);
     this.revealed[c] = 1;
     const { floor, wall, wallCap } = this.engine.getMeshes();
-    const col = new THREE.Color();
     const fi = this.floorInst[c];
     if (fi >= 0 && floor) {
-      floor.setColorAt(fi, col.set(floor.userData.set.col[fi]));
+      floor.setColorAt(fi, _c.set(floor.userData.set.col[fi]));
       floor.instanceColor.needsUpdate = true;
     }
     const wiN = this.wallInst[c];
     if (wiN >= 0) {
-      if (wall) { wall.setColorAt(wiN, col.set(wall.userData.set.col[wiN])); wall.instanceColor.needsUpdate = true; }
-      if (wallCap) { wallCap.setColorAt(wiN, col.set(wallCap.userData.set.col[wiN])); wallCap.instanceColor.needsUpdate = true; }
+      if (wall) { wall.setColorAt(wiN, _c.set(wall.userData.set.col[wiN])); wall.instanceColor.needsUpdate = true; }
+      if (wallCap) { wallCap.setColorAt(wiN, _c.set(wallCap.userData.set.col[wiN])); wallCap.instanceColor.needsUpdate = true; }
     }
   },
 
@@ -180,8 +178,8 @@ export const fogMethods = {
       showBanner('SECRET VAULT', 'Ancient treasures and forgotten loot lie within.', 'banner-treasure');
       log('✨ A treasure vault glitters ahead!', r.type);
     } else if (r.type === 'shrine') {
-      showBanner('DIVINE SANCTUARY', 'A sacred shrine radiates mystical power.', 'banner-shrine');
-      log('🔮 A shrine hums with restorative magic.', r.type);
+      showBanner('COZY CAMPSITE', 'A warm campfire flickers, offering safety and restorative rest.', 'banner-shrine');
+      log('🔥 A warm campfire crackles, offering restorative rest.', r.type);
     } else if (r.type === 'elite') {
       showBanner('ELITE CONFRONTATION', 'A deadly encounter tests your party\'s strength.', 'banner-elite');
       log('⚠ An elite guard room! Steel yourselves.', r.type);
@@ -236,7 +234,7 @@ export const fogMethods = {
       if (this.visitedRooms[rid]) {
         this.setRoomDimLevel(rid, 1.0);
         visState[rid] = 2;
-      } else if (adj[rid].some(nb => cleared[nb])) {
+      } else if (adj[rid].some(nb => cleared[nb]) || (this._scoutedRooms && this._scoutedRooms[rid])) {
         this.setRoomDimLevel(rid, FRONTIER_DIM);
         visState[rid] = 1;
       } else {
@@ -468,14 +466,22 @@ export const fogMethods = {
         L.userData.fogMult = vis ? 1 : 0;
       }
     }
-    // Ambient particles: sink emitters whose anchor floor cell isn't visible
+    // Ambient particles: sink emitters whose anchor floor/pool cell isn't visible
     const parts = this.engine.getParticles && this.engine.getParticles();
-    if (parts && parts.userData.fogCells && seen) {
+    if (parts && parts.userData.fogCells) {
       const cells = parts.userData.fogCells, oy = parts.userData.origY;
       const pos = parts.geometry.getAttribute('position');
+      const { roomId } = this.D || {};
       for (let i = 0; i < cells.length; i++) {
         const c = cells[i];
-        pos.array[i * 3 + 1] = (c >= 0 && seen[c]) ? oy[i] : HIDE_Y;
+        let isVis = false;
+        if (c >= 0) {
+          const rid = roomId && roomId[c];
+          if (rid >= 0 && visState && visState[rid] === 2) isVis = true;
+          else if (this.revealed && this.revealed[c]) isVis = true;
+          else if (seen && seen[c]) isVis = true;
+        }
+        pos.array[i * 3 + 1] = isVis ? oy[i] : HIDE_Y;
       }
       pos.needsUpdate = true;
     }

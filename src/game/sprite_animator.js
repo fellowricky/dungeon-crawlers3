@@ -73,6 +73,42 @@ function blitLayer(ctx, src, meta, cell) {
   }
 }
 
+/**
+ * Configures a SpriteMaterial with camera-aligned depth tilt correction.
+ *
+ * In 2.5D / isometric view with pitch (e.g. looking down at ~36°), standard
+ * Three.js SpriteMaterial assigns every pixel of the billboard quad a constant
+ * view-space Z equal to the entity's base on the floor. Because vertical 3D geometry
+ * (walls, pillars, chests) extends upwards and closer to the camera, the top parts
+ * of walls behind the entity end up with higher depth than the sprite's quad, causing
+ * severe clipping through the entity's head/body.
+ *
+ * This hook tilts the quad's view-space Z to match the world-up vertical slope
+ * (viewMatrix[1].z / viewMatrix[1].y), plus a small forward bias. The sprite thus:
+ * 1. Never clips through background walls or objects on/behind its tile.
+ * 2. Remains properly occluded by foreground walls/objects in front of it.
+ */
+export function configureSpriteMaterial(mat, options = {}) {
+  const forwardBias = options.forwardBias !== undefined ? options.forwardBias : 0.08;
+  const oldOnBeforeCompile = mat.onBeforeCompile;
+
+  mat.onBeforeCompile = (shader, renderer) => {
+    if (oldOnBeforeCompile) oldOnBeforeCompile(shader, renderer);
+
+    shader.vertexShader = shader.vertexShader.replace(
+      'mvPosition.xy += rotatedPosition;',
+      `mvPosition.xy += rotatedPosition;
+      float wallSlope = (abs(viewMatrix[1].y) > 0.0001) ? (viewMatrix[1].z / viewMatrix[1].y) : 0.0;
+      float groundSlope = (abs(viewMatrix[2].y) > 0.0001) ? abs(viewMatrix[2].z / viewMatrix[2].y) : 0.0;
+      float zOffset = (rotatedPosition.y >= 0.0) ? (rotatedPosition.y * wallSlope) : (-rotatedPosition.y * groundSlope);
+      mvPosition.z += zOffset + ${forwardBias.toFixed(3)};`
+    );
+  };
+
+  mat.customProgramCacheKey = () => `depthTiltSprite_${forwardBias.toFixed(3)}`;
+  return mat;
+}
+
 // Cache composed textures so we don't redraw canvases for identical visual setups
 const textureCache = {};
 export class HeroSprite {
@@ -83,7 +119,7 @@ export class HeroSprite {
     this.equipment = hero.equipment || {};
     this.color = color;
     this.textures = {};
-    this.material = new THREE.SpriteMaterial({
+    this.material = configureSpriteMaterial(new THREE.SpriteMaterial({
       transparent: true,
       depthTest: true,
       depthWrite: false,
@@ -91,7 +127,7 @@ export class HeroSprite {
       polygonOffset: true,
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1
-    });
+    }));
     this.mesh = new THREE.Sprite(this.material);
     this.mesh.renderOrder = 1;
     this._curCell = 64;
@@ -103,12 +139,18 @@ export class HeroSprite {
     this.time = 0;
     this.animating = true;
 
-    this.loadState('walk');
-    this.loadState('slash');
-    this.loadState('hurt');
-    this.loadState('shoot');
-    this.loadState('spellcast');
-    this.loadState('thrust');
+    this._readyPromise = Promise.all([
+      this.loadState('walk'),
+      this.loadState('slash'),
+      this.loadState('hurt'),
+      this.loadState('shoot'),
+      this.loadState('spellcast'),
+      this.loadState('thrust')
+    ]);
+  }
+
+  whenReady() {
+    return this._readyPromise || Promise.resolve();
   }
 
   /* Size the sprite quad for the atlas cell size (64 = standard LPC frame;
@@ -120,7 +162,7 @@ export class HeroSprite {
     const k = cell / 64;
     const sx = this.visual.spriteScaleX || 1.0;
     const sy = this.visual.spriteScaleY || 1.0;
-    this.mesh.scale.set(1.5 * sx * k, 1.5 * sy * k, 1);
+    this.mesh.scale.set(1.125 * sx * k, 1.125 * sy * k, 1);
     this.mesh.center.set(0.5, ((cell - 64) / 2 + 64 * 0.04) / cell);
   }
 
@@ -216,6 +258,12 @@ export class HeroSprite {
 
     textureCache[cacheKey] = tex;
     this.textures[action] = tex;
+    if (this.state === action) {
+      this.material.map = tex;
+      this.material.needsUpdate = true;
+      this.mesh.visible = true;
+      if (tex._cell !== this._curCell) this.applyCell(tex._cell);
+    }
   }
 
   play(action, force = false) {
@@ -380,7 +428,7 @@ export class WolfSprite {
   constructor(hero, color) {
     this.visual = hero.visual || {};
     this.color = color || 0xa0c080;
-    this.material = new THREE.SpriteMaterial({
+    this.material = configureSpriteMaterial(new THREE.SpriteMaterial({
       transparent: true,
       depthTest: true,
       depthWrite: false,
@@ -388,13 +436,13 @@ export class WolfSprite {
       polygonOffset: true,
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1
-    });
+    }));
     this.mesh = new THREE.Sprite(this.material);
     this.mesh.renderOrder = 1;
     this._curCell = 64;
     const sx = this.visual.spriteScaleX || 1.0;
     const sy = this.visual.spriteScaleY || 1.0;
-    this.mesh.scale.set(1.5 * sx, 1.5 * sy, 1);
+    this.mesh.scale.set(1.125 * sx, 1.125 * sy, 1);
     this.mesh.center.set(0.5, 0.04);
     this.mesh.visible = false;
 
@@ -417,23 +465,31 @@ export class WolfSprite {
     const path = this.visual.spriteSheet
       || (this.single ? 'sprites/wolf.png' : 'sprites/wolfsheet1.png');
     const loader = new THREE.TextureLoader();
-    loader.load(path, (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.magFilter = THREE.NearestFilter;
-      tex.minFilter = THREE.NearestFilter;
-      if (this.single) { tex.repeat.set(1, 1); tex.offset.set(0, 0); }
-      else { tex.repeat.set(1 / this.atlas.totalCols, 1 / this.atlas.rows); }
-      this.texture = tex;
-      this.material.map = tex;
-      this.mesh.visible = true;
-      if (!this.single) this.updateUV();
+    this._readyPromise = new Promise(resolve => {
+      loader.load(path, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        if (this.single) { tex.repeat.set(1, 1); tex.offset.set(0, 0); }
+        else { tex.repeat.set(1 / this.atlas.totalCols, 1 / this.atlas.rows); }
+        this.texture = tex;
+        this.material.map = tex;
+        this.material.needsUpdate = true;
+        this.mesh.visible = true;
+        if (!this.single) this.updateUV();
+        resolve();
+      }, undefined, resolve);
     });
+  }
+
+  whenReady() {
+    return this._readyPromise || Promise.resolve();
   }
 
   applyCell(cell) {
     const sx = this.visual.spriteScaleX || 1.0;
     const sy = this.visual.spriteScaleY || 1.0;
-    this.mesh.scale.set(1.5 * sx, 1.5 * sy, 1);
+    this.mesh.scale.set(1.125 * sx, 1.125 * sy, 1);
     this.mesh.center.set(0.5, 0.04);
   }
 
@@ -517,7 +573,7 @@ export class BeastSprite {
   constructor(hero, color, formConfig = {}) {
     this.visual = hero.visual || {};
     this.color = color || 0x2ecc71;
-    this.material = new THREE.SpriteMaterial({
+    this.material = configureSpriteMaterial(new THREE.SpriteMaterial({
       transparent: true,
       depthTest: true,
       depthWrite: false,
@@ -525,12 +581,12 @@ export class BeastSprite {
       polygonOffset: true,
       polygonOffsetFactor: -1,
       polygonOffsetUnits: -1
-    });
+    }));
     this.mesh = new THREE.Sprite(this.material);
     this.mesh.renderOrder = 10;
 
-    const sx = (this.visual.spriteScaleX || 1.0) * (formConfig.scaleX || 1.6);
-    const sy = (this.visual.spriteScaleY || 1.0) * (formConfig.scaleY || 1.6);
+    const sx = (this.visual.spriteScaleX || 1.0) * ((formConfig.scaleX || 1.6) * 0.75);
+    const sy = (this.visual.spriteScaleY || 1.0) * ((formConfig.scaleY || 1.6) * 0.75);
     this.mesh.scale.set(sx, sy, 1);
     this.mesh.center.set(0.5, 0.04);
     this.mesh.visible = false;
@@ -543,16 +599,24 @@ export class BeastSprite {
 
     const path = formConfig.sprite || 'sprites/wolf.png';
     const loader = new THREE.TextureLoader();
-    loader.load(path, (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.magFilter = THREE.NearestFilter;
-      tex.minFilter = THREE.NearestFilter;
-      tex.repeat.set(1, 1);
-      tex.offset.set(0, 0);
-      this.texture = tex;
-      this.material.map = tex;
-      this.mesh.visible = true;
+    this._readyPromise = new Promise(resolve => {
+      loader.load(path, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.repeat.set(1, 1);
+        tex.offset.set(0, 0);
+        this.texture = tex;
+        this.material.map = tex;
+        this.material.needsUpdate = true;
+        this.mesh.visible = true;
+        resolve();
+      }, undefined, resolve);
     });
+  }
+
+  whenReady() {
+    return this._readyPromise || Promise.resolve();
   }
 
   applyCell(cell) {}

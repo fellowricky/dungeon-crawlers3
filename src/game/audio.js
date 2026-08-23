@@ -351,6 +351,29 @@ export const getSfxVolume = () => settings.sfx;
 export const getMusicVolume = () => settings.music;
 export const getNarrationVolume = () => settings.narration;
 
+export function preloadCommonSFX() {
+  const c = ensureCtx();
+  if (!c) return Promise.resolve();
+  const promises = [];
+  for (const name of Object.keys(SOUNDS.slots || {})) {
+    const variants = resolveSfx(name);
+    if (!variants) continue;
+    for (const v of variants) {
+      const path = SFX_DIR + v;
+      if (!buffers.has(path)) {
+        const p = fetch(encodeURI(path))
+          .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+          .then(ab => c.decodeAudioData(ab))
+          .then(b => { buffers.set(path, b); return b; })
+          .catch(() => { buffers.delete(path); return null; });
+        buffers.set(path, p);
+        promises.push(p);
+      }
+    }
+  }
+  return Promise.all(promises);
+}
+
 /* ── init: autoplay unlock + volume UI ─────────────────────────────── */
 
 function unlock() {
@@ -359,6 +382,7 @@ function unlock() {
   const c = ensureCtx();
   if (c && c.state === 'suspended') c.resume();
   if (settings.music > 0) startMusic();
+  try { preloadCommonSFX(); } catch (e) {}
 }
 
 export function initAudio() {

@@ -125,10 +125,54 @@ export function buyRoomSpawns(opts = {}) {
     return null;
   };
 
+  /* One target CR per room, drawn across the level's WHOLE ladder instead of
+     always the ceiling. The level curve's anchors sit on every level, so
+     crForDungeonLevel returns the ceiling CR every time — which is why every
+     room used to field the same mix (level 4 always rolled CR 1 and bought
+     three bodies + a filler). Drawing lower is weighted HALF as likely per rung
+     down, so rooms keep near their designed strength but sometimes come in a
+     band down: same budget, different shape — a level-4 CR-1/2 draw buys five
+     bodies instead of four CR-1s. */
+  const drawRoomCR = (() => {
+    const n = ladder.length;
+    const w = [];
+    let sum = 0;
+    for (let i = 0; i < n; i++) { const wi = Math.pow(2, i); w.push(wi); sum += wi; }
+    return () => {
+      let r = rng() * sum;
+      for (let i = 0; i < n; i++) { if ((r -= w[i]) < 0) return ladder[i]; }
+      return ladder[n - 1];
+    };
+  })();
+
   const crs = [];
   let remaining = budget;
+  /* Boss/finale rooms (the overland camp, the dungeon's exit room) keep a
+     FIXED, densest composition: draw the cheapest rung the purse can buy under
+     the slot cap, so the finale packs more bodies than any combat zone while
+     still spending its (× typeMult) budget. Regular rooms use the varied draw
+     so encounters differ. */
+  let target = ladder[ladder.length - 1];
+  if (roomType === 'boss') {
+    for (let i = 0; i < ladder.length; i++) {
+      if (Math.floor(budget / costOf(ladder[i])) < cap) { target = ladder[i]; break; }
+    }
+  } else {
+    target = drawRoomCR();
+    /* A cheap draw can overflow the room's slot cap before the purse is spent
+       (a level-8 budget can afford thirteen CR-2s, but a room holds ten — it
+       would cap out with most of the budget unspent). Step the draw UP to the
+       cheapest rung that still leaves the cap room to spend the purse, so the
+       room's shape varies but its budget is still honoured. Low-level budgets
+       are small enough that this never triggers and variety is free. */
+    if (Math.floor(budget / costOf(target)) >= cap) {
+      for (let i = 0; i < ladder.length; i++) {
+        if (Math.floor(budget / costOf(ladder[i])) < cap) { target = ladder[i]; break; }
+      }
+    }
+  }
   while (crs.length < cap) {
-    let c = snap(crForDungeonLevel(level, rng, data));
+    let c = snap(target);
     let cost = costOf(c);
     if (!canAfford(cost, remaining)) {
       const cheaper = bestAffordable(remaining);
@@ -249,7 +293,7 @@ export const THEMES = {
     flame:0xffa640, flameCore:0xfff3c8, torchLight:[0xff8c3a, 1.5, 9.5],
     cloth:0x5c201b,
     tile:{runes:0.55},
-    propScatter:{ vase:0.0025, coffin:0.002 },
+    propScatter:{ vase:0.0025 },
     pools:null, particles:{kind:0, color:0x8894ac, n:110},
     nameA:['Sunken','Forgotten','Silent','Hollow','Elder','Broken','Nameless','Fallen'],
     nameB:['Halls','Vaults','Catacombs','Depths','Sanctum','Undercroft','Barrows','Reliquary']
@@ -266,11 +310,11 @@ export const THEMES = {
     flame:0xff8c26, flameCore:0xffe9b0, torchLight:[0xff7326, 1.7, 10],
     cloth:0x54180e,
     tile:{embers:0.05},
-    propScatter:{ anvil:0.0015 },
-    pools:{mode:0, colA:0x2b0d05, colB:0xff5a1f, glow:1.55, amount:0.16, pits:2,
+    propScatter:{ anvil:0.002, stalagmite:0.005, boulderPile:0.004, forgeChains:0.0035, ingotStack:0.0025, smeltingCrucible:0.002 },
+    pools:{mode:0, colA:0x2b0d05, colB:0xff5a1f, glow:1.75, amount:0.16, pits:2,
            /* [min,max] cells per body: wall-seepage flows, then floor pits */
            body:[4,9], pitBody:[3,6]},
-    particles:{kind:1, color:0xff8030, n:240},
+    particles:{kind:1, color:0xff8030, n:420},
     nameA:['Molten','Ashen','Cindered','Smouldering','Charred','Burning','Ember','Scorched'],
     nameB:['Forges','Furnaces','Calderas','Foundry','Kilns','Vents','Crucible','Depths']
   },
@@ -285,7 +329,7 @@ export const THEMES = {
     tile:{rime:0.5, rough:0.62},
     propScatter:{ icebone:0.003 },
     pools:{mode:1, colA:0x4a86c0, colB:0xbfe4ff, glow:0.55, amount:0, body:[3,6], pitBody:[2,4]},
-    lakes:true, icicles:true, particles:{kind:2, color:0xb8d8f5, n:260},
+    lakes:true, icicles:true, particles:{kind:2, color:0xe8f4ff, n:350},
     nameA:['Frozen','Rimebound','Glacial','Howling','Pale','Shivering','Wintered','Whitelocked'],
     nameB:['Crypts','Caverns','Hollows','Galleries','Sepulchre','Warrens','Reaches','Throat']
   },
@@ -300,6 +344,7 @@ export const THEMES = {
     tile:{stains:0.07},
     pools:{mode:3, colA:0x0a1207, colB:0x41602c, glow:0.6, amount:0.05, pits:1, body:[3,7], pitBody:[2,5]},
     graveyards:true, bones:true, particles:{kind:3, color:0x7ec44e, n:150},
+    groundFog:{density:0.20, speed:0.02, color:0x84a872, scale:0.11, height:0.20},
     nameA:['Blighted','Weeping','Rotting','Cursed','Umbral','Plagued','Mournful','Grim'],
     nameB:['Necropolis','Ossuary','Tombs','Charnels','Graves','Catacombs','Morgue','Crypts']
   },
@@ -334,14 +379,16 @@ export const THEMES = {
     tile:{},
     oc:{ liquid:{ amount:0.020, body:[6,14] },   /* woodland ponds */
          roadBand:[2, 2],
-         ground:{ mushroomLog:0.05, rocks:0.06, stump:0.04, vinemound:0.03, cairn:0.02, stakes:0.018, rack:0.015, goblinfire:0.015, skulltotem:0.008 } },
-    pools:{mode:2, colA:0x0d2a33, colB:0x3f9ec4, glow:0.40, amount:0}, particles:{kind:4, color:0x6b9852, n:180},
+         ground:{ tree:0.012, mushroomLog:0.05, rocks:0.06, stump:0.04, vinemound:0.03, cairn:0.02, stakes:0.018, rack:0.015, goblinfire:0.015, skulltotem:0.008 } },
+    pools:{mode:2, colA:0x0d2a33, colB:0x3f9ec4, glow:0.40, amount:0},
+    particles:{kind:5, color:0x98bed2, n:450},
+    groundFog:{density:0.12, speed:0.02, color:0xb4c8b6, scale:0.08, height:0.12},
     nameA:['Greenrise','Bramblewood','Thornfell','Wildmere','Oakshade','Ferndeep','Mosswild','Tanglebrook'],
     nameB:['Glade','Hollow','Camp','Crossing','Thicket','Clearing','Trailhead','Verge']
   },
   moor: {
     label:'MOOR', accent:'#c9b877', overland:true,
-    bg:0x1b201a, fog:0x222820, fogD:0.0018,
+    bg:0x1b201a, fog:0x242a22, fogD:0.0022,
     hemi:[0x525848, 0x1c1e18, 0.50], dir:[0xd8d4bc, 0.60],
     floor:0x58623f, corridor:0x6e644e, wall:0x4e5046, cap:0x4e582c,
     pillar:0x4e4b44, debris:[0x48443b, 0x525039],
@@ -354,8 +401,9 @@ export const THEMES = {
          edgeMin:1, edgeRand:2, belt:0.16, beltLinked:0.05, lone:0.034,
          copseDiv:820, copseChance:0.55,
          camp:{ palisade:false, tents:0, bones:true },
-         ground:{ debris:0.05, moss:0.018, bush:0.05, signpost:0.008, brokenSignpost:0.008, wheel:0.012 } },
-    pools:{mode:3, colA:0x141a0e, colB:0x4a5a2c, glow:0.30, amount:0}, particles:{kind:4, color:0x807a52, n:120},
+         ground:{ tree:0.008, swamptree:0.008, debris:0.05, moss:0.018, bush:0.05, signpost:0.008, brokenSignpost:0.008, wheel:0.012 } },
+    pools:{mode:3, colA:0x141a0e, colB:0x4a5a2c, glow:0.30, amount:0},
+    groundFog:{density:0.28, speed:0.035, color:0xd6ded2, scale:0.10, height:0.24},
     nameA:['Windbare','Greyfell','Cairnmoor','Highfold','Stonecrop','Coldrise','Hetherwold','Longbarrow'],
     nameB:['Moor','Downs','Drove-road','Heath','Pasture','Sinkhole','Reach','Waste']
   },
@@ -374,9 +422,10 @@ export const THEMES = {
          edgeMin:3, edgeRand:4, belt:0.78, beltLinked:0.14, lone:0.05,
          copseDiv:250, copseChance:0.8,
          camp:{ palisade:false, tents:0, bones:true },
-         ground:{ debris:0.012, moss:0.11 } },
+         ground:{ swamptree:0.008, deadtree:0.008, debris:0.012, moss:0.11 } },
     pools:{mode:3, colA:0x070d09, colB:0x2f4a34, glow:0.35, amount:0.22, pits:2, body:[3,7], pitBody:[2,5]},
-    particles:{kind:4, color:0x9ab88a, n:190},
+    particles:{kind:5, color:0x82a898, n:350},
+    groundFog:{density:0.22, speed:0.025, color:0x809c84, scale:0.12, height:0.18},
     nameA:['Marrowfen','Blackwater','Sunkmoss','Drownfield','Reedmourn','Stillwater','Bogrun','Quagmire'],
     nameB:['Fen','Mire','Sinks','Causeway','Shallows','Marsh','Drownings','Verge']
   },
@@ -428,7 +477,9 @@ export const THEMES = {
          camp:{ palisade:false, tents:0, bones:true },
          ground:{ tombstone:0.085, cairn:0.020, bush:0.030, stakes:0.012,
                   rocks:0.018, debris:0.022, moss:0.020 } },
-    pools:{mode:3, colA:0x0d120e, colB:0x38492f, glow:0.28, amount:0}, particles:{kind:0, color:0x9aa890, n:130},
+    pools:{mode:3, colA:0x0d120e, colB:0x38492f, glow:0.28, amount:0},
+    particles:{kind:3, color:0x98c088, n:200},
+    groundFog:{density:0.22, speed:0.02, color:0xb0c2ac, scale:0.11, height:0.20},
     nameA:['Gravewatch','Lychfield','Bonerow','Mournhill','Silentyard','Palerow','Cold-earth','Wakeless'],
     nameB:['Boneyard','Graves','Lychyard','Burial-field','Gravewalk','Grave-rows','Potter’s Field','Restings']
   },
@@ -470,7 +521,9 @@ export const THEMES = {
          camp:{ palisade:false, tents:[3,5], bones:true },
          ground:{ rocks:0.055, anvil:0.010, stakes:0.014, skulltotem:0.008,
                   cairn:0.016, debris:0.035 } },
-    pools:{mode:0, colA:0x2b0d05, colB:0xff5a1f, glow:1.45, amount:0}, particles:{kind:2, color:0xd8927a, n:220},
+    pools:{mode:0, colA:0x2b0d05, colB:0xff5a1f, glow:1.45, amount:0},
+    particles:{kind:6, color:0xff9450, n:420},
+    groundFog:{density:0.16, speed:0.03, color:0x4a2a20, scale:0.09, height:0.16},
     nameA:['Cinderflat','Ashfall','Scoriawaste','Emberreach','Slagfield','Smouldering','Blackglass','Vent-scarred'],
     nameB:['Ashfields','Flows','Cinder-cones','Slaglands','Burnt-waste','Vents','Barrens','Approach']
   },
@@ -491,9 +544,10 @@ export const THEMES = {
          edgeMin:2, edgeRand:3, belt:0.44, beltLinked:0.07, lone:0.030,
          copseDiv:420, copseChance:0.62,
          camp:{ palisade:false, tents:[3,5], bones:true },
-         ground:{ icebone:0.048, cairn:0.024, rocks:0.038, signpost:0.008,
+         ground:{ snowtree:0.014, tree_winter:0.014, icebone:0.048, cairn:0.024, rocks:0.038, signpost:0.008,
                   brokenSignpost:0.008, debris:0.020 } },
-    pools:{mode:1, colA:0x4a86c0, colB:0xbfe4ff, glow:0.50, amount:0}, particles:{kind:2, color:0xdaeaf8, n:260},
+    pools:{mode:1, colA:0x4a86c0, colB:0xbfe4ff, glow:0.50, amount:0},
+    particles:{kind:2, color:0xffffff, n:500},
     nameA:['Whitewaste','Windbite','Palefall','Frostmarch','Snowbound','Rimeflat','Coldreach','Glacier-edge'],
     nameB:['Snowfield','Pass','White-waste','Drifts','Crossing','Barrens','Windrow','Approach']
   },
@@ -513,10 +567,12 @@ export const THEMES = {
          edgeMin:3, edgeRand:3, belt:0.58, beltLinked:0.10, lone:0.040,
          copseDiv:300, copseChance:0.72,
          camp:{ palisade:false, tents:0, bones:true },
-         ground:{ mushroomA:0.048, mushroomB:0.048, rootsA:0.028, rootsB:0.028,
+         ground:{ swamptree:0.012, mushroomA:0.048, mushroomB:0.048, rootsA:0.028, rootsB:0.028,
                   fren1:0.012, fren2:0.012, fren3:0.012, fren4:0.012,
                   vinemound:0.028, moss:0.090 } },
-    pools:{mode:3, colA:0x0a1a12, colB:0x3fa06a, glow:0.55, amount:0}, particles:{kind:4, color:0x8fd0a0, n:220},
+    pools:{mode:3, colA:0x0a1a12, colB:0x3fa06a, glow:0.55, amount:0},
+    particles:{kind:4, color:0x8fd0a0, n:300},
+    groundFog:{density:0.18, speed:0.02, color:0x58b07a, scale:0.10, height:0.16},
     nameA:['Sporebound','Capfell','Mycelian','Blightbloom','Rotcap','Veilspore','Dampwood','Fruiting'],
     nameB:['Sporewood','Grove','Caps','Bloom','Thicket','Mouth','Hollow','Approach']
   }
@@ -903,6 +959,7 @@ function tryGenerate(seed, params){
   const corridor = new Uint8Array(W*H);
   const idx = (x,y)=> y*W + x;
   const inB = (x,y)=> x>=0 && y>=0 && x<W && y<H;
+  const magmaBridgeProps = [];
 
   for(const r of rooms){
     const rx=r.w/2, ry=r.h/2, sh=r.shape, ch=Math.min(rx,ry)*0.55;
@@ -1025,6 +1082,77 @@ function tryGenerate(seed, params){
     const refCell = idx(rooms[entrance].cx, rooms[entrance].cy);
     const pitReach = reachableFloorMask(grid, W, H, refCell);
     const [pitMin, pitMax] = TH.pools.pitBody || [2, 4];
+
+    /* Molten Theme: Rare 3D Magma Chasm Bridge (Used sparingly in ~10% of rooms / max 1 room per floor) */
+    if (thKey === 'molten') {
+      const bridgeCandidates = rooms.filter(r => (r.type === TYPE.COMBAT || r.type === TYPE.ELITE) && !r.lake && r.w >= 8 && r.h >= 8);
+      if (bridgeCandidates.length > 0) {
+        const r = rng.pick(bridgeCandidates);
+        const body = [];
+        const isVertRiver = r.w >= r.h;
+        const bridgeTiles = [];
+
+        if (isVertRiver) {
+          const rx = r.cx;
+          const bridgeY0 = r.cy - 1, bridgeY1 = r.cy + 1;
+          const yMin = Math.floor(r.cy - r.h / 2) + 1, yMax = Math.ceil(r.cy + r.h / 2) - 1;
+          for (let y = yMin; y <= yMax; y++) {
+            if (y >= bridgeY0 && y <= bridgeY1) {
+              for (let ox = -1; ox <= 1; ox++) {
+                const x = rx + ox;
+                if (inB(x, y) && grid[idx(x, y)] === FLOOR && roomId[idx(x, y)] === r.id) {
+                  bridgeTiles.push({ x, y, rot: 0 });
+                }
+              }
+              continue;
+            }
+            for (let ox = -1; ox <= 1; ox++) {
+              const x = rx + ox;
+              if (!inB(x, y)) continue;
+              const c = idx(x, y);
+              if (grid[c] === FLOOR && roomId[c] === r.id && !doorway[c]) {
+                body.push(c);
+              }
+            }
+          }
+        } else {
+          const ry = r.cy;
+          const bridgeX0 = r.cx - 1, bridgeX1 = r.cx + 1;
+          const xMin = Math.floor(r.cx - r.w / 2) + 1, xMax = Math.ceil(r.cx + r.w / 2) - 1;
+          for (let x = xMin; x <= xMax; x++) {
+            if (x >= bridgeX0 && x <= bridgeX1) {
+              for (let oy = -1; oy <= 1; oy++) {
+                const y = ry + oy;
+                if (inB(x, y) && grid[idx(x, y)] === FLOOR && roomId[idx(x, y)] === r.id) {
+                  bridgeTiles.push({ x, y, rot: Math.PI / 2 });
+                }
+              }
+              continue;
+            }
+            for (let oy = -1; oy <= 1; oy++) {
+              const y = ry + oy;
+              if (!inB(x, y)) continue;
+              const c = idx(x, y);
+              if (grid[c] === FLOOR && roomId[c] === r.id && !doorway[c]) {
+                body.push(c);
+              }
+            }
+          }
+        }
+
+        if (body.length >= 4 && floorStaysConnected(grid, W, H, body, refCell, pitReach)) {
+          for (const bc of body) {
+            grid[bc] = POOL;
+            pitReach[bc] = 0;
+            pools.push({ x: bc % W, y: (bc - (bc % W)) / W });
+          }
+          for (const bt of bridgeTiles) {
+            magmaBridgeProps.push({ kind: 'magmaBridge', x: bt.x, y: bt.y, rot: bt.rot, scale: 1, roomId: r.id });
+          }
+        }
+      }
+    }
+
     for(const r of rooms){
       if((r.type!==TYPE.COMBAT && r.type!==TYPE.ELITE) || r.lake || r.grave) continue;
       let n = Math.min(TH.pools.pits, Math.floor(r.w*r.h/45)+1), guard=0;
@@ -1336,13 +1464,29 @@ function tryGenerate(seed, params){
   const valid = reach === floorTotal && floorTotal > 0;
 
   /* -- 7. decoration -- */
-  const props=[], spawns=[];
+  const props = [...magmaBridgeProps], spawns = [];
   const occ = new Uint8Array(W*H);
+  const doorwayCells = [];
+  for (let dy = 0; dy < H; dy++) {
+    const row = dy * W;
+    for (let dx = 0; dx < W; dx++) {
+      if (doorway[row + dx]) doorwayCells.push({ x: dx, y: dy });
+    }
+  }
   const nearDoor = (x,y,d)=>{ for(let oy=-d;oy<=d;oy++) for(let ox=-d;ox<=d;ox++)
     if(inB(x+ox,y+oy) && doorway[idx(x+ox,y+oy)]) return true; return false; };
   const interior = (x,y)=>{ for(let oy=-1;oy<=1;oy++) for(let ox=-1;ox<=1;ox++)
     if(!inB(x+ox,y+oy) || grid[idx(x+ox,y+oy)]!==FLOOR) return false; return true; };
-  const put = (kind,x,y,rot,scale,rid)=>{ props.push({kind,x,y,rot:rot||0,scale:scale||1,roomId:rid}); occ[idx(x,y)]=1; };
+  const put = (kind,x,y,rot,scale,rid,oy)=>{
+    if (kind === 'sarco' || kind === 'coffin') {
+      // Enforce strict minimum spacing of 4.5 tiles between any sarcophagi / coffins
+      for (const p of props) {
+        if ((p.kind === 'sarco' || p.kind === 'coffin') && Math.hypot(p.x - x, p.y - y) < 4.5) return;
+      }
+    }
+    props.push({kind,x,y,rot:rot||0,scale:scale||1,roomId:rid,oy:oy||0});
+    occ[idx(x,y)]=1;
+  };
 
   /* Per-theme multipliers over the hand-tuned decoration rates below, so the
      dungeon editor can dial clutter without the constants being re-tuned. 1 is
@@ -1350,30 +1494,109 @@ function tryGenerate(seed, params){
      values above 1 by adding extra clutter on leftover tiles. */
   const DEC = TH.decor || {};
   const dmul = k => (DEC[k] == null ? 1 : DEC[k]);
-  const putF = (kind,x,y,rot,scale,rid)=>{
+  const putF = (kind,x,y,rot,scale,rid,oy)=>{
     const m = dmul('furniture');
     if(m < 1 && !rng.chance(m)) return;
-    put(kind,x,y,rot,scale,rid);
+    put(kind,x,y,rot,scale,rid,oy);
   };
 
   for(const r of rooms){
     const cix = idx(r.cx, r.cy);
     if(r.type===TYPE.ENTRANCE) put('ring', r.cx, r.cy, 0, 1, r.id);
     if(r.type===TYPE.BOSS){
-      put('bossCrystal', r.cx, r.cy, rng.f(0,6.28), 1, r.id);
-      const rr = Math.max(2.5, Math.min(r.w,r.h)/2 - 2), a0 = rng.f(0,1);
-      for(let k=0;k<6;k++){
-        const a = a0 + k*Math.PI/3;
-        const bx = Math.round(r.cx + Math.cos(a)*rr), by = Math.round(r.cy + Math.sin(a)*rr);
-        if(inB(bx,by) && grid[idx(bx,by)]===FLOOR && !occ[idx(bx,by)] && !nearDoor(bx,by,1)) put('brazier',bx,by,0,1,r.id);
+      if(thKey === 'grim'){
+        // Grim Boss Arena: Grand Sepulcher Dais centerpiece with Master Sarcophagus & Sconced Pillars
+        put('sepulcherDais', r.cx, r.cy, 0, 1.25, r.id);
+        put('sarco', r.cx, r.cy, (r.w >= r.h ? 0 : Math.PI/2), 1.35, r.id);
+        put('candle', r.cx, r.cy, 0, 1.1, r.id, 0.72); // Candle directly atop sarcophagus lid!
+
+        const pox = Math.min(3, Math.floor(r.w/2) - 2);
+        const poy = Math.min(3, Math.floor(r.h/2) - 2);
+        for(const [px, py] of [[r.cx-pox, r.cy-poy], [r.cx+pox, r.cy-poy], [r.cx-pox, r.cy+poy], [r.cx+pox, r.cy+poy]]){
+          if(interior(px, py) && !occ[idx(px, py)] && !nearDoor(px, py, 2)){
+            put('pillar', px, py, 0, 1.0, r.id);
+            put('candle', px, py, rng.f(0, 6.28), 0.9, r.id, 1.72);
+          }
+        }
+        const rr = Math.max(3.0, Math.min(r.w,r.h)/2 - 1.5), a0 = rng.f(0,1);
+        for(let k=0;k<6;k++){
+          const a = a0 + k*Math.PI/3;
+          const bx = Math.round(r.cx + Math.cos(a)*rr), by = Math.round(r.cy + Math.sin(a)*rr);
+          if(inB(bx,by) && grid[idx(bx,by)]===FLOOR && !occ[idx(bx,by)] && !nearDoor(bx,by,1)) put('brazier',bx,by,0,1,r.id);
+        }
+      } else if(thKey === 'molten'){
+        // Molten Boss Arena: Grand Infernal Foundry Crucible Dais
+        put('sepulcherDais', r.cx, r.cy, 0, 1.3, r.id);
+        put('forge', r.cx, r.cy, (r.w >= r.h ? 0 : Math.PI/2), 1.25, r.id, 0.29);
+        put('anvil', r.cx + (r.w >= r.h ? 1 : 0), r.cy + (r.w >= r.h ? 0 : 1), rng.f(0, 6.28), 1.0, r.id, 0.29);
+        put('smeltingCrucible', r.cx - (r.w >= r.h ? 1 : 0), r.cy - (r.w >= r.h ? 0 : 1), 0, 1.0, r.id, 0.29);
+        put('ingotStack', r.cx, r.cy + (r.w >= r.h ? 1 : 0), rng.f(0, 6.28), 0.9, r.id, 0.29);
+
+        // 4 Bastion Basalt Pillars with Glowing Magma Braziers and chains
+        const pox = Math.min(3, Math.floor(r.w/2) - 2);
+        const poy = Math.min(3, Math.floor(r.h/2) - 2);
+        for(const [px, py] of [[r.cx-pox, r.cy-poy], [r.cx+pox, r.cy-poy], [r.cx-pox, r.cy+poy], [r.cx+pox, r.cy+poy]]){
+          if(interior(px, py) && !occ[idx(px, py)] && !nearDoor(px, py, 2)){
+            put('pillar', px, py, 0, 1.1, r.id);
+            put('brazier', px, py, 0, 1.0, r.id);
+            put('forgeChains', px, py, rng.f(0, 6.28), 1.0, r.id);
+          }
+        }
+        // Ring of braziers, basalt stalagmites & glowing magma cracks
+        const rr = Math.max(3.0, Math.min(r.w,r.h)/2 - 1.5), a0 = rng.f(0,1);
+        for(let k=0;k<6;k++){
+          const a = a0 + k*Math.PI/3;
+          const bx = Math.round(r.cx + Math.cos(a)*rr), by = Math.round(r.cy + Math.sin(a)*rr);
+          if(inB(bx,by) && grid[idx(bx,by)]===FLOOR && !occ[idx(bx,by)] && !nearDoor(bx,by,1)){
+            if(k % 2 === 0) put('brazier', bx, by, 0, 1, r.id);
+            else put('stalagmite', bx, by, rng.f(0, 6.28), 1.15, r.id);
+            if(rng.chance(0.6)) put('crack', bx, by, rng.f(0, 6.28), 1.0, r.id);
+          }
+        }
+      } else if(thKey === 'frost'){
+        // Frost Boss Arena: The High Jarl's Mammoth Throne & Glacial Runic Sanctum
+        put('sepulcherDais', r.cx, r.cy, 0, 1.3, r.id);
+        put('iceThrone', r.cx, r.cy, (r.w >= r.h ? 0 : Math.PI/2), 1.25, r.id, 0.29);
+        put('mammothTusks', r.cx, r.cy, (r.w >= r.h ? 0 : Math.PI/2), 1.2, r.id, 0.29);
+        put('hearthPit', r.cx + (r.w >= r.h ? 0 : 1), r.cy + (r.w >= r.h ? 1 : 0), 0, 1.0, r.id, 0.29);
+        put('shieldRack', r.cx - (r.w >= r.h ? 0 : 1), r.cy - (r.w >= r.h ? 1 : 0), (r.w >= r.h ? Math.PI/2 : 0), 1.0, r.id, 0.29);
+
+        // 4 Bastion Runic Obelisks with Coldfire Hearths & Glacial Spires
+        const pox = Math.min(3, Math.floor(r.w/2) - 2);
+        const poy = Math.min(3, Math.floor(r.h/2) - 2);
+        for(const [px, py] of [[r.cx-pox, r.cy-poy], [r.cx+pox, r.cy-poy], [r.cx-pox, r.cy+poy], [r.cx+pox, r.cy+poy]]){
+          if(interior(px, py) && !occ[idx(px, py)] && !nearDoor(px, py, 2)){
+            put('runicObelisk', px, py, 0, 1.1, r.id);
+            put('glacialSpire', px, py, rng.f(0, 6.28), 0.95, r.id);
+          }
+        }
+        // Radial Ring of mammoth tusks, bone totems, coldfire hearths & glacial spires
+        const rr = Math.max(3.0, Math.min(r.w,r.h)/2 - 1.5), a0 = rng.f(0,1);
+        for(let k=0;k<6;k++){
+          const a = a0 + k*Math.PI/3;
+          const bx = Math.round(r.cx + Math.cos(a)*rr), by = Math.round(r.cy + Math.sin(a)*rr);
+          if(inB(bx,by) && grid[idx(bx,by)]===FLOOR && !occ[idx(bx,by)] && !nearDoor(bx,by,1)){
+            if(k % 3 === 0) put('mammothTusks', bx, by, a + Math.PI/2, 1.05, r.id);
+            else if(k % 3 === 1) put('glacialSpire', bx, by, rng.f(0, 6.28), 1.15, r.id);
+            else put('boneTotem', bx, by, a, 1.1, r.id);
+            if(rng.chance(0.6)) put('crack', bx, by, rng.f(0, 6.28), 1.0, r.id);
+          }
+        }
+      } else {
+        put('bossCrystal', r.cx, r.cy, rng.f(0,6.28), 1, r.id);
+        const rr = Math.max(2.5, Math.min(r.w,r.h)/2 - 2), a0 = rng.f(0,1);
+        for(let k=0;k<6;k++){
+          const a = a0 + k*Math.PI/3;
+          const bx = Math.round(r.cx + Math.cos(a)*rr), by = Math.round(r.cy + Math.sin(a)*rr);
+          if(inB(bx,by) && grid[idx(bx,by)]===FLOOR && !occ[idx(bx,by)] && !nearDoor(bx,by,1)) put('brazier',bx,by,0,1,r.id);
+        }
       }
     }
     if(r.type===TYPE.TREASURE && grid[cix]===FLOOR) put('chest', r.cx, r.cy, rng.i(0,3)*Math.PI/2, 1, r.id);
     if(r.type===TYPE.SHRINE && grid[cix]===FLOOR) put('shrineCrystal', r.cx, r.cy, rng.f(0,6.28), 1, r.id);
 
     if((r.type===TYPE.COMBAT || r.type===TYPE.ELITE) && Math.min(r.w,r.h)>=10 && r.shape!=='ellipse' && !r.grave && !r.lake){
-      /* occasional accent: a matched set of statue-pillars flanking the room corners,
-         always a single kind per room so the pattern reads as deliberate */
+      /* occasional accent: a matched set of statue-pillars flanking the room corners */
       if(thKey==='ancient' && Math.min(r.w,r.h)>=12 && rng.chance(0.4*dmul('pillars'))){
         const kind = rng.chance(0.5) ? 'pillarA' : 'pillarB';
         const ox = Math.max(3, Math.floor(r.w/2)-3), oy = Math.max(3, Math.floor(r.h/2)-3);
@@ -1391,26 +1614,53 @@ function tryGenerate(seed, params){
           if(interior(x,y) && !occ[idx(x,y)] && !nearDoor(x,y,2)) put('pillar',x,y,0,rng.f(0.94,1.06),r.id);
         }
     }
-    if(r.grave){
-      /* occasional accent: a small cluster of a single matching tombstone kind,
-         layered alongside (not instead of) the usual procedural graves */
-      if(thKey==='grim' && Math.min(r.w,r.h)>=10 && rng.chance(0.4*dmul('pillars'))){
-        const ox = Math.max(2, Math.floor(r.w/2)-3), oy = Math.max(2, Math.floor(r.h/2)-3);
-        for(const [cx0,cy0] of [[r.cx-ox,r.cy-oy],[r.cx+ox,r.cy-oy],[r.cx-ox,r.cy+oy],[r.cx+ox,r.cy+oy]]){
-          const x=Math.round(cx0), y=Math.round(cy0);
-          if(interior(x,y) && !occ[idx(x,y)] && !nearDoor(x,y,2))
-            put('tombstone', x, y, rng.i(0,3)*(Math.PI/2), rng.f(0.9,1.1), r.id);
+
+    if(r.grave || (thKey==='grim' && (r.type===TYPE.COMBAT || r.type===TYPE.ELITE))){
+      /* Occasional single accent tombstone in a corner */
+      if(Math.min(r.w,r.h)>=8 && rng.chance(0.25*dmul('pillars'))){
+        const ox = Math.max(2, Math.floor(r.w/2)-2), oy = Math.max(2, Math.floor(r.h/2)-2);
+        const x = r.cx + (rng.chance(0.5) ? ox : -ox), y = r.cy + (rng.chance(0.5) ? oy : -oy);
+        if(interior(x,y) && !occ[idx(x,y)] && !nearDoor(x,y,2))
+          put('tombstone', x, y, rng.i(0,3)*(Math.PI/2), rng.f(0.85,1.05), r.id);
+      }
+
+      /* Clean geometric sarcophagus placement */
+      if(Math.min(r.w,r.h)>=8 && grid[cix]===FLOOR && !occ[cix] && rng.chance(0.75)){
+        const isLarge = Math.min(r.w, r.h) >= 12;
+        if(isLarge && rng.chance(0.5)){
+          // Symmetrical dual-bier pair spaced 4 tiles apart along minor axis with parallel alignment
+          if(r.w >= r.h){
+            const s1y = r.cy - 2, s2y = r.cy + 2;
+            if(interior(r.cx, s1y) && interior(r.cx, s2y) && !occ[idx(r.cx, s1y)] && !occ[idx(r.cx, s2y)] && !nearDoor(r.cx, s1y, 2) && !nearDoor(r.cx, s2y, 2)){
+              put('sarco', r.cx, s1y, 0, 1, r.id);
+              put('candle', r.cx, s1y, 0, 0.9, r.id, 0.72);
+              put('sarco', r.cx, s2y, 0, 1, r.id);
+              put('candle', r.cx, s2y, 0, 0.9, r.id, 0.72);
+            } else {
+              put('sarco', r.cx, r.cy, 0, 1, r.id);
+              put('candle', r.cx, r.cy, 0, 0.9, r.id, 0.72);
+            }
+          } else {
+            const s1x = r.cx - 2, s2x = r.cx + 2;
+            if(interior(s1x, r.cy) && interior(s2x, r.cy) && !occ[idx(s1x, r.cy)] && !occ[idx(s2x, r.cy)] && !nearDoor(s1x, r.cy, 2) && !nearDoor(s2x, r.cy, 2)){
+              put('sarco', s1x, r.cy, Math.PI/2, 1, r.id);
+              put('candle', s1x, r.cy, 0, 0.9, r.id, 0.72);
+              put('sarco', s2x, r.cy, Math.PI/2, 1, r.id);
+              put('candle', s2x, r.cy, 0, 0.9, r.id, 0.72);
+            } else {
+              put('sarco', r.cx, r.cy, Math.PI/2, 1, r.id);
+              put('candle', r.cx, r.cy, 0, 0.9, r.id, 0.72);
+            }
+          }
+        } else {
+          // Single central sarcophagus aligned with room's primary axis
+          const sarcoRot = (r.w >= r.h) ? 0 : Math.PI/2;
+          put('sarco', r.cx, r.cy, sarcoRot, 1, r.id);
+          put('candle', r.cx, r.cy, 0, 0.9, r.id, 0.72);
         }
       }
-      for(let y=Math.ceil(r.cy-r.h/2)+2; y<=r.cy+r.h/2-2; y+=2)
-        for(let x=Math.ceil(r.cx-r.w/2)+2; x<=r.cx+r.w/2-2; x+=2){
-          if(Math.abs(x-r.cx)<=1 && Math.abs(y-r.cy)<=1) continue;
-          if(interior(x,y) && !occ[idx(x,y)] && !nearDoor(x,y,2) && rng.chance(0.8))
-            put('grave', x, y, rng.f(-0.3,0.3), rng.f(0.85,1.15), r.id);
-        }
-      if(Math.min(r.w,r.h)>=10 && grid[cix]===FLOOR && !occ[cix])
-        put('sarco', r.cx, r.cy, rng.chance(0.5)?0:Math.PI/2, 1, r.id);
-      let cd=4;
+
+      let cd = 3;
       while(cd-->0){
         const x=rng.i(Math.floor(r.cx-r.w/2)+1, Math.ceil(r.cx+r.w/2)-1);
         const y=rng.i(Math.floor(r.cy-r.h/2)+1, Math.ceil(r.cy+r.h/2)-1);
@@ -1429,9 +1679,9 @@ function tryGenerate(seed, params){
       else if (r.lake) arch = 'OVERGROWN';
       else {
         const themeArchMap = {
-          ancient: ['REL IQUARY_VAULT', 'ELDER_ARCHIVE', 'SOLAR_OBSERVATORY', 'ARMORY'],
+          ancient: ['RELIQUARY_VAULT', 'ELDER_ARCHIVE', 'SOLAR_OBSERVATORY', 'ARMORY'],
           molten: ['INFERNAL_FORGE', 'CALDERA_CRUCIBLE', 'ASHEN_GUARDHOUSE'],
-          frost: ['GLACIAL_CRYPT', 'FROZEN_LAB', 'ICE_OBSERVATORY'],
+          frost: ['JARLS_MEAD_HALL', 'SHAMAN_RUNE_SANCTUM', 'WARRIORS_ARMORY', 'GLACIAL_VAULT'],
           grim: ['NECROPOLIS_OSSUARY', 'PLAGUE_ALTAR', 'CHARNEL_PIT'],
           verdant: ['SPORE_NURSERY', 'BOTANICAL_CONSERVATORY', 'ROOT_SHRINE'],
           forest: ['GOBLIN_CAMP', 'DRUIDIC_GROVE', 'ARMORY'],
@@ -1466,22 +1716,130 @@ function tryGenerate(seed, params){
       }
 
       if (arch === 'INFERNAL_FORGE') {
-        if (freeInterior.length > 0) { const fit = freeInterior[Math.floor(freeInterior.length/2)]; putF('forge', fit.x, fit.y, 0, 1.1, r.id); }
-        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('barrel', ct.x, ct.y, rng.f(0,6.28), 1, r.id); }
-        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('weaponRack', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1, r.id); }
-      } else if (arch === 'GLACIAL_CRYPT' || arch === 'ICE_OBSERVATORY') {
         if (freeInterior.length > 0) {
           const fit = freeInterior[Math.floor(freeInterior.length/2)];
-          if (arch === 'ICE_OBSERVATORY') { putF('globe', fit.x, fit.y, 0, 1.1, r.id); putF('rug', fit.x, fit.y, 0, 1.2, r.id); }
-          else { putF('iceThrone', fit.x, fit.y, 0, 1, r.id); }
+          putF('forge', fit.x, fit.y, 0, 1.15, r.id);
+          if (freeInterior.length > 1) {
+            const fit2 = freeInterior[0];
+            putF('anvil', fit2.x, fit2.y, rng.f(0, 6.28), 1.0, r.id);
+          }
+          if (freeInterior.length > 2) {
+            const fit3 = freeInterior[freeInterior.length - 1];
+            putF('ingotStack', fit3.x, fit3.y, rng.f(0, 6.28), 1.0, r.id);
+          }
+        }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('forgeChains', ct.x, ct.y, rng.f(0,6.28), 1, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('boulderPile', ct2.x, ct2.y, rng.f(0,6.28), 1, r.id); }
+        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('weaponRack', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1, r.id); }
+        if (wallTiles.length > 1) { const wt2 = wallTiles[1]; putF('smeltingCrucible', wt2.x, wt2.y, 0, 1.0, r.id); }
+      } else if (arch === 'CALDERA_CRUCIBLE') {
+        if (freeInterior.length > 0) {
+          const fit = freeInterior[Math.floor(freeInterior.length/2)];
+          putF('smeltingCrucible', fit.x, fit.y, 0, 1.2, r.id);
+          if (freeInterior.length > 1) {
+            const fit2 = freeInterior[0];
+            putF('stalagmite', fit2.x, fit2.y, rng.f(0, 6.28), 1.1, r.id);
+          }
+        }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('boulderPile', ct.x, ct.y, rng.f(0,6.28), 1.1, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('stalagmite', ct2.x, ct2.y, rng.f(0,6.28), 1.0, r.id); }
+        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('forgeChains', wt.x, wt.y, rng.f(0,6.28), 1, r.id); }
+      } else if (arch === 'ASHEN_GUARDHOUSE') {
+        if (freeInterior.length > 0) {
+          const fit = freeInterior[Math.floor(freeInterior.length/2)];
+          putF('table', fit.x, fit.y, 0, 1.0, r.id);
+          if (freeInterior.length > 1) {
+            const fit2 = freeInterior[0];
+            putF('bench', fit2.x, fit2.y, 0, 0.9, r.id);
+          }
+        }
+        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('weaponRack', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1, r.id); }
+        if (wallTiles.length > 1) { const wt2 = wallTiles[1]; putF('weaponRack', wt2.x, wt2.y, Math.atan2(wt2.dx, wt2.dy), 1, r.id); }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('crate', ct.x, ct.y, rng.f(0,6.28), 1.1, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('forgeChains', ct2.x, ct2.y, rng.f(0,6.28), 1.0, r.id); }
+      } else if (arch === 'JARLS_MEAD_HALL') {
+        if (freeInterior.length > 0) {
+          const fit = freeInterior[Math.floor(freeInterior.length/2)];
+          putF('table', fit.x, fit.y, 0, 1.1, r.id);
+          if (freeInterior.length > 1) {
+            const fit2 = freeInterior[0];
+            putF('bench', fit2.x, fit2.y, 0, 1.0, r.id);
+          }
+          if (freeInterior.length > 2) {
+            const fit3 = freeInterior[freeInterior.length - 1];
+            putF('hearthPit', fit3.x, fit3.y, 0, 1.0, r.id);
+          }
+        }
+        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('shieldRack', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1, r.id); }
+        if (wallTiles.length > 1) { const wt2 = wallTiles[1]; putF('mammothTusks', wt2.x, wt2.y, Math.atan2(wt2.dx, wt2.dy), 1, r.id); }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('barrel', ct.x, ct.y, rng.f(0,6.28), 1.05, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('glacialSpire', ct2.x, ct2.y, rng.f(0,6.28), 1.0, r.id); }
+      } else if (arch === 'SHAMAN_RUNE_SANCTUM') {
+        if (freeInterior.length > 0) {
+          const fit = freeInterior[Math.floor(freeInterior.length/2)];
+          putF('runicObelisk', fit.x, fit.y, 0, 1.15, r.id);
+          if (freeInterior.length > 1) {
+            const fit2 = freeInterior[0];
+            putF('magicCircle', fit2.x, fit2.y, 0, 1.2, r.id);
+          }
+          if (freeInterior.length > 2) {
+            const fit3 = freeInterior[freeInterior.length - 1];
+            putF('hearthPit', fit3.x, fit3.y, 0, 1.0, r.id);
+          }
+        }
+        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('runicObelisk', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1.05, r.id); }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('boneTotem', ct.x, ct.y, rng.f(0,6.28), 1.1, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('glacialSpire', ct2.x, ct2.y, rng.f(0,6.28), 1.1, r.id); }
+      } else if (arch === 'WARRIORS_ARMORY') {
+        if (freeInterior.length > 0) {
+          const fit = freeInterior[Math.floor(freeInterior.length/2)];
+          putF('hearthPit', fit.x, fit.y, 0, 1.0, r.id);
+        }
+        if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('weaponRack', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1, r.id); }
+        if (wallTiles.length > 1) { const wt2 = wallTiles[1]; putF('shieldRack', wt2.x, wt2.y, Math.atan2(wt2.dx, wt2.dy), 1, r.id); }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('mammothTusks', ct.x, ct.y, rng.f(0,6.28), 1.0, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('crate', ct2.x, ct2.y, rng.f(0,6.28), 1.1, r.id); }
+      } else if (arch === 'GLACIAL_VAULT') {
+        if (freeInterior.length > 0) {
+          const fit = freeInterior[Math.floor(freeInterior.length/2)];
+          putF('iceThrone', fit.x, fit.y, 0, 1.1, r.id);
+          if (freeInterior.length > 1) {
+            const fit2 = freeInterior[0];
+            putF('glacialSpire', fit2.x, fit2.y, rng.f(0, 6.28), 1.1, r.id);
+          }
         }
         if (wallTiles.length > 0) { const wt = wallTiles[0]; props.push({kind:'icicle', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:rng.f(0,6.28), scale:1, roomId:r.id}); }
-      } else if (arch === 'NECROPOLIS_OSSUARY' || arch === 'PLAGUE_ALTAR') {
-        if (wallTiles.length > 0) { const wt = wallTiles[0]; props.push({kind:'ossuaryWall', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:0, scale:1, roomId:r.id}); occ[idx(wt.x,wt.y)]=1; }
-        if (freeInterior.length > 0) {
+        if (wallTiles.length > 1) { const wt2 = wallTiles[1]; putF('mammothTusks', wt2.x, wt2.y, Math.atan2(wt2.dx, wt2.dy), 1.0, r.id); }
+        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('boneTotem', ct.x, ct.y, rng.f(0,6.28), 1.0, r.id); }
+        if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('glacialSpire', ct2.x, ct2.y, rng.f(0,6.28), 1.15, r.id); }
+      } else if (arch === 'NECROPOLIS_OSSUARY' || arch === 'PLAGUE_ALTAR' || arch === 'CHARNEL_PIT' || arch === 'CRYPT') {
+        if (wallTiles.length > 0) {
+          const wt = wallTiles[0];
+          putF('altarTable', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1.0, r.id);
+          put('candle', wt.x, wt.y, rng.f(0, 6.28), 0.95, r.id, 0.65); // Sits ON TOP of altar
+        }
+        if (wallTiles.length > 1) {
+          const wt = wallTiles[1];
+          props.push({kind:'ossuaryWall', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:0, scale:1, roomId:r.id});
+          occ[idx(wt.x,wt.y)]=1;
+        }
+        if (wallTiles.length > 2 && rng.chance(0.7)) {
+          const wt = wallTiles[2];
+          putF('table', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1.0, r.id);
+          put('candle', wt.x, wt.y, rng.f(0, 6.28), 0.85, r.id, 0.58); // Sits ON TOP of table
+        }
+        if (cornerTiles.length > 0) {
+          const ct = cornerTiles[0];
+          put('candle', ct.x, ct.y, rng.f(0, 6.28), 1.0, r.id);
+        }
+        if (cornerTiles.length > 1) {
+          const ct2 = cornerTiles[1];
+          putF('urn', ct2.x, ct2.y, rng.f(0, 6.28), 0.9, r.id);
+        }
+        if (freeInterior.length > 0 && arch === 'PLAGUE_ALTAR') {
           const fit = freeInterior[Math.floor(freeInterior.length/2)];
-          if (arch === 'PLAGUE_ALTAR') putF('altarTable', fit.x, fit.y, 0, 1.1, r.id);
-          else putF('sarco', fit.x, fit.y, 0, 1, r.id);
+          putF('altarTable', fit.x, fit.y, 0, 1.1, r.id);
+          put('candle', fit.x, fit.y, 0, 1.0, r.id, 0.65); // Sits ON TOP of altar
         }
       } else if (arch === 'SPORE_NURSERY') {
         if (freeInterior.length > 0) { const fit = freeInterior[Math.floor(freeInterior.length/2)]; putF('sporePod', fit.x, fit.y, 0, 1.2, r.id); }
@@ -1511,6 +1869,11 @@ function tryGenerate(seed, params){
       } else if (arch === 'ELDER_ARCHIVE' || arch === 'LIBRARY') {
         if (wallTiles.length > 0) { const wt = wallTiles[0]; putF('bookshelf', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1, r.id); }
         if (wallTiles.length > 1) { const wt2 = wallTiles[1]; putF('bookshelf', wt2.x, wt2.y, Math.atan2(wt2.dx, wt2.dy), 1, r.id); }
+        if (wallTiles.length > 2) {
+          const wt3 = wallTiles[2];
+          putF('table', wt3.x, wt3.y, Math.atan2(wt3.dx, wt3.dy), 1, r.id);
+          put('candle', wt3.x, wt3.y, rng.f(0, 6.28), 0.9, r.id, 0.58); // Sits ON TOP of table
+        }
         if (freeInterior.length > 0) {
           const fit = freeInterior[Math.floor(freeInterior.length/2)];
           putF('rug', fit.x, fit.y, 0, 1, r.id);
@@ -1537,19 +1900,24 @@ function tryGenerate(seed, params){
         if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('crate', ct2.x, ct2.y, rng.f(0,6.28), 1, r.id); }
         if (wallTiles.length > 0) { const wt = wallTiles[0]; props.push({kind:'tapestry', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:0, scale:1, roomId:r.id}); }
       } else if (arch === 'REL IQUARY_VAULT' || arch === 'SANCTUM') {
+        if (wallTiles.length > 0) {
+          const wt = wallTiles[0];
+          putF('altarTable', wt.x, wt.y, Math.atan2(wt.dx, wt.dy), 1.1, r.id);
+          put('candle', wt.x, wt.y, rng.f(0, 6.28), 1.0, r.id, 0.65); // Sits ON TOP of altar
+        }
         if (freeInterior.length > 0 && r.type !== TYPE.BOSS && r.type !== TYPE.SHRINE) {
           const fit = freeInterior[Math.floor(freeInterior.length/2)];
           putF('rug', fit.x, fit.y, 0, 1.2, r.id);
           putF('statue', fit.x, fit.y, rng.f(0,6.28), 1, r.id);
         }
-        if (wallTiles.length > 0) { const wt = wallTiles[0]; props.push({kind:'sconce', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:0, scale:1, roomId:r.id}); }
-      } else if (arch === 'CALDERA_CRUCIBLE' || arch === 'TREASURY') {
+        if (wallTiles.length > 1) { const wt = wallTiles[1]; props.push({kind:'sconce', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:0, scale:1, roomId:r.id}); }
+      } else if (arch === 'TREASURY') {
         if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('crate', ct.x, ct.y, rng.f(0,6.28), 1.1, r.id); }
         if (cornerTiles.length > 1) { const ct2 = cornerTiles[1]; putF('barrel', ct2.x, ct2.y, rng.f(0,6.28), 1, r.id); }
         if (freeInterior.length > 0) { const fit = freeInterior[Math.floor(freeInterior.length/2)]; putF('urn', fit.x, fit.y, 0, 1, r.id); }
       }
 
-      if (wallTiles.length > 2 && rng.chance(0.5*dmul('sconces'))) {
+      if (wallTiles.length > 2 && rng.chance(0.65*dmul('sconces'))) {
         const wt = wallTiles[2];
         props.push({kind:'sconce', x:wt.x, y:wt.y, dx:wt.dx, dy:wt.dy, rot:0, scale:1, roomId:r.id});
       }
@@ -1606,10 +1974,19 @@ function tryGenerate(seed, params){
 
       const spawnSpecs = [];
       if (r.roomStyle === 'swarm') {
-        // Swarm: Scale directly with room budget, no artificial hard cap
-        const count = Math.max(6, Math.floor(budget / crToCost(swarmCR)));
+        /* Unified horde: every body shares one target CR, so the game's
+           room-lock resolves all slots to the same species (ten grey rats, not
+           a menagerie). The species CR is the dearest rung a full roomful can
+           still afford — a swarm keeps its body count AND stays near its purse
+           as floors deepen. Early floors that can't pay for a full roomful just
+           field fewer of the cheapest creature. */
+        let swarmSpeciesCR = crLadder[0];
+        for (const c of crLadder) {
+          if (MAX_SPAWNS * crToCost(c) <= budget) swarmSpeciesCR = c; else break;
+        }
+        const count = Math.min(MAX_SPAWNS, Math.floor(budget / crToCost(swarmSpeciesCR)));
         for (let i = 0; i < count; i++) {
-          spawnSpecs.push({ targetCR: swarmCR, role: 'minion', fixedCR: true });
+          spawnSpecs.push({ targetCR: swarmSpeciesCR, role: 'minion', fixedCR: true });
         }
       } else if (r.roomStyle === 'miniboss') {
         spawnSpecs.push({ targetCR: stepUp(naturalCR), role: 'miniboss', crOffset: 1 });
@@ -1679,27 +2056,58 @@ function tryGenerate(seed, params){
          escort rather than decapitating the room. */
       if(spawnSpecs.length > MAX_SPAWNS) spawnSpecs.length = MAX_SPAWNS;
 
-      for(const spec of spawnSpecs){
-        let placed = false;
-        for(let attempt=0; attempt<80 && !placed; attempt++){
-          const x=rng.i(Math.floor(r.cx-r.w/2)+1, Math.ceil(r.cx+r.w/2)-1);
-          const y=rng.i(Math.floor(r.cy-r.h/2)+1, Math.ceil(r.cy+r.h/2)-1);
-          if(!inB(x,y)) continue;
-          const c=idx(x,y);
-          if(roomId[c]===r.id && grid[c]===FLOOR && !occ[c] && !doorway[c] && !lakeMask[c]){
-            spawns.push({
-              x, y,
-              targetCR: spec.targetCR,
-              role: spec.role || undefined,
-              roomStyle: r.roomStyle || undefined,
-              roomBuff: r.roomStyle === 'arcane_surge' ? 'arcane_surge' : undefined,
-              fixedCR: spec.fixedCR || undefined,
-              crOffset: spec.crOffset !== undefined ? spec.crOffset : undefined,
-              roomId: r.id
-            });
-            occ[c]=1; placed=true;
+      /* Gather all valid candidate floor cells in room r and compute distance
+         from any doorway cell, so monsters spawn away from doorways. */
+      const xMin = Math.max(1, Math.floor(r.cx - r.w / 2) + 1);
+      const xMax = Math.min(W - 2, Math.ceil(r.cx + r.w / 2) - 1);
+      const yMin = Math.max(1, Math.floor(r.cy - r.h / 2) + 1);
+      const yMax = Math.min(H - 2, Math.ceil(r.cy + r.h / 2) - 1);
+
+      const roomCandidates = [];
+      for (let cy = yMin; cy <= yMax; cy++) {
+        for (let cx = xMin; cx <= xMax; cx++) {
+          const c = idx(cx, cy);
+          if (roomId[c] === r.id && grid[c] === FLOOR && !doorway[c] && !lakeMask[c]) {
+            let minDoorDist = 999;
+            for (let di = 0; di < doorwayCells.length; di++) {
+              const d = doorwayCells[di];
+              const dist = Math.hypot(cx - d.x, cy - d.y);
+              if (dist < minDoorDist) minDoorDist = dist;
+            }
+            roomCandidates.push({ x: cx, y: cy, c, dist: minDoorDist });
           }
         }
+      }
+
+      for (const spec of spawnSpecs) {
+        const available = roomCandidates.filter(k => !occ[k.c]);
+        if (!available.length) break;
+
+        let maxDist = 0;
+        for (const k of available) {
+          if (k.dist > maxDist) maxDist = k.dist;
+        }
+
+        // Monsters prefer to spawn deep inside rooms and away from doors:
+        // When room size permits, enforce a buffer from any doorway.
+        const targetMinDist = maxDist >= 3.0 ? Math.max(2.5, maxDist - 1.5) : Math.max(1.5, maxDist - 0.8);
+        let pool = available.filter(k => k.dist >= targetMinDist);
+        if (!pool.length) pool = available;
+
+        const chosen = rng.pick(pool);
+        occ[chosen.c] = 1;
+
+        spawns.push({
+          x: chosen.x,
+          y: chosen.y,
+          targetCR: spec.targetCR,
+          role: spec.role || undefined,
+          roomStyle: r.roomStyle || undefined,
+          roomBuff: r.roomStyle === 'arcane_surge' ? 'arcane_surge' : undefined,
+          fixedCR: spec.fixedCR || undefined,
+          crOffset: spec.crOffset !== undefined ? spec.crOffset : undefined,
+          roomId: r.id
+        });
       }
     }
   }
@@ -1735,6 +2143,7 @@ function tryGenerate(seed, params){
       if(rng.chance(p)) props.push({kind:'debris',x,y,rot:rng.f(0,6.28),scale:rng.f(0.6,1.35),roomId:rid,v:rng.i(0,2)});
       else if(TH.propScatter && !nearDoor(x,y,1)){
         for(const k in TH.propScatter){
+          if(k === 'coffin' || k === 'sarco') continue; // Sarcophagi/coffins are strictly placed via architectural passes
           if(rng.chance(TH.propScatter[k]*params.decorDensity*(corridor[c]?0.4:1))){
             props.push({kind:k, x, y, rot:rng.i(0,3)*(Math.PI/2), scale:rng.f(0.85,1.2), roomId:rid});
             break;
@@ -1866,6 +2275,54 @@ function tryGenerate(seed, params){
       props.push({kind: 'spiderWeb', x, y, dx: sx, dy: sy, rot: 0,
                   scale: rng.f(0.85, 1.05), roomId: rid});
   }
+
+  /* Cut-out wall ossuary niches for Grim crypts & catacombs */
+  if(thKey === 'grim' || TH.bones){
+    for(let y=1; y<H-1; y++) for(let x=1; x<W-1; x++){
+      const c = idx(x,y);
+      if(grid[c] !== FLOOR || occ[c] || doorway[c] || lakeMask[c]) continue;
+      const rid = roomId[c];
+      // Check if adjacent to exactly 1 wall
+      let wdx = 0, wdy = 0, wc = 0;
+      if(grid[c+1] === WALL) { wdx = 1; wc++; }
+      if(grid[c-1] === WALL) { wdx = -1; wc++; }
+      if(grid[c+W] === WALL) { wdy = 1; wc++; }
+      if(grid[c-W] === WALL) { wdy = -1; wc++; }
+      if(wc === 1){
+        const isCorridor = corridor[c];
+        const isCrypt = rid >= 0 && (rooms[rid]?.grave || thKey === 'grim');
+        const chance = (isCorridor ? 0.09 : (isCrypt ? 0.07 : 0.02)) * params.decorDensity;
+        if(rng.chance(chance)){
+          props.push({kind:'ossuaryWall', x, y, dx:wdx, dy:wdy, rot:0, scale:1, roomId:rid});
+          occ[c] = 1;
+        }
+      }
+    }
+  }
+
+  /* Norse & Barbarian prop scatter for Frost theme */
+  if(thKey === 'frost'){
+    for(let y=1; y<H-1; y++) for(let x=1; x<W-1; x++){
+      const c = idx(x,y);
+      if(grid[c] !== FLOOR || occ[c] || doorway[c] || lakeMask[c]) continue;
+      const rid = roomId[c];
+      let wdx = 0, wdy = 0, wc = 0;
+      if(grid[c+1] === WALL) { wdx = 1; wc++; }
+      if(grid[c-1] === WALL) { wdx = -1; wc++; }
+      if(grid[c+W] === WALL) { wdy = 1; wc++; }
+      if(grid[c-W] === WALL) { wdy = -1; wc++; }
+
+      if(wc === 1 && rng.chance(0.04 * params.decorDensity)){
+        const pick = rng.pick(['shieldRack', 'mammothTusks', 'runicObelisk']);
+        props.push({kind: pick, x, y, rot: Math.atan2(wdx, wdy), scale: rng.f(0.9, 1.1), roomId: rid});
+        occ[c] = 1;
+      } else if(wc >= 2 && rng.chance(0.06 * params.decorDensity)){
+        const pick = rng.pick(['glacialSpire', 'boneTotem']);
+        props.push({kind: pick, x, y, rot: rng.f(0, 6.28), scale: rng.f(0.9, 1.15), roomId: rid});
+        occ[c] = 1;
+      }
+    }
+  }
   { const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
     if(TH.pools && (TH.pools.mode===0 || TH.pools.mode===3)){
       const pv = TH.pools.mode===0 ? 0.8 : 0.45;
@@ -1905,6 +2362,30 @@ function tryGenerate(seed, params){
       let close=false;
       for(const p of placed) if(Math.max(Math.abs(p.x-s.x),Math.abs(p.y-s.y))<4){ close=true; break; }
       if(!close){ placed.push(s); props.push({kind:'banner',x:s.x,y:s.y,dx:s.dx,dy:s.dy,rot:0,scale:1}); }
+    }
+  }
+
+  if(thKey === 'molten'){
+    for(const r of rooms){
+      const cand=[];
+      for(let y=Math.floor(r.cy-r.h/2)-1; y<=Math.ceil(r.cy+r.h/2)+1; y++)
+        for(let x=Math.floor(r.cx-r.w/2)-1; x<=Math.ceil(r.cx+r.w/2)+1; x++){
+          if(!inB(x,y) || grid[idx(x,y)]!==WALL) continue;
+          const d = floorDir(x,y);
+          if(d && roomId[idx(x+d[0],y+d[1])]===r.id) cand.push({x,y,dx:d[0],dy:d[1]});
+        }
+      for(let i=cand.length-1;i>0;i--){ const j=rng.i(0,i); const t=cand[i]; cand[i]=cand[j]; cand[j]=t; }
+      const maxChains = r.type === TYPE.BOSS ? 4 : (rng.chance(0.65) ? rng.i(1, 2) : 0);
+      const placedChains = [];
+      for(const s of cand){
+        if(placedChains.length >= maxChains) break;
+        let close = false;
+        for(const p of placedChains) if(Math.max(Math.abs(p.x-s.x), Math.abs(p.y-s.y)) < 3){ close=true; break; }
+        if(!close){
+          placedChains.push(s);
+          props.push({kind:'hangingChains', x:s.x, y:s.y, dx:s.dx, dy:s.dy, rot:0, scale:1, roomId:r.id});
+        }
+      }
     }
   }
 

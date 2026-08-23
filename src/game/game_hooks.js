@@ -30,8 +30,10 @@ import {
   spawnRichAbilityVFX,
   spawnBeamEffect,
   spawnImpactBurst,
+  spawnFlashLight,
   updateStatusTray,
   hasActiveFX,
+  swapHeroSprite,
 } from './entities.js';
 import {
   log,
@@ -50,6 +52,7 @@ import {
 } from './audio.js';
 import { _v } from './shared.js';
 import { onKill } from './quest_events.js';
+import { spawnCompositeAnimation } from './vfx_animations.js';
 
 export const gameHookMethods = {
 
@@ -127,6 +130,12 @@ export const gameHookMethods = {
   fxProjectile(from, to, kind, color, onHit, opts = {}) {
     spawnProjectile(this.engine.scene, from, to, kind, color, onHit, opts);
   },
+  /** Play a composite VFX animation (travel + impact layers, sounds) authored
+   *  in the animation editor. `opts` may carry travelSound/impactSound overrides
+   *  (or false to mute) and an onImpact callback. */
+  fxCompositeAnimation(anim, from, to, opts = {}) {
+    return spawnCompositeAnimation(this.engine.scene, anim, { ...opts, from, to });
+  },
   fxBeam(from, to, opts = {}) {
     spawnBeamEffect(this.engine.scene, from, to, opts);
   },
@@ -148,6 +157,12 @@ export const gameHookMethods = {
      ════════════════════════════════════════════════════════════════════ */
   fxDrawBar(bar, frac, color) {
     if (bar) drawBar(bar, frac, color);
+  },
+  /* Rebuild a hero's sprite after its appearance changes (wild shape in/out).
+     Routed through a hook because it constructs THREE textures — headless
+     callers (the balance sim) stub it out. */
+  fxSwapHeroSprite(ent, heroData) {
+    if (ent) swapHeroSprite(ent, heroData);
   },
   fxHitFlash(ent) {
     if (ent?.ent) hitFlash(ent);
@@ -184,6 +199,9 @@ export const gameHookMethods = {
   },
   fxRemoveAoEVisual(visual) {
     if (visual) removeAoEVisual(this.engine.scene, visual);
+  },
+  fxFlashLight(pos, color = 0xffaa44, intensity = 4.5, range = 12.0, duration = 0.3) {
+    if (this.engine?.scene) spawnFlashLight(this.engine.scene, pos, color, intensity, range, duration);
   },
 
   /* ════════════════════════════════════════════════════════════════════

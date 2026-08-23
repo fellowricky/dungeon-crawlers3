@@ -38,6 +38,9 @@ export const SETTING_DEFAULTS = Object.freeze({
   /* ── automation ── */
   autoSkillChallenges: false,  // pick the best approach instead of asking
   autoLootChests: false,       // wheel still spins; shortens the take-loot wait
+
+  /* ── combat ── */
+  combatSpeed: 0.7,   // combat dt multiplier — 0.7 ≈ 30% slower; 1.0 = original speed
 });
 
 /** Which log category each setting suppresses when switched off. */

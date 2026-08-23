@@ -347,27 +347,219 @@
     },
     "cantripFireBolt": {
       "category": "cantrip",
-      "files": [],
+      "files": [
+        "Spells/Cantrip Fire Bolt.wav"
+      ],
       "fallback": "spellFire",
-      "note": "wizard + sorcerer Fire Bolt"
+      "note": "wizard Fire Bolt"
+    },
+    "cantripChillTouch": {
+      "category": "cantrip",
+      "files": [
+        "Spells/Cantrip Chill Touch.wav"
+      ],
+      "fallback": "spellNecrotic",
+      "note": "sorcerer Chill Touch"
     },
     "cantripSacredFlame": {
       "category": "cantrip",
-      "files": [],
+      "files": [
+        "Spells/Cantrip Sacred Flame.wav"
+      ],
       "fallback": "spellHoly",
       "note": "cleric Sacred Flame"
     },
     "cantripProduceFlame": {
       "category": "cantrip",
-      "files": [],
+      "files": [
+        "Spells/Cantrip Produce Flame.wav"
+      ],
       "fallback": "spellFireSpray",
       "note": "druid Produce Flame"
     },
     "cantripEldritchBlast": {
       "category": "cantrip",
-      "files": [],
+      "files": [
+        "Spells/Cantrip Eldritch Blast.wav"
+      ],
       "fallback": "spellArcane",
       "note": "warlock Eldritch Blast"
+    },
+    "spellArmsOfHadar": {
+      "category": "school",
+      "files": [
+        "Spells/Arms of Hadar.wav"
+      ],
+      "fallback": "spellNecrotic",
+      "note": "per-spell Arms of Hadar"
+    },
+    "spellBane": {
+      "category": "school",
+      "files": [
+        "Spells/Bane.wav"
+      ],
+      "fallback": "spellCurse",
+      "note": "per-spell Bane"
+    },
+    "spellBless": {
+      "category": "support",
+      "files": [
+        "Spells/Bless.wav"
+      ],
+      "fallback": "spellBlessing",
+      "note": "per-spell Bless"
+    },
+    "spellChaosBolt": {
+      "category": "school",
+      "files": [
+        "Spells/Chaos Bolt.wav"
+      ],
+      "fallback": "spellArcane",
+      "note": "per-spell Chaos Bolt"
+    },
+    "spellChromaticOrb": {
+      "category": "school",
+      "files": [
+        "Spells/Chromatic Orb.wav"
+      ],
+      "fallback": "spellArcane",
+      "note": "per-spell Chromatic Orb"
+    },
+    "spellCureWounds": {
+      "category": "support",
+      "files": [
+        "Spells/Cure Wounds.wav"
+      ],
+      "fallback": "spellHeal",
+      "note": "per-spell Cure Wounds"
+    },
+    "spellEntangle": {
+      "category": "school",
+      "files": [
+        "Spells/Entangle.wav"
+      ],
+      "fallback": "spellNature",
+      "note": "per-spell Entangle"
+    },
+    "spellFindFamiliar": {
+      "category": "school",
+      "files": [
+        "Spells/Find Familiar.wav"
+      ],
+      "fallback": "spellSummon",
+      "note": "per-spell Find Familiar"
+    },
+    "spellGrease": {
+      "category": "school",
+      "files": [
+        "Spells/Grease.wav"
+      ],
+      "fallback": "spellNature",
+      "note": "per-spell Grease"
+    },
+    "spellGuidingBolt": {
+      "category": "school",
+      "files": [
+        "Spells/Guiding Bolt.wav"
+      ],
+      "fallback": "spellHoly",
+      "note": "per-spell Guiding Bolt"
+    },
+    "spellHealingWord": {
+      "category": "support",
+      "files": [
+        "Spells/Healing Word.wav"
+      ],
+      "fallback": "spellHeal",
+      "note": "per-spell Healing Word"
+    },
+    "spellHex": {
+      "category": "school",
+      "files": [
+        "Spells/Hex.wav"
+      ],
+      "fallback": "spellCurse",
+      "note": "per-spell Hex"
+    },
+    "spellHideousLaughter": {
+      "category": "school",
+      "files": [
+        "Spells/Hideous Laughter.wav"
+      ],
+      "fallback": "spellMind",
+      "note": "per-spell Hideous Laughter"
+    },
+    "spellHuntersMark": {
+      "category": "support",
+      "files": [
+        "Spells/Hunter's Mark.wav"
+      ],
+      "fallback": "spellMark",
+      "note": "per-spell Hunter's Mark"
+    },
+    "spellInflictWounds": {
+      "category": "school",
+      "files": [
+        "Spells/Inflict Wounds.wav"
+      ],
+      "fallback": "spellNecrotic",
+      "note": "per-spell Inflict Wounds"
+    },
+    "spellMagicMissile": {
+      "category": "school",
+      "files": [
+        "Spells/Magic Missile.wav"
+      ],
+      "fallback": "spellArcane",
+      "note": "per-spell Magic Missile"
+    },
+    "spellProtectionFromEvil": {
+      "category": "support",
+      "files": [
+        "Spells/Protection from Evil.wav"
+      ],
+      "fallback": "spellWard",
+      "note": "per-spell Protection from Evil"
+    },
+    "spellRayOfSickness": {
+      "category": "school",
+      "files": [
+        "Spells/Ray of Sickness.wav"
+      ],
+      "fallback": "spellAcid",
+      "note": "per-spell Ray of Sickness"
+    },
+    "spellShield": {
+      "category": "support",
+      "files": [
+        "Spells/Shield.wav"
+      ],
+      "fallback": "spellWard",
+      "note": "per-spell Shield"
+    },
+    "spellShieldOfFaith": {
+      "category": "support",
+      "files": [
+        "Spells/Shield of Faith.wav"
+      ],
+      "fallback": "spellWard",
+      "note": "per-spell Shield of Faith"
+    },
+    "spellThunderousSmite": {
+      "category": "school",
+      "files": [
+        "Spells/Thunderous Smite.wav"
+      ],
+      "fallback": "spellThunder",
+      "note": "per-spell Thunderous Smite"
+    },
+    "spellThunderwave": {
+      "category": "school",
+      "files": [
+        "Spells/Thunderwave.wav"
+      ],
+      "fallback": "spellThunder",
+      "note": "per-spell Thunderwave"
     },
     "cantripViciousMockery": {
       "category": "cantrip",
@@ -423,7 +615,7 @@
     "dodge": "spellWard",
     "patientDefense": "spellWard",
     "bloodlust": "warCry",
-    "shieldOfFaith": "spellWard",
+    "shieldOfFaith": "spellShieldOfFaith",
     "remarkableAthlete": "spellHaste",
     "fastHands": "spellStealth",
     "rage": "warCry",
@@ -461,23 +653,23 @@
     "moonbeam": "spellIce",
     "callLightning": "spellLightning",
     "lightningBolt": "spellLightning",
-    "thunderwave": "spellThunder",
-    "thunderousSmite": "spellThunder",
+    "thunderwave": "spellThunderwave",
+    "thunderousSmite": "spellThunderousSmite",
     "shatter": "spellThunder",
-    "magicMissile": "spellArcane",
-    "chaosBolt": "spellArcane",
-    "guidingBolt": "spellHoly",
+    "magicMissile": "spellMagicMissile",
+    "chaosBolt": "spellChaosBolt",
+    "guidingBolt": "spellGuidingBolt",
     "spiritGuardians": "spellHoly",
     "acidArrow": "spellAcid",
-    "inflictWounds": "spellNecrotic",
+    "inflictWounds": "spellInflictWounds",
     "vampiricTouch": "spellNecrotic",
     "blight": "spellNecrotic",
-    "armsOfHadar": "spellNecrotic",
-    "hex": "spellCurse",
+    "armsOfHadar": "spellArmsOfHadar",
+    "hex": "spellHex",
     "bestowCurse": "spellCurse",
-    "bane": "spellCurse",
+    "bane": "spellBane",
     "rayOfEnfeeblement": "spellCurse",
-    "huntersMark": "spellMark",
+    "huntersMark": "spellHuntersMark",
     "sleep": "spellMind",
     "slow": "spellMind",
     "holdPerson": "spellMind",
@@ -485,30 +677,31 @@
     "fear": "spellMind",
     "blindness": "spellMind",
     "silence": "spellMind",
-    "hideousLaughter": "spellMind",
+    "hideousLaughter": "spellHideousLaughter",
     "darkness": "spellMind",
-    "entangle": "spellNature",
+    "entangle": "spellEntangle",
     "web": "spellNature",
-    "grease": "spellNature",
+    "grease": "spellGrease",
     "faerieFire": "spellNature",
     "barkskin": "spellNature",
-    "cureWounds": "spellHeal",
-    "healingWord": "spellHeal",
+    "cureWounds": "spellCureWounds",
+    "healingWord": "spellHealingWord",
     "massHealingWord": "spellHeal",
     "massCureWounds": "spellHeal",
     "lesserRestoration": "spellHeal",
     "greaterRestoration": "spellHeal",
-    "shield": "spellWard",
-    "protectionFromEvil": "spellWard",
+    "shield": "spellShield",
+    "protectionFromEvil": "spellProtectionFromEvil",
     "deathWard": "spellWard",
-    "bless": "spellBlessing",
+    "bless": "spellBless",
     "haste": "spellHaste",
     "magicWeapon": "spellArcane",
     "mistyStep": "spellStealth",
     "spiritualWeapon": "spellSummon",
     "eldritchBlast": "spellArcane",
-    "chromaticOrb": "spellArcane",
-    "rayOfSickness": "spellAcid",
+    "chillTouch": "cantripChillTouch",
+    "chromaticOrb": "spellChromaticOrb",
+    "rayOfSickness": "spellRayOfSickness",
     "flamingSphere": "spellFire",
     "mirrorImage": "spellArcane",
     "counterspell": "spellArcane",
@@ -517,11 +710,36 @@
     "dimensionDoor": "spellStealth",
     "cloudkill": "spellAcid",
     "animateObjects": "spellArcane",
-    "findFamiliar": "spellSummon"
+    "findFamiliar": "spellFindFamiliar",
+    "enlargeReduce": "spellArcane",
+    "enlarge": "spellArcane",
+    "spikeGrowth": "spellEntangle",
+    "passWithoutTrace": "spellStealth",
+    "crusadersMantle": "spellHoly",
+    "banishment": "spellStealth",
+    "steelWindStrike": "martialFlourish",
+    "disintegrate": "spellArcane",
+    "chainLightning": "spellLightning",
+    "heal": "spellHeal",
+    "sunbeam": "spellHoly",
+    "harm": "spellNecrotic",
+    "fingerOfDeath": "spellNecrotic",
+    "fireStorm": "spellFire",
+    "regenerate": "spellHeal",
+    "prismaticSpray": "spellChaosBolt",
+    "sunburst": "spellHoly",
+    "earthquake": "spellThunder",
+    "mindBlank": "spellMind",
+    "dominateMonster": "spellMind",
+    "meteorSwarm": "spellFire",
+    "timeStop": "spellArcane",
+    "powerWordKill": "spellNecrotic",
+    "massHeal": "spellHeal",
+    "wish": "spellArcane"
   },
   "cantrips": {
     "wizard": "cantripFireBolt",
-    "sorcerer": "cantripFireBolt",
+    "sorcerer": "cantripChillTouch",
     "cleric": "cantripSacredFlame",
     "druid": "cantripProduceFlame",
     "warlock": "cantripEldritchBlast",

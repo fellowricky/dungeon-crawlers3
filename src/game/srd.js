@@ -10,7 +10,8 @@ import {
 import {
   featureBonuses, spellSlotsFor, seedNewHeroProgression, migrateProgression,
   applyLevelGrants, initProgressionFields, pendingChoiceCount, hasFeature,
-  totalSlots, equipmentGrants, hasDualWielder, featACBonus, SKILL_POINTS_PER_LEVEL
+  totalSlots, equipmentGrants, hasDualWielder, featACBonus, isCasterClass,
+  SKILL_POINTS_PER_LEVEL
 } from './features.js';
 export { SKILL_POINTS_PER_LEVEL };
 import { getRaceDefaults, migrateVisualColors } from './appearance.js';
@@ -174,6 +175,7 @@ export const CLASS_SAVES = {
   sorcerer:  ['con','cha'],
   warlock:   ['wis','cha'],
   wolf:      ['str','dex'],
+  familiar:  ['dex','wis'],
 };
 
 /* XP needed to REACH each level (index = level) — tripled after level 2 */
@@ -203,7 +205,8 @@ export const RACES = {
   tiefling:   { label:'Tiefling', bonus:{cha:2,int:1}, speed:1.0, speedFt:30, trait:'Hellish Resistance: +1 AC and fire resistance.' },
   /* Not a player option — the stat block behind the ranger's wolf companion.
      `internal` keeps it out of every race picker; see PLAYABLE_RACES. */
-  wolf:       { label:'Wolf', internal:true, bonus:{str:2,dex:2,con:2,int:0,wis:2,cha:0}, speed:1.2, speedFt:40, trait:'Pack Tactics: Advantage on attacks when near an ally.' }
+  wolf:       { label:'Wolf', internal:true, bonus:{str:2,dex:2,con:2,int:0,wis:2,cha:0}, speed:1.2, speedFt:40, trait:'Pack Tactics: Advantage on attacks when near an ally.' },
+  familiar:   { label:'Familiar', internal:true, bonus:{str:0,dex:2,con:0,int:0,wis:2,cha:0}, speed:1.2, speedFt:40, trait:'Flyby: Agile natural attacks.' }
 };
 
 
@@ -391,7 +394,7 @@ export const CLASSES = {
     label:'Sorcerer', color:0xe67e22, hitDie:6, armorProf:'none', shieldProf:false, weaponProf:'simple',
     statPriority:['cha','con','dex','int','wis','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
-    attack:{ name:'Fire Bolt', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
+    attack:{ name:'Chill Touch', ability:'cha', dmg:[1,8], range:8, melee:false, cantripScale:true },
     feature:'Tides of Chaos: once per short rest, gain advantage (+5 to hit).',
     blaster:true,
     skills:[
@@ -430,6 +433,15 @@ export const CLASSES = {
     baseAC:13, acPlusDex:true, acDesc:'Natural armor + Dex',
     attack:{ name:'Bite', ability:'dex', dmg:[1,8], range:1.5, melee:true },
     feature:'Pack Tactics & Trip Bite.',
+    skills:[]
+  },
+  /* Familiar companion stat block */
+  familiar: {
+    label:'Familiar', internal:true, color:0x88ccff, hitDie:4, armorProf:'none', shieldProf:false, weaponProf:'simple',
+    statPriority:['dex','wis','int','con','str','cha'],
+    baseAC:11, acPlusDex:true, acDesc:'Natural armor + Dex',
+    attack:{ name:'Talon', ability:'dex', dmg:[1,4], range:1.5, melee:true },
+    feature:'Flyby: Agile natural attacks.',
     skills:[]
   }
 };
@@ -651,7 +663,8 @@ export const cantripDice = lvl => lvl >= 17 ? 4 : lvl >= 11 ? 3 : lvl >= 5 ? 2 :
 /* ---------------- monsters (external JSON with 308 SRD stat blocks) ----------------
    Loaded from monsters.json. CR (Challenge Rating) is the sole balance axis:
    spawn picks a target CR from the dungeon-level curve, then filters this flat
-   list by a CR window around it. Bosses carry an `isBoss` flag. */
+   list by a CR window around it. Curated boss fights are driven by the mission
+   (finalBossId / boss_encounters.json), not by a per-monster boss flag. */
 import MONSTERS_RAW from './monsters.json' with { type: 'json' };
 import BOSS_ENCOUNTERS_RAW from './boss_encounters.json' with { type: 'json' };
 import { CR_SCALING_TABLE, getCRScale, crForDungeonLevel, maxCrForDungeonLevel, crToCost as crCost } from './constants.js';
@@ -773,11 +786,6 @@ export const MONSTERS_BY_ID = (() => {
   for (const s of MONSTERS_ALL) m[s.id] = s;
   return m;
 })();
-
-/** All boss-flagged monster ids — used by quests to pre-roll a final boss.
- *  A monster is a boss via the `isBoss: true` data flag (formerly tier "boss"). */
-export const BOSS_MONSTERS = MONSTERS_ALL.filter(s => s.isBoss);
-export const BOSS_IDS = BOSS_MONSTERS.map(s => s.id);
 
 /** Display name for a monster id; falls back to a cleaned id. */
 export function monsterName(id) {
@@ -1170,12 +1178,19 @@ export function spawnMonster(targetCR, effectiveLevel, rngPick, allowedNames = n
        species at each rung, so variety comes from species rather than from
        drifting off-price. Failing that, step DOWN to the dearest CR at or below
        the target. Only if the pool has nothing at or below do we look upward,
-       because at that point there is nothing weaker to field. */
-    const atCR = pool.filter(spec => spec.cr === tcr);
+       because at that point there is nothing weaker to field.
+
+       The level's ceiling (maxCR) is a HARD cap for every non-boss spawn. An
+       exact match at tcr and the at-or-below step both honour it, so a caller
+       that asks for a CR above the level (e.g. the floor-scaling elite pack)
+       still fields the dearest creature the level actually allows. Only a
+       deliberate boss override (bypassCeiling) may field above it. */
+    const ceiling = bypassCeiling ? Infinity : maxCR;
+    const atCR = pool.filter(spec => spec.cr === tcr && spec.cr <= ceiling);
     if (atCR.length) {
       filtered = atCR;
     } else {
-      const atOrBelow = pool.filter(spec => spec.cr <= tcr);
+      const atOrBelow = pool.filter(spec => spec.cr <= Math.min(tcr, ceiling));
       if (atOrBelow.length) {
         let bestCR = -1;
         for (const spec of atOrBelow) if (spec.cr > bestCR) bestCR = spec.cr;
@@ -1277,7 +1292,58 @@ export function spawnMonster(targetCR, effectiveLevel, rngPick, allowedNames = n
     regen: spec.regen,
     colorBalance: spec.colorBalance ? JSON.parse(JSON.stringify(spec.colorBalance)) : undefined,
     yOffset: spec.yOffset,
+    flipX: !!spec.flipX,
+    /* Animated idle/attack atlas configs written by the bestiary editor — the
+       runtime uses these to swap the static billboard for a sliced sheet. */
+    animations: spec.animations ? JSON.parse(JSON.stringify(spec.animations)) : undefined,
   };
+}
+
+/* Hard cap on how many copies of a single creature one room may field. Rooms
+   buy a dominant CR and every same-band spawn used to lock onto the first
+   species drawn, so a room read as "seven ghouls plus a filler". pickRoomSpecies
+   (below) enforces this cap per room while preferring creatures of the room's
+   dominant family, so variety keeps the room's vibe. */
+export const SPECIES_CAP = 3;
+
+/** Pick the species for one spawn slot in a room, capping duplicates.
+ *
+ *  bandPool      species ids already rolled for this band/role in this room
+ *                (mutated in place: a freshly rolled species is appended)
+ *  counts        { [speciesId]: n } fielded so far in this room (read-only here)
+ *  anchorFamily  the room's vibe family (getThemeForMonster) of its first species
+ *  familyOf      (id) => family string, e.g. getThemeForMonster(MONSTERS_BY_ID[id])
+ *  window        candidate species ids within this slot's CR window (roster-scoped,
+ *                never empty — the caller falls back to the full roster)
+ *  roll(pool)    () => speciesId drawn from `pool` — wraps spawnMonster so a roll
+ *                can never import an off-roster creature
+ *
+ *  Reuses a pool species that is under the cap, preferring the room's own family,
+ *  then picks from the window's under-cap species (same-family preferred). Only
+ *  when every species in the window is at the cap does it take a duplicate — a
+ *  roster band with one creature has nothing else to offer, and an empty slot is
+ *  worse. Deterministic: no retry loop that could randomly miss an alternative. */
+export function pickRoomSpecies({ bandPool, counts = {}, anchorFamily = null, familyOf = () => null, window, roll }) {
+  const underCap = (id) => (counts[id] || 0) < SPECIES_CAP;
+  const sameVibe = (id) => !anchorFamily || familyOf(id) === anchorFamily;
+
+  /* 1) Reuse a species this band has already rolled before rolling new ones —
+        keeps the room's CR/role mix stable. Prefer the room's vibe family. */
+  const reuse = bandPool.find((id) => underCap(id) && sameVibe(id))
+    ?? bandPool.find(underCap);
+  if (reuse) return reuse;
+
+  /* 2) The window's under-cap species, same family preferred. `window` is already
+        CR-windowed so a same-family pick can never drift off the slot's CR. It may
+        be null (no roster constraint — an un-themed dungeon), which the roll
+        passes straight to spawnMonster for its full-bestiary fallback. */
+  const fresh = window ? window.filter(underCap) : [];
+  const fam = anchorFamily ? fresh.filter((id) => familyOf(id) === anchorFamily) : fresh;
+  const pool = fam.length ? fam : (fresh.length ? fresh : window);
+
+  const id = roll(pool);
+  if (!bandPool.includes(id)) bandPool.push(id);
+  return id;
 }
 
 /* ---------------- hero construction ---------------- */
@@ -1408,10 +1474,11 @@ export function createWolfCompanion(lvl = 1) {
 
 export function createFamiliarCompanion(kind = 'owl', lvl = 1) {
   const level = Math.max(1, lvl | 0);
+  const cleanKind = (kind || 'owl').replace('Familiar', '').toLowerCase();
   const profiles = {
     owl: {
       name: 'Owl Familiar',
-      sprite: 'dcss/monster/flying_skull.png',
+      sprite: 'sprites/giant_owl.png',
       stats: { str: 6, dex: 16 + Math.floor(level / 3), con: 10 + Math.floor(level / 4), int: 10, wis: 14, cha: 10 },
       weaponName: 'Talon',
       dmg: [1, 4, Math.floor(level / 2)],
@@ -1419,7 +1486,7 @@ export function createFamiliarCompanion(kind = 'owl', lvl = 1) {
     },
     imp: {
       name: 'Imp Familiar',
-      sprite: 'dcss/monster/imp.png',
+      sprite: 'dcss/monster/demons/imp.png',
       stats: { str: 10, dex: 14 + Math.floor(level / 4), con: 12 + Math.floor(level / 4), int: 14 + Math.floor(level / 3), wis: 12, cha: 14 },
       weaponName: 'Sting',
       dmg: [1, 6, Math.floor(level / 2)],
@@ -1427,7 +1494,7 @@ export function createFamiliarCompanion(kind = 'owl', lvl = 1) {
     },
     viper: {
       name: 'Viper Familiar',
-      sprite: 'dcss/monster/viper.png',
+      sprite: 'dcss/monster/animals/viper.png',
       stats: { str: 8, dex: 16 + Math.floor(level / 3), con: 11 + Math.floor(level / 4), int: 8, wis: 12, cha: 8 },
       weaponName: 'Venom Bite',
       dmg: [1, 4, Math.floor(level / 2)],
@@ -1435,12 +1502,14 @@ export function createFamiliarCompanion(kind = 'owl', lvl = 1) {
     }
   };
 
-  const p = profiles[kind] || profiles.owl;
-  const visual = { singleImage: true, spriteSheet: p.sprite };
-  const data = makeHero(p.name, 'human', 'wizard', p.stats, visual);
+  const p = profiles[cleanKind] || profiles.owl;
+  const visual = { singleImage: true, spriteSheet: p.sprite, spriteScaleX: 0.85, spriteScaleY: 0.85 };
+  const data = makeHero(p.name, 'familiar', 'familiar', p.stats, visual);
   data.level = level;
   data.isFamiliar = true;
-  data.familiarKind = kind;
+  data.familiarKind = cleanKind;
+  data.knownSpells = [];
+  data.aiPrefs = { targeting: 'nearest', movementStyle: 'melee', abilityUsage: 'balanced', potionTrigger: 'emergency' };
 
   data.equipment = {
     weapon: {
@@ -1831,7 +1900,12 @@ export function buildWeaponProfile(h, item, opts = {}){
   };
 }
 const CANTRIP_DMG_TYPE = {
-  cleric:'radiant', wizard:'fire', druid:'fire', sorcerer:'fire', warlock:'force'
+  cleric:'radiant', wizard:'fire', druid:'fire', sorcerer:'necrotic', warlock:'force'
+};
+/* Class cantrip → SPELLS key, so manual-mode casting (and the cast VFX) use the
+   right spell definition. */
+const CANTRIP_SPELL_KEY = {
+  cleric:'sacredFlame', wizard:'fireBolt', druid:'produceFlame', sorcerer:'chillTouch', warlock:'eldritchBlast'
 };
 export function buildCantripProfile(h){
   const cls = CLASSES[h.classKey];
@@ -1840,6 +1914,7 @@ export function buildCantripProfile(h){
   return {
     name: a.name, ability: a.ability, dmg: a.dmg.slice(),
     range: a.range, melee: !!a.melee, cantripScale: true,
+    nameKey: a.nameKey || CANTRIP_SPELL_KEY[h.classKey] || null,
     dmgType: CANTRIP_DMG_TYPE[h.classKey] || 'fire', source: 'cantrip'
   };
 }
@@ -1985,5 +2060,13 @@ export function canEquip(h, item){
   }
 
   /* 4. Helm, gloves, boots, ring, amulet — always equippable (like 5e magic items) */
+
+  /* 5. Trinket slot — a general consumable slot. Scrolls are caster-only;
+        potions/charns (casterOnly:false) are usable by any class. */
+  if (item.slot === 'trinket') {
+    if (item.casterOnly) return isCasterClass(h.classKey);
+    return true;
+  }
+
   return true;
 }

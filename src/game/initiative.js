@@ -20,6 +20,7 @@
  */
 import { mod } from './srd.js';
 import { ROUND_SECONDS, clearCombatEffects } from './conditions.js';
+import { Trace } from './ai_trace.js';
 
 /* Seconds each combatant holds the spotlight before the turn passes.
    Phase 1: raised from 0.8s so a tactical actor has time to spend its
@@ -76,6 +77,8 @@ export const initiativeMethods = {
 
   _beginTurn() {
     if (this.clearPendingMove) this.clearPendingMove();
+    if (this.cancelAttackTargeting) this.cancelAttackTargeting();
+    if (this.cancelSpellTargeting) this.cancelSpellTargeting();
     /* Ensure all combatants adhere strictly to tile centers at start of turn */
     if (this.heroes) {
       for (const h of this.heroes) {
@@ -96,6 +99,9 @@ export const initiativeMethods = {
          Wind, Cunning Action, Bardic Inspiration, Fast Hands). See combat.js. */
       a._bonusActed = false;
       a._bonusLeveled = false;
+      a._actionSurged = false;
+      a._pendingAttacks = 0;
+      a._postActDelay = 0;
       /* Tactical turn-engine budgets (turn_engine.js). Additive only — these
          fields are dormant until Phase 1 gates movement on moveLeft / canMove.
          Dash adds to moveLeft; everything else spends these flags. */
@@ -162,6 +168,12 @@ export const initiativeMethods = {
       if (this.initiative.idx >= o.length) {
         this.initiative.idx = 0;
         this.initiative.round++;
+        /* New round — clear the party's damage ledger. It records how much
+           damage each hero has already promised to each monster this round so
+           the rest of the party can route around targets that are already
+           dead-on-arrival (see combat_eval.effectiveHp). */
+        this.combatIntent = { allocated: new Map(), round: this.initiative.round };
+        Trace._round = this.initiative.round;
         this.fxLog(`⚔️ --- Round ${this.initiative.round} ---`, 'sys');
       }
       guard++;
@@ -189,6 +201,7 @@ export const initiativeMethods = {
     for (const e of this.initiative.order) {
       if (!e || seen.has(e)) continue;
       seen.add(e);
+      e._postActDelay = 0;
       delete e._auraProcessed;
       cleared += clearCombatEffects(e);
       /* Per-fight bookkeeping that predates the EFFECTS registry and so isn't
@@ -199,8 +212,15 @@ export const initiativeMethods = {
     for (const h of this.heroes) {
       if (seen.has(h)) continue;
       seen.add(h);
+      h._postActDelay = 0;
       cleared += clearCombatEffects(h);
       this.fxStatusTray(h);
+    }
+    for (const h of this.heroes) {
+      if (h.data && h.data.hp > 0) {
+        h._postActDelay = 0;
+        if (typeof this.clearEntityPath === 'function') this.clearEntityPath(h);
+      }
     }
     /* Concentration can't outlive the spells it was holding up. */
     for (const h of this.heroes) if (h.conc && this.breakConcentration) this.breakConcentration(h, 'the fight ended');
@@ -249,13 +269,30 @@ export const initiativeMethods = {
        The turn waits until the user performs actions or clicks End Turn. */
     if (isManualHero) return;
 
-    /* Animation Lock: wait for active spell, projectile, and attack FX to finish playing */
-    if (this.fxHasActiveFX()) return;
+    /* Hard ceiling: absolute deadlock breaker. No single AI turn should ever
+       last more than 2.5 seconds. If it does, clear any stuck effects and force advance. */
+    this.initiative._turnAge = (this.initiative._turnAge || 0) + dt;
+    if (this.initiative._turnAge > 2.5) {
+      if (this.clearEffects && this.engine?.scene) this.clearEffects(this.engine.scene);
+      this.initiative._turnAge = 0;
+      this._advanceTurn();
+      return;
+    }
 
-    /* Early advance for AI actors (monsters or auto-mode heroes): once an AI
-       actor has taken its action (actUsed) and isn't currently moving, snap to
-       the next combatant immediately. */
-    if (cur && cur.actUsed && !cur.moving) { this._advanceTurn(); return; }
+    /* Animation Lock: wait for in-flight projectiles or pending multi-attacks to finish */
+    if (this.fxHasActiveFX() || (cur && cur._pendingAttacks > 0)) return;
+
+    /* Paced turn advance for AI actors (monsters or auto-mode heroes): once an AI
+       actor has taken its action (actUsed), isn't moving, and all pending multi-attacks
+       have completed, pause for a calibrated pacing window (~180ms) so players can read the result. */
+    if (cur && cur.actUsed && !cur.moving && (!cur._pendingAttacks || cur._pendingAttacks <= 0)) {
+      cur._postActDelay = (cur._postActDelay || 0) + dt;
+      if (cur._postActDelay >= 0.18) {
+        cur._postActDelay = 0;
+        this._advanceTurn();
+      }
+      return;
+    }
 
     /* Advance when the actor has exhausted movement and isn't going anywhere,
        even if it never got to use its action (e.g. target is unreachable). */
@@ -271,13 +308,6 @@ export const initiativeMethods = {
     } else {
       this.initiative.timer -= dt;
       if (this.initiative.timer <= 0) this._advanceTurn();
-    }
-
-    /* Hard ceiling: absolute deadlock breaker. No single AI turn should ever
-       last more than 3 seconds. If it does, something is stuck — force advance. */
-    this.initiative._turnAge = (this.initiative._turnAge || 0) + dt;
-    if (!isManualHero && this.initiative._turnAge > 3.0) {
-      this._advanceTurn();
     }
   }
 };

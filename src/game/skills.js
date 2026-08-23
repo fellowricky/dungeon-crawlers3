@@ -2473,7 +2473,7 @@ function applyComputedReward(game, computed, challenge, hero) {
       break;
     }
     case 'summonAlly': {
-      if (sc && sc.name === 'Recruit the Guard') {
+      if (challenge && (challenge.name === 'Recruit the Guard' || challenge.key === 'recruitGuard' || d.subType === 'guard')) {
         spawnGuardAlly(game);
       } else {
         spawnBeastAlly(game);

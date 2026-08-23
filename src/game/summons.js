@@ -135,7 +135,17 @@ export function createSummonManager(game) {
   function spawn(summoner, kind) {
     const def = COMPANIONS[kind];
     if (!def || !summoner) return null;
-    if (def.slot === 'dedicated' && getActive(kind, summoner)) return null;
+
+    if (kind.includes('Familiar') || (def.kind && def.kind.includes('Familiar'))) {
+      const existingFam = game.heroes.find(h =>
+        h.companion && h.kind && h.kind.includes('Familiar') &&
+        h.summonerName === summoner.data.name &&
+        h.summonerClassKey === summoner.data.classKey
+      );
+      if (existingFam) dismiss(existingFam);
+    } else if (def.slot === 'dedicated' && getActive(kind, summoner)) {
+      return null;
+    }
 
     const lvl = summoner.data.level || (game.effectiveLevel || 1);
     const data = def.factory(lvl);
@@ -155,6 +165,12 @@ export function createSummonManager(game) {
       path: null, pathI: 0, cd: Math.random(), repathT: 0,
       target: null, walkPhase: Math.random() * 6
     };
+    /* Companions used to spawn directly on the summoner's tile and then rely
+       on the (now-removed) soft separation to shove them apart. Place on a
+       free neighbouring cell instead. */
+    if (typeof game.placeAtFreeCell === 'function') {
+      game.placeAtFreeCell(w, summoner.x, summoner.z, { radius: 2 });
+    }
     w.ent = makeHeroMesh(data);
     w.ent.grp.position.set(w.x, 0, w.z);
     game.gameGroup.add(w.ent.grp);

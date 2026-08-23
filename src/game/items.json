@@ -3697,6 +3697,208 @@
         "affixAllow": [],
         "_edited": true
       }
+    ],
+    "trinket": [
+    {
+      "name": "Scroll of Magic Missile",
+      "icon": "dcss/item/scroll/scroll-brown.png",
+      "rarity": "common",
+      "charges": 3,
+      "spellKey": "magicMissile",
+      "casterOnly": true,
+      "value": 50,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Cure Wounds",
+      "icon": "dcss/item/scroll/scroll-brown.png",
+      "rarity": "common",
+      "charges": 3,
+      "spellKey": "cureWounds",
+      "casterOnly": true,
+      "value": 50,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Guiding Bolt",
+      "icon": "dcss/item/scroll/scroll-brown.png",
+      "rarity": "common",
+      "charges": 3,
+      "spellKey": "guidingBolt",
+      "casterOnly": true,
+      "value": 50,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Faerie Fire",
+      "icon": "dcss/item/scroll/scroll-brown.png",
+      "rarity": "common",
+      "charges": 3,
+      "spellKey": "faerieFire",
+      "casterOnly": true,
+      "value": 50,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Scorching Ray",
+      "icon": "dcss/item/scroll/scroll-green.png",
+      "rarity": "uncommon",
+      "charges": 3,
+      "spellKey": "scorchingRay",
+      "casterOnly": true,
+      "value": 150,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Shatter",
+      "icon": "dcss/item/scroll/scroll-green.png",
+      "rarity": "uncommon",
+      "charges": 3,
+      "spellKey": "shatter",
+      "casterOnly": true,
+      "value": 150,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Hold Person",
+      "icon": "dcss/item/scroll/scroll-green.png",
+      "rarity": "uncommon",
+      "charges": 2,
+      "spellKey": "holdPerson",
+      "casterOnly": true,
+      "value": 150,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Moonbeam",
+      "icon": "dcss/item/scroll/scroll-green.png",
+      "rarity": "uncommon",
+      "charges": 2,
+      "spellKey": "moonbeam",
+      "casterOnly": true,
+      "value": 150,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Fireball",
+      "icon": "dcss/item/scroll/scroll-blue.png",
+      "rarity": "rare",
+      "charges": 2,
+      "spellKey": "fireball",
+      "casterOnly": true,
+      "value": 300,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Lightning Bolt",
+      "icon": "dcss/item/scroll/scroll-blue.png",
+      "rarity": "rare",
+      "charges": 2,
+      "spellKey": "lightningBolt",
+      "casterOnly": true,
+      "value": 300,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Haste",
+      "icon": "dcss/item/scroll/scroll-blue.png",
+      "rarity": "rare",
+      "charges": 2,
+      "spellKey": "haste",
+      "casterOnly": true,
+      "value": 300,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Spirit Guardians",
+      "icon": "dcss/item/scroll/scroll-blue.png",
+      "rarity": "rare",
+      "charges": 2,
+      "spellKey": "spiritGuardians",
+      "casterOnly": true,
+      "value": 300,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Ice Storm",
+      "icon": "dcss/item/scroll/scroll-purple.png",
+      "rarity": "epic",
+      "charges": 2,
+      "spellKey": "iceStorm",
+      "casterOnly": true,
+      "value": 450,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Polymorph",
+      "icon": "dcss/item/scroll/scroll-purple.png",
+      "rarity": "epic",
+      "charges": 1,
+      "spellKey": "polymorph",
+      "casterOnly": true,
+      "value": 450,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Cone of Cold",
+      "icon": "dcss/item/scroll/scroll-purple.png",
+      "rarity": "epic",
+      "charges": 1,
+      "spellKey": "coneOfCold",
+      "casterOnly": true,
+      "value": 450,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Scroll of Hold Monster",
+      "icon": "dcss/item/scroll/scroll-purple.png",
+      "rarity": "epic",
+      "charges": 1,
+      "spellKey": "holdMonster",
+      "casterOnly": true,
+      "value": 450,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Potion of Hill Giant Strength",
+      "icon": "dcss/item/potion/potion_golden.png",
+      "rarity": "rare",
+      "charges": 1,
+      "buffKey": "giantStrength",
+      "buffDuration": 60,
+      "casterOnly": false,
+      "value": 250,
+      "prim": {},
+      "affixAllow": []
+    },
+    {
+      "name": "Potion of Invisibility",
+      "icon": "dcss/item/potion/potion_sky_blue.png",
+      "rarity": "uncommon",
+      "charges": 1,
+      "buffKey": "invisible",
+      "buffDuration": 60,
+      "casterOnly": false,
+      "value": 120,
+      "prim": {},
+      "affixAllow": []
+    }
     ]
   },
   "affixes": [

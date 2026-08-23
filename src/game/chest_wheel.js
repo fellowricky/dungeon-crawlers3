@@ -6,6 +6,7 @@ import { onChestLooted } from './quest_events.js';
 import { trackGold, trackLoot } from './run_stats.js';
 import { playSfx } from './audio.js';
 import { getSetting } from './settings.js';
+import { playNixieEffect } from '../render/nixie_vfx.js';
 
 let _g = null;
 let _state = null;
@@ -122,6 +123,9 @@ export function lootChest(chest, showWheel = false) {
   if (!_g || chest.looted) return;
 
   playSfx('chestOpen', { volume: 0.8 });
+  if (chest.x !== undefined && chest.z !== undefined) {
+    playNixieEffect('loot_sparkles', { x: chest.x, y: 0.35, z: chest.z }, { scale: 0.9, duration: 0.8 });
+  }
   const gold = rollChestGold();
   const potion = rollChestPotion();
   const items = rollChestLoot(_g.activeQuest ? _g.activeQuest.level : _g.dungeonLevel, Math.random, _g.questFloor || 0);

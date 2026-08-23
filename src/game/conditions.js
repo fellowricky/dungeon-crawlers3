@@ -139,6 +139,30 @@ export const EFFECTS = {
     incapacitated:true, defAdvantage:true, autoCritMelee:true,
     desc:'Cannot act. Melee hits auto-crit.'
   },
+  petrified: {
+    label:'Petrified', category:'debuff', color:0x8f8f9a, float:'#b8b8c4',
+    acPenalty:0, speedMul:0, dmgMul:1,
+    incapacitated:true, defAdvantage:true, autoCritMelee:true,
+    desc:'Turned to stone. Cannot act. Melee hits auto-crit.'
+  },
+  enlarged: {
+    label:'Enlarged', category:'buff', color:0xffb45a, float:'#ffb45a',
+    acBonus:0, speedMul:1, dmgMul:1.25,
+    dmgBonus:2,
+    desc:'Magically enlarged: +25% damage dealt, +2 damage.'
+  },
+  invisible: {
+    label:'Invisible', category:'buff', color:0xaabbcc, float:'#aabbcc',
+    acBonus:0, speedMul:1, dmgMul:1,
+    invisible:true,
+    desc:'Hidden from enemies until it attacks.'
+  },
+  giantStrength: {
+    label:'Giant Strength', category:'buff', color:0xc9a24a, float:'#c9a24a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    atkBonus:2, dmgBonus:2,
+    desc:'Potent strength: +2 to hit and +2 damage.'
+  },
 
   /* ── Class / Spell Buffs ── */
   raging: {
@@ -487,6 +511,7 @@ export function getEffectMods(e) {
     atkDisadvantage:false, atkAdvantage:0, autoCritMelee:false,
     wildShapeDmg:false, sacredDice:false, blessDice:false,
     cantAttackSource:null, acFloor:0, magicWeapon:false,
+    invisible:false,
   };
   if (!e._effects) { e._effectCache = m; return m; }
   for (const [k, eff] of Object.entries(e._effects)) {
@@ -510,6 +535,7 @@ export function getEffectMods(e) {
     if (d.sacredDice) m.sacredDice = true;
     if (d.blessDice) m.blessDice = true;
     if (d.cantAttackSource && eff.source) m.cantAttackSource = eff.source;
+    if (d.invisible) m.invisible = true;
   }
   e._effectCache = m;
   return m;

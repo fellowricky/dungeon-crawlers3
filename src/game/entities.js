@@ -5,9 +5,13 @@
  */
 import * as THREE from 'three';
 import { CLASSES, WILD_SHAPE_FORMS } from './srd.js';
-import { HeroSprite, WolfSprite, BeastSprite } from './sprite_animator.js';
+import { HeroSprite, WolfSprite, BeastSprite, configureSpriteMaterial } from './sprite_animator.js';
 import { GIGAPACK_REGISTRY } from './gigapack_registry.js';
+import LIB from './vfx_animations.json' with { type: 'json' };
 import { isIdentityColorBalance, loadBalancedCanvas } from './color_balance.js';
+import { playNixieEffect, stopNixieEffect, warmupNixieVfx } from '../render/nixie_vfx.js';
+import { preloadCommonSFX } from './audio.js';
+import { updateLoadingProgress } from '../ui/loading_screen.js';
 
 const _c = new THREE.Color();
 
@@ -39,7 +43,7 @@ function makeCircularBar(baseColor) {
     side: THREE.DoubleSide
   });
   
-  const geom = new THREE.PlaneGeometry(0.7, 0.7).rotateX(-Math.PI / 2).translate(0, 0.02, 0);
+  const geom = new THREE.PlaneGeometry(0.55, 0.55).rotateX(-Math.PI / 2).translate(0, 0.02, 0);
   const mesh = new THREE.Mesh(geom, mat);
   
   return { spr: mesh, cv, g: cv.getContext('2d'), tex, isCircular: true, baseColor };
@@ -88,10 +92,10 @@ export function makeStatusTray() {
   cv.width = 256; cv.height = 64;
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false });
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false }));
   const spr = new THREE.Sprite(mat);
-  spr.scale.set(1.8, 0.45, 1);
-  spr.position.set(0, 1.6, 0); // Positioned above entity head
+  spr.scale.set(1.35, 0.34, 1);
+  spr.position.set(0, 1.25, 0); // Positioned above entity head
   spr.renderOrder = 55;
   return { spr, cv, g: cv.getContext('2d'), tex };
 }
@@ -141,7 +145,8 @@ export function drawStatusTray(tray, entity) {
     hexMarked: '🔮',
     huntersMarked: '🎯',
     bloodlust: '🩸',
-    patientDefense: '🛡️'
+    patientDefense: '🛡️',
+    enlarged: '💪'
   };
 
   g.font = 'bold 44px Arial, sans-serif';
@@ -190,18 +195,18 @@ export function makeTurnHighlight(isHero = true) {
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
 
-  const mat = new THREE.SpriteMaterial({
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
     map: tex,
     transparent: true,
     opacity: 0.65,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     depthTest: true
-  });
+  }), { forwardBias: 0.15 });
 
   const spr = new THREE.Sprite(mat);
-  spr.scale.set(1.65, 1.85, 1.0);
-  spr.position.set(0, 0.70, -0.15); // Directly behind the entity sprite billboard
+  spr.scale.set(1.24, 1.39, 1.0);
+  spr.position.set(0, 0.52, -0.15); // Directly behind the entity sprite billboard
   spr.renderOrder = 0; // Drawn BEFORE entity sprite
   spr.visible = false;
 
@@ -264,6 +269,300 @@ export function swapHeroSprite(heroEnt, heroData) {
   heroEnt.grp.add(anim.mesh);
 }
 
+const _bottomPadCache = new WeakMap();
+
+export function getSpriteBottomPadding(img) {
+  if (!img || typeof document === 'undefined') return 0;
+  if (_bottomPadCache.has(img)) return _bottomPadCache.get(img);
+
+  try {
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+    if (!w || !h) return 0;
+
+    const cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return 0;
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, w, h).data;
+
+    let bottom = -1;
+    for (let y = h - 1; y >= 0; y--) {
+      for (let x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] > 15) {
+          bottom = y;
+          break;
+        }
+      }
+      if (bottom !== -1) break;
+    }
+
+    const pad = bottom === -1 ? 0 : (h - 1 - bottom);
+    const padNorm = pad / h;
+    _bottomPadCache.set(img, padNorm);
+    return padNorm;
+  } catch (e) {
+    return 0;
+  }
+}
+
+export function getFrameBottomPadding(img, frameWidth = null, frameHeight = null) {
+  if (!img || typeof document === 'undefined') return 0;
+  try {
+    const totalW = img.naturalWidth || img.width;
+    const totalH = img.naturalHeight || img.height;
+    const fw = Math.min(totalW, frameWidth || totalW);
+    const fh = Math.min(totalH, frameHeight || totalH);
+    if (!fw || !fh) return 0;
+
+    const cv = document.createElement('canvas');
+    cv.width = fw;
+    cv.height = fh;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return 0;
+    ctx.drawImage(img, 0, 0, fw, fh, 0, 0, fw, fh);
+    const data = ctx.getImageData(0, 0, fw, fh).data;
+
+    let bottom = -1;
+    for (let y = fh - 1; y >= 0; y--) {
+      for (let x = 0; x < fw; x++) {
+        if (data[(y * fw + x) * 4 + 3] > 15) {
+          bottom = y;
+          break;
+        }
+      }
+      if (bottom !== -1) break;
+    }
+
+    const pad = bottom === -1 ? 0 : (fh - 1 - bottom);
+    return pad / fh;
+  } catch (e) {
+    return 0;
+  }
+}
+
+/* -------- animated monster mini: frame-sliced atlas sprite --------
+   A monster record may carry an `animations` block (written by the bestiary
+   editor) with `idle` and/or `attack` frame-sliced atlas configs:
+
+     animations: {
+       idle:   { sprite, frameWidth:96, frameHeight:96, cols:8, rows:1, fps:8, frames?, loop:true },
+       attack: { sprite, frameWidth:96, frameHeight:96, cols:6, rows:1, fps:12, frames?, loop:false }
+     }
+
+   `frames` is an optional array of sheet indices (row-major) to play; when
+   omitted the whole sheet plays in order. Frame size drives the billboard size
+   exactly like the static path (framePx / 32 * 1.5 * mon.scale), so larger
+   atlases (e.g. 128px or 192px frames) scale up automatically. The colour
+   balance block is baked into each atlas the same way as static sprites. */
+function buildMonsterAnimator(mon, fallbackSprite, cb) {
+  const s = mon.scale || 1.0;
+  const raw = mon.animations || {};
+  const keys = ['idle', 'attack'];
+
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+    alphaTest: 0.05,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1
+  }));
+  const mesh = new THREE.Sprite(mat);
+  mesh.renderOrder = 10;
+  mesh.center.set(0.5, 0);
+  mesh.position.y = (mon.yOffset || 0) * 0.02;
+  mesh.visible = false;
+
+  const anim = {
+    mesh,
+    animated: true,
+    state: 'idle',
+    time: 0,
+    textures: {},   // state -> { tex, cfg }
+    _flipX: !!mon.flipX,   // see the facing convention note in makeMonsterMesh
+    _frame: 0,
+    play(action, force = false) {
+      if (action !== 'idle' && action !== 'attack') return;  // 'hurt' → stay idle
+      if (!this.textures[action]) return;
+      if (this.state === action && !force) return;
+      this.state = action;
+      this.time = 0;
+      this._frame = 0;
+      this._apply();
+    },
+    setDirection(dx, dz) {
+      const flip = mon.flipX ? !(dx > 0.1) : (dx > 0.1);
+      if (flip === this._flipX) return;
+      this._flipX = flip;
+      this._apply();
+    },
+    update(dt) {
+      const t = this.textures[this.state];
+      if (!t) return;
+      this.time += dt;
+      const cfg = t.cfg;
+      const seq = cfg.frames && cfg.frames.length ? cfg.frames : null;
+      const count = seq ? seq.length : cfg.cols * cfg.rows;
+      if (count <= 0) return;
+      const idx = Math.floor(this.time * cfg.fps);
+      if (cfg.loop) {
+        this._frame = idx % count;
+      } else {
+        if (idx >= count) {
+          // one-shot attack finished → settle back into idle
+          this.play('idle');
+          return;
+        }
+        this._frame = idx;
+      }
+      this._apply();
+    },
+    _apply() {
+      const t = this.textures[this.state];
+      if (!t) return;
+      const cfg = t.cfg;
+      if (mat.map !== t.tex) {
+        mat.map = t.tex;
+        mesh.visible = true;
+      }
+      if (cfg.bottomPadNorm != null) {
+        mesh.center.set(0.5, cfg.bottomPadNorm);
+      }
+      mesh.scale.set(
+        (cfg.frameWidth / 32) * 1.125 * s,
+        (cfg.frameHeight / 32) * 1.125 * s,
+        1
+      );
+      const seq = cfg.frames && cfg.frames.length ? cfg.frames : null;
+      const count = seq ? seq.length : cfg.cols * cfg.rows;
+      const frameIndex = seq ? seq[this._frame % count] : (this._frame % count);
+      const totalCols = cfg.cols;
+      const totalRows = cfg.rows;
+      const f = Math.max(0, Math.min(frameIndex, totalCols * totalRows - 1));
+      const col = f % totalCols;
+      const row = Math.floor(f / totalCols);
+      const invCols = 1 / totalCols;
+      const invRows = 1 / totalRows;
+      if (this._flipX) {
+        t.tex.repeat.set(-invCols, invRows);
+        t.tex.offset.set((col + 1) * invCols, (totalRows - 1 - row) * invRows);
+      } else {
+        t.tex.repeat.set(invCols, invRows);
+        t.tex.offset.set(col * invCols, (totalRows - 1 - row) * invRows);
+      }
+    }
+  };
+
+  const resolvePath = (p) => {
+    if (!p) return fallbackSprite;
+    if (/^(dcss\/|sprites\/|\.\/|\/|http|data:)/.test(p)) return p;
+    return 'dcss/monster/' + p;
+  };
+
+  const cfgFor = (key, defaults) => {
+    const r = raw[key];
+    if (!r) return null;
+    const frames = Array.isArray(r.frames)
+      ? r.frames.map(Number).filter(Number.isFinite)
+      : null;
+    return {
+      key,
+      sprite: resolvePath(r.sprite || mon.sprite || fallbackSprite),
+      frameWidth: Math.max(1, Math.round(r.frameWidth || defaults.frameWidth || 96)),
+      frameHeight: Math.max(1, Math.round(r.frameHeight || defaults.frameHeight || 96)),
+      cols: Math.max(1, Math.round(r.cols || defaults.cols || 8)),
+      rows: Math.max(1, Math.round(r.rows || defaults.rows || 1)),
+      fps: Math.max(0.1, r.fps || defaults.fps || 8),
+      loop: r.loop !== false,
+      frames
+    };
+  };
+
+  /* If every configured atlas fails to load (bad path, missing file), fall back
+     to the monster's static sprite so it never renders invisible. */
+  let configuredCount = 0;
+  let failedCount = 0;
+  let staticShown = false;
+
+  const applyStatic = (tex, imgW, imgH) => {
+    if (staticShown) return;
+    staticShown = true;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.repeat.set(1, 1);
+    tex.offset.set(0, 0);
+    mat.map = tex;
+    mesh.visible = true;
+    mesh.scale.set(
+      ((imgW || 32) / 32.0) * 1.125 * s,
+      ((imgH || 32) / 32.0) * 1.125 * s,
+      1
+    );
+  };
+
+  const showStaticFallback = () => {
+    if (staticShown) return;
+    staticShown = true;
+    if (isIdentityColorBalance(cb)) {
+      new THREE.TextureLoader().load(fallbackSprite, (t) => {
+        applyStatic(t, t.image?.naturalWidth || t.image?.width, t.image?.naturalHeight || t.image?.height);
+      });
+    } else {
+      loadBalancedCanvas(fallbackSprite, cb, (canvas) => {
+        applyStatic(new THREE.CanvasTexture(canvas), canvas.width, canvas.height);
+      });
+    }
+  };
+
+  /* After any sheet loads/fails, settle on the best thing to display: the
+     resting state's own sheet → idle → any loaded sheet → static fallback.
+     Handles a missing/broken idle (shows attack frames instead of nothing). */
+  const settle = () => {
+    if (staticShown) return;
+    if (anim.textures[anim.state]) { anim._frame = 0; anim._apply(); return; }
+    if (anim.textures.idle) { anim.state = 'idle'; anim._frame = 0; anim._apply(); return; }
+    if (Object.keys(anim.textures).length > 0) {
+      anim.state = Object.keys(anim.textures)[0];
+      anim._frame = 0;
+      anim._apply();
+      return;
+    }
+    if (configuredCount > 0 && failedCount >= configuredCount) showStaticFallback();
+  };
+
+  const onTexture = (cfg, tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.repeat.set(1 / cfg.cols, 1 / cfg.rows);
+    tex.offset.set(0, 0);
+    const padNorm = tex.image ? getFrameBottomPadding(tex.image, cfg.frameWidth, cfg.frameHeight) : 0;
+    cfg.bottomPadNorm = padNorm;
+    anim.textures[cfg.key] = { tex, cfg };
+    settle();
+  };
+
+  const loadKey = (key) => {
+    const cfg = cfgFor(key, {});
+    if (!cfg) return;
+    configuredCount++;
+    const onError = () => { failedCount++; settle(); };
+    if (isIdentityColorBalance(cb)) {
+      new THREE.TextureLoader().load(cfg.sprite, (tex) => onTexture(cfg, tex), undefined, onError);
+    } else {
+      loadBalancedCanvas(cfg.sprite, cb, (canvas) => onTexture(cfg, new THREE.CanvasTexture(canvas)), onError);
+    }
+  };
+  for (const key of keys) loadKey(key);
+
+  return { mesh, anim };
+}
+
 /* -------- monster mini: DCSS sprite -------- */
 export function makeMonsterMesh(mon){
   const grp = new THREE.Group();
@@ -275,55 +574,92 @@ export function makeMonsterMesh(mon){
   if (!rawSprite.startsWith('dcss/') && !rawSprite.startsWith('sprites/') && !rawSprite.startsWith('./') && !rawSprite.startsWith('/') && !rawSprite.startsWith('http') && !rawSprite.startsWith('data:')) {
     spritePath = 'dcss/monster/' + rawSprite;
   }
-  
-  /* Fit the billboard to the sprite's real pixel size (DCSS sheets are not all 32px). */
-  const fitToImage = (imgW, imgH) => {
-    const basePx = 32.0;
-    mesh.scale.set(
-      ((imgW || 32) / basePx) * 1.5 * s,
-      ((imgH || 32) / basePx) * 1.5 * s,
-      1
-    );
-  };
 
-  /* The bestiary's colour-balance edits live on the monsters.json record. Baking
-     them here is what makes the editor's tint show up in the actual dungeon;
-     without a balance we keep the cheaper straight-to-GPU texture load. */
   const cb = mon.colorBalance;
-  let tex;
-  if (isIdentityColorBalance(cb)) {
-    tex = new THREE.TextureLoader().load(spritePath, (t) => {
-      if (t && t.image) {
-        fitToImage(t.image.naturalWidth || t.image.width, t.image.naturalHeight || t.image.height);
-      }
-    });
-  } else {
-    tex = new THREE.Texture();
-    loadBalancedCanvas(spritePath, cb, (canvas) => {
-      tex.image = canvas;
-      tex.needsUpdate = true;
-      fitToImage(canvas.width, canvas.height);
-    });
-  }
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.magFilter = THREE.NearestFilter;
-  tex.minFilter = THREE.NearestFilter;
+  const hasAnimations = !!(mon.animations && (mon.animations.idle || mon.animations.attack));
 
-  const mat = new THREE.SpriteMaterial({
-    map: tex,
-    transparent: true,
-    depthTest: true,
-    depthWrite: false,
-    alphaTest: 0.05,
-    polygonOffset: true,
-    polygonOffsetFactor: -1,
-    polygonOffsetUnits: -1
-  });
-  const mesh = new THREE.Sprite(mat);
-  mesh.renderOrder = 10;
-  mesh.center.set(0.5, 0);
-  mesh.scale.set(1.5 * s, 1.5 * s, 1);
-  mesh.position.y = (mon.yOffset || 0) * 0.02;
+  let mesh;
+  let anim;
+  if (hasAnimations) {
+    const built = buildMonsterAnimator(mon, spritePath, cb);
+    mesh = built.mesh;
+    anim = built.anim;
+  } else {
+    /* Fit the billboard to the sprite's real pixel size (DCSS sheets are not all 32px). */
+    const fitToImage = (img, imgW, imgH) => {
+      const padNorm = getSpriteBottomPadding(img);
+      mesh.center.set(0.5, padNorm);
+      mesh.scale.set(
+        ((imgW || 32) / 32.0) * 1.125 * s,
+        ((imgH || 32) / 32.0) * 1.125 * s,
+        1
+      );
+    };
+
+    /* The bestiary's colour-balance edits live on the monsters.json record. Baking
+       them here is what makes the editor's tint show up in the actual dungeon;
+       without a balance we keep the cheaper straight-to-GPU texture load. */
+    let tex;
+    if (isIdentityColorBalance(cb)) {
+      tex = new THREE.TextureLoader().load(spritePath, (t) => {
+        if (t && t.image) {
+          fitToImage(t.image, t.image.naturalWidth || t.image.width, t.image.naturalHeight || t.image.height);
+        }
+      });
+    } else {
+      tex = new THREE.Texture();
+      loadBalancedCanvas(spritePath, cb, (canvas) => {
+        tex.image = canvas;
+        tex.needsUpdate = true;
+        fitToImage(canvas, canvas.width, canvas.height);
+      });
+    }
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+
+    /* Facing convention: source art is assumed to face LEFT, and setDirection mirrors
+       the texture when the monster walks right. Art drawn facing right is therefore
+       backwards for its whole life. `flipX` on the monster record inverts the
+       baseline instead of mirroring the file on disk, so it stays a reversible data
+       edit the bestiary can toggle. */
+    const baseFlip = !!mon.flipX;
+    const setMirror = (mirror) => {
+      tex.repeat.x = mirror ? -1 : 1;
+      tex.offset.x = mirror ? 1 : 0;
+    };
+    setMirror(baseFlip);
+
+    const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+      alphaTest: 0.05,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1
+    }));
+    mesh = new THREE.Sprite(mat);
+    mesh.renderOrder = 10;
+    mesh.center.set(0.5, 0);
+    mesh.scale.set(1.125 * s, 1.125 * s, 1);
+    mesh.position.y = (mon.yOffset || 0) * 0.02;
+
+    anim = {
+      mesh,
+      time: 0,
+      play: () => {},
+      update: (dt) => {
+        anim.time += dt;
+      },
+      setDirection: (dx, dz) => {
+        if (dx > 0.1) setMirror(!baseFlip);
+        else if (dx < -0.1) setMirror(baseFlip);
+      }
+    };
+  }
+
   grp.add(mesh);
 
   const bar = makeCircularBar('#e0483a');
@@ -335,25 +671,7 @@ export function makeMonsterMesh(mon){
 
   const turnHighlight = makeTurnHighlight(false);
   grp.add(turnHighlight.group);
-  
-  const anim = {
-    mesh,
-    time: 0,
-    play: () => {},
-    update: (dt) => {
-      anim.time += dt;
-    },
-    setDirection: (dx, dz) => {
-      if (dx > 0.1) {
-        tex.repeat.x = -1;
-        tex.offset.x = 1;
-      } else if (dx < -0.1) {
-        tex.repeat.x = 1;
-        tex.offset.x = 0;
-      }
-    }
-  };
-  
+
   return { grp, bar, anim, statusTray };
 }
 
@@ -361,21 +679,26 @@ export function makeMonsterMesh(mon){
 const puffPool = [];
 const recentFloatPositions = [];
 
-function pushActivePuffsUp(pos, minSepY = 0.45) {
+function pushActivePuffsUp(pos, minSepY = 0.58) {
   if (!pos) return;
   const targetX = pos.x;
   const targetZ = pos.z;
   const targetY = pos.y;
 
-  for (const p of puffPool) {
-    if (!p || !p.spr || !p.spr.position) continue;
+  // Find all nearby active puffs and sort them by ascending Y position
+  const nearby = puffPool.filter(p => {
+    if (!p || !p.spr || !p.spr.position) return false;
     const dx = p.spr.position.x - targetX;
     const dz = p.spr.position.z - targetZ;
-    if (Math.hypot(dx, dz) < 1.5) {
-      if (p.spr.position.y >= targetY - 0.25) {
-        p.spr.position.y += minSepY;
-      }
+    return Math.hypot(dx, dz) < 1.8 && p.spr.position.y >= targetY - 0.25;
+  }).sort((a, b) => a.spr.position.y - b.spr.position.y);
+
+  let currentMinY = targetY + minSepY;
+  for (const p of nearby) {
+    if (p.spr.position.y < currentMinY) {
+      p.spr.position.y = currentMinY;
     }
+    currentMinY = p.spr.position.y + minSepY;
   }
 }
 
@@ -385,34 +708,31 @@ export function makeFloatText(scene, text, pos, color, isCrit = false) {
 
   /* 1. Dynamic Vertical Stacking Offset */
   const spawnPosY = pos.y + 0.2;
-  pushActivePuffsUp(new THREE.Vector3(pos.x, spawnPosY, pos.z), 0.42);
+  pushActivePuffsUp(new THREE.Vector3(pos.x, spawnPosY, pos.z), 0.48);
 
   const now = performance.now();
   for (let i = recentFloatPositions.length - 1; i >= 0; i--) {
     if (now - recentFloatPositions[i].time > 600) recentFloatPositions.splice(i, 1);
   }
 
-  let stackOffset = 0;
   let horizJitter = (Math.random() - 0.5) * 0.15;
-  for (const item of recentFloatPositions) {
-    const dist = Math.hypot(item.x - pos.x, item.z - pos.z);
-    if (dist < 0.6) {
-      stackOffset += 0.38;
-    }
-  }
   recentFloatPositions.push({ x: pos.x, z: pos.z, time: now });
 
   /* 2. Dynamic High-DPI Canvas Sizing (prevents word clipping) */
-  const fontSize = isCrit ? 36 : 30;
-  const font = `bold ${fontSize}px 'Outfit', 'Inter', 'Verdana', sans-serif`;
+  const isVuln = str.includes('VULNERABLE');
+  const isResist = str.includes('RESIST') || str.includes('❌');
+  const isImmune = str.includes('IMMUNE');
+
+  const fontSize = isCrit ? 36 : (isVuln || isImmune ? 32 : (isResist ? 32 : 30));
+  const font = `bold ${fontSize}px 'Outfit', 'Inter', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Verdana', sans-serif`;
 
   const measureCv = document.createElement('canvas');
   const measureCtx = measureCv.getContext('2d');
   measureCtx.font = font;
   const textWidth = measureCtx.measureText(str).width;
 
-  const padX = 40;
-  const padY = 20;
+  const padX = isVuln || isResist || isImmune ? 48 : 40;
+  const padY = isVuln || isResist || isImmune ? 24 : 20;
   const cvW = Math.max(160, Math.ceil(textWidth + padX * 2));
   const cvH = Math.ceil(fontSize + padY * 2);
 
@@ -427,17 +747,47 @@ export function makeFloatText(scene, text, pos, color, isCrit = false) {
   const centerX = cvW / 2;
   const centerY = cvH / 2;
 
+  // Background badge pill for special modifiers
+  if (isVuln) {
+    g.fillStyle = 'rgba(40, 25, 5, 0.8)';
+    g.strokeStyle = 'rgba(255, 215, 0, 0.85)';
+    g.lineWidth = 2.5;
+    const bw = textWidth + 32, bh = fontSize + 14;
+    g.beginPath();
+    g.roundRect ? g.roundRect(centerX - bw / 2, centerY - bh / 2, bw, bh, 10) : g.rect(centerX - bw / 2, centerY - bh / 2, bw, bh);
+    g.fill();
+    g.stroke();
+  } else if (isResist) {
+    g.fillStyle = 'rgba(30, 20, 25, 0.85)';
+    g.strokeStyle = 'rgba(235, 75, 75, 0.85)';
+    g.lineWidth = 2;
+    const bw = textWidth + 28, bh = fontSize + 12;
+    g.beginPath();
+    g.roundRect ? g.roundRect(centerX - bw / 2, centerY - bh / 2, bw, bh, 8) : g.rect(centerX - bw / 2, centerY - bh / 2, bw, bh);
+    g.fill();
+    g.stroke();
+  } else if (isImmune) {
+    g.fillStyle = 'rgba(35, 35, 40, 0.85)';
+    g.strokeStyle = 'rgba(180, 180, 190, 0.8)';
+    g.lineWidth = 2;
+    const bw = textWidth + 28, bh = fontSize + 12;
+    g.beginPath();
+    g.roundRect ? g.roundRect(centerX - bw / 2, centerY - bh / 2, bw, bh, 8) : g.rect(centerX - bw / 2, centerY - bh / 2, bw, bh);
+    g.fill();
+    g.stroke();
+  }
+
   g.lineWidth = isCrit ? 7 : 5;
   g.strokeStyle = 'rgba(0, 0, 0, 0.95)';
   g.lineJoin = 'round';
   g.strokeText(str, centerX, centerY);
 
-  g.fillStyle = color || '#ffffff';
+  g.fillStyle = isVuln ? '#ffd700' : (isResist ? '#ff8a7a' : (color || '#ffffff'));
   g.fillText(str, centerX, centerY);
 
   if (isCrit) {
     g.lineWidth = 3;
-    g.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+    g.strokeStyle = 'rgba(255, 215, 0, 0.85)';
     g.strokeText(str, centerX, centerY);
   }
 
@@ -449,7 +799,7 @@ export function makeFloatText(scene, text, pos, color, isCrit = false) {
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
   const spr = new THREE.Sprite(mat);
 
-  const worldHeight = isCrit ? 0.65 : 0.55;
+  const worldHeight = isCrit ? 0.60 : (isVuln || isResist ? 0.52 : 0.48);
   const aspect = cvW / cvH;
   const worldWidth = worldHeight * aspect;
   spr.scale.set(worldWidth, worldHeight, 1);
@@ -464,7 +814,7 @@ export function makeFloatText(scene, text, pos, color, isCrit = false) {
     spawnImpactBurst(scene, pos, pType, color, 7);
   }
 
-  const finalPos = new THREE.Vector3(pos.x + horizJitter, pos.y + stackOffset, pos.z);
+  const finalPos = new THREE.Vector3(pos.x + horizJitter, spawnPosY, pos.z);
   spr.position.copy(finalPos);
   spr.renderOrder = isCrit ? 75 : 65;
   scene.add(spr);
@@ -481,25 +831,29 @@ export function makeFloatText(scene, text, pos, color, isCrit = false) {
   });
 }
 
+let _measureCv = null;
+let _measureCtx = null;
+function getMeasureCtx(font) {
+  if (typeof document === 'undefined') return null;
+  if (!_measureCv) {
+    _measureCv = document.createElement('canvas');
+    _measureCtx = _measureCv.getContext('2d');
+  }
+  if (_measureCtx) _measureCtx.font = font;
+  return _measureCtx;
+}
+
 /* -------- Floating Gold & Gear Loot Feedback Above Party Leader -------- */
 export function makeLootFloatText(scene, pos, type = 'gold', data = null) {
   if (!scene || !pos) return;
 
   /* Push existing active float indicators up to form a clean vertical stack */
-  const spawnPosY = pos.y + 0.3;
-  pushActivePuffsUp(new THREE.Vector3(pos.x, spawnPosY, pos.z), 0.48);
+  const spawnPosY = pos.y + 0.35;
+  pushActivePuffsUp(new THREE.Vector3(pos.x, spawnPosY, pos.z), 0.58);
 
   const now = performance.now();
   for (let i = recentFloatPositions.length - 1; i >= 0; i--) {
     if (now - recentFloatPositions[i].time > 800) recentFloatPositions.splice(i, 1);
-  }
-
-  let stackOffset = 0.2;
-  for (const item of recentFloatPositions) {
-    const dist = Math.hypot(item.x - pos.x, item.z - pos.z);
-    if (dist < 0.8) {
-      stackOffset += 0.42;
-    }
   }
   recentFloatPositions.push({ x: pos.x, z: pos.z, time: now });
 
@@ -537,11 +891,9 @@ export function makeLootFloatText(scene, pos, type = 'gold', data = null) {
   const fontSize = 32;
   const font = `bold ${fontSize}px 'Outfit', 'Inter', 'Verdana', sans-serif`;
 
-  const measureCv = document.createElement('canvas');
-  const measureCtx = measureCv.getContext('2d');
-  measureCtx.font = font;
-  const iconWidth = measureCtx.measureText(icon + ' ').width;
-  const textWidth = measureCtx.measureText(text).width;
+  const measureCtx = getMeasureCtx(font);
+  const iconWidth = measureCtx ? measureCtx.measureText(icon + ' ').width : 36;
+  const textWidth = measureCtx ? measureCtx.measureText(text).width : 120;
   const totalContentWidth = iconWidth + textWidth;
 
   const padX = 36;
@@ -565,7 +917,7 @@ export function makeLootFloatText(scene, pos, type = 'gold', data = null) {
   } else {
     g.rect(4, 4, cvW - 8, cvH - 8);
   }
-  g.fillStyle = 'rgba(12, 16, 24, 0.85)';
+  g.fillStyle = 'rgba(12, 16, 24, 0.88)';
   g.fill();
   g.lineWidth = 3;
   g.strokeStyle = glowColor;
@@ -599,16 +951,19 @@ export function makeLootFloatText(scene, pos, type = 'gold', data = null) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearFilter;
+  if (_activeRenderer && typeof _activeRenderer.initTexture === 'function') {
+    try { _activeRenderer.initTexture(tex); } catch(e) {}
+  }
 
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
   const spr = new THREE.Sprite(mat);
 
-  const worldHeight = 0.62;
+  const worldHeight = 0.46;
   const aspect = cvW / cvH;
   const worldWidth = worldHeight * aspect;
-  spr.scale.set(worldWidth * 1.2, worldHeight * 1.2, 1);
+  spr.scale.set(worldWidth, worldHeight, 1);
 
-  const finalPos = new THREE.Vector3(pos.x, pos.y + 0.3, pos.z);
+  const finalPos = new THREE.Vector3(pos.x, spawnPosY, pos.z);
   spr.position.copy(finalPos);
   spr.renderOrder = 80;
   scene.add(spr);
@@ -618,9 +973,9 @@ export function makeLootFloatText(scene, pos, type = 'gold', data = null) {
     mat,
     tex,
     t: 0,
-    dur: 1.4,
-    baseScaleW: worldWidth * 1.2,
-    baseScaleH: worldHeight * 1.2,
+    dur: 1.6,
+    baseScaleW: worldWidth,
+    baseScaleH: worldHeight,
     isCrit: true
   });
 }
@@ -634,8 +989,9 @@ export function updateFloatTexts(scene, dt) {
     const riseSpeed = (1 - progress * 0.5) * 1.1;
     p.spr.position.y += dt * riseSpeed;
 
-    if (p.t < 0.1) {
-      const pop = 1 + Math.sin((p.t / 0.1) * Math.PI) * 0.25;
+    if (p.t < 0.12) {
+      const popK = p.t / 0.12;
+      const pop = 1 + Math.sin(popK * Math.PI) * (p.isCrit ? 0.40 : 0.22);
       p.spr.scale.set(p.baseScaleW * pop, p.baseScaleH * pop, 1);
     } else {
       p.spr.scale.set(p.baseScaleW, p.baseScaleH, 1);
@@ -760,67 +1116,114 @@ export function updateFlash(ent, dt){
   }
 }
 
-/* -------- Elemental impact particle bursts -------- */
-const impactPool = [];
-export function spawnImpactBurst(scene, pos, type = 'fire', color = null, count = 16) {
-  if (!scene || !pos) return;
-  const num = count || 16;
-  const cv = document.createElement('canvas');
-  cv.width = 16; cv.height = 16;
-  const g = cv.getContext('2d');
-  const baseCol = color || (type==='fire' ? '#ff7a20' : type==='frost' ? '#7fd4ff' : type==='lightning' ? '#b080ff' : type==='poison' ? '#59d68f' : type==='holy' ? '#ffe066' : type==='dark' ? '#9f50e6' : '#ffffff');
-  g.fillStyle = baseCol;
-  g.beginPath(); g.arc(8, 8, 5, 0, Math.PI * 2); g.fill();
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
+/* -------- Elemental impact particle bursts & flash lights (Pooled to avoid shader recompile) -------- */
+const FLASH_LIGHT_POOL_SIZE = 6;
+let _flashLightPool = null;
+const activeFlashLights = [];
 
-  for (let i = 0; i < num; i++) {
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, blending: THREE.AdditiveBlending });
-    const spr = new THREE.Sprite(mat);
-    const sz = 0.15 + Math.random() * 0.25;
-    spr.scale.set(sz, sz, 1);
-    spr.position.set(pos.x + (Math.random() - 0.5) * 0.2, (pos.y || 0.4) + (Math.random() - 0.5) * 0.2, pos.z + (Math.random() - 0.5) * 0.2);
-    spr.renderOrder = 70;
-    scene.add(spr);
-
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 0.5 + Math.random() * 2.2;
-    const upBias = type === 'fire' ? 1.5 : (type === 'holy' ? 1.0 : 0.4);
-    impactPool.push({
-      spr, mat, tex,
-      vx: Math.cos(angle) * speed,
-      vy: (Math.random() - 0.2) * speed + upBias,
-      vz: Math.sin(angle) * speed,
-      t: 0,
-      dur: 0.3 + Math.random() * 0.4,
-      type
-    });
-  }
-}
-function updateImpactBursts(scene, dt) {
-  for (let i = impactPool.length - 1; i >= 0; i--) {
-    const p = impactPool[i];
-    p.t += dt;
-    const k = p.t / p.dur;
-    p.spr.position.x += p.vx * dt;
-    p.spr.position.y += p.vy * dt;
-    p.spr.position.z += p.vz * dt;
-    p.mat.opacity = Math.max(0, 1 - k);
-    if (p.t >= p.dur) {
-      scene.remove(p.spr);
-      p.tex.dispose();
-      p.mat.dispose();
-      impactPool.splice(i, 1);
+export function ensureFlashLightPool(scene) {
+  if (!scene) return;
+  if (!_flashLightPool) {
+    _flashLightPool = [];
+    for (let i = 0; i < FLASH_LIGHT_POOL_SIZE; i++) {
+      const light = new THREE.PointLight(0xffffff, 0, 10, 2);
+      light.position.set(0, -100, 0);
+      light.intensity = 0;
+      light._pooledActive = false;
+      scene.add(light);
+      _flashLightPool.push(light);
+    }
+  } else {
+    for (const light of _flashLightPool) {
+      if (light.parent !== scene) {
+        if (light.parent) light.parent.remove(light);
+        scene.add(light);
+      }
+      light.intensity = 0;
+      light.position.set(0, -100, 0);
+      light._pooledActive = false;
     }
   }
 }
 
-/** Tick pooled world FX (death fountains, boss telegraphs, impact bursts). Called from the
+/**
+ * Spawns a high-impact dynamic flash point light that decays smoothly.
+ * Illuminates surrounding dungeon geometry for Fireball explosions, Lightning strikes, and crits.
+ */
+export function spawnFlashLight(scene, pos, color = 0xffaa44, intensity = 4.5, range = 12.0, duration = 0.3) {
+  if (!scene || !pos) return null;
+  ensureFlashLightPool(scene);
+
+  let light = null;
+  if (_flashLightPool) {
+    light = _flashLightPool.find(l => !l._pooledActive);
+  }
+  if (!light) return null;
+
+  light._pooledActive = true;
+  light.color.set(color);
+  light.distance = range;
+  light.intensity = intensity;
+  light.position.set(pos.x, (pos.y || 0) + 1.2, pos.z);
+
+  const item = {
+    light,
+    baseIntensity: intensity,
+    t: 0,
+    dur: duration
+  };
+  activeFlashLights.push(item);
+  return item;
+}
+
+export function updateFlashLights(scene, dt) {
+  for (let i = activeFlashLights.length - 1; i >= 0; i--) {
+    const fl = activeFlashLights[i];
+    fl.t += dt;
+    const progress = fl.t / fl.dur;
+    if (progress >= 1.0) {
+      fl.light.intensity = 0;
+      fl.light.position.set(0, -100, 0);
+      fl.light._pooledActive = false;
+      activeFlashLights.splice(i, 1);
+    } else {
+      const decay = Math.exp(-progress * 4.5);
+      fl.light.intensity = fl.baseIntensity * decay;
+    }
+  }
+}
+
+export function spawnImpactBurst(scene, pos, type = 'fire', color = null, count = 16) {
+  if (!scene || !pos) return;
+
+  // Trigger high-fidelity NixieFX micro-particle burst
+  if (type === 'fire') {
+    playNixieEffect('fire_burst', pos, { scale: 1.0, duration: 0.6 });
+    spawnFlashLight(scene, pos, 0xff7722, 4.2, 11.0, 0.28);
+  } else if (type === 'frost') {
+    playNixieEffect('frost_nova', pos, { scale: 1.0, duration: 0.6 });
+    spawnFlashLight(scene, pos, 0x88ddff, 3.8, 9.5, 0.28);
+  } else if (type === 'lightning') {
+    playNixieEffect('lightning_burst', pos, { scale: 1.0, duration: 0.45 });
+    spawnFlashLight(scene, pos, 0x99bbff, 5.0, 13.0, 0.22);
+  } else if (type === 'poison' || type === 'acid') {
+    playNixieEffect('poison_burst', pos, { scale: 1.0, duration: 0.6 });
+    spawnFlashLight(scene, pos, 0x44dd55, 3.5, 8.5, 0.25);
+  } else if (type === 'holy' || type === 'radiant') {
+    playNixieEffect('holy_burst', pos, { scale: 1.0, duration: 0.65 });
+    spawnFlashLight(scene, pos, 0xfff088, 4.8, 12.0, 0.32);
+  } else if (type === 'dark' || type === 'necrotic') {
+    playNixieEffect('dark_burst', pos, { scale: 1.0, duration: 0.6 });
+    spawnFlashLight(scene, pos, 0x9955dd, 3.8, 9.5, 0.28);
+  } else {
+    playNixieEffect('hit_sparks', pos, { scale: 1.0, duration: 0.45 });
+  }
+}
+/** Tick pooled world FX (death fountains, boss telegraphs). Called from the
  *  game update loop with the live scene. */
 export function updateWorldFx(scene, dt){
   updateDeathFountains(scene, dt);
   updateTelegraphs(scene, dt);
-  updateImpactBursts(scene, dt);
 }
 
 /* ================= attack effects: projectiles + slashes ================= */
@@ -834,45 +1237,132 @@ const slashes = [];
 const spriteEffects = [];
 const activeAoEVisuals = [];
 
-/** Spawns a flat, persistent visual ring + inner circle indicator on the ground. */
-export function spawnAoEVisual(scene, pos, color, size, duration = null, options = null) {
-  const mat = new THREE.MeshBasicMaterial({
+let _softLineTex = null;
+function getSoftLineTexture() {
+  if (!_softLineTex) {
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 64;
+    const ctx = cv.getContext('2d');
+    if (ctx && typeof ctx.createLinearGradient === 'function') {
+      try {
+        const gradV = ctx.createLinearGradient(0, 0, 0, 64);
+        gradV.addColorStop(0.00, 'rgba(255, 255, 255, 0.00)');
+        gradV.addColorStop(0.20, 'rgba(255, 255, 255, 0.40)');
+        gradV.addColorStop(0.50, 'rgba(255, 255, 255, 1.00)');
+        gradV.addColorStop(0.80, 'rgba(255, 255, 255, 0.40)');
+        gradV.addColorStop(1.00, 'rgba(255, 255, 255, 0.00)');
+
+        ctx.fillStyle = gradV;
+        ctx.fillRect(0, 0, 256, 64);
+
+        ctx.globalCompositeOperation = 'destination-in';
+        const gradH = ctx.createLinearGradient(0, 0, 256, 0);
+        gradH.addColorStop(0.00, 'rgba(0, 0, 0, 0.00)');
+        gradH.addColorStop(0.08, 'rgba(0, 0, 0, 0.85)');
+        gradH.addColorStop(0.50, 'rgba(0, 0, 0, 1.00)');
+        gradH.addColorStop(0.92, 'rgba(0, 0, 0, 0.85)');
+        gradH.addColorStop(1.00, 'rgba(0, 0, 0, 0.00)');
+        ctx.fillStyle = gradH;
+        ctx.fillRect(0, 0, 256, 64);
+        ctx.globalCompositeOperation = 'source-over';
+      } catch (e) {}
+    }
+    _softLineTex = new THREE.CanvasTexture(cv);
+    _softLineTex.wrapS = THREE.ClampToEdgeWrapping;
+    _softLineTex.wrapT = THREE.ClampToEdgeWrapping;
+  }
+  return _softLineTex;
+}
+
+/**
+ * Spawns a persistent ground visual indicator for continuous concentration AoE zones.
+ */
+export function spawnAoEVisual(scene, pos, size = 3.0, color = 0x3fd0bb, duration = null, options = {}) {
+  if (!scene || !pos) return null;
+
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
     color,
     transparent: true,
     opacity: 0.25,
     depthWrite: false,
     side: THREE.DoubleSide
-  });
+  }));
   mat.toneMapped = false;
 
   const group = new THREE.Group();
   group.position.set(pos.x, 0.33, pos.z);
 
-  // Faint inner ground circle
-  const innerMat = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.08,
-    depthWrite: false,
-    side: THREE.DoubleSide
-  });
-  innerMat.toneMapped = false;
-  const innerGeom = new THREE.CircleGeometry(size, 32).rotateX(-Math.PI/2);
-  const innerMesh = new THREE.Mesh(innerGeom, innerMat);
-  group.add(innerMesh);
+  let innerMat = null, borderMat = null;
+  let innerBaseOp = 0.08, borderBaseOp = 0.6;
+  const isLine = options && options.shape === 'line';
+  if (isLine) {
+    const lineLen = options.length || (size * 2) || 12.0;
+    const lineWidth = options.width || 1.8;
+    const lineTex = getSoftLineTexture();
 
-  // Outer border ring
-  const borderMat = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity: 0.6,
-    depthWrite: false,
-    side: THREE.DoubleSide
-  });
-  borderMat.toneMapped = false;
-  const borderGeom = new THREE.RingGeometry(size - 0.05, size + 0.05, 32).rotateX(-Math.PI/2);
-  const borderMesh = new THREE.Mesh(borderGeom, borderMat);
-  group.add(borderMesh);
+    innerBaseOp = options.indicatorOpacity != null ? options.indicatorOpacity : 0.30;
+    innerMat = new THREE.MeshBasicMaterial({
+      map: lineTex,
+      color,
+      transparent: true,
+      opacity: innerBaseOp,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    });
+    innerMat.toneMapped = false;
+    const innerGeom = new THREE.PlaneGeometry(lineLen, lineWidth * 1.6).rotateX(-Math.PI / 2);
+    const innerMesh = new THREE.Mesh(innerGeom, innerMat);
+    group.add(innerMesh);
+
+    borderBaseOp = 0.20;
+    borderMat = new THREE.MeshBasicMaterial({
+      map: lineTex,
+      color: 0xffffff,
+      transparent: true,
+      opacity: borderBaseOp,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    });
+    borderMat.toneMapped = false;
+    const borderGeom = new THREE.PlaneGeometry(lineLen * 0.95, lineWidth * 0.5).rotateX(-Math.PI / 2);
+    const borderMesh = new THREE.Mesh(borderGeom, borderMat);
+    borderMesh.position.y = 0.005;
+    group.add(borderMesh);
+
+    if (options.angle != null) {
+      group.rotation.y = -options.angle;
+    }
+  } else {
+    // Faint inner ground circle
+    innerBaseOp = 0.08;
+    innerMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: innerBaseOp,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    innerMat.toneMapped = false;
+    const innerGeom = new THREE.CircleGeometry(size, 32).rotateX(-Math.PI/2);
+    const innerMesh = new THREE.Mesh(innerGeom, innerMat);
+    group.add(innerMesh);
+
+    // Outer border ring
+    borderBaseOp = 0.6;
+    borderMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: borderBaseOp,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    borderMat.toneMapped = false;
+    const borderGeom = new THREE.RingGeometry(size - 0.05, size + 0.05, 32).rotateX(-Math.PI/2);
+    const borderMesh = new THREE.Mesh(borderGeom, borderMat);
+    group.add(borderMesh);
+  }
 
   // Optional 3D vertical cylinder beam (e.g. Moonbeam)
   let cylMat = null, coreMat = null, glowTex = null, coreTex = null;
@@ -920,6 +1410,118 @@ export function spawnAoEVisual(scene, pos, color, size, duration = null, options
     group.add(coreMesh);
   }
 
+  // Persistent looping spritesheet for concentration zones — keeps playing its
+  // frame loop while the spell persists (flames for Wall of Fire, gas for
+  // Cloudkill, sparkles for Faerie Fire, etc.).
+  let sheetDef = null, sheetTex = null, sheetMat = null, sheetMesh = null, sheetBaseScale = null;
+  const sheetInstances = [];
+  if (options && options.loopSheet) {
+    sheetDef = GIGAPACK_REGISTRY[options.loopSheet.sheetKey] || null;
+    if (sheetDef) {
+      let base = _sheetTexCache[sheetDef.url];
+      if (!base) {
+        base = new THREE.TextureLoader().load(sheetDef.url);
+        base.colorSpace = THREE.SRGBColorSpace;
+        base.magFilter = THREE.NearestFilter;
+        base.minFilter = THREE.NearestFilter;
+        _sheetTexCache[sheetDef.url] = base;
+      }
+      
+      const repeatCount = options.loopSheet.repeatCount || 1;
+      const baseScale = options.loopSheet.scale || size * 1.15;
+      const baseOp = options.loopSheet.opacity != null ? options.loopSheet.opacity : 0.35;
+      const isGrounded = options.loopSheet.grounded;
+      const centerY = options.loopSheet.centerY != null ? options.loopSheet.centerY : (isGrounded ? 0 : 0.5);
+      const yPos = options.loopSheet.y != null ? options.loopSheet.y : (isGrounded ? 0.05 : 0.9 + size * 0.5);
+
+      if (repeatCount > 1) {
+        for (let ri = 0; ri < repeatCount; ri++) {
+          const instTex = base.clone();
+          instTex.needsUpdate = true;
+          const _repI = sheetFrameRepeat(sheetDef);
+          instTex.repeat.set(_repI.x, _repI.y);
+          const instMat = configureSpriteMaterial(new THREE.SpriteMaterial({
+            map: instTex, transparent: true, depthWrite: false, opacity: 0,
+            blending: THREE.AdditiveBlending
+          }));
+          instMat.toneMapped = false;
+          const instMesh = new THREE.Sprite(instMat);
+          instMesh.center.set(0.5, centerY);
+
+          let offsetX = 0;
+          let offsetZ = 0;
+          if (options.loopSheet.layout === 'line') {
+            const span = options.loopSheet.length || (size * 2);
+            offsetX = ((ri / (repeatCount - 1)) - 0.5) * span;
+            offsetZ = (Math.sin(ri * 1.8) * 0.25);
+          } else if (options.loopSheet.offsets && options.loopSheet.offsets[ri]) {
+            offsetX = options.loopSheet.offsets[ri].x || 0;
+            offsetZ = options.loopSheet.offsets[ri].z || 0;
+          } else {
+            const angle = (ri / repeatCount) * Math.PI * 2;
+            const r = size * 0.5;
+            offsetX = Math.cos(angle) * r;
+            offsetZ = Math.sin(angle) * r;
+          }
+
+          instMesh.scale.set(baseScale, baseScale, 1);
+          instMesh.position.set(offsetX, yPos, offsetZ);
+          instMesh.renderOrder = 25;
+          group.add(instMesh);
+
+          // Stagger timing offset per instance for organic desynchronized animation
+          const timeOffset = (ri * (sheetDef.frames / (sheetDef.fps * repeatCount)) + (ri * 0.23)) % 10.0;
+          sheetInstances.push({
+            mesh: instMesh,
+            mat: instMat,
+            tex: instTex,
+            baseScale,
+            baseOp,
+            timeOffset
+          });
+        }
+      } else {
+        sheetTex = base.clone();
+        sheetTex.needsUpdate = true;
+        const _repS = sheetFrameRepeat(sheetDef);
+        sheetTex.repeat.set(_repS.x, _repS.y);
+        sheetMat = configureSpriteMaterial(new THREE.SpriteMaterial({
+          map: sheetTex, transparent: true, depthWrite: false, opacity: 0,
+          blending: THREE.AdditiveBlending
+        }));
+        sheetMat.toneMapped = false;
+        sheetMesh = new THREE.Sprite(sheetMat);
+        sheetMesh.center.set(0.5, centerY);
+        sheetBaseScale = baseScale;
+        sheetMesh.scale.set(sheetBaseScale, sheetBaseScale, 1);
+        sheetMesh.position.y = yPos;
+        sheetMesh.renderOrder = 25;
+        group.add(sheetMesh);
+      }
+    }
+  }
+
+  // Persistent procedural elements for concentration zones (sparkle cube / vines).
+  let sparkleFx = null, vineFx = null;
+  if (options && options.procedural === 'sparkleCube') {
+    sparkleFx = buildSparkleCubeZone(group, size * 0.55, color, options);
+  } else if (options && options.procedural === 'vines') {
+    vineFx = buildVineZone(group, size, color, options);
+  }
+
+  // Dynamic Spell Point Light for ambient dungeon illumination (tightly bounded to spell area)
+  const lights = [];
+  if (!options || options.pointLight !== false) {
+    const lightColor = options?.lightColor || color || 0xffaa44;
+    const baseIntensity = options?.lightIntensity != null ? options.lightIntensity : (options?.cylinderBeam ? 1.4 : 0.85);
+    const lightRange = options?.lightRange != null ? options.lightRange : Math.min(6.5, Math.max(3.5, size * 1.3));
+
+    const l = new THREE.PointLight(lightColor, baseIntensity, lightRange, 2);
+    l.position.set(0, 1.2, 0);
+    group.add(l);
+    lights.push(l);
+  }
+
   scene.add(group);
 
   const visual = {
@@ -927,13 +1529,28 @@ export function spawnAoEVisual(scene, pos, color, size, duration = null, options
     mat,
     innerMat,
     borderMat,
+    innerBaseOp,
+    borderBaseOp,
     cylMat,
     coreMat,
     glowTex,
     coreTex,
+    sheetDef,
+    sheetTex,
+    sheetMat,
+    sheetMesh,
+    sheetBaseScale,
+    sheetInstances,
+    lights,
+    baseLightIntensity: options?.lightIntensity != null ? options.lightIntensity : (isLine ? 0.7 : 0.85),
+    sheetBaseOp: options && options.loopSheet && options.loopSheet.opacity != null ? options.loopSheet.opacity : 0.35,
+    sheetT: 0,
+    sparkleFx,
+    vineFx,
     t: 0,
     dur: duration,
     size,
+    shape: options && options.shape ? options.shape : 'circle',
     pulseSpeed: 1.5 + Math.random(),
     rotateSpeed: 0.2 + Math.random() * 0.3
   };
@@ -955,6 +1572,27 @@ export function removeAoEVisual(scene, visual) {
     if (visual.coreMat) visual.coreMat.dispose();
     if (visual.glowTex) visual.glowTex.dispose();
     if (visual.coreTex) visual.coreTex.dispose();
+    if (visual.sheetMat) visual.sheetMat.dispose();
+    if (visual.sheetTex) visual.sheetTex.dispose();
+    if (visual.lights && visual.lights.length > 0) {
+      for (const l of visual.lights) l.dispose();
+    }
+    if (visual.sheetInstances && visual.sheetInstances.length > 0) {
+      for (const inst of visual.sheetInstances) {
+        if (inst.mat) inst.mat.dispose();
+        if (inst.tex) inst.tex.dispose();
+      }
+    }
+    if (visual.sparkleFx) {
+      if (visual.sparkleFx.wireMat) visual.sparkleFx.wireMat.dispose();
+      for (const s of visual.sparkleFx.sparks || []) s.mat.dispose();
+    }
+    if (visual.vineFx) {
+      for (const v of visual.vineFx.vines || []) {
+        v.mat.dispose();
+        v.tubeGeom.dispose();
+      }
+    }
     activeAoEVisuals.splice(idx, 1);
   }
 }
@@ -968,13 +1606,17 @@ function getRadialGlowTexture() {
     const cv = document.createElement('canvas');
     cv.width = 64; cv.height = 64;
     const ctx = cv.getContext('2d');
-    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-    grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.6)');
-    grad.addColorStop(0.7, 'rgba(255, 255, 255, 0.15)');
-    grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 64);
+    if (ctx && typeof ctx.createRadialGradient === 'function') {
+      try {
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.6)');
+        grad.addColorStop(0.7, 'rgba(255, 255, 255, 0.15)');
+        grad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 64, 64);
+      } catch(e) {}
+    }
     _radialGlowTex = new THREE.CanvasTexture(cv);
     _radialGlowTex.colorSpace = THREE.SRGBColorSpace;
   }
@@ -983,7 +1625,7 @@ function getRadialGlowTexture() {
 
 const CANTRIP_PROJ_SHEETS = {
   wizard: 'stylized_explosion_001_large_yellow',
-  sorcerer: 'epic_explosion_001_large_orange',
+  sorcerer: 'spell_death_001_large_red',
   cleric: 'round_light_burst_001_large_yellow',
   druid: 'round_sparkle_burst_002_large_green',
   warlock: 'round_sparkle_burst_003_large_red',
@@ -1030,32 +1672,29 @@ export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
   let mesh, mat, glowMat = null, glowMesh = null, tex = null;
 
   if (sheetDef) {
-    let base = _projTexCache[sheetDef.url];
-    if (!base) {
-      base = _projTexLoader.load(sheetDef.url);
-      base.colorSpace = THREE.SRGBColorSpace;
-      base.magFilter = THREE.NearestFilter;
-      base.minFilter = THREE.NearestFilter;
-      _projTexCache[sheetDef.url] = base;
+    const base = getOrLoadSheetTexture(sheetDef.url);
+    tex = base ? base.clone() : new THREE.Texture();
+    if (_empty1x1Canvas && (!tex.image || !tex.image.width)) {
+      tex.image = _empty1x1Canvas;
     }
-    tex = base.clone();
     tex.needsUpdate = true;
-    tex.repeat.set(1 / sheetDef.cols, 1 / sheetDef.rows);
+    const _repP = sheetFrameRepeat(sheetDef);
+    tex.repeat.set(_repP.x, _repP.y);
 
-    mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+    mat = configureSpriteMaterial(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
     mesh = new THREE.Sprite(mat);
     mesh.scale.set(scale, scale, 1);
     mesh.position.copy(from);
 
     // Radiant additive glowing halo for spell projectile
-    glowMat = new THREE.SpriteMaterial({
+    glowMat = configureSpriteMaterial(new THREE.SpriteMaterial({
       map: getRadialGlowTexture(),
       color: color || 0xffd34a,
       transparent: true,
       opacity: 0.55,
       depthWrite: false,
       blending: THREE.AdditiveBlending
-    });
+    }));
     glowMat.toneMapped = false;
     glowMesh = new THREE.Sprite(glowMat);
     glowMesh.scale.set(scale * 1.2, scale * 1.2, 1);
@@ -1067,7 +1706,7 @@ export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
     mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(from);
 
-    glowMat = new THREE.SpriteMaterial({ map: getRadialGlowTexture(), color: color || 0xb08cff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending });
+    glowMat = configureSpriteMaterial(new THREE.SpriteMaterial({ map: getRadialGlowTexture(), color: color || 0xb08cff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
     glowMat.toneMapped = false;
     glowMesh = new THREE.Sprite(glowMat);
     glowMesh.scale.set(scale * 1.2, scale * 1.2, 1);
@@ -1091,21 +1730,152 @@ export function spawnSlash(scene, pos, color, size=1){
   slashes.push({ m, mat, t:0, dur:0.28, size });
 }
 
+const _empty1x1Canvas = (() => {
+  if (typeof document === 'undefined') return null;
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = 1; cv.height = 1;
+    const ctx = cv.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, 1, 1);
+    }
+    return cv;
+  } catch(e) {
+    return null;
+  }
+})();
+
+let _activeRenderer = null;
 const _spriteTexCache = new Map();
 const _sharedTexLoader = new THREE.TextureLoader();
 
+/* Some DCSS effect sprites are full-bleed faint squares — every pixel carries a
+   low-but-nonzero alpha over a bright colour (goldaura_*, gold_sparkles_*) or a
+   soft glow that reads as a box (sanctuary). With normal blending those faint
+   backgrounds paint the whole billboard as a visible square around the effect.
+   Key them out at load so only the brighter art survives. */
+const EFFECT_KEY_SPRITES = new Set([
+  'dcss/effect/gold_sparkles_1.png',
+  'dcss/effect/gold_sparkles_2.png',
+  'dcss/effect/gold_sparkles_3.png',
+  'dcss/effect/goldaura_0.png',
+  'dcss/effect/goldaura_1.png',
+  'dcss/effect/goldaura_2.png',
+  'dcss/effect/sanctuary.png'
+]);
+const EFFECT_KEY_ALPHA = 64; // pixels below this alpha are treated as background
+
+function keyOutEffectBackground(img) {
+  const w = img.width, h = img.height;
+  if (!w || !h || w > 4096 || h > 4096) return img;
+  let cv;
+  try {
+    cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    if (!ctx || typeof ctx.getImageData !== 'function') return img;
+    ctx.drawImage(img, 0, 0);
+    const id = ctx.getImageData(0, 0, w, h);
+    const d = id.data;
+    for (let i = 0; i < w * h; i++) {
+      const o = i * 4;
+      if (d[o + 3] < EFFECT_KEY_ALPHA) { d[o] = 0; d[o + 1] = 0; d[o + 2] = 0; d[o + 3] = 0; }
+    }
+    ctx.putImageData(id, 0, 0);
+    return cv;
+  } catch (e) {
+    return img;
+  }
+}
+
+/* Sheet frames are UV-sampled as [offset, offset+repeat] in texture space.
+   Many gigapack sheets are padded up to power-of-two dimensions, so a frame's
+   true footprint is fw/fh of the full image, not a clean 1/cols by 1/rows tile.
+   These helpers size the sample from the declared frame size (fw/fh) against
+   the full image (w/h); for unpadded sheets fw/w === 1/cols, so nothing changes. */
+function sheetFrameRepeat(d) {
+  const x = d.fw && d.w ? d.fw / d.w : 1 / (d.cols || 1);
+  const y = d.fh && d.h ? d.fh / d.h : 1 / (d.rows || 1);
+  return { x, y };
+}
+function sheetFrameOffset(d, f) {
+  const col = f % (d.cols || 1);
+  const row = Math.floor(f / (d.cols || 1));
+  const rep = sheetFrameRepeat(d);
+  return { x: col * rep.x, y: (d.rows - 1 - row) * rep.y };
+}
+
 export function getOrLoadSpriteTexture(path) {
   if (!path) return null;
-  const p = path.startsWith('dcss/') || path.startsWith('./') || path.startsWith('art/')
+  const p = path.startsWith('dcss/') || path.startsWith('./') || path.startsWith('art/') || path.startsWith('fx/') || path.startsWith('sprites/') || path.startsWith('Sprites/')
     ? path
     : (path.includes('/') ? path : `dcss/effect/${path}`);
   let t = _spriteTexCache.get(p);
   if (!t) {
-    t = _sharedTexLoader.load(p);
+    t = _sharedTexLoader.load(
+      p,
+      (loadedTex) => {
+        if (EFFECT_KEY_SPRITES.has(p) && loadedTex.image && typeof keyOutEffectBackground === 'function') {
+          const out = keyOutEffectBackground(loadedTex.image);
+          if (out !== loadedTex.image) {
+            loadedTex.image = out;
+            loadedTex.needsUpdate = true;
+          }
+        }
+        loadedTex.needsUpdate = true;
+        if (_activeRenderer && typeof _activeRenderer.initTexture === 'function') {
+          try { _activeRenderer.initTexture(loadedTex); } catch(e) {}
+        }
+      },
+      undefined,
+      (err) => {
+        // Fallback to empty transparent texture without rendering solid white box
+        if (_empty1x1Canvas) {
+          t.image = _empty1x1Canvas;
+          t.needsUpdate = true;
+        }
+      }
+    );
+    if (_empty1x1Canvas && (!t.image || !t.image.width)) {
+      t.image = _empty1x1Canvas;
+      t.needsUpdate = true;
+    }
     t.colorSpace = THREE.SRGBColorSpace;
     t.magFilter = THREE.NearestFilter;
     t.minFilter = THREE.NearestFilter;
     _spriteTexCache.set(p, t);
+  }
+  return t;
+}
+
+export function getOrLoadSheetTexture(url) {
+  if (!url) return null;
+  let t = _sheetTexCache[url];
+  if (!t) {
+    t = _sharedTexLoader.load(
+      url,
+      (loadedTex) => {
+        loadedTex.needsUpdate = true;
+        if (_activeRenderer && typeof _activeRenderer.initTexture === 'function') {
+          try { _activeRenderer.initTexture(loadedTex); } catch(e) {}
+        }
+      },
+      undefined,
+      (err) => {
+        if (_empty1x1Canvas) {
+          t.image = _empty1x1Canvas;
+          t.needsUpdate = true;
+        }
+      }
+    );
+    if (_empty1x1Canvas && (!t.image || !t.image.width)) {
+      t.image = _empty1x1Canvas;
+      t.needsUpdate = true;
+    }
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    _sheetTexCache[url] = t;
   }
   return t;
 }
@@ -1125,7 +1895,35 @@ export function preloadVFX(paths = []) {
   }
 }
 
-export function preloadAllSpellAndCombatVFX() {
+let _vfxPreloaded = false;
+
+export function preloadAllSpellAndCombatVFX(renderer = null, scene = null, camera = null) {
+  if (renderer) _activeRenderer = renderer;
+  if (_vfxPreloaded) {
+    // If renderer was supplied after initial preload, warm up GPU buffers now
+    if (renderer && typeof renderer.initTexture === 'function') {
+      try {
+        const glow = getRadialGlowTexture();
+        if (glow) renderer.initTexture(glow);
+        const beam = getBeamTexture();
+        if (beam) renderer.initTexture(beam);
+        for (const [, tex] of _spriteTexCache) {
+          if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) renderer.initTexture(tex);
+        }
+        for (const url in _sheetTexCache) {
+          const tex = _sheetTexCache[url];
+          if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) renderer.initTexture(tex);
+        }
+        for (const url in _projTexCache) {
+          const tex = _projTexCache[url];
+          if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) renderer.initTexture(tex);
+        }
+      } catch(e) {}
+    }
+    return;
+  }
+  _vfxPreloaded = true;
+
   const paths = [
     // Slash & Impact VFX
     'dcss/effect/kny_slash_0.png', 'dcss/effect/kny_slash_1.png', 'dcss/effect/kny_slash_2.png', 'dcss/effect/kny_slash_3.png',
@@ -1133,43 +1931,362 @@ export function preloadAllSpellAndCombatVFX() {
     'dcss/effect/kny_dust_0.png', 'dcss/effect/kny_dust_1.png',
     'dcss/effect/kny_spark_0.png', 'dcss/effect/kny_spark_1.png', 'dcss/effect/kny_spark_2.png', 'dcss/effect/kny_spark_3.png',
     'dcss/effect/kny_star_0.png', 'dcss/effect/kny_star_1.png', 'dcss/effect/kny_star_2.png', 'dcss/effect/kny_star_3.png', 'dcss/effect/kny_star_4.png',
-    // Common Spells & Cantrips
+    // Common Spells, Cantrips & Abilities
     'dcss/effect/flame_0.png', 'dcss/effect/flame_1.png', 'dcss/effect/flame_2.png',
-    'dcss/effect/magic_bolt_1.png', 'dcss/effect/arrow_4.png',
-    'dcss/effect/searing_ray_0.png', 'dcss/effect/searing_ray_1.png', 'dcss/effect/searing_ray_2.png', 'dcss/effect/searing_ray_3.png', 'dcss/effect/searing_ray_5.png',
-    'dcss/effect/orb_glow_0.png', 'dcss/effect/orb_glow_1.png', 'dcss/effect/orb_glow_2.png',
+    'dcss/effect/magic_bolt_1.png', 'dcss/effect/magic_bolt_2.png', 'dcss/effect/magic_bolt_3.png', 'dcss/effect/magic_bolt_4.png', 'dcss/effect/magic_bolt_5.png', 'dcss/effect/magic_bolt_6.png',
+    'dcss/effect/arrow_4.png', 'dcss/effect/zap_0.png', 'dcss/effect/zap_1.png',
+    'dcss/effect/orb_glow_0.png', 'dcss/effect/orb_glow_1.png',
+    'dcss/effect/gold_sparkles_1.png', 'dcss/effect/gold_sparkles_2.png', 'dcss/effect/gold_sparkles_3.png',
+    'dcss/effect/goldaura_0.png', 'dcss/effect/goldaura_1.png', 'dcss/effect/goldaura_2.png',
+    'dcss/effect/heataura_1.png', 'dcss/effect/heataura_2.png',
+    'dcss/effect/searing_ray_0.png', 'dcss/effect/searing_ray_1.png', 'dcss/effect/searing_ray_2.png', 'dcss/effect/searing_ray_3.png', 'dcss/effect/searing_ray_4.png', 'dcss/effect/searing_ray_5.png',
     'dcss/effect/cloud_fire_0.png', 'dcss/effect/cloud_fire_1.png', 'dcss/effect/cloud_fire_2.png', 'dcss/effect/cloud_forest_fire.png',
-    'dcss/effect/cloud_cold_0.png', 'dcss/effect/cloud_cold_1.png', 'dcss/effect/cloud_cold_2.png', 'dcss/effect/frost_0.png', 'dcss/effect/frost_1.png',
-    'dcss/effect/cloud_acid_0.png', 'dcss/effect/cloud_acid_1.png', 'dcss/effect/cloud_poison_0.png', 'dcss/effect/cloud_poison_1.png', 'dcss/effect/acid_venom.png',
-    'dcss/effect/zap_0.png', 'dcss/effect/zap_1.png', 'dcss/effect/zap_2.png', 'dcss/effect/zap_3.png',
-    'dcss/effect/cloud_neg_0.png', 'dcss/effect/cloud_neg_1.png', 'dcss/effect/cloud_neg_2.png', 'dcss/effect/drain_red_0.png', 'dcss/effect/drain_red_1.png', 'dcss/effect/drain_red_2.png', 'dcss/effect/umbra_0.png', 'dcss/effect/umbra_1.png', 'dcss/effect/umbra_2.png', 'dcss/effect/umbra_3.png',
-    'dcss/effect/goldaura_0.png', 'dcss/effect/goldaura_1.png', 'dcss/effect/goldaura_2.png', 'dcss/effect/gold_sparkles_1.png', 'dcss/effect/gold_sparkles_2.png', 'dcss/effect/gold_sparkles_3.png',
-    'dcss/effect/cloud_gloom_new.png', 'dcss/effect/quad_glow.png', 'dcss/effect/disjunct_0.png', 'dcss/effect/disjunct_1.png', 'dcss/effect/cloud_chaos_1.png', 'dcss/effect/cloud_chaos_2.png', 'dcss/effect/cloud_chaos_4.png',
-    'dcss/effect/sanctuary.png', 'dcss/effect/heataura_1.png', 'dcss/effect/heataura_2.png', 'dcss/effect/xom_sparkles_blue.png', 'dcss/effect/cloud_magic_trail_0.png', 'dcss/effect/cloud_magic_trail_1.png', 'dcss/effect/cloud_magic_trail_2.png', 'dcss/effect/cloud_magic_trail_3.png',
-    'dcss/effect/irradiate_0.png', 'dcss/effect/irradiate_1.png', 'dcss/effect/irradiate_2.png', 'dcss/effect/irradiate_3.png', 'dcss/effect/sandblast_0.png'
+    'dcss/effect/cloud_poison_0.png', 'dcss/effect/cloud_poison_1.png', 'dcss/effect/cloud_poison_2.png',
+    'dcss/effect/cloud_magic_trail_0.png', 'dcss/effect/cloud_magic_trail_1.png', 'dcss/effect/cloud_magic_trail_2.png', 'dcss/effect/cloud_magic_trail_3.png',
+    'dcss/effect/cloud_chaos_1.png', 'dcss/effect/cloud_chaos_2.png', 'dcss/effect/cloud_chaos_3.png', 'dcss/effect/cloud_chaos_4.png', 'dcss/effect/cloud_chaos_5.png',
+    'dcss/effect/cloud_cold_0.png', 'dcss/effect/cloud_cold_1.png', 'dcss/effect/cloud_cold_2.png',
+    'dcss/effect/cloud_spectral_0.png', 'dcss/effect/cloud_spectral_1.png', 'dcss/effect/cloud_spectral_2.png',
+    'dcss/effect/cloud_neg_0.png', 'dcss/effect/cloud_neg_1.png', 'dcss/effect/cloud_neg_2.png',
+    'dcss/effect/cloud_blue_smoke.png', 'dcss/effect/cloud_black_smoke.png', 'dcss/effect/cloud_yellow_smoke.png', 'dcss/effect/cloud_gloom_new.png',
+    'dcss/effect/sanctuary.png', 'dcss/effect/silenced.png', 'dcss/effect/acid_venom.png', 'dcss/effect/frost_0.png', 'dcss/effect/frost_1.png',
+    'dcss/effect/sandblast_0.png', 'dcss/effect/sandblast_1.png', 'dcss/effect/sandblast_2.png',
+    'dcss/effect/drain_red_0.png', 'dcss/effect/drain_red_1.png', 'dcss/effect/drain_red_2.png',
+    'dcss/effect/umbra_0.png', 'dcss/effect/umbra_1.png', 'dcss/effect/umbra_2.png', 'dcss/effect/umbra_3.png',
+    'dcss/effect/irradiate_0.png', 'dcss/effect/irradiate_1.png', 'dcss/effect/irradiate_2.png', 'dcss/effect/irradiate_3.png',
+    'dcss/effect/quad_glow.png', 'dcss/effect/xom_sparkles_blue.png'
   ];
+
+  /* Per-class cantrip impact burst sheets */
+  for (const k of ['cantrip_fire_bolt','cantrip_chill_touch','cantrip_sacred_flame','cantrip_produce_flame','cantrip_eldritch_blast']) {
+    preloadVFX([`fx/spells/${k}.png`]);
+  }
   preloadVFX(paths);
+
+  // 2. Preload all Gigapack VFX Spritesheets
+  if (typeof GIGAPACK_REGISTRY === 'object') {
+    for (const key in GIGAPACK_REGISTRY) {
+      const def = GIGAPACK_REGISTRY[key];
+      if (def && def.url) {
+        getOrLoadSheetTexture(def.url);
+      }
+    }
+  }
+
+  // 3. Preload all Custom Sheets & VFX Animation references from LIB
+  if (LIB && typeof LIB.sheets === 'object') {
+    for (const key in LIB.sheets) {
+      const def = LIB.sheets[key];
+      if (def && def.url) {
+        getOrLoadSheetTexture(def.url);
+      }
+    }
+  }
+  if (LIB && typeof LIB.anims === 'object') {
+    for (const animKey in LIB.anims) {
+      const anim = LIB.anims[animKey];
+      for (const phase of ['travel', 'impact']) {
+        if (!anim[phase]) continue;
+        for (const slot of ['back', 'front']) {
+          const layer = anim[phase][slot];
+          if (!layer || !layer.enabled) continue;
+          if (layer.type === 'sheet' && layer.sheet) {
+            if (layer.sheet.startsWith('gigapack:')) {
+              const gDef = GIGAPACK_REGISTRY[layer.sheet.slice('gigapack:'.length)];
+              if (gDef && gDef.url) getOrLoadSheetTexture(gDef.url);
+            } else if (LIB.sheets && LIB.sheets[layer.sheet]) {
+              getOrLoadSheetTexture(LIB.sheets[layer.sheet].url);
+            }
+          } else if (layer.type === 'sprite') {
+            if (layer.path) getOrLoadSpriteTexture(layer.path);
+            if (Array.isArray(layer.frames)) {
+              for (const f of layer.frames) getOrLoadSpriteTexture(f);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Preload procedural textures
+  getRadialGlowTexture();
+  getBeamTexture();
+
+  // 5. GPU Texture Warmup: pre-compile texture buffers on renderer to prevent first-cast lockups
+  if (renderer && typeof renderer.initTexture === 'function') {
+    try {
+      const glow = getRadialGlowTexture();
+      if (glow) renderer.initTexture(glow);
+      const beam = getBeamTexture();
+      if (beam) renderer.initTexture(beam);
+
+      for (const [, tex] of _spriteTexCache) {
+        if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) {
+          renderer.initTexture(tex);
+        }
+      }
+      for (const url in _sheetTexCache) {
+        const tex = _sheetTexCache[url];
+        if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) {
+          renderer.initTexture(tex);
+        }
+      }
+      for (const url in _projTexCache) {
+        const tex = _projTexCache[url];
+        if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) {
+          renderer.initTexture(tex);
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 6. GPU WebGL Shader Program Pre-Compilation
+  if (renderer && typeof renderer.compile === 'function') {
+    try {
+      const warmupScene = new THREE.Scene();
+      const warmupCam = camera || new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+
+      // Normal Sprite with Depth-Tilt Shader
+      const sprMatNorm = configureSpriteMaterial(new THREE.SpriteMaterial({
+        map: getRadialGlowTexture(),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.NormalBlending
+      }), { forwardBias: 0.3 });
+      warmupScene.add(new THREE.Sprite(sprMatNorm));
+
+      // Additive Sprite with Depth-Tilt Shader
+      const sprMatAdd = configureSpriteMaterial(new THREE.SpriteMaterial({
+        map: getRadialGlowTexture(),
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      }), { forwardBias: 0.3 });
+      warmupScene.add(new THREE.Sprite(sprMatAdd));
+
+      // Slash / Burst Rings (MeshBasicMaterial)
+      const ringMatNorm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide });
+      warmupScene.add(new THREE.Mesh(_ringGeo, ringMatNorm));
+
+      const ringMatAdd = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      warmupScene.add(new THREE.Mesh(_ringGeo, ringMatAdd));
+
+      // Line / Beam geometry
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true });
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(1,1,1)]);
+      warmupScene.add(new THREE.Line(lineGeo, lineMat));
+
+      // AoE cylinder geometry
+      const cylMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide });
+      const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 16);
+      warmupScene.add(new THREE.Mesh(cylGeo, cylMat));
+
+      renderer.compile(warmupScene, warmupCam);
+    } catch(e) {}
+  }
+
+  // 7. NixieFX Particle Shader & Emitter Warmup
+  try {
+    warmupNixieVfx(scene, camera);
+  } catch(e) {}
+
+  // 8. Audio SFX WebAudio Buffer Preload & Decode
+  try {
+    preloadCommonSFX();
+  } catch(e) {}
+}
+
+/**
+ * Preload all assets required for the active dungeon floor:
+ * - Spell & combat VFX sheets and procedural textures
+ * - Active floor monster sprites & animation atlas sheets
+ * - Party hero sprites, familiars, companions, equipment, and campsite tents
+ * - GPU VRAM texture binding and WebGL scene compilation + frame pre-render
+ */
+export async function preloadFloorAssets(game, renderer = null, scene = null, camera = null, onProgress = null) {
+  const report = (pct, msg) => {
+    if (typeof onProgress === 'function') onProgress(pct, msg);
+    try { updateLoadingProgress(pct, msg); } catch(e) {}
+  };
+
+  report(15, 'Carving dungeon chambers & corridors...');
+  if (renderer) _activeRenderer = renderer;
+  if (scene) ensureFlashLightPool(scene);
+
+  // 1. Preload base spell and combat VFX suite
+  report(35, 'Loading spell VFX & cantrip sheets...');
+  preloadAllSpellAndCombatVFX(renderer, scene, camera);
+
+  // 2. Preload active monster textures for this floor
+  report(55, 'Placing encounters & summoning monsters...');
+  const monsterUrls = new Set();
+  if (game && Array.isArray(game.monsters)) {
+    for (const m of game.monsters) {
+      if (!m || !m.data) continue;
+      if (m.data.sprite) monsterUrls.add(m.data.sprite);
+      if (m.data.animations) {
+        for (const k in m.data.animations) {
+          const a = m.data.animations[k];
+          if (a && a.url) monsterUrls.add(a.url);
+        }
+      }
+    }
+  }
+
+  // 3. Preload all party hero sprites, familiars, companions, and tent assets
+  report(72, 'Composing party hero sprites...');
+  const heroUrls = new Set([
+    'sprites/tent/tent_front.png',
+    'sprites/tent/tent_back.png',
+    'sprites/tent/tent_left.png',
+    'sprites/tent/tent_right.png',
+    'sprites/giant_owl.png',
+    'dcss/monster/demons/imp.png',
+    'dcss/monster/animals/viper.png',
+    'sprites/wolf.png'
+  ]);
+
+  const heroPromises = [];
+  if (game && Array.isArray(game.heroes)) {
+    for (const h of game.heroes) {
+      if (!h) continue;
+      if (h.data && h.data.visual && h.data.visual.spriteSheet) heroUrls.add(h.data.visual.spriteSheet);
+      if (h.ent && h.ent.anim) {
+        if (typeof h.ent.anim.whenReady === 'function') {
+          heroPromises.push(h.ent.anim.whenReady());
+        } else if (h.ent.anim._readyPromise) {
+          heroPromises.push(h.ent.anim._readyPromise);
+        }
+      }
+    }
+  }
+
+  for (const u of monsterUrls) {
+    getOrLoadSpriteTexture(u);
+  }
+  for (const u of heroUrls) {
+    getOrLoadSpriteTexture(u);
+  }
+
+  if (heroPromises.length > 0) {
+    await Promise.race([
+      Promise.all(heroPromises),
+      new Promise(r => setTimeout(r, 2000))
+    ]);
+  }
+
+  // 4. Wait for all pending image elements in caches to decode / complete
+  report(86, 'Decoding textures & binding GPU buffers...');
+  const decodePromises = [];
+  if (typeof Image !== 'undefined') {
+    const checkTex = (tex) => {
+      if (tex && tex.image && typeof tex.image === 'object' && !tex.image.complete) {
+        decodePromises.push(
+          new Promise(res => {
+            if (typeof tex.image.decode === 'function') {
+              tex.image.decode().then(res).catch(res);
+            } else {
+              tex.image.onload = res;
+              tex.image.onerror = res;
+            }
+          })
+        );
+      }
+    };
+
+    for (const [, tex] of _spriteTexCache) checkTex(tex);
+    for (const url in _sheetTexCache) checkTex(_sheetTexCache[url]);
+  }
+
+  if (decodePromises.length > 0) {
+    await Promise.race([
+      Promise.all(decodePromises),
+      new Promise(r => setTimeout(r, 1200))
+    ]);
+  }
+
+  // 5. GPU buffer init on all loaded textures
+  if (renderer && typeof renderer.initTexture === 'function') {
+    try {
+      const glow = getRadialGlowTexture();
+      if (glow) renderer.initTexture(glow);
+      const beam = getBeamTexture();
+      if (beam) renderer.initTexture(beam);
+      for (const [, tex] of _spriteTexCache) {
+        if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) {
+          renderer.initTexture(tex);
+        }
+      }
+      for (const url in _sheetTexCache) {
+        const tex = _sheetTexCache[url];
+        if (tex && tex.image && (tex.image.width > 1 || tex.image.complete)) {
+          renderer.initTexture(tex);
+        }
+      }
+      if (game && Array.isArray(game.heroes)) {
+        for (const h of game.heroes) {
+          if (h && h.ent && h.ent.anim && h.ent.anim.textures) {
+            for (const k in h.ent.anim.textures) {
+              const t = h.ent.anim.textures[k];
+              if (t) renderer.initTexture(t);
+            }
+          }
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 6. Pre-compile active live scene with renderer
+  report(94, 'Compiling WebGL shaders & lighting...');
+  if (renderer && scene && camera && typeof renderer.compile === 'function') {
+    try {
+      renderer.compile(scene, camera);
+    } catch(e) {}
+  }
+
+  // 7. Warmup pre-render (render 1-2 frames while loading screen is covering)
+  report(99, 'Warming GPU render pipeline...');
+  if (renderer && scene && camera && typeof renderer.render === 'function') {
+    try {
+      renderer.render(scene, camera);
+    } catch(e) {}
+  }
+
+  report(100, 'Ready!');
 }
 
 /* spriteDef: either a texture path string, or { sprite, frames, frameInterval }
    where `frames` is an array of texture paths cycled every `frameInterval`
    seconds for the effect's lifetime (ABILITY_FX animated entries). */
-export function spawnSpriteEffect(scene, spriteDef, pos, scale=1.5, dur=0.4){
+export function spawnSpriteEffect(scene, spriteDef, pos, scale=1.5, dur=0.4, opts = {}){
   const loadTex = p => getOrLoadSpriteTexture(p);
   const isDef = typeof spriteDef === 'object' && spriteDef !== null;
-  const framePaths = isDef && Array.isArray(spriteDef.frames) && spriteDef.frames.length > 1
+  /* `frames` may hold one or many texture paths. A single-element array used to
+     fall through to `spriteDef.sprite` (which callers like spawnRichAbilityVFX
+     don't set) leaving the material with no map — an untextured SpriteMaterial
+     renders as a solid white square. Always honour frames, even length 1. */
+  const framePaths = isDef && Array.isArray(spriteDef.frames) && spriteDef.frames.length > 0
     ? spriteDef.frames : null;
   const frames = framePaths ? framePaths.map(loadTex) : null;
-  const tex = frames ? frames[0] : loadTex(isDef ? spriteDef.sprite : spriteDef);
+  const singlePath = isDef ? (spriteDef.sprite || (Array.isArray(spriteDef.frames) ? spriteDef.frames[0] : null)) : spriteDef;
+  const tex = frames ? frames[0] : loadTex(singlePath);
 
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false, opacity: 0,
+    blending: opts.blend || THREE.NormalBlending
+  }), { forwardBias: 0.3 });
+  mat.toneMapped = false;
   const mesh = new THREE.Sprite(mat);
   mesh.scale.set(scale, scale, 1);
   mesh.position.copy(pos);
+  mesh.renderOrder = opts.renderOrder != null ? opts.renderOrder : 25;
   scene.add(mesh);
 
-  spriteEffects.push({ mesh, mat, tex, frames,
-    frameInterval: frames ? (spriteDef.frameInterval || 0.07) : 0, t: 0, dur });
+  const entry = { mesh, mat, tex, frames,
+    frameInterval: frames ? (spriteDef.frameInterval || 0.07) : 0, t: 0,
+    dur: (dur && dur > 0) ? dur : 0.4,
+    baseOpacity: opts.opacity != null ? opts.opacity : 1 };
+  spriteEffects.push(entry);
+  return entry;
 }
 
 /** Animated Pixel Melee Slash Arc & Spark Impact VFX */
@@ -1228,24 +2345,18 @@ export function spawnMeleeHitVFX(scene, targetPos, attackerPos, isCrit = false, 
 
   /* 3. Impact Sparks & Blood Splatter Burst */
   const sparkPos = new THREE.Vector3(tX + (Math.random() - 0.5) * 0.25, 0.6, tZ + (Math.random() - 0.5) * 0.25);
-  if (isCrit && GIGAPACK_REGISTRY['burst_splatter_001_large_red']) {
-    spawnSheetEffect(scene, GIGAPACK_REGISTRY['burst_splatter_001_large_red'], sparkPos, scale * 1.6, 0.3);
+  if (isCrit) {
+    playNixieEffect('crit_sparks', hitPos, { scale: 1.2, duration: 0.55 });
+    if (GIGAPACK_REGISTRY['burst_splatter_001_large_red']) {
+      spawnSheetEffect(scene, GIGAPACK_REGISTRY['burst_splatter_001_large_red'], sparkPos, scale * 1.2, 0.25);
+    }
+  } else if (dmgType === 'bludgeoning' || dmgType === 'bludgeoning_magical') {
+    playNixieEffect('blunt_impact', hitPos, { scale: 1.1, duration: 0.5 });
+  } else if (dmgType === 'piercing' || dmgType === 'piercing_magical') {
+    playNixieEffect('pierce_sparks', hitPos, { scale: 1.0, duration: 0.4 });
+  } else {
+    playNixieEffect('hit_sparks', hitPos, { scale: 1.0, duration: 0.45 });
   }
-  spawnSpriteEffect(scene, {
-    frames: isCrit ? [
-      'dcss/effect/kny_star_0.png',
-      'dcss/effect/kny_star_1.png',
-      'dcss/effect/kny_star_2.png',
-      'dcss/effect/kny_star_3.png',
-      'dcss/effect/kny_star_4.png'
-    ] : [
-      'dcss/effect/kny_spark_0.png',
-      'dcss/effect/kny_spark_1.png',
-      'dcss/effect/kny_spark_2.png',
-      'dcss/effect/kny_spark_3.png'
-    ],
-    frameInterval: 0.04
-  }, sparkPos, isCrit ? scale * 2.0 : scale * 1.25, isCrit ? 0.26 : 0.2);
 
   /* 4. Ground ring shockwave */
   spawnSlash(scene, { x: tX, z: tZ }, isCrit ? 0xffd34a : 0xff7a5a, isCrit ? scale * 1.6 : scale * 1.0);
@@ -1272,6 +2383,7 @@ export function spawnRichAbilityVFX(scene, casterPos, targetPos, fx, label, opts
     else if (dmgType === 'acid' || dmgType === 'poison' || dmgType === 'poisoned') sheetKey = 'spell_poison_001_large_green';
     else if (dmgType === 'lightning') sheetKey = 'lightning_burst_001_large_violet';
     else if (dmgType === 'necrotic' || dmgType === 'drained') sheetKey = 'spell_death_001_large_red';
+    else if (dmgType === 'wounded' || dmgType === 'bleed') sheetKey = 'round_sparkle_burst_003_large_red';
     else if (dmgType === 'radiant' || dmgType === 'heal') sheetKey = 'spell_heal_001_large_red';
     else if (dmgType === 'psychic' || dmgType === 'frightened' || dmgType === 'charmed' || dmgType === 'blinded') sheetKey = 'stylized_skull_smoke_burst_001_large_white';
     else sheetKey = 'round_sparkle_burst_003_large_red';
@@ -1293,6 +2405,8 @@ export function spawnRichAbilityVFX(scene, casterPos, targetPos, fx, label, opts
     frames = ['dcss/effect/zap_0.png', 'dcss/effect/zap_1.png', 'dcss/effect/zap_2.png', 'dcss/effect/zap_3.png', 'dcss/effect/kny_spark_2.png'];
   } else if (dmgType === 'necrotic' || dmgType === 'drained') {
     frames = ['dcss/effect/cloud_neg_0.png', 'dcss/effect/cloud_neg_1.png', 'dcss/effect/cloud_neg_2.png', 'dcss/effect/drain_red_1.png', 'dcss/effect/umbra_1.png'];
+  } else if (dmgType === 'wounded' || dmgType === 'bleed') {
+    frames = ['dcss/effect/drain_red_0.png', 'dcss/effect/drain_red_1.png', 'dcss/effect/drain_red_2.png'];
   } else if (dmgType === 'radiant') {
     frames = ['dcss/effect/goldaura_0.png', 'dcss/effect/goldaura_1.png', 'dcss/effect/goldaura_2.png', 'dcss/effect/gold_sparkles_1.png', 'dcss/effect/gold_sparkles_2.png'];
   } else if (dmgType === 'psychic' || dmgType === 'frightened' || dmgType === 'charmed' || dmgType === 'blinded' || dmgType === 'incapacitated') {
@@ -1304,26 +2418,112 @@ export function spawnRichAbilityVFX(scene, casterPos, targetPos, fx, label, opts
 
   spawnSpriteEffect(scene, { frames, frameInterval: 0.05 }, hitPos, scale, 0.45);
 
-  /* 4. Impact Spark & Starburst Burst */
-  const sparkPos = new THREE.Vector3(tX + (Math.random() - 0.5) * 0.3, 0.65, tZ + (Math.random() - 0.5) * 0.3);
-  spawnSpriteEffect(scene, {
-    frames: [
-      'dcss/effect/kny_star_0.png',
-      'dcss/effect/kny_star_1.png',
-      'dcss/effect/kny_star_2.png',
-      'dcss/effect/kny_star_3.png',
-      'dcss/effect/kny_star_4.png'
-    ],
-    frameInterval: 0.04
-  }, sparkPos, scale * 1.1, 0.3);
+  /* 4. NixieFX Multi-Emitter Elemental Particle Blast */
+  let nixieType = null;
+  if (dmgType === 'fire') nixieType = 'fire_burst';
+  else if (dmgType === 'cold') nixieType = 'frost_nova';
+  else if (dmgType === 'lightning') nixieType = 'lightning_burst';
+  else if (dmgType === 'acid' || dmgType === 'poison' || dmgType === 'poisoned') nixieType = 'poison_burst';
+  else if (dmgType === 'radiant' || dmgType === 'heal') nixieType = 'holy_burst';
+  else if (dmgType === 'necrotic' || dmgType === 'drained' || dmgType === 'wounded' || dmgType === 'bleed') nixieType = 'dark_burst';
+  else if (dmgType === 'bludgeoning') nixieType = 'blunt_impact';
+  else if (dmgType === 'piercing') nixieType = 'pierce_sparks';
+  else nixieType = 'hit_sparks';
 
-  /* 5. Projectile Beam from Caster to Target for Ranged Spells */
-  if (Math.hypot(tX - cX, tZ - cZ) > 1.2) {
+  if (nixieType) {
+    playNixieEffect(nixieType, hitPos, { scale: opts.aoe ? 1.3 : 1.0, duration: opts.aoe ? 0.65 : 0.55 });
+  }
+
+  /* 5. Projectile Beam from Caster to Target for Ranged Spells Only */
+  const isRanged = opts.projectile || fx.projectile || (fx.range != null && fx.range > 2);
+  if (isRanged && Math.hypot(tX - cX, tZ - cZ) > 1.2) {
     const projType = dmgType === 'fire' ? 'fireball' : dmgType === 'cold' ? 'icicle' : dmgType === 'lightning' ? 'zap' : 'magic';
     const from = new THREE.Vector3(cX, 0.55, cZ);
     const to = new THREE.Vector3(tX, 0.4, tZ);
     spawnProjectile(scene, from, to, projType, color, () => {});
   }
+}
+
+/* -------- Persistent procedural VFX for concentration zones --------
+   Unlike one-shot bursts (playAbilityFx), these attach to the AOE zone's visual
+   group so they live and die with the spell itself: Faerie Fire keeps a cube of
+   rising red sparkles, Entangle keeps vines growing from the floor. They are
+   ticked inside the activeAoEVisuals update loop and disposed by removeAoEVisual().
+   The sheet burst still fires on cast; these are the layer that persists. */
+
+/** Builds a persistent swirling aura of rising sparkles as children of `group`. */
+function buildSparkleCubeZone(group, radius, color, opts = {}) {
+  const fxGroup = new THREE.Group();
+  fxGroup.position.y = (opts.y != null ? opts.y : 0.65);
+  group.add(fxGroup);
+
+  const dotTex = getRadialGlowTexture();
+  const count = opts.count || 28;
+  const sparks = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+    const r = (0.35 + Math.random() * 0.65) * radius;
+    const p = new THREE.Vector3(
+      Math.cos(angle) * r,
+      (Math.random() - 0.2) * 0.7,
+      Math.sin(angle) * r
+    );
+
+    const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
+      map: dotTex, color, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    mat.toneMapped = false;
+    const mesh = new THREE.Sprite(mat);
+    const s = 0.08 + Math.random() * 0.06;
+    mesh.scale.set(s, s, 1);
+    mesh.position.copy(p);
+    fxGroup.add(mesh);
+    sparks.push({
+      mesh, mat,
+      base: p.clone(),
+      rise: 0.65 + Math.random() * 0.5,
+      speed: 0.45 + Math.random() * 0.55,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+
+  return { fxGroup, wireMat: null, sparks };
+}
+
+/** Builds persistent vines growing up from the floor as children of `group`. */
+function buildVineZone(group, radius, color, opts = {}) {
+  const fxGroup = new THREE.Group();
+  fxGroup.position.y = -0.33;   // zone group sits at y=0.33; drop vines to the floor
+  group.add(fxGroup);
+
+  const vineCount = opts.vines || 6;
+  const vines = [];
+  for (let i = 0; i < vineCount; i++) {
+    const ang = (i / vineCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+    const dist = radius * (0.35 + Math.random() * 0.6);
+    const baseX = Math.cos(ang) * dist;
+    const baseZ = Math.sin(ang) * dist;
+    const height = 0.85 + Math.random() * 0.9;
+
+    const pts = [
+      new THREE.Vector3(baseX, 0.02, baseZ),
+      new THREE.Vector3(baseX * 1.12, height * 0.35, baseZ),
+      new THREE.Vector3(baseX * 1.18 + (Math.random() - 0.5) * 0.4, height * 0.7, baseZ + (Math.random() - 0.5) * 0.4),
+      new THREE.Vector3(baseX * 1.1 + (Math.random() - 0.5) * 0.5, height * 1.02, baseZ + (Math.random() - 0.5) * 0.5)
+    ];
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tubeGeom = new THREE.TubeGeometry(curve, 10, 0.04 + Math.random() * 0.03, 5, false);
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false
+    });
+    mat.toneMapped = false;
+    const mesh = new THREE.Mesh(tubeGeom, mat);
+    fxGroup.add(mesh);
+    vines.push({ mesh, mat, tubeGeom, ang, seed: Math.random() * Math.PI * 2 });
+  }
+
+  return { fxGroup, vines };
 }
 
 /* -------- animated spritesheet FX (Pixel FX pack: square grids of 100px frames) --------
@@ -1333,27 +2533,27 @@ export function spawnRichAbilityVFX(scene, casterPos, targetPos, fx, label, opts
    cloned per instance (clones share the image source — one GPU upload). */
 const sheetEffects = [];
 const _sheetTexCache = {};
-export function spawnSheetEffect(scene, def, pos, scale = null, dur = null){
-  let base = _sheetTexCache[def.url];
-  if(!base){
-    base = new THREE.TextureLoader().load(def.url);
-    base.colorSpace = THREE.SRGBColorSpace;
-    base.magFilter = THREE.NearestFilter;
-    base.minFilter = THREE.NearestFilter;
-    _sheetTexCache[def.url] = base;
-  }
-  const tex = base.clone();
+export function spawnSheetEffect(scene, def, pos, scale = null, dur = null, opts = {}){
+  const base = getOrLoadSheetTexture(def.url);
+  const tex = base ? base.clone() : new THREE.Texture();
   tex.needsUpdate = true;
-  tex.repeat.set(1/def.cols, 1/def.rows);
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 });
+  tex.repeat.set(sheetFrameRepeat(def).x, sheetFrameRepeat(def).y);
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false, opacity: 0,
+    blending: opts.blend || (opts.additive ? THREE.AdditiveBlending : THREE.NormalBlending)
+  }), { forwardBias: 0.3 });
+  mat.toneMapped = false;
   const mesh = new THREE.Sprite(mat);
   const s = scale != null ? scale : (def.scale || 1.5);
   mesh.scale.set(s, s, 1);
   mesh.position.copy(pos);
-  mesh.renderOrder = 30;
+  mesh.renderOrder = opts.renderOrder != null ? opts.renderOrder : 30;
   scene.add(mesh);
-  const d = dur != null ? dur : (def.dur != null ? def.dur : def.frames / def.fps);
-  sheetEffects.push({ mesh, mat, tex, def, t: 0, dur: d });
+  const rawDur = dur != null ? dur : (def.dur != null ? def.dur : (def.frames && def.fps ? def.frames / def.fps : 0.45));
+  const d = (rawDur && rawDur > 0) ? rawDur : 0.45;
+  const entry = { mesh, mat, tex, def, t: 0, dur: d, baseOpacity: opts.opacity != null ? opts.opacity : 1 };
+  sheetEffects.push(entry);
+  return entry;
 }
 
 let _beamTex = null;
@@ -1362,26 +2562,29 @@ function getBeamTexture() {
     const cv = document.createElement('canvas');
     cv.width = 128; cv.height = 128;
     const ctx = cv.getContext('2d');
+    if (ctx && typeof ctx.createLinearGradient === 'function') {
+      try {
+        // Smooth horizontal linear gradient across beam width (X axis)
+        const grad = ctx.createLinearGradient(0, 0, 128, 0);
+        grad.addColorStop(0.00, 'rgba(255, 255, 255, 0.00)');
+        grad.addColorStop(0.15, 'rgba(255, 255, 255, 0.40)');
+        grad.addColorStop(0.40, 'rgba(255, 255, 255, 0.95)');
+        grad.addColorStop(0.50, 'rgba(255, 255, 255, 1.00)');
+        grad.addColorStop(0.60, 'rgba(255, 255, 255, 0.95)');
+        grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.40)');
+        grad.addColorStop(1.00, 'rgba(255, 255, 255, 0.00)');
 
-    // Smooth horizontal linear gradient across beam width (X axis)
-    const grad = ctx.createLinearGradient(0, 0, 128, 0);
-    grad.addColorStop(0.00, 'rgba(255, 255, 255, 0.00)');
-    grad.addColorStop(0.15, 'rgba(255, 255, 255, 0.40)');
-    grad.addColorStop(0.40, 'rgba(255, 255, 255, 0.95)');
-    grad.addColorStop(0.50, 'rgba(255, 255, 255, 1.00)');
-    grad.addColorStop(0.60, 'rgba(255, 255, 255, 0.95)');
-    grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.40)');
-    grad.addColorStop(1.00, 'rgba(255, 255, 255, 0.00)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
 
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 128, 128);
-
-    // Energy texture streaks along length (Y axis)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    for (let i = 0; i < 12; i++) {
-      const y = (i * 10 + Math.random() * 5) % 128;
-      const h = 3 + Math.random() * 8;
-      ctx.fillRect(24, y, 80, h);
+        // Energy texture streaks along length (Y axis)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        for (let i = 0; i < 12; i++) {
+          const y = (i * 10 + Math.random() * 5) % 128;
+          const h = 3 + Math.random() * 8;
+          ctx.fillRect(24, y, 80, h);
+        }
+      } catch(e) {}
     }
 
     _beamTex = new THREE.CanvasTexture(cv);
@@ -1652,6 +2855,7 @@ export function spawnBeamEffect(scene, from, to, opts = {}) {
 }
 
 export function updateProjectiles(scene, dt){
+  updateFlashLights(scene, dt);
   for(let i=projectiles.length-1;i>=0;i--){
     const p = projectiles[i];
     p.t += dt;
@@ -1683,7 +2887,8 @@ export function updateProjectiles(scene, dt){
       if (p.sheetDef && p.tex) {
         const d = p.sheetDef;
         const f = Math.floor(p.t * ((d.fps || 24) * 0.70)) % d.frames;
-        p.tex.offset.set((f % d.cols) / d.cols, (d.rows - 1 - Math.floor(f / d.cols)) / d.rows);
+        const _offP = sheetFrameOffset(d, f);
+        p.tex.offset.set(_offP.x, _offP.y);
       }
       if (p.mat && p.kind !== 'arrow') {
         p.mat.rotation += dt * 4.2; // gentle z-rotation for energy orb (30% slower)
@@ -1691,6 +2896,22 @@ export function updateProjectiles(scene, dt){
       if (p.glowMesh) {
         const pulse = 0.85 + 0.25 * Math.sin(p.t * 18);
         p.glowMesh.scale.set((p.scale || 1.3) * 1.35 * pulse, (p.scale || 1.3) * 1.35 * pulse, 1);
+      }
+    }
+
+    // Dynamic projectile particle ribbon trails
+    p._lastTrail = (p._lastTrail || 0) + dt;
+    if (p._lastTrail >= 0.055) {
+      p._lastTrail = 0;
+      const trailType = (p.kind === 'fireball' || p.kind === 'fire')
+        ? 'projectile_fire_trail'
+        : (p.kind === 'acid' || p.kind === 'poison')
+        ? 'aura_poison'
+        : (p.kind !== 'arrow')
+        ? 'projectile_magic_trail'
+        : null;
+      if (trailType) {
+        playNixieEffect(trailType, p.mesh.position, { scale: (p.scale || 1.0) * 0.9, duration: 0.35 });
       }
     }
 
@@ -1718,18 +2939,13 @@ export function updateProjectiles(scene, dt){
       const idx = Math.floor(e.t / ((e.frameInterval || 0.04) * 1.30)) % e.frames.length;
       if (e.frames[idx]) e.mat.map = e.frames[idx];
     }
-    if(k < 0.15) e.mat.opacity = k / 0.15;
-    else if(k > 0.8) e.mat.opacity = (1 - k) / 0.2;
-    else e.mat.opacity = 1;
+    if(k < 0.15) e.mat.opacity = (k / 0.15) * (e.baseOpacity ?? 1);
+    else if(k > 0.8) e.mat.opacity = ((1 - k) / 0.2) * (e.baseOpacity ?? 1);
+    else e.mat.opacity = (e.baseOpacity ?? 1);
     
     if(k>=1){
       scene.remove(e.mesh);
       e.mat.dispose();
-      if (e.frames) {
-        for (const t of e.frames) t.dispose();
-      } else if (e.tex) {
-        e.tex.dispose();
-      }
       spriteEffects.splice(i,1);
     }
   }
@@ -1738,10 +2954,11 @@ export function updateProjectiles(scene, dt){
     e.t += dt;
     const k = e.t / e.dur, d = e.def;
     const f = Math.floor(e.t * (d.fps * 0.70)) % d.frames;
-    e.tex.offset.set((f % d.cols) / d.cols, (d.rows - 1 - Math.floor(f / d.cols)) / d.rows);
-    if(k < 0.15) e.mat.opacity = k / 0.15;
-    else if(k > 0.75) e.mat.opacity = (1 - k) / 0.25;
-    else e.mat.opacity = 1;
+    const _offE = sheetFrameOffset(d, f);
+    e.tex.offset.set(_offE.x, _offE.y);
+    if(k < 0.15) e.mat.opacity = (k / 0.15) * (e.baseOpacity ?? 1);
+    else if(k > 0.75) e.mat.opacity = ((1 - k) / 0.25) * (e.baseOpacity ?? 1);
+    else e.mat.opacity = (e.baseOpacity ?? 1);
     if(k >= 1){
       scene.remove(e.mesh);
       e.mat.dispose();
@@ -1791,15 +3008,85 @@ export function updateProjectiles(scene, dt){
   for (let i = activeAoEVisuals.length - 1; i >= 0; i--) {
     const v = activeAoEVisuals[i];
     v.t += dt;
-    v.group.rotation.y += dt * v.rotateSpeed;
+    if (v.shape !== 'line') {
+      v.group.rotation.y += dt * v.rotateSpeed;
+    }
     const pulse = 0.8 + 0.2 * Math.sin(v.t * v.pulseSpeed * Math.PI);
-    if (v.borderMat) v.borderMat.opacity = 0.6 * pulse;
-    if (v.innerMat) v.innerMat.opacity = 0.08 * pulse;
+    if (v.borderMat) v.borderMat.opacity = (v.borderBaseOp !== undefined ? v.borderBaseOp : 0.6) * pulse;
+    if (v.innerMat) v.innerMat.opacity = (v.innerBaseOp !== undefined ? v.innerBaseOp : 0.08) * pulse;
 
     if (v.glowTex) v.glowTex.offset.y -= dt * 3.5;
     if (v.coreTex) v.coreTex.offset.y -= dt * 5.0;
     if (v.cylMat) v.cylMat.opacity = 0.35 + 0.10 * Math.sin(v.t * 3.0);
     if (v.coreMat) v.coreMat.opacity = 0.40 + 0.10 * Math.cos(v.t * 4.0);
+
+    // Dynamic Spell Point Lights flicker
+    if (v.lights && v.lights.length > 0) {
+      const flicker = 0.88 + 0.12 * Math.sin(v.t * 8.5 + v.pulseSpeed) + (Math.random() - 0.5) * 0.04;
+      for (let k = 0; k < v.lights.length; k++) {
+        const l = v.lights[k];
+        const instFlicker = flicker + Math.sin(v.t * 11.0 + k * 1.5) * 0.05;
+        l.intensity = (v.baseLightIntensity || (v.shape === 'line' ? 1.8 : 3.0)) * Math.max(0.1, instFlicker);
+      }
+    }
+
+    // Persistent looping spritesheet (concentration zones keep animating).
+    if (v.sheetDef) {
+      v.sheetT += dt;
+      const d = v.sheetDef;
+      const baseFps = d.fps || 12;
+
+      if (v.sheetInstances && v.sheetInstances.length > 0) {
+        for (let k = 0; k < v.sheetInstances.length; k++) {
+          const inst = v.sheetInstances[k];
+          const t = v.sheetT + inst.timeOffset;
+          const f = Math.floor(t * baseFps) % d.frames;
+          const _offI = sheetFrameOffset(d, f);
+          inst.tex.offset.set(_offI.x, _offI.y);
+          const flicker = 0.82 + 0.18 * Math.sin(t * 7.5 + inst.timeOffset);
+          inst.mat.opacity = (inst.baseOp || v.sheetBaseOp) * (0.8 + 0.2 * Math.sin(v.t * 2.5)) * flicker;
+          if (inst.mesh && inst.baseScale) {
+            const sp = 1 + 0.04 * Math.sin(t * 5.0 + inst.timeOffset);
+            inst.mesh.scale.set(inst.baseScale * sp, inst.baseScale * sp, 1);
+          }
+        }
+      } else if (v.sheetMat && v.sheetTex) {
+        const f = Math.floor(v.sheetT * (d.fps * 0.7)) % d.frames;
+        const _offV = sheetFrameOffset(d, f);
+        v.sheetTex.offset.set(_offV.x, _offV.y);
+        v.sheetMat.opacity = v.sheetBaseOp * (0.7 + 0.3 * Math.sin(v.t * 2.5));
+        if (v.sheetMesh && v.sheetBaseScale) {
+          const sp = 1 + 0.05 * Math.sin(v.t * 2.0);
+          v.sheetMesh.scale.set(v.sheetBaseScale * sp, v.sheetBaseScale * sp, 1);
+        }
+      }
+    }
+
+    // Persistent sparkle cube (Faerie Fire) — rotating wireframe + rising sparkles.
+    if (v.sparkleFx) {
+      const sf = v.sparkleFx;
+      if (sf.fxGroup) sf.fxGroup.rotation.y += dt * 0.5;
+      if (sf.wireMat) sf.wireMat.opacity = (0.12 + 0.07 * Math.sin(v.t * 2.2)) * (0.75 + 0.25 * pulse);
+      for (const s of (sf.sparks || [])) {
+        const k = (v.t * s.speed + s.phase) % 1;
+        s.mesh.position.x = s.base.x + Math.sin(v.t * 1.5 + s.phase) * 0.12;
+        s.mesh.position.z = s.base.z + Math.cos(v.t * 1.4 + s.phase) * 0.12;
+        s.mesh.position.y = s.base.y + k * s.rise;
+        const fade = Math.sin(k * Math.PI);
+        s.mat.opacity = 0.55 * fade;
+        const sc = 0.05 + 0.11 * fade;
+        s.mesh.scale.set(sc, sc, 1);
+      }
+    }
+
+    // Persistent vines (Entangle) — gentle sway + breathing opacity.
+    if (v.vineFx) {
+      for (const vn of v.vineFx.vines) {
+        vn.mesh.rotation.y = Math.sin(v.t * 2.2 + vn.seed) * 0.16;
+        vn.mesh.scale.y = 0.96 + 0.04 * Math.sin(v.t * 1.8 + vn.seed);
+        vn.mat.opacity = 0.52 + 0.15 * Math.sin(v.t * 2.6 + vn.seed);
+      }
+    }
 
     if (v.dur != null && v.t >= v.dur) {
       removeAoEVisual(scene, v);
@@ -1955,28 +3242,76 @@ export function updateExitIndicator(ind, frac, active, time) {
   }
 
   tex.needsUpdate = true;
+
+  if (active) {
+    if (!ind._nixieInst && ind.mesh) {
+      ind._nixieInst = playNixieEffect('portal_vortex', ind.mesh.position, { scale: 0.9, duration: null });
+    }
+  } else if (ind._nixieInst) {
+    stopNixieEffect(ind._nixieInst);
+    ind._nixieInst = null;
+  }
 }
 
 export function disposeExitIndicator(ind) {
   if (!ind) return;
+  if (ind._nixieInst) {
+    stopNixieEffect(ind._nixieInst);
+    ind._nixieInst = null;
+  }
   if (ind.mesh.parent) ind.mesh.parent.remove(ind.mesh);
   ind.mesh.geometry.dispose();
   ind.mesh.material.map.dispose();
   ind.mesh.material.dispose();
 }
 
-/** Drop all live effects (called when a level unloads). */
-export function clearEffects(scene){
-  for(const p of projectiles){ scene.remove(p.mesh); p.mat.dispose(); if(p.glowMat) p.glowMat.dispose(); }
-  for(const s of slashes){ scene.remove(s.m); s.mat.dispose(); }
-  for(const e of spriteEffects){ scene.remove(e.mesh); e.mat.dispose(); e.tex.dispose(); }
-  for(const p of fountainPool){ scene.remove(p.spr); p.tex.dispose(); p.spr.material.dispose(); }
-  for(const t of telegraphPool){ scene.remove(t.mesh); t.mat.dispose(); t.geom.dispose(); }
-  projectiles.length = 0; slashes.length = 0; spriteEffects.length = 0;
-  fountainPool.length = 0; telegraphPool.length = 0;
+/** Continuous dynamic status auras for entities (poison, bless, rage, haste). */
+export function updateEntityStatusAuras(entities = [], dt = 0.016) {
+  if (!entities || !entities.length) return;
+  for (const e of entities) {
+    if (!e || e.dead || (e.data && e.data.hp <= 0)) continue;
+    const effs = e._effects || (e.data && e.data._effects);
+    if (!effs) continue;
+
+    e._auraCooldown = (e._auraCooldown || 0) + dt;
+    if (e._auraCooldown < 0.45) continue;
+    e._auraCooldown = 0;
+
+    const ePos = new THREE.Vector3(e.x || 0, 0.25, e.z || 0);
+
+    if (effs.poisoned) {
+      playNixieEffect('aura_poison', ePos, { scale: 1.0, duration: 0.55 });
+    }
+    if (effs.blessed || effs.shieldOfFaith) {
+      playNixieEffect('aura_bless', ePos, { scale: 1.0, duration: 0.55 });
+    }
+    if (effs.raging || effs.bloodlust) {
+      playNixieEffect('aura_rage', ePos, { scale: 1.0, duration: 0.5 });
+    }
+    if (effs.hasted && e.moving) {
+      playNixieEffect('hit_sparks', ePos, { scale: 0.8, duration: 0.4 });
+    }
+  }
 }
 
-/** Check if any combat animations (projectiles, slashes, spell FX) are currently active. */
+/** Drop all live effects (called when a level unloads or on combat reset). */
+export function clearEffects(scene){
+  if (!scene) return;
+  for(const p of projectiles){ scene.remove(p.mesh); if(p.mat) p.mat.dispose(); if(p.glowMat) p.glowMat.dispose(); if(p.tex) p.tex.dispose(); }
+  for(const s of slashes){ scene.remove(s.m); if(s.mat) s.mat.dispose(); }
+  for(const e of spriteEffects){ scene.remove(e.mesh); if(e.mat) e.mat.dispose(); }
+  for(const e of sheetEffects){ scene.remove(e.mesh); if(e.mat) e.mat.dispose(); if(e.tex) e.tex.dispose(); }
+  for(const b of activeBeams){ scene.remove(b.group); if(b.glowMat) b.glowMat.dispose(); if(b.coreMat) b.coreMat.dispose(); if(b.glowTex) b.glowTex.dispose(); if(b.coreTex) b.coreTex.dispose(); }
+  for(const p of fountainPool){ scene.remove(p.spr); if(p.spr.material) p.spr.material.dispose(); }
+  for(const t of telegraphPool){ scene.remove(t.mesh); if(t.mat) t.mat.dispose(); if(t.geom) t.geom.dispose(); }
+  for(let i = activeAoEVisuals.length - 1; i >= 0; i--){
+    removeAoEVisual(scene, activeAoEVisuals[i]);
+  }
+  projectiles.length = 0; slashes.length = 0; spriteEffects.length = 0; sheetEffects.length = 0; activeBeams.length = 0;
+  fountainPool.length = 0; telegraphPool.length = 0; activeAoEVisuals.length = 0;
+}
+
+/** Check if any combat animations (e.g. in-flight projectiles) are currently traveling. */
 export function hasActiveFX() {
-  return projectiles.length > 0 || slashes.length > 0 || spriteEffects.length > 0;
+  return projectiles.length > 0;
 }

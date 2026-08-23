@@ -50,6 +50,7 @@ export const SLOTS = [
   { key:'ring1',  label:'Ring',    icon:'💍' },
   { key:'ring2',  label:'Ring',    icon:'💍' },
   { key:'boots',  label:'Boots',   icon:'🥾' },
+  { key:'trinket',label:'Trinket', icon:'📜' },
   { key:'kit1',   label:'Kit',     icon:'🎒' },
   { key:'kit2',   label:'Kit',     icon:'🧰' }
 ];
@@ -69,7 +70,7 @@ export function itemCategory(it){
   switch(it.slot){
     case 'weapon': return 'weapon';
     case 'helm': case 'armor': case 'gloves': case 'boots': case 'shield': return 'armor';
-    case 'amulet': case 'ring': return 'accessory';
+    case 'amulet': case 'ring': case 'trinket': return 'accessory';
     case 'dye': return 'other';
     default: return 'other'; /* kit + anything unforeseen */
   }
@@ -170,6 +171,10 @@ const BASE_SLOTS = Object.keys(BASES);
 const BASE_SLOTS_NONKIT = BASE_SLOTS.filter(s => s !== 'kit');
 /* Share of random loot that rolls an adventuring-gear kit (~5-10% target). */
 const KIT_DROP_RATE = 0.07;
+/* Share of random loot that rolls a trinket (scrolls/potions). Kept a small
+   branch like kits so combat gear stays dominant and consumables feel like
+   finds rather than flooding the pool. */
+const TRINKET_DROP_RATE = 0.10;
 
 /** Look up a base template by slot + name. */
 export function getBase(slot, baseKey){
@@ -306,6 +311,13 @@ function rollRarity(tier, rng, luck = 1){
 export function recomputeItemBonuses(item){
   if(!item) return item;
   const base = getBase(item.slot, item.baseKey);
+  /* Scrolls & potion trinkets are plain records: their name, gold value and
+     charges are fixed at generation and must survive saves/migration, so they
+     skip the whole base+affix recompute path. */
+  if(item.scroll || item.potion || base?.spellKey || base?.potion){
+    item.bonuses = item.bonuses || {};
+    return item;
+  }
   const rarityKey = item.rarity || 'common';
   const R = RARITIES[rarityKey] || RARITIES.common;
   const ilvl = Math.max(0, item.ilvl|0);
@@ -614,11 +626,20 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng){
 export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   const t = Math.max(0, tier|0);
   const ilvl = Math.max(0, (opts.ilvl != null ? opts.ilvl : sourceIlvl(opts.source || 'chest', t, rng))|0);
-  // Kits are rare (~7%); the rest of random drops split evenly across combat gear.
-  const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit' : pick(BASE_SLOTS_NONKIT, rng));
+  // Kits are rare (~7%) and trinkets rarer still (~10%); the rest of random
+  // drops split evenly across combat gear.
+  const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit'
+    : rng() < TRINKET_DROP_RATE ? 'trinket'
+    : pick(BASE_SLOTS_NONKIT, rng));
 
   let rarityKey = opts.forceRarity || rollRarity(t, rng, opts.luck != null ? opts.luck : 1);
   if(rarityKey === 'legendary' && opts.noLegendary) rarityKey = 'epic';
+
+  /* Consumable trinket (scroll/potion): plain record, no affixes or budget —
+     its power is the spell/buff it carries, not stat points. */
+  if(slot === 'trinket'){
+    return rollTrinket(ilvl, rarityKey, rng);
+  }
 
   /* Adventuring-gear tool: no affixes, its whole budget buys skill ranks
      (see recomputeItemBonuses). */
@@ -635,6 +656,50 @@ export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   const perk = rarityHasPerk(rarityKey) ? rollPerk(slot, opts.theme, rng) : null;
   if(perk && PERK_MAGS[perk.id]) perk.desc = perkDescFor(perk.id, ilvl);
   return makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng);
+}
+
+/**
+ * Roll a consumable trinket — a scroll or a potion held in the trinket slot.
+ *
+ * Scrolls gate to caster classes via `casterOnly:true` and cast the `spellKey`
+ * spell; potions are `casterOnly:false`, usable by anyone, and apply a self-buff
+ * via `buffKey`. Both are plain records: no affixes, no budget spending — their
+ * power IS the spell/buff, so `charges`, `name` and `value` are frozen at roll.
+ *
+ * The base's `rarity` is authoritative; generation prefers a base matching the
+ * rarity rolled by `rollRarity` (which scales with quest tier) so deep runs
+ * naturally surface the rare scrolls.
+ */
+function rollTrinket(ilvl, rarityKey, rng){
+  const list = BASES.trinket;
+  if(!list || !list.length) return null;
+  const pool = list.filter(b => b.rarity === rarityKey);
+  const base = pick(pool.length ? pool : list, rng);
+  const R = RARITIES[base.rarity] || RARITIES[rarityKey] || RARITIES.common;
+  const lvl = Math.max(0, ilvl|0);
+  return {
+    id: 'i'+(_uid++),
+    baseKey: base.name,
+    name: base.name,
+    slot: 'trinket',
+    icon: base.icon,
+    rarity: base.rarity,
+    color: R.color,
+    ilvl: lvl,
+    floor: lvl, // legacy field kept for saves/UI
+    charges: Math.max(1, base.charges | 0),
+    spellKey: base.spellKey || null,
+    buffKey: base.buffKey || null,
+    buffDuration: base.buffDuration || 60,
+    casterOnly: base.casterOnly !== false,
+    scroll: !!base.spellKey,
+    potion: !!base.buffKey,
+    value: base.value | 0,
+    affixes: [],
+    perk: null,
+    prof: 'none',
+    bonuses: {}
+  };
 }
 
 /** Pick a perk valid for a slot, optionally biased by quest theme. */
@@ -661,8 +726,8 @@ export function rollPerk(slot, theme=null, rng=Math.random){
  * Random loot can also roll one — see rollRarity — but only at lottery odds.
  */
 export function rollLegendary(ilvl, rng=Math.random, opts={}){
-  // Legendaries are combat perks — never roll a kit slot.
-  const slot = opts.forceSlot || pick(BASE_SLOTS_NONKIT, rng);
+  // Legendaries are combat perks — never roll a kit or trinket slot.
+  const slot = opts.forceSlot || pick(BASE_SLOTS_NONKIT.filter(s => s !== 'trinket'), rng);
   const lvl = Math.max(0, ilvl|0);
   const base = pickAffordableBase(slot, lvl, 'legendary', rng);
   const affixes = rollAffixes(slot, lvl, 'legendary', base, rng);
@@ -949,6 +1014,113 @@ export function getBaseStatsText(slot, name) {
                      armorBase: base.armorBase, acBase: base.acBase, prof: base.prof });
 }
 
+/**
+ * Compare two items (newItem vs equippedItem) and return an array of stat deltas.
+ * Each delta object: { stat, diff, text, isPositive, isNegative }
+ */
+export function compareItemStats(newItem, equippedItem, heroLevel = null) {
+  if (!newItem) return [];
+  migrateItem(newItem);
+  if (equippedItem) migrateItem(equippedItem);
+
+  const diffs = [];
+  const bNew = newItem.bonuses || {};
+  const bOld = equippedItem?.bonuses || {};
+
+  // 1. Armor Class Comparison (Chassis + Bonus)
+  const acNew = (newItem.armorBase || 0) + (newItem.acBase || 0) + (bNew.ac || 0);
+  const acOld = equippedItem ? ((equippedItem.armorBase || 0) + (equippedItem.acBase || 0) + (bOld.ac || 0)) : 0;
+  if (acNew !== acOld) {
+    const diff = acNew - acOld;
+    diffs.push({
+      stat: 'AC',
+      diff,
+      text: `${diff > 0 ? '+' : ''}${diff} AC`,
+      isPositive: diff > 0,
+      isNegative: diff < 0
+    });
+  }
+
+  // 2. Weapon Damage Comparison
+  if (newItem.slot === 'weapon') {
+    const avgDmgNew = newItem.dmg ? (newItem.dmg[0] * (newItem.dmg[1] + 1) / 2) + (bNew.dmg || 0) : 0;
+    const avgDmgOld = (equippedItem && equippedItem.dmg)
+      ? (equippedItem.dmg[0] * (equippedItem.dmg[1] + 1) / 2) + (bOld.dmg || 0)
+      : 0;
+    if (avgDmgNew !== avgDmgOld) {
+      const diff = +(avgDmgNew - avgDmgOld).toFixed(1);
+      diffs.push({
+        stat: 'Damage',
+        diff,
+        text: `${diff > 0 ? '+' : ''}${diff} Avg Dmg`,
+        isPositive: diff > 0,
+        isNegative: diff < 0
+      });
+    }
+  }
+
+  // 3. Core Attributes & Combat Stats
+  const statKeys = [
+    { key: 'hp', label: 'Max HP' },
+    { key: 'atk', label: 'Atk' },
+    { key: 'dmg', label: 'Dmg' },
+    { key: 'str', label: 'STR' },
+    { key: 'dex', label: 'DEX' },
+    { key: 'con', label: 'CON' },
+    { key: 'int', label: 'INT' },
+    { key: 'wis', label: 'WIS' },
+    { key: 'cha', label: 'CHA' },
+    { key: 'crit', label: 'Crit' },
+    { key: 'heal', label: 'Heal' },
+    { key: 'speed', label: '% Speed', isPercent: true },
+    { key: 'move', label: 'ft Move' },
+  ];
+
+  for (const { key, label, isPercent } of statKeys) {
+    if (newItem.slot === 'weapon' && key === 'dmg') continue;
+
+    const valNew = bNew[key] || 0;
+    const valOld = bOld[key] || 0;
+    if (valNew !== valOld) {
+      const diff = isPercent ? +(valNew - valOld).toFixed(2) : (valNew - valOld);
+      const formattedDiff = isPercent
+        ? `${diff > 0 ? '+' : ''}${Math.round(diff * 100)}% Speed`
+        : `${diff > 0 ? '+' : ''}${diff} ${label}`;
+      diffs.push({
+        stat: label,
+        diff,
+        text: formattedDiff,
+        isPositive: diff > 0,
+        isNegative: diff < 0
+      });
+    }
+  }
+
+  // 4. Kit Skill Bonuses
+  const allSkills = new Set([
+    ...Object.keys(bNew.skills || {}),
+    ...Object.keys(bOld.skills || {})
+  ]);
+  for (const sk of allSkills) {
+    const valNew = bNew.skills?.[sk] || 0;
+    const valOld = bOld.skills?.[sk] || 0;
+    if (valNew !== valOld) {
+      const diff = valNew - valOld;
+      const skLabel = SKILL_LABEL[sk] || sk;
+      diffs.push({
+        stat: skLabel,
+        diff,
+        text: `${diff > 0 ? '+' : ''}${diff} ${skLabel}`,
+        isPositive: diff > 0,
+        isNegative: diff < 0
+      });
+    }
+  }
+
+  return diffs;
+}
+
+
 /* ─── Migration / attunement ──────────────────────────────────────────── */
 
 function findBaseFromName(slot, name){
@@ -1068,12 +1240,6 @@ export function migrateInventory(list){
   for(const it of list) migrateItem(it);
 }
 
-/* ATTUNEMENT IS GONE. Gear used to walk its ilvl up as the hero levelled, which
-   meant equipment quietly kept pace whether or not you found anything — so a
-   drop could never feel like a find. Every item's stats are now frozen at the
-   ilvl it was found at, and upgrades come only from loot. Kept as a no-op so
-   any straggling caller stays harmless. */
-export function attuneHeroGear(){ return false; }
 
 /** Collect equipped items that have a perk with a given combat hook. */
 export function equippedPerks(hero, hook=null){

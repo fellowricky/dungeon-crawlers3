@@ -392,8 +392,17 @@ export const turnEngineMethods = {
    */
   snapToTileCenter(e, dt = 0.016, smooth = true) {
     if (!e || !this.D) return;
-    const c = this.cellOf ? this.cellOf(e.x, e.z) : -1;
+    let c = this.cellOf ? this.cellOf(e.x, e.z) : -1;
     if (c < 0) return;
+    /* If somebody else is already on this square, snapping both to its centre
+       makes the overlap pixel-perfect. Step aside to a free neighbour instead —
+       this is the last line of defence, and it is the one that visibly
+       un-stacks two sprites that have drifted onto one tile. */
+    if (typeof this.isCellBodyOccupied === 'function' && this.isCellBodyOccupied(c, e)
+        && typeof this.getUnoccupiedCellNear === 'function') {
+      const free = this.getUnoccupiedCellNear(c, e, 2);
+      if (free >= 0 && free !== c) c = free;
+    }
     const W = this.D.W;
     const cx = c % W, cz = Math.floor(c / W);
     const targetX = (typeof this.wx === 'function') ? this.wx(cx) : (cx + 0.5);
@@ -453,14 +462,18 @@ export const turnEngineMethods = {
         /* Leaving a hostile's reach draws an opportunity attack (5e) unless
            this actor took the Disengage action. Resolved per cell crossed. */
         this.resolveOpportunityAttacks(e, from, to);
-        if (e.data && e.data.hp <= 0) { e.path = null; e.pathI = 0; e.moving = false; return false; }
+        if (e.data && e.data.hp <= 0) {
+          if (typeof this.clearEntityPath === 'function') this.clearEntityPath(e);
+          else { e.path = null; e.pathI = 0; }
+          e.moving = false; return false;
+        }
         const s = stepCost(dx, dy, e.diagCount | 0);
         e.moveLeft -= s.cost;
         e.diagCount = s.diagCount;
         if (e.moveLeft <= 0) {
           e.moveLeft = 0;
-          e.path = null;
-          e.pathI = 0;
+          if (typeof this.clearEntityPath === 'function') this.clearEntityPath(e);
+          else { e.path = null; e.pathI = 0; }
           if (this.snapToTileCenter) this.snapToTileCenter(e, dt, true);
           break;
         }
@@ -471,7 +484,17 @@ export const turnEngineMethods = {
       if (tactical || this.controlMode === 'manual') {
         if (this.snapToTileCenter) this.snapToTileCenter(e, dt, true);
       }
-      if (this.enforceUnoccupiedCell) this.enforceUnoccupiedCell(e);
+      /* Reservation now makes a same-cell landing structurally impossible.
+         If we ever get here with a genuine overlap it's a reservation leak —
+         log it once per entity so it surfaces during testing instead of
+         silently teleporting bodies around. */
+      if (this._reservedCells && e.data && e.data.hp > 0 && typeof this.cellOf === 'function' && typeof this.isCellOccupiedAny === 'function') {
+        const c = this.cellOf(e.x, e.z);
+        if (c >= 0 && this.isCellOccupiedAny(c, e) && !e._overlapLogged) {
+          e._overlapLogged = true;
+          console.warn('[reservation] overlap detected on move completion — possible reservation leak', e.data && e.data.name, c);
+        }
+      }
       if (e._pendingAttackTarget) {
         const foe = e._pendingAttackTarget;
         e._pendingAttackTarget = null;
@@ -483,55 +506,6 @@ export const turnEngineMethods = {
 
     e.moving = moved;
     return moved;
-  },
-
-  enforceUnoccupiedCell(e) {
-    if (!e || !this.D) return;
-    const curCell = this.cellOf ? this.cellOf(e.x, e.z) : -1;
-    if (curCell < 0) return;
-    const heroes = this.heroes || [];
-    const monsters = (this.monsters || []).filter(m => m.active && m.data && m.data.hp > 0);
-    const all = [...heroes.filter(h => h.data && h.data.hp > 0), ...monsters];
-    const occupier = all.find(c => c !== e && this.cellOf(c.x, c.z) === curCell);
-    if (!occupier) {
-      return;
-    }
-
-    /* Helper: check if a target cell is unblocked by walls, solid props, closed doors, and living entities */
-    const isCellValidAndFree = (nc) => {
-      if (nc < 0 || !this.D || !this.D.grid) return false;
-      if (this.D.grid[nc] === 2) return false; // WALL
-      if (this.D.solidProps && this.D.solidProps[nc]) return false;
-      if (typeof this.isCellDoorClosed === 'function' && this.isCellDoorClosed(nc)) return false;
-      return !all.some(c => this.cellOf(c.x, c.z) === nc);
-    };
-
-    /* Displace to the nearest free, unblocked floor cell up to 3 tiles away */
-    const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
-    const cx = curCell % W, cz = Math.floor(curCell / W);
-
-    for (let r = 1; r <= 3; r++) {
-      for (let dz = -r; dz <= r; dz++) {
-        for (let dx = -r; dx <= r; dx++) {
-          if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
-          const nx = cx + dx, nz = cz + dz;
-          if (nx < 0 || nx >= W || nz < 0 || nz >= H) continue;
-          const nc = nz * W + nx;
-          if (isCellValidAndFree(nc)) {
-            e.x = typeof this.wx === 'function' ? this.wx(nx) : nx + 0.5;
-            e.z = typeof this.wz === 'function' ? this.wz(nz) : nz + 0.5;
-            e.path = null;
-            e.pathI = 0;
-            e.moving = false;
-            return;
-          }
-        }
-      }
-    }
-  },
-
-  enforceHeroUnoccupiedCell(e) {
-    this.enforceUnoccupiedCell(e);
   },
 
   /**

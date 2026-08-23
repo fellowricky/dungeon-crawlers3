@@ -6,8 +6,8 @@
   "overspendSlack": 0,
   "typeMult": {
     "combat": 1,
-    "elite": 1.15,
-    "boss": 1.25
+    "elite": 1.25,
+    "boss": 1
   },
   "crAnchorLevels": [
     1,
@@ -45,108 +45,122 @@
     8,
     9,
     10,
-    10,
+    11,
     12,
-    10,
-    10,
-    10,
-    10,
-    10
+    13,
+    14,
+    15,
+    16,
+    17
   ],
   "crCostScale": 1,
   "crCostOverrides": {
     "1": 16,
-    "2": 21,
-    "3": 28,
-    "5": 34,
-    "8": 42,
-    "12": 50,
-    "17": 70,
-    "23": 85,
-    "30": 109,
+    "2": 36,
+    "3": 56,
+    "4": 88,
+    "5": 144,
+    "6": 184,
+    "7": 232,
+    "8": 312,
+    "9": 400,
+    "10": 472,
+    "11": 576,
+    "12": 672,
+    "13": 800,
+    "14": 920,
+    "15": 1040,
+    "16": 1200,
+    "17": 1440,
+    "18": 1600,
+    "19": 1760,
+    "20": 2000,
+    "21": 2640,
+    "23": 4000,
+    "30": 12400,
     "0.125": 6,
     "0.25": 8,
     "0.5": 12
   },
   "levelCurve": {
     "1": {
-      "budgetMult": 0.75,
+      "budgetMult": 0.64,
       "spawnCap": 10
     },
     "2": {
-      "budgetMult": 1,
+      "budgetMult": 0.85,
       "spawnCap": 10
     },
     "3": {
-      "budgetMult": 1.25,
+      "budgetMult": 1.35,
       "spawnCap": 10
     },
     "4": {
-      "budgetMult": 1.5,
+      "budgetMult": 3.2,
       "spawnCap": 10
     },
     "5": {
-      "budgetMult": 2.18,
+      "budgetMult": 6.4,
       "spawnCap": 10
     },
     "6": {
-      "budgetMult": 2.51,
+      "budgetMult": 7.68,
       "spawnCap": 10
     },
     "7": {
-      "budgetMult": 2.83,
+      "budgetMult": 9.386667,
       "spawnCap": 10
     },
     "8": {
-      "budgetMult": 3.15,
+      "budgetMult": 11.946667,
       "spawnCap": 10
     },
     "9": {
-      "budgetMult": 3.47,
+      "budgetMult": 13.653333,
       "spawnCap": 10
     },
     "10": {
-      "budgetMult": 3.79,
+      "budgetMult": 16.213333,
       "spawnCap": 10
     },
     "11": {
-      "budgetMult": 4.11,
+      "budgetMult": 20.48,
       "spawnCap": 10
     },
     "12": {
-      "budgetMult": 4.43,
+      "budgetMult": 25.6,
       "spawnCap": 10
     },
     "13": {
-      "budgetMult": 4.75,
+      "budgetMult": 29.013333,
       "spawnCap": 10
     },
     "14": {
-      "budgetMult": 5.07,
+      "budgetMult": 32.426667,
       "spawnCap": 10
     },
     "15": {
-      "budgetMult": 5.39,
+      "budgetMult": 36.693333,
       "spawnCap": 10
     },
     "16": {
-      "budgetMult": 5.72,
+      "budgetMult": 40.96,
       "spawnCap": 10
     },
     "17": {
-      "budgetMult": 6.04,
+      "budgetMult": 50.346667,
       "spawnCap": 10
     },
     "18": {
-      "budgetMult": 6.36,
+      "budgetMult": 53.76,
       "spawnCap": 10
     },
     "19": {
-      "budgetMult": 6.68,
+      "budgetMult": 62.293333,
       "spawnCap": 10
     },
     "20": {
-      "budgetMult": 7,
+      "budgetMult": 72.533333,
       "spawnCap": 10
     }
   }

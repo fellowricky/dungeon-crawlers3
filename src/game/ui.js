@@ -235,19 +235,69 @@ export function log(msg, kind='', opts={}){
 }
 
 /* Right-rail vertical stacking: floor badge → quest tracker → initiative.
-   The quest tracker's height varies with objectives/phases, so anchor the
-   initiative tracker just below whichever element above it is visible. */
+   Panel heights vary (objectives/phases, combatant count), so the whole column
+   is positioned programmatically instead of trusting the static CSS `top`s, and
+   the bottom-most panel is clamped so the rail can never run under the combat
+   log. During combat the quest tracker is hidden outright and the initiative
+   tracker takes its slot. */
+const RAIL_GAP = 8;
+const RAIL_TOP = 12;
+const RAIL_MIN_PANEL = 80;
+
+/* Rendered at all? (`offsetParent` is always null for position:fixed elements,
+   so measure instead.) */
+function railShown(el){
+  return !!el && el.getBoundingClientRect().height > 0;
+}
+
+/* Bottom edge available to the rail — the top of the log panel (or its tray
+   button when minimized), else the viewport floor. */
+function railCeiling(){
+  const panel = $('logpanel');
+  const tray = $('log-tray-btn');
+  let el = null;
+  if(panel && !panel.classList.contains('minimized')) el = panel;
+  else if(tray && tray.style.display !== 'none') el = tray;
+  if(el && typeof el.getBoundingClientRect === 'function'){
+    const r = el.getBoundingClientRect();
+    if(r.height > 0) return r.top - RAIL_GAP;
+  }
+  return window.innerHeight - RAIL_TOP;
+}
+
 export function layoutRightRail(){
   const init = $('initiative');
   if(!init || typeof init.getBoundingClientRect !== 'function') return; // headless / stubbed DOM
-  const gap = 8;
-  const badge = $('floorbadge');
+
+  /* Combat swaps the quest box out for the initiative tracker. */
+  const g = currentLoggedGame || (typeof window !== 'undefined' ? window.__game : null);
+  const inCombat = !!(g && typeof g.isCombatActive === 'function' && g.isCombatActive());
   const qt = $('questtracker');
-  let top = badge ? badge.getBoundingClientRect().bottom + gap : 52;
-  if(qt && qt.style.display !== 'none'){
-    top = qt.getBoundingClientRect().bottom + gap;
+  if(qt) qt.classList.toggle('combat-hidden', inCombat);
+
+  const badge = $('floorbadge');
+  const stack = [];
+  if(railShown(badge)) stack.push(badge);
+  if(railShown(qt)) stack.push(qt);
+  if(railShown(init)) stack.push(init);
+
+  const ceiling = railCeiling();
+  let top = RAIL_TOP;
+  for(let i = 0; i < stack.length; i++){
+    const el = stack[i];
+    el.style.top = Math.round(top) + 'px';
+    /* Only the last panel needs clamping — anything above it is short and fixed
+       enough that shrinking it would just hide information the player needs. */
+    if(i === stack.length - 1){
+      el.style.maxHeight = Math.round(Math.max(RAIL_MIN_PANEL, ceiling - top)) + 'px';
+    } else {
+      el.style.maxHeight = '';
+    }
+    top = el.getBoundingClientRect().bottom + RAIL_GAP;
   }
-  init.style.top = Math.round(top) + 'px';
+  /* Panels that dropped out of the stack keep no stale clamp. */
+  if(qt && stack.indexOf(qt) < 0) qt.style.maxHeight = '';
+  if(stack.indexOf(init) < 0) init.style.maxHeight = '';
 }
 
 /* ---------------- initiative turn tracker ---------------- */
@@ -257,7 +307,10 @@ export function updateInitiativeTracker(game){
   const init = game.initiative;
   const alive = e => e._side === 'hero' ? e.data.hp > 0 : (e.active && e.data.hp > 0);
   if(!init || !init.active || !init.order.length){
-    el.classList.remove('show'); el.innerHTML = ''; return;
+    /* Combat just ended — re-lay the rail so the quest tracker comes back. */
+    el.classList.remove('show'); el.innerHTML = '';
+    layoutRightRail();
+    return;
   }
   const cur = init.order[init.idx];
   const rows = init.order.filter(alive).map(e => {
@@ -334,6 +387,7 @@ export function initGameLog(game = null){
       box.style.maxHeight = h + 'px';
       box.style.height = h + 'px';
       box.scrollTop = box.scrollHeight;
+      layoutRightRail();   // the log just ate (or freed) rail space
     };
 
     const onMouseMove = e => { if(isDragging) resize(e.clientX, e.clientY); };
@@ -364,6 +418,7 @@ export function initGameLog(game = null){
     minBtn.addEventListener('click', () => {
       panel.classList.add('minimized');
       trayBtn.style.display = 'block';
+      layoutRightRail();
     });
     trayBtn.addEventListener('click', () => {
       panel.classList.remove('minimized');
@@ -371,25 +426,74 @@ export function initGameLog(game = null){
       trayBtn.classList.remove('unread');
       // Scroll to bottom when restored to ensure latest messages are seen
       box.scrollTop = box.scrollHeight;
+      layoutRightRail();
     });
+  }
+
+  /* Keep the right rail off the log whenever the geometry underneath it moves:
+     window resizes, and the log panel growing/shrinking with its content. */
+  if(typeof window !== 'undefined' && window.addEventListener){
+    window.addEventListener('resize', layoutRightRail);
+  }
+  if(panel && typeof ResizeObserver === 'function'){
+    new ResizeObserver(() => layoutRightRail()).observe(panel);
   }
 }
 
 /* ---------------- party frames ---------------- */
-const ABILITY_ICON = {
+export const ABILITY_ICON = {
+  // Class & Subclass Features
   actionSurge:'⚔', actionSurgeClass:'⚔', rallyingCry:'📣', cunningAction:'💨',
   cunningActionClass:'💨', deathstrike:'🗡', preserveLife:'✨', guidedStrike:'⚡',
-  fireball:'🔥', magicMissile:'✴', frenzy:'🪓', bearTotem:'🐻', cuttingWords:'💬',
-  combatInspiration:'🎵', entangle:'🌿', wildShape:'🐺', wildShapeClass:'🐺',
-  quiveringPalm:'🫱', shadowStep:'👥', sacredWeapon:'✨', vowOfEnmity:'🎯',
-  colossusSlayer:'🏹', summonCompanion:'🐺', dragonBreath:'🐲', wildSurge:'🔮',
-  fiendishBlessing:'😈', feyPresence:'🌸', flurryOfBlows:'👊', rage:'😡',
-  divineSmite:'💫', tidesOfChaos:'🌀', bardicInspiration:'🎵', indomitable:'🛡',
-  layOnHands:'🙏', shield:'🛡', scorchingRay:'🔥', haste:'⚡', bless:'✨',
-  spiritualWeapon:'⚔', spiritGuardians:'👻', moonbeam:'🌙', moveMoonbeam:'🌙', callLightning:'⚡',
-  healingWord:'💬', shatter:'💥', chaosBolt:'🌈', dragonBreathSpell:'🔥',
-  hex:'🔮', armsOfHadar:'🦑', thunderousSmite:'⚡', huntersMark:'🎯',
-  remarkableAthlete:'🏃', fastHands:'💨'
+  frenzy:'🪓', bearTotem:'🐻', cuttingWords:'💬', combatInspiration:'🎵',
+  wildShape:'🐺', wildShapeClass:'🐺', quiveringPalm:'🫱', shadowStep:'👥',
+  sacredWeapon:'✨', vowOfEnmity:'🎯', colossusSlayer:'🏹', summonCompanion:'🐺',
+  dragonBreath:'🐲', wildSurge:'🔮', fiendishBlessing:'😈', feyPresence:'🌸',
+  flurryOfBlows:'👊', rage:'😡', divineSmite:'💫', tidesOfChaos:'🌀',
+  bardicInspiration:'🎵', indomitable:'🛡', layOnHands:'🙏', channelDivinity:'✝',
+  secondWind:'🌀', remarkableAthlete:'🏃', fastHands:'💨',
+
+  // Cantrips & Tier 1
+  eldritchBlast:'💥', chillTouch:'❄️', fireBolt:'🔥', sacredFlame:'✨', produceFlame:'🔥',
+  magicMissile:'✴', shield:'🛡', bless:'✨', entangle:'🌿', healingWord:'💬',
+  cureWounds:'💚', chaosBolt:'🌈', burningHands:'🔥', hex:'🔮', armsOfHadar:'🦑',
+  thunderousSmite:'⚡', huntersMark:'🎯', sleep:'💤', bane:'👁️', faerieFire:'🧚',
+  hideousLaughter:'🎭', protectionFromEvil:'🛡️', grease:'🧈', inflictWounds:'💀',
+  guidingBolt:'✨', thunderwave:'🌊', shieldOfFaith:'🛡️', chromaticOrb:'🔮',
+  rayOfSickness:'🤢', findFamiliar:'🦉',
+
+  // Tier 2
+  dragonBreathSpell:'🐲', scorchingRay:'🔥', spiritualWeapon:'⚔', moonbeam:'🌙', moveMoonbeam:'🌙',
+  shatter:'💥', blindness:'🙈', holdPerson:'⛓️', rayOfEnfeeblement:'🥀',
+  web:'🕸️', lesserRestoration:'🌿', acidArrow:'🧪', mistyStep:'🌫️',
+  silence:'🤫', magicWeapon:'✨', barkskin:'🪵', enlargeReduce:'📏',
+  flamingSphere:'🔥', mirrorImage:'🪞', spikeGrowth:'🌵', passWithoutTrace:'👣',
+
+  // Tier 3
+  fireball:'🔥', haste:'⚡', spiritGuardians:'👻', callLightning:'⚡',
+  fear:'😱', slow:'⏳', bestowCurse:'🕷️', lightningBolt:'⚡',
+  massHealingWord:'💖', vampiricTouch:'🧛', counterspell:'✋', hypnoticPattern:'🌀',
+  crusadersMantle:'⚔️',
+
+  // Tier 4
+  iceStorm:'🌨️', blight:'🥀', deathWard:'💀', wallOfFire:'🔥',
+  polymorph:'🐑', dimensionDoor:'🚪', banishment:'🌀',
+
+  // Tier 5
+  greaterRestoration:'🌟', coneOfCold:'❄️', flameStrike:'🔥', massCureWounds:'💚',
+  holdMonster:'⛓️', cloudkill:'☣', animateObjects:'⚔', steelWindStrike:'🌪️',
+
+  // Tier 6
+  disintegrate:'🟢', chainLightning:'⚡', heal:'💖', sunbeam:'☀️', harm:'☣️',
+
+  // Tier 7
+  fingerOfDeath:'💀', fireStorm:'🌋', regenerate:'🌿', prismaticSpray:'🌈',
+
+  // Tier 8
+  sunburst:'💥', earthquake:'⛰️', mindBlank:'🧠', dominateMonster:'👁️',
+
+  // Tier 9
+  meteorSwarm:'☄️', timeStop:'⏳', powerWordKill:'☠️', massHeal:'🌟', wish:'💫'
 };
 
 /* Class features that appear on the HUD with ready/spent state */
@@ -527,6 +631,19 @@ function abilityIconSets(h){
       ready = chargesLeft(h, 'spell:' + key) > 0;
       tipExtra = `${sp.desc || ''} · ${ready ? REST_TIP[bucket].ready : REST_TIP[bucket].spent}`;
     }
+    if (key === 'findFamiliar') {
+      const g = currentLoggedGame || (typeof window !== 'undefined' ? (window.__game || window.game) : null);
+      const hasFam = g && g.heroes && g.heroes.some(c =>
+        c.companion && c.kind && (c.kind.includes('Familiar') || c.kind === 'owl' || c.kind === 'imp' || c.kind === 'viper') &&
+        c.summonerName === (h.name || h.data?.name) &&
+        c.summonerClassKey === (h.classKey || h.data?.classKey) &&
+        c.data && c.data.hp > 0
+      );
+      if (hasFam) {
+        ready = false;
+        tipExtra = `${sp.desc || ''} · Familiar is already active`;
+      }
+    }
     pushReady(spells, 'spell:' + key, ico, sp.label, ready, tipExtra);
   }
 
@@ -608,7 +725,8 @@ const CONDITION_ICONS = {
   baned: '📉',
   faerieFire: '🧚',
   hexMarked: '🔮',
-  huntersMarked: '🎯'
+  huntersMarked: '🎯',
+  enlarged: '💪'
 };
 
 const CONDITION_NAMES = {
@@ -622,6 +740,7 @@ const CONDITION_NAMES = {
   phaseStep: 'Phase Step',
   remarkableAthlete: 'Remarkable Athlete',
   deathWarded: 'Death Warded',
+  enlarged: 'Enlarged (+50% Size, +25% Damage)',
   blinded: 'Blinded',
   charmed: 'Charmed',
   frightened: 'Frightened',
@@ -653,6 +772,7 @@ const CONDITION_COLORS = {
   phaseStep: '#38bdf8',
   remarkableAthlete: '#4ade4a',
   deathWarded: '#fbbf24',
+  enlarged: '#ffb45a', // warm orange
   blinded: '#e0483a', // red
   charmed: '#c084fc', // purple
   frightened: '#e0483a',
@@ -679,9 +799,10 @@ function buildEffectsHTML(h) {
   if (conc && conc.key) {
     const sp = SPELLS[conc.key];
     const spLabel = sp ? sp.label : conc.key;
+    const spDesc = sp?.desc ? ` — ${sp.desc}` : '';
     const ico = ABILITY_ICON[conc.key] || '🌙';
     concHTML = `
-      <span class="pf-conc-badge" title="Concentrating: ${spLabel}">
+      <span class="pf-conc-badge" title="Concentrating: ${spLabel}${spDesc}">
         <span class="pf-conc-badge-icon">${ico}</span>
         <span>Conc: ${spLabel}</span>
       </span>
@@ -744,6 +865,7 @@ export function bindCompanionUI(hook){ _companionHook = hook; }
 
 export function buildPartyFrames(heroes){
   const wrap = $('partyframes');
+  if (!wrap) return;
   wrap.innerHTML = '';
   heroes = heroes.filter(h => !h.companion);   // companions badge onto their owner
   heroes.forEach((h,i)=>{
@@ -831,6 +953,7 @@ export function updatePartyFrames(heroes){
     const frame = $('pframe'+i);
     frame.classList.toggle('down', h.hp<=0);
     frame.classList.toggle('leader', !!_leaderHook && _leaderHook.getLeader() === i);
+    frame.classList.toggle('concentrating', !!(h.conc?.key || h.data?.conc?.key));
 
     /* Companion badge: a small circular icon (the companion's own sprite
        glyph) with an HP-coloured ring, shown inside the owner's frame. */
@@ -861,8 +984,13 @@ export function pulseLeaderFrame(type = 'gold', rarity = 'common') {
   const rStr = String(rarity || 'common').toLowerCase();
   const pulseClass = type === 'gold' ? 'pf-gold-pulse' : `pf-loot-pulse-${rStr}`;
   frame.classList.remove('pf-gold-pulse', 'pf-loot-pulse-common', 'pf-loot-pulse-uncommon', 'pf-loot-pulse-rare', 'pf-loot-pulse-epic', 'pf-loot-pulse-legendary');
-  void frame.offsetWidth;
-  frame.classList.add(pulseClass);
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      frame.classList.add(pulseClass);
+    });
+  } else {
+    frame.classList.add(pulseClass);
+  }
   setTimeout(() => {
     frame.classList.remove(pulseClass);
   }, 850);
@@ -905,9 +1033,11 @@ export function showBanner(text, sub='', styleClass=''){
  * `onNew` hands off to the party setup screen, `onContinue` loads the save
  * (its button is disabled when there isn't one).
  */
-export function showTitle(hasSave, { onNew, onContinue }){
+export function showTitle(hasSave, { onNew, onContinue, onLoad }){
   const ts = $('titlescreen');
-  if(!ts) { onNew(); return; }
+  /* No title card to show — drop the boot-time chrome guard so the HUD isn't
+     stranded hidden (index.html ships <body class="title-open">). */
+  if(!ts) { document.body.classList.remove('title-open'); onNew(); return; }
   ts.classList.add('show');
   document.body.classList.add('title-open');
 
@@ -919,9 +1049,18 @@ export function showTitle(hasSave, { onNew, onContinue }){
   $('ts-new').onclick = ()=>{ close(); onNew(); };
 
   const contBtn = $('ts-continue');
-  contBtn.disabled = !hasSave;
-  contBtn.title = hasSave ? 'Resume your saved game' : 'No saved game found';
-  contBtn.onclick = ()=>{ if(!hasSave) return; close(); onContinue(); };
+  if (contBtn) {
+    contBtn.disabled = !hasSave;
+    contBtn.title = hasSave ? 'Resume your saved game' : 'No saved game found';
+    contBtn.onclick = ()=>{ if(!hasSave) return; close(); onContinue(); };
+  }
+
+  const loadBtn = $('ts-load');
+  if (loadBtn) {
+    loadBtn.disabled = !hasSave;
+    loadBtn.title = hasSave ? 'Select a save slot to load' : 'No saved game found';
+    loadBtn.onclick = ()=>{ if(!hasSave) return; close(); if (onLoad) onLoad(); else onContinue(); };
+  }
 
   /* Settings opens the one shared Options panel — volume, combat log and
      automation all live there now (options_ui.js owns its own Escape/backdrop
@@ -1663,8 +1802,12 @@ export function updateManualCombatBar(game) {
   const heroName = cur.data.name || 'Hero';
   const hp = cur.data.hp || 0;
 
-  /* State key comparison */
-  const stateKey = `${heroName}_${hp}_${moveLeft}_${maxMove}_${actUsed}_${bonusUsed}_${_activeSubmenu}_${_levelSelectSpellKey}_${_branchCategory}_${_branchSpellLevel}`;
+  /* State key comparison — must capture every field the bar reads, otherwise
+     spending a slot/charge short-circuits the rebuild and buttons stay stale. */
+  const _d = cur.data || {};
+  const _slotsSig = _d.slots ? Object.keys(_d.slots).sort().map(k => k + ':' + _d.slots[k]).join('|') : '';
+  const _chargeSig = `${!!_d.secondWindUsed}_${!!_d.rageUsed}_${!!_d.smiteUsed}_${!!_d.inWildShape}_${!!cur._actionSurged}`;
+  const stateKey = `${heroName}_${hp}_${moveLeft}_${maxMove}_${actUsed}_${bonusUsed}_${_activeSubmenu}_${_levelSelectSpellKey}_${_branchCategory}_${_branchSpellLevel}|${_slotsSig}|${_chargeSig}`;
   if (stateKey === _lastBarStateKey && bar.style.display === 'flex') {
     return;
   }
@@ -1682,15 +1825,30 @@ export function updateManualCombatBar(game) {
 
   /* Action submenu items */
   const knownSpells = cur.data.inWildShape ? [] : (cur.data.knownSpells || []);
+
+  /* Equipped trinket: a scroll adds its spell to the castable pool (rendered
+     with a 📜 tag); a potion adds a "Use Trinket" bonus action. */
+  const trinket = cur.data.equipment && cur.data.equipment.trinket;
+  const trinketScrollKey = (trinket && trinket.scroll && trinket.spellKey && trinket.charges > 0 && !knownSpells.includes(trinket.spellKey)) ? trinket.spellKey : null;
+  const trinketPotion = (trinket && trinket.potion && trinket.buffKey && trinket.charges > 0) ? trinket : null;
+
   const actionSpells = knownSpells.filter(k => {
     const s = SPELLS[k];
     return s && s.castingTime !== 'bonus' && s.bonusAction !== true;
   });
+  if (trinketScrollKey) {
+    const s = SPELLS[trinketScrollKey];
+    if (s && s.castingTime !== 'bonus' && s.bonusAction !== true) actionSpells.push(trinketScrollKey);
+  }
 
   const bonusSpells = knownSpells.filter(k => {
     const s = SPELLS[k];
     return s && (s.castingTime === 'bonus' || s.bonusAction === true);
   });
+  if (trinketScrollKey) {
+    const s = SPELLS[trinketScrollKey];
+    if (s && (s.castingTime === 'bonus' || s.bonusAction === true)) bonusSpells.push(trinketScrollKey);
+  }
 
   /* Action Abilities */
   const d = cur.data;
@@ -1699,8 +1857,8 @@ export function updateManualCombatBar(game) {
   if (cur.conc?.key === 'moonbeam') {
     actionAbilities.push({ key: 'moveMoonbeam', label: 'Move Moonbeam', desc: 'Relocate Moonbeam up to 60ft' });
   }
-  if ((hasFeature(d, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge')) && chargesLeft(d, 'actionSurgeClass') > 0) {
-    actionAbilities.push({ key: 'actionSurge', label: 'Action Surge', desc: 'Attack again' });
+  if ((hasFeature(d, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge')) && chargesLeft(d, 'actionSurgeClass') > 0 && !cur._actionSurged) {
+    actionAbilities.push({ key: 'actionSurge', label: 'Action Surge', desc: 'Grants one additional Action' });
   }
   if (sc && sc.active.key === 'fastHands' && chargesLeft(d, 'fastHands') > 0) {
     actionAbilities.push({ key: 'fastHands', label: 'Smoke Bomb (Fast Hands)', desc: 'Blind foes in 4m' });
@@ -1729,6 +1887,9 @@ export function updateManualCombatBar(game) {
   if (d.inWildShape) {
     bonusAbilities.push({ key: 'dropWildShape', label: '🌿 Drop Wild Shape', desc: 'Revert to natural form' });
   }
+  if (trinketPotion) {
+    bonusAbilities.push({ key: 'useTrinket', label: `🧪 ${trinketPotion.name}`, desc: `Drink it (${trinketPotion.charges} charge${trinketPotion.charges === 1 ? '' : 's'})` });
+  }
 
   const atkOpts = getAvailableAttackOptions(cur);
 
@@ -1748,9 +1909,14 @@ export function updateManualCombatBar(game) {
     </div>
 
     <div class="mbar-btn-wrap">
-      <button id="mbar-act-btn" class="mbar-btn ${actUsed ? 'spent disabled' : ''}" ${actUsed ? 'disabled' : ''}>
-        ⚔️ Action ${actUsed ? '(Spent)' : (_activeSubmenu === 'action' ? '▲' : '▼')}
-      </button>
+      ${(() => {
+        const surgeReady = actionAbilities.some(a => a.key === 'actionSurge');
+        const actDisabled = actUsed && !surgeReady;
+        const label = actDisabled ? '(Spent)' : (actUsed && surgeReady ? '(Surge!)' : (_activeSubmenu === 'action' ? '▲' : '▼'));
+        return `<button id="mbar-act-btn" class="mbar-btn ${actDisabled ? 'spent disabled' : (actUsed && surgeReady ? 'surge-ready' : '')}" ${actDisabled ? 'disabled' : ''}>
+          ⚔️ Action ${label}
+        </button>`;
+      })()}
 
       <!-- Level 1 Category Menu -->
       <div class="mbar-submenu ${_activeSubmenu === 'action' ? 'show' : ''}">
@@ -1804,9 +1970,11 @@ export function updateManualCombatBar(game) {
         const slots = cur.data?.slots || {};
         const maxSlots = cur.data?.maxSlots || {};
         const cantripList = actionSpells.filter(k => SPELLS[k] && (!SPELLS[k].level || SPELLS[k].level === 0));
-        const lvl1List = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level === 1);
-        const lvl2List = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level > 0 && SPELLS[k].level <= 2);
-        const lvl3List = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level > 0 && SPELLS[k].level <= 3);
+        const leveledSpells = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level > 0);
+        const slotTiers = [];
+        for (let l = 1; l <= 9; l++) {
+          if ((slots[l] || 0) > 0 && leveledSpells.some(k => SPELLS[k].level <= l)) slotTiers.push(l);
+        }
 
         return `
           <div class="mbar-branch-panel level-2 show">
@@ -1817,24 +1985,13 @@ export function updateManualCombatBar(game) {
                 <span class="mbar-sub-item-sub">▶</span>
               </button>
             ` : ''}
-            ${lvl1List.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 1 ? 'active' : ''}" data-spell-level="1">
-                <span>🔮 Level 1 Slots</span>
-                <span class="mbar-sub-item-sub">${slots[1] || 0}/${maxSlots[1] || 0} ▶</span>
+            ${slotTiers.map(l => `
+              <button class="mbar-branch-btn ${_branchSpellLevel === l ? 'active' : ''}" data-spell-level="${l}">
+                <span>🔮 Level ${l} Slots</span>
+                <span class="mbar-sub-item-sub">${slots[l] || 0}/${maxSlots[l] || 0} ▶</span>
               </button>
-            ` : ''}
-            ${lvl2List.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 2 ? 'active' : ''}" data-spell-level="2">
-                <span>🔮 Level 2 Slots</span>
-                <span class="mbar-sub-item-sub">${slots[2] || 0}/${maxSlots[2] || 0} ▶</span>
-              </button>
-            ` : ''}
-            ${lvl3List.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 3 ? 'active' : ''}" data-spell-level="3">
-                <span>🔮 Level 3 Slots</span>
-                <span class="mbar-sub-item-sub">${slots[3] || 0}/${maxSlots[3] || 0} ▶</span>
-              </button>
-            ` : ''}
+            `).join('')}
+            ${(!cantripList.length && !slotTiers.length) ? `<div style="padding:8px;font-size:12px;color:#8f95a8;">No castable spells or slots.</div>` : ''}
           </div>
         `;
       })() : ''}
@@ -1857,7 +2014,7 @@ export function updateManualCombatBar(game) {
               const isUpcast = sp && sp.level > 0 && sp.level < targetLvl;
               return `
                 <button class="spell-cast-btn" data-spell="${k}" data-level="${targetLvl || 1}">
-                  <span>✨ ${sp ? sp.label : k} ${isUpcast ? '<small style="color:#d8aa46;">(Upcast)</small>' : ''}</span>
+                  <span>${k === trinketScrollKey ? '📜 ' : '✨ '}${sp ? sp.label : k} ${isUpcast ? '<small style="color:#d8aa46;">(Upcast)</small>' : ''}</span>
                   <span class="mbar-sub-item-sub">${sp && sp.school ? sp.school : 'Magic'}</span>
                 </button>
               `;
@@ -1889,7 +2046,7 @@ export function updateManualCombatBar(game) {
         ${bonusSpells.map(k => {
           const sp = SPELLS[k];
           return `<button class="spell-cast-btn" data-spell="${k}" data-level="${sp?.level || 1}">
-            <span>✨ ${sp ? sp.label : k}</span>
+            <span>${k === trinketScrollKey ? '📜 ' : '✨ '}${sp ? sp.label : k}</span>
             <span class="mbar-sub-item-sub">${sp && sp.level ? 'Lv' + sp.level : 'Cantrip'}</span>
           </button>`;
         }).join('')}
@@ -1959,11 +2116,14 @@ export function updateManualCombatBar(game) {
     };
   });
 
-  /* Attack Option clicks */
+  /* Attack Option clicks — melee/thrown/unarmed enter attack targeting so the
+     player picks the foe; cantrip stays on the spell path (it targets like a
+     spell). The chosen option's full profile is threaded through. */
   bar.querySelectorAll('.attack-opt-btn').forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
       const type = btn.dataset.type;
+      const optKey = btn.dataset.optKey;
       _activeSubmenu = null;
       _branchCategory = null;
       _branchSpellLevel = null;
@@ -1971,11 +2131,11 @@ export function updateManualCombatBar(game) {
       if (type === 'cantrip') {
         const cantripKey = cur.data?.cantripProfile?.nameKey || 'fireBolt';
         game.manualPerformSpell(cur, cantripKey, null, null, 0);
-      } else if (type === 'thrown') {
-        const w = cur.data?.weaponProfile;
-        game.manualPerformAttack(cur, null, { thrown: true, range: w?.range || 6 });
       } else {
-        game.manualPerformAttack(cur);
+        const opt = atkOpts.find(o => o.key === optKey) || atkOpts.find(o => o.type === type);
+        const profileOverride = opt ? opt.profile : (type === 'thrown' ? 'thrown' : undefined);
+        if (game.startAttackTargeting) game.startAttackTargeting(cur, profileOverride);
+        else game.manualPerformAttack(cur, null, profileOverride);
       }
     };
   });
@@ -2008,8 +2168,9 @@ export function updateManualCombatBar(game) {
         _branchCategory = null;
         _branchSpellLevel = null;
         if (item.dataset.key === 'moveMoonbeam') game.manualPerformSpell(cur, 'moveMoonbeam');
+        else if (item.dataset.key === 'useTrinket') game.manualUseTrinket(cur);
         else if (act === 'bonus-ability') game.manualPerformBonusAbility(cur, item.dataset.key);
-        else if (act === 'action-ability') { /* handle as needed */ }
+        else if (act === 'action-ability') game.manualPerformActionAbility(cur, item.dataset.key);
       }
     };
   });

@@ -9,6 +9,9 @@ export const POOL = 3;
 
 export const THEME_ORDER = ['ancient', 'verdant', 'frost', 'grim', 'molten'];
 export const SAVE_KEY = 'dungeon-crawlers-save-v1';
+export const SAVE_SLOT_PREFIX = 'dungeon-crawlers-save-slot-';
+export const ACTIVE_SLOT_KEY = 'dc_active_save_slot';
+export const MAX_SAVE_SLOTS = 5;
 
 export const HERO_SPEED = 1.5;         // ~30% slower than the previous 2.15
 export const MONSTER_SPEED_MULT = 0.5; // global monster speed scale (matches hero slowdown)
@@ -43,6 +46,10 @@ export const FORMATION_WIDTH = 1.0;    // tiles to side for follower wedge sprea
 // --- Chokepoint ---
 export const CHOKEPOINT_COST = 3;        // Dijkstra penalty weight for chokepoint cells
 export const HAZARD_COST = 6;            // Dijkstra penalty weight for AoE-covered cells
+// Squeezing through a teammate's square: legal in 5e (you just can't stop
+// there), but preferably avoided. Hard-blocking allies instead sent heroes on
+// long detours around their own party rather than queueing behind them.
+export const ALLY_PASS_COST = 2;
 
 // --- Collision radii (world tiles; cell centres are 1.0 apart) ---
 // A floor cell spans +/-0.5 around its centre, so any radius < 0.5 keeps the
@@ -78,6 +85,16 @@ export const KITE_THREAT_RANGE = 2.2;    // a melee hero within this spooks the 
 export const KITE_RETREAT_DIST = 2.5;    // world tiles to back away toward
 export const KITE_COMMIT_SEC = 0.6;      // min time committed to a kite before reconsidering
 
+// --- Tactical-action gating (Dash / Dodge / Disengage) ---
+// These "fallback" actions spend the whole Action, so the AIs only take them
+// when they actually pay off. A creature below TACTICAL_BLOODIED_FRAC HP is
+// considered bloodied (retreats / breaks contact); a creature is "under
+// pressure" (Dodge-worthy) when bloodied below TACTICAL_DODGE_BLOODIED_FRAC
+// or pinned by TACTICAL_DODGE_PIN_THREATS adjacent hostiles.
+export const TACTICAL_BLOODIED_FRAC = 0.35;      // retreat / break-contact threshold
+export const TACTICAL_DODGE_BLOODIED_FRAC = 0.4; // pressure threshold for Dodge
+export const TACTICAL_DODGE_PIN_THREATS = 2;     // adjacent hostiles that count as pressure
+
 // --- Monster AI: flanking ---
 export const FLANK_OFFSET = 1.5;         // tiles past the target a flanker aims for
 
@@ -98,6 +115,22 @@ export const DMG_TYPES = [
   'acid', 'cold', 'fire', 'lightning', 'thunder',
   'force', 'necrotic', 'poison', 'psychic', 'radiant',
 ];
+
+export const DAMAGE_TYPE_ICONS = {
+  fire: '🔥',
+  cold: '❄️',
+  lightning: '⚡',
+  thunder: '🌩️',
+  acid: '🧪',
+  poison: '☠️',
+  necrotic: '💀',
+  radiant: '✨',
+  force: '💫',
+  psychic: '👁️',
+  slashing: '🗡️',
+  piercing: '🏹',
+  bludgeoning: '🔨'
+};
 
 // --- CR-based Monster Stat Scaling Table ---
 // Percentage levers per CR rating for AC, HP, to-hit (atk), and ability stats.

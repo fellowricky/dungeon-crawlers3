@@ -21,7 +21,7 @@ import {
   buyRoomSpawns, roomSpawnBudget, roomSpawnCap
 } from './dungeon/dungeon_generator.js';
 import SPAWN_BUDGET_FACTORY from './game/spawn_budget.default.json' with { type: 'json' };
-import { getDefaultColorBalance, applyColorBalanceToPixel } from './game/color_balance.js';
+import { getDefaultColorBalance, applyColorBalanceToPixel, loadBalancedCanvas } from './game/color_balance.js';
 
 /* Ensure crCostOverrides is present and mutable on the live budget object.
    JSON module imports may not let us add brand-new top-level keys later. */
@@ -385,9 +385,7 @@ function setupUIEventListeners() {
   document.getElementById('arena-open-newtab-btn')?.addEventListener('click', () => {
     const monster = getCurrentMonster();
     if (monster) {
-      const activeSpritePath = testSpriteOverride || monster.sprite;
-      const url = `test-skills.html?monster=${encodeURIComponent(monster.id)}&name=${encodeURIComponent(monster.name)}&scale=${monster.scale || 1.0}&sprite=${encodeURIComponent(activeSpritePath)}`;
-      window.open(url, '_blank');
+      window.open(buildTestSkillsUrl(monster), '_blank');
     }
   });
 
@@ -431,9 +429,7 @@ function setupUIEventListeners() {
   document.getElementById('arena-full-vfx-btn')?.addEventListener('click', () => {
     const m = getCurrentMonster();
     if (m) {
-      const activeSpritePath = testSpriteOverride || m.sprite;
-      const url = `test-skills.html?monster=${encodeURIComponent(m.id)}&name=${encodeURIComponent(m.name)}&scale=${m.scale || 1.0}&sprite=${encodeURIComponent(activeSpritePath)}`;
-      window.open(url, '_blank');
+      window.open(buildTestSkillsUrl(m), '_blank');
     } else {
       window.open('test-skills.html', '_blank');
     }
@@ -455,6 +451,51 @@ function setupUIEventListeners() {
     const val = Math.max(0.1, Math.min(4.0, parseFloat(e.target.value) || 1.0));
     if (scaleSlider) scaleSlider.value = val;
     applyLiveVisualEdit({ scale: val });
+  });
+
+  /* Horizontal flip. The engine treats sprite art as left-facing and mirrors it when
+     a monster walks right, so art drawn facing right reads backwards forever. This
+     stores a flipX flag on the monster rather than rewriting the PNG, keeping it
+     reversible and shared by the dungeon renderer and this preview. */
+  const flipToggle = document.getElementById('flip-x-toggle');
+  flipToggle?.addEventListener('change', (e) => {
+    applyLiveVisualEdit({ flipX: !!e.target.checked });
+    updateFlipLabel(!!e.target.checked);
+  });
+
+  /* Bulk flip. Almost every sprite in the from-scratch batch was generated facing
+     right, so flipping them one checkbox at a time would mean hundreds of clicks.
+     Scope is whatever the list filters currently show, and it writes the same
+     per-monster flag, so any individual monster can still be corrected after. */
+  document.getElementById('flip-bulk-btn')?.addEventListener('click', () => {
+    const targets = filteredMonsters.slice();
+    if (!targets.length) return;
+    const already = targets.filter(m => m.flipX).length;
+    const turnOn = already < targets.length;
+    const verb = turnOn ? 'Flip' : 'Un-flip';
+    if (!confirm(`${verb} all ${targets.length} monsters currently listed?` +
+                 (already ? `
+
+${already} of them are already flipped.` : '') +
+                 `
+
+This edits the flipX flag only; remember to Save monsters.json afterwards.`)) return;
+    targets.forEach(m => {
+      if (!userEdits[m.id]) userEdits[m.id] = {};
+      userEdits[m.id].flipX = turnOn;
+      m.flipX = turnOn;
+      m._isEdited = true;
+    });
+    saveUserEdits();
+    renderMonsterList();
+    const cur = getCurrentMonster();
+    if (cur) {
+      const el = document.getElementById('flip-x-toggle');
+      if (el) el.checked = !!cur.flipX;
+      updateFlipLabel(!!cur.flipX);
+      updateSpriteDisplay();
+    }
+    showToast(`${verb}ped ${targets.length} monsters — save monsters.json to persist.`);
   });
 
   /* ---------------- GRANULAR COLOR BALANCE CONTROLS ---------------- */
@@ -505,6 +546,45 @@ function setupUIEventListeners() {
     }
   });
 
+  // ---------------- Animated Sprite Atlas Editor ----------------
+  const animFieldIds = [
+    'anim-idle-enabled', 'anim-idle-sprite', 'anim-idle-fw', 'anim-idle-fh',
+    'anim-idle-cols', 'anim-idle-rows', 'anim-idle-fps', 'anim-idle-frames', 'anim-idle-loop',
+    'anim-attack-enabled', 'anim-attack-sprite', 'anim-attack-fw', 'anim-attack-fh',
+    'anim-attack-cols', 'anim-attack-rows', 'anim-attack-fps', 'anim-attack-frames', 'anim-attack-loop'
+  ];
+  animFieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      syncAnimPanelToggles();
+      applyAnimEdits();
+      updateAnimPreview('idle');
+      updateAnimPreview('attack');
+    });
+    if (el.type === 'number') {
+      // live-preview while scrubbing numbers (persist happens on change)
+      el.addEventListener('input', () => updateAnimPreview(el.id.split('-')[1]));
+    }
+  });
+
+  document.getElementById('anim-remove-btn')?.addEventListener('click', () => {
+    applyLiveVisualEdit({ animations: {} });
+    const m = getCurrentMonster();
+    if (m) populateAnimEditor(m);
+    showToast("Removed animation config — falling back to the static sprite.");
+  });
+
+  // ---------------- Sprite Sheet Browser Modal ----------------
+  document.querySelectorAll('.sheet-browse-btn').forEach(btn => {
+    btn.addEventListener('click', () => openSheetPicker(btn.dataset.target));
+  });
+  document.getElementById('sheet-picker-close')?.addEventListener('click', closeSheetPicker);
+  document.getElementById('sheet-picker-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'sheet-picker-modal') closeSheetPicker();
+  });
+  document.getElementById('sheet-picker-search')?.addEventListener('input', renderSheetGrid);
+
   // Speed & Threat Editors
   document.getElementById('edit-speed-slider')?.addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
@@ -527,7 +607,6 @@ function setupUIEventListeners() {
     const updated = {
       name: document.getElementById('edit-name')?.value.trim() || m.name,
       cr: parseFloat(document.getElementById('edit-cr')?.value || m.cr),
-      isBoss: document.getElementById('edit-isboss')?.checked || false,
       type: document.getElementById('edit-type')?.value || m.type,
       size: document.getElementById('edit-size')?.value || m.size,
       ac: parseInt(document.getElementById('edit-ac')?.value, 10) ?? m.ac,
@@ -605,6 +684,24 @@ function setupUIEventListeners() {
     const jsonSnippet = `"sprite": "${spritePath}"`;
     navigator.clipboard.writeText(jsonSnippet).then(() => {
       showToast("Copied sprite JSON: " + jsonSnippet);
+    });
+  });
+
+  document.getElementById('copy-anim-json-btn')?.addEventListener('click', () => {
+    const monster = getCurrentMonster();
+    if (!monster) return;
+    const idle = readAnimPanel('idle');
+    const attack = readAnimPanel('attack');
+    const animations = {};
+    if (idle) animations.idle = idle;
+    if (attack) animations.attack = attack;
+    if (!Object.keys(animations).length) {
+      showToast("No animations configured for this monster yet.");
+      return;
+    }
+    const jsonSnippet = `"animations": ${JSON.stringify(animations, null, 2).replace(/\n/g, '\n  ')}`;
+    navigator.clipboard.writeText(jsonSnippet).then(() => {
+      showToast("Copied animations JSON snippet");
     });
   });
 
@@ -817,6 +914,316 @@ function applyLiveVisualEdit(fields) {
   if (nameEl) nameEl.textContent = m.name;
 }
 
+/* ---------------- ANIMATED SPRITE ATLAS EDITOR ---------------- */
+
+/* Parse a "Frames" text field into an ordered sheet-index array.
+   Accepts ranges ("0-7"), comma/space lists ("0,2,4" / "1 3 5"), or a mix.
+   Blank returns null → the whole sheet plays in order. */
+function parseFramesInput(str) {
+  const s = (str || '').trim();
+  if (!s) return null;
+  const parts = s.split(/[\s,;]+/).filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    const range = /^(\d+)\s*-\s*(\d+)$/.exec(p);
+    if (range) {
+      const a = parseInt(range[1], 10);
+      const b = parseInt(range[2], 10);
+      const step = a <= b ? 1 : -1;
+      for (let v = a; (step > 0 ? v <= b : v >= b); v += step) out.push(v);
+    } else if (/^\d+$/.test(p)) {
+      out.push(parseInt(p, 10));
+    }
+  }
+  return out.length ? out : null;
+}
+
+/* Reverse: compact array → "0-7" when sequential, else a comma list. */
+function framesToCompactString(frames) {
+  if (!frames || !frames.length) return '';
+  if (frames.length === 1) return String(frames[0]);
+  let seq = true;
+  for (let i = 1; i < frames.length; i++) {
+    if (frames[i] !== frames[i - 1] + 1) { seq = false; break; }
+  }
+  return seq ? `${frames[0]}-${frames[frames.length - 1]}` : frames.join(',');
+}
+
+/* Read one panel (idle | attack) into an animations config (or null when
+   disabled). Fields only present when they differ from a plain default. */
+function readAnimPanel(key) {
+  const enabled = document.getElementById(`anim-${key}-enabled`)?.checked;
+  if (!enabled) return null;
+  const sprite = (document.getElementById(`anim-${key}-sprite`)?.value || '').trim();
+  const frameWidth = parseInt(document.getElementById(`anim-${key}-fw`)?.value, 10) || 96;
+  const frameHeight = parseInt(document.getElementById(`anim-${key}-fh`)?.value, 10) || 96;
+  const cols = parseInt(document.getElementById(`anim-${key}-cols`)?.value, 10) || 8;
+  const rows = parseInt(document.getElementById(`anim-${key}-rows`)?.value, 10) || 1;
+  const fps = parseFloat(document.getElementById(`anim-${key}-fps`)?.value) || 8;
+  const frames = parseFramesInput(document.getElementById(`anim-${key}-frames`)?.value);
+  const loop = document.getElementById(`anim-${key}-loop`)?.checked ?? true;
+
+  const cfg = {
+    frameWidth: Math.max(1, frameWidth),
+    frameHeight: Math.max(1, frameHeight),
+    cols: Math.max(1, cols),
+    rows: Math.max(1, rows),
+    fps: Math.max(0.1, fps),
+    loop
+  };
+  if (sprite) cfg.sprite = sprite;
+  if (frames) cfg.frames = frames;
+  return cfg;
+}
+
+/* Read both panels and persist the animations block via applyLiveVisualEdit. */
+function applyAnimEdits() {
+  const m = getCurrentMonster();
+  if (!m) return;
+  const animations = {};
+  const idle = readAnimPanel('idle');
+  const attack = readAnimPanel('attack');
+  if (idle) animations.idle = idle;
+  if (attack) animations.attack = attack;
+  applyLiveVisualEdit({ animations });
+}
+
+/* Enable checkbox ↔ field enable/disable visual state + panel highlight. */
+function syncAnimPanelToggles() {
+  for (const key of ['idle', 'attack']) {
+    const enabled = document.getElementById(`anim-${key}-enabled`)?.checked;
+    const panel = document.getElementById(`anim-panel-${key}`);
+    const fields = document.getElementById(`anim-${key}-fields`);
+    if (panel) panel.classList.toggle('enabled', !!enabled);
+    if (fields) fields.classList.toggle('disabled', !enabled);
+  }
+}
+
+/* Populate the editor panels from the current monster's animations block. */
+function populateAnimEditor(monster) {
+  const anims = monster.animations || {};
+  for (const key of ['idle', 'attack']) {
+    const cfg = anims[key] || null;
+    document.getElementById(`anim-${key}-enabled`).checked = !!cfg;
+    document.getElementById(`anim-${key}-sprite`).value = (cfg && cfg.sprite) || '';
+    document.getElementById(`anim-${key}-fw`).value = (cfg && cfg.frameWidth) || 96;
+    document.getElementById(`anim-${key}-fh`).value = (cfg && cfg.frameHeight) || 96;
+    document.getElementById(`anim-${key}-cols`).value = (cfg && cfg.cols) || (key === 'idle' ? 8 : 6);
+    document.getElementById(`anim-${key}-rows`).value = (cfg && cfg.rows) || 1;
+    document.getElementById(`anim-${key}-fps`).value = (cfg && cfg.fps) || (key === 'idle' ? 8 : 12);
+    document.getElementById(`anim-${key}-frames`).value = framesToCompactString(cfg && cfg.frames);
+    document.getElementById(`anim-${key}-loop`).checked = cfg ? cfg.loop !== false : key === 'idle';
+  }
+  syncAnimPanelToggles();
+  updateAnimPreview('idle');
+  updateAnimPreview('attack');
+}
+
+const animPreviewRAF = { idle: null, attack: null };
+
+/* Live preview: plays one panel's atlas (with the monster's colour balance
+   baked in) on its canvas, sat on a ground line. */
+function updateAnimPreview(key) {
+  cancelAnimationFrame(animPreviewRAF[key]);
+  const canvas = document.getElementById(`anim-${key}-preview`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const meta = document.getElementById(`anim-${key}-meta`);
+  const monster = getCurrentMonster();
+
+  /* Keep the drawing buffer in sync with the canvas's CSS size so the preview
+     is never stretched/squished by layout — the frame math below uses the
+     buffer dims, so if they lag the on-screen box the sprite gets distorted. */
+  const syncCanvasSize = () => {
+    const cw = canvas.clientWidth || 288;
+    const ch = canvas.clientHeight || 176;
+    if (canvas.width !== cw) canvas.width = cw;
+    if (canvas.height !== ch) canvas.height = ch;
+  };
+
+  const drawEmpty = (msg) => {
+    syncCanvasSize();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0b0e1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#5a6279';
+    ctx.font = '11px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+    if (meta) meta.textContent = '—';
+  };
+
+  if (!monster) { drawEmpty('Select a monster'); return; }
+
+  const cfg = readAnimPanel(key);
+  if (!cfg) { drawEmpty('Disabled'); return; }
+
+  const path = cfg.sprite || monster.sprite || 'orc.png';
+  const url = resolveSpriteUrl(path);
+  const cb = monster.colorBalance || getDefaultColorBalance();
+
+  loadBalancedCanvas(url, cb, (sheet) => {
+    if (!sheet) { drawEmpty('Image not found'); return; }
+
+    const cols = cfg.cols;
+    const rows = cfg.rows;
+    const fw = Math.max(1, Math.min(cfg.frameWidth, Math.floor(sheet.width / cols)));
+    const fh = Math.max(1, Math.min(cfg.frameHeight, Math.floor(sheet.height / rows)));
+    if (fw * cols > sheet.width || fh * rows > sheet.height) {
+      drawEmpty(`Sheet smaller than ${cols}×${rows} × ${cfg.frameWidth}px frames`);
+      return;
+    }
+
+    const seq = cfg.frames && cfg.frames.length ? cfg.frames : null;
+    const count = seq ? seq.length : cols * rows;
+    if (count <= 0) { drawEmpty('No frames'); return; }
+
+    if (meta) {
+      meta.textContent = `${count} frame${count === 1 ? '' : 's'} · ${sheet.width}×${sheet.height} sheet · ${fw}×${fh} cell`;
+    }
+
+    const start = performance.now();
+    const step = (now) => {
+      if (document.getElementById(`anim-${key}-enabled`)?.checked === false) {
+        drawEmpty('Disabled');
+        return;
+      }
+      const t = (now - start) / 1000;
+      const idx = Math.floor(t * cfg.fps);
+      let f;
+      if (cfg.loop) {
+        f = idx % count;
+      } else if (idx >= count) {
+        f = count - 1;
+      } else {
+        f = idx;
+      }
+      const fi = seq ? seq[f] : f;
+      const col = fi % cols;
+      const row = Math.floor(fi / cols);
+
+      syncCanvasSize();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b0e1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(217, 164, 65, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(8, canvas.height - 16);
+      ctx.lineTo(canvas.width - 8, canvas.height - 16);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const maxW = canvas.width - 24;
+      const maxH = canvas.height - 44;
+      const sc = Math.min(maxW / fw, maxH / fh);
+      const dw = fw * sc;
+      const dh = fh * sc;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sheet, col * fw, row * fh, fw, fh,
+        (canvas.width - dw) / 2, (canvas.height - 16) - dh, dw, dh);
+
+      animPreviewRAF[key] = requestAnimationFrame(step);
+    };
+    animPreviewRAF[key] = requestAnimationFrame(step);
+  }, () => { drawEmpty('Image not found'); });
+}
+
+/* ---------------- SPRITE SHEET BROWSER ---------------- */
+
+let SPRITE_SHEET_LIBRARY = null;   // cached disk listing from the dev server
+let sheetPickerTarget = null;      // input id a picked sheet will fill
+
+async function loadSpriteSheetLibrary() {
+  if (SPRITE_SHEET_LIBRARY) return SPRITE_SHEET_LIBRARY;
+  try {
+    const res = await fetch('/api/list-sprite-sheets');
+    const data = await res.json();
+    if (data.success && data.files.length) SPRITE_SHEET_LIBRARY = data.files;
+  } catch { /* static build — no disk listing */ }
+  if (!SPRITE_SHEET_LIBRARY) SPRITE_SHEET_LIBRARY = [];
+  return SPRITE_SHEET_LIBRARY;
+}
+
+function openSheetPicker(targetId) {
+  sheetPickerTarget = targetId;
+  const modal = document.getElementById('sheet-picker-modal');
+  if (!modal) return;
+  const search = document.getElementById('sheet-picker-search');
+  if (search) search.value = '';
+  modal.style.display = 'flex';
+  renderSheetGrid();
+  /* Swap the empty grid for the full library as soon as it arrives. */
+  if (!SPRITE_SHEET_LIBRARY) loadSpriteSheetLibrary().then(renderSheetGrid);
+}
+
+function closeSheetPicker() {
+  const modal = document.getElementById('sheet-picker-modal');
+  if (modal) modal.style.display = 'none';
+  sheetPickerTarget = null;
+}
+
+function renderSheetGrid() {
+  const grid = document.getElementById('sheet-picker-grid');
+  if (!grid) return;
+  const query = (document.getElementById('sheet-picker-search')?.value || '').toLowerCase().trim();
+
+  const all = SPRITE_SHEET_LIBRARY || [];
+  const matched = all.filter(p => !query || p.toLowerCase().includes(query));
+  /* ~1.5k DCSS monsters + uploads; render a page and let search narrow it. */
+  const LIMIT = 300;
+  const files = matched.slice(0, LIMIT);
+
+  const count = document.getElementById('sheet-picker-count');
+  if (count) {
+    count.textContent = all.length === 0
+      ? 'Run `npm run dev` to browse sheets from disk'
+      : matched.length > LIMIT
+        ? `Showing ${LIMIT} of ${matched.length} sheets — search to narrow`
+        : `${matched.length} sheet${matched.length === 1 ? '' : 's'}`;
+  }
+
+  grid.innerHTML = '';
+  files.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'sheet-grid-item';
+    item.title = p;
+    item.innerHTML = `<img src="./${p}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span class="sheet-name">${p}</span>`;
+    /* Wide sheets (many frames on one row) span extra columns so the strip is
+       big enough to identify, instead of a squashed sliver in a square tile. */
+    const img = item.querySelector('img');
+    if (img) {
+      const spanForRatio = () => {
+        const w = img.naturalWidth || 0;
+        const h = img.naturalHeight || 0;
+        if (!w || !h) return;
+        const ratio = w / h;
+        if (ratio > 3.5) item.classList.add('sheet-grid-item--span3');
+        else if (ratio > 1.8) item.classList.add('sheet-grid-item--span2');
+      };
+      if (img.complete) spanForRatio();
+      else img.addEventListener('load', spanForRatio);
+    }
+    item.addEventListener('click', () => {
+      const target = document.getElementById(sheetPickerTarget);
+      if (target) {
+        target.value = p;
+        if (sheetPickerTarget === 'custom-sprite-input') {
+          testSpriteOverride = p;
+          updateSpriteDisplay();
+        } else {
+          /* let the input's own change handler persist + refresh */
+          target.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      closeSheetPicker();
+    });
+    grid.appendChild(item);
+  });
+}
+
 function setupKeyboardNavigation() {
   window.addEventListener('keydown', (e) => {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
@@ -861,10 +1268,8 @@ function applyFilters() {
     }
 
     if (tierVal !== 'all') {
-      /* Tier filter now selects CR bands (option value 1-5 -> band 0-4) or the
-         boss roster. Monsters no longer carry a `tier` field. */
-      if (tierVal === 'boss') { if (!m.isBoss) return false; }
-      else if (String(crBandIndex(m.cr)) !== String(Number(tierVal) - 1)) return false;
+      /* Tier filter selects CR bands (option value 1-5 -> band 0-4). */
+      if (String(crBandIndex(m.cr)) !== String(Number(tierVal) - 1)) return false;
     }
 
     if (typeVal !== 'all' && m.type !== typeVal) return false;
@@ -935,14 +1340,13 @@ function renderMonsterList() {
     return `
       <div class="monster-item ${isSelected ? 'selected' : ''}" data-index="${idx}" data-id="${m.id}">
         <div class="monster-item-thumb" style="border-color: ${hexColor}">
-          <img src="${resolveSpriteUrl(m.sprite)}" alt="${m.name}" loading="lazy" onerror="this.src='./dcss/monster/orc.png'">
+          <img src="${resolveSpriteUrl(m.sprite)}" alt="${m.name}" loading="lazy"${m.flipX ? ' style="transform:scaleX(-1)"' : ''} onerror="this.src='./dcss/monster/orc.png'">
         </div>
         <div class="monster-item-info">
           <div class="monster-item-name">${m.name}</div>
           <div class="monster-item-sub">
             <span class="cr-pill">CR ${formatCR(m.cr)}</span>
             <span class="type-pill">${m.type || 'creature'}</span>
-            ${m.isBoss ? '<span class="tier-pill boss">☠ BOSS</span>' : ''}
           </div>
           ${badges.length ? `<div class="monster-item-badges">${badges.join('')}</div>` : ''}
         </div>
@@ -987,7 +1391,10 @@ function updateMonsterListItem(id) {
   if (thumbEl) {
     thumbEl.style.borderColor = hexIntToHexStr(m.color);
     const imgEl = thumbEl.querySelector('img');
-    if (imgEl) imgEl.src = resolveSpriteUrl(m.sprite);
+    if (imgEl) {
+      imgEl.src = resolveSpriteUrl(m.sprite);
+      imgEl.style.transform = m.flipX ? 'scaleX(-1)' : '';
+    }
   }
 
   let badgeContainer = el.querySelector('.monster-item-badges');
@@ -1049,7 +1456,6 @@ function renderCurrentMonster() {
   if (metaEl) {
     metaEl.innerHTML = `
       <span class="meta-badge badge-cr">CR ${formatCR(monster.cr)}</span>
-      ${monster.isBoss ? '<span class="meta-badge badge-tier">☠ BOSS</span>' : ''}
       <span class="meta-badge badge-type">${(monster.size || 'medium').toUpperCase()} ${(monster.type || 'creature').toUpperCase()}</span>
       ${monster.tags && monster.tags.length ? monster.tags.map(t => `<span class="meta-badge badge-tag">${t}</span>`).join('') : ''}
       ${monster._isEdited ? '<span class="meta-badge badge-edited">✏️ MODIFIED</span>' : ''}
@@ -1104,6 +1510,11 @@ function populateEditorFormControls(monster) {
   const spriteInput = document.getElementById('edit-sprite-input');
   if (spriteInput) spriteInput.value = monster.sprite || '';
 
+  // Facing
+  const flipEl = document.getElementById('flip-x-toggle');
+  if (flipEl) flipEl.checked = !!monster.flipX;
+  updateFlipLabel(!!monster.flipX);
+
   // Speed & Threat
   const speedSlider = document.getElementById('edit-speed-slider');
   const speedNum = document.getElementById('edit-speed-num');
@@ -1120,9 +1531,6 @@ function populateEditorFormControls(monster) {
 
   const editCr = document.getElementById('edit-cr');
   if (editCr) editCr.value = monster.cr ?? 0.25;
-
-  const editIsBoss = document.getElementById('edit-isboss');
-  if (editIsBoss) editIsBoss.checked = !!monster.isBoss;
 
   const editType = document.getElementById('edit-type');
   if (editType) editType.value = monster.type || 'beast';
@@ -1153,6 +1561,9 @@ function populateEditorFormControls(monster) {
 
   // Spawnable Dungeon Types
   populateDungeonGrid(monster);
+
+  // Animated Sprite Atlas Editor
+  populateAnimEditor(monster);
 }
 
 function populateColorBalanceUI(cb, colorHexInt) {
@@ -1178,6 +1589,11 @@ function populateColorBalanceUI(cb, colorHexInt) {
 
 /* ---------------- CANVAS SPRITE RECOLOR & VIEWPORT ---------------- */
 
+function updateFlipLabel(flipped) {
+  const el = document.getElementById('flip-x-label');
+  if (el) el.textContent = flipped ? 'flipped — art faces right' : 'art faces left';
+}
+
 function updateSpriteDisplay() {
   const monster = getCurrentMonster();
   if (!monster) return;
@@ -1199,12 +1615,12 @@ function updateSpriteDisplay() {
       if (err) dimLabel.textContent = `Image Not Found`;
       else dimLabel.textContent = `${w} × ${h} px (Native)`;
     }
-  });
+  }, !!monster.flipX);
 }
 
 const imageCache = {};
 
-function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier, zoomFactor, callback) {
+function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier, zoomFactor, callback, flipX = false) {
   const canvas = document.getElementById('sprite-viewport-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -1256,6 +1672,22 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
       monsterBounds = getPixelBounds(imgData, w, h);
     } catch (e) {
       console.warn("Could not process pixel data for recoloring/bounds", e);
+    }
+
+    /* Mirror the working buffer so every downstream draw uses the flipped art.
+       Done after getPixelBounds because that only feeds ground-snapping and content
+       size, which a horizontal mirror does not change. */
+    if (flipX) {
+      const flipped = document.createElement('canvas');
+      flipped.width = w;
+      flipped.height = h;
+      const fctx = flipped.getContext('2d');
+      fctx.imageSmoothingEnabled = false;
+      fctx.translate(w, 0);
+      fctx.scale(-1, 1);
+      fctx.drawImage(offscreen, 0, 0);
+      octx.clearRect(0, 0, w, h);
+      octx.drawImage(flipped, 0, 0);
     }
 
     const groundY = Math.floor(canvas.height * 0.78);
@@ -1529,6 +1961,26 @@ function generateArenaTerrainProps(w, h) {
   }
 }
 
+/* Build the test-skills arena URL for a monster. Carries the editor's LIVE
+   `animations` block (idle/attack atlas configs) so the preview animates
+   exactly as configured, without depending on the iframe's localStorage
+   copy of monsters.json catching up. */
+function buildTestSkillsUrl(monster, embed = false) {
+  if (!monster) return 'test-skills.html';
+  const params = new URLSearchParams();
+  if (monster.id) params.set('monster', monster.id);
+  if (monster.name) params.set('name', monster.name);
+  params.set('scale', monster.scale || 1.0);
+  const sprite = testSpriteOverride || monster.sprite;
+  if (sprite) params.set('sprite', sprite);
+  const anims = monster.animations && (monster.animations.idle || monster.animations.attack)
+    ? monster.animations
+    : null;
+  if (anims) params.set('animations', JSON.stringify(anims));
+  if (embed) params.set('embed', '1');
+  return `test-skills.html?${params.toString()}`;
+}
+
 function openArenaModal() {
   const monster = getCurrentMonster();
   if (!monster) return;
@@ -1539,10 +1991,9 @@ function openArenaModal() {
   const nameEl = document.getElementById('arena-monster-name');
   if (nameEl) nameEl.textContent = `${monster.name} — 3D Dungeon Skill & Animation Arena`;
 
-  const activeSpritePath = testSpriteOverride || monster.sprite;
   const iframe = document.getElementById('arena-3d-iframe');
   if (iframe) {
-    iframe.src = `test-skills.html?monster=${encodeURIComponent(monster.id)}&name=${encodeURIComponent(monster.name)}&scale=${monster.scale || 1.0}&sprite=${encodeURIComponent(activeSpritePath)}&embed=1`;
+    iframe.src = buildTestSkillsUrl(monster, true);
   }
 }
 
@@ -2476,9 +2927,14 @@ function setupBossEncountersTab() {
   document.getElementById('boss-test-arena-btn')?.addEventListener('click', () => {
     const enc = allBossEncounters.find(e => e.id === currentBossId);
     if (enc) {
-      const activeSpritePath = getMonsterById(enc.bossId)?.sprite || './dcss/monster/orc.png';
-      const url = `test-skills.html?monster=${encodeURIComponent(enc.bossId)}&name=${encodeURIComponent(enc.bossTitle || enc.name)}&scale=1.5&sprite=${encodeURIComponent(activeSpritePath)}`;
-      window.open(url, '_blank');
+      const boss = getMonsterById(enc.bossId);
+      window.open(buildTestSkillsUrl({
+        id: enc.bossId,
+        name: enc.bossTitle || enc.name,
+        scale: 1.5,
+        sprite: boss?.sprite || './dcss/monster/orc.png',
+        animations: boss?.animations
+      }), '_blank');
     }
   });
 }
@@ -3991,9 +4447,14 @@ function setupStoryQuestsTab() {
   document.getElementById('sq-test-arena-btn')?.addEventListener('click', () => {
     const m = effectiveMission(currentMissionId);
     if (!m || !m.finalBossId) return;
-    const sprite = getMonsterById(m.finalBossId)?.sprite || './dcss/monster/orc.png';
-    const url = `test-skills.html?monster=${encodeURIComponent(m.finalBossId)}&name=${encodeURIComponent(m.finalBossName || m.finalBossId)}&scale=1.5&sprite=${encodeURIComponent(sprite)}`;
-    window.open(url, '_blank');
+    const boss = getMonsterById(m.finalBossId);
+    window.open(buildTestSkillsUrl({
+      id: m.finalBossId,
+      name: m.finalBossName || m.finalBossId,
+      scale: 1.5,
+      sprite: boss?.sprite || './dcss/monster/orc.png',
+      animations: boss?.animations
+    }), '_blank');
   });
 
   document.getElementById('sq-save-btn')?.addEventListener('click', saveStoryEncounters);
@@ -4689,9 +5150,9 @@ function renderDungeonRosterGrid() {
   el.innerHTML = list.map(m => {
     const on = drMonsterIn(m, drCurrentTheme);
     return `
-      <label class="dr-mob-row ${on ? 'on' : ''}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)}${m.isBoss ? ' · boss-flagged' : ''}">
+      <label class="dr-mob-row ${on ? 'on' : ''}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)}">
         <input type="checkbox" ${on ? 'checked' : ''}>
-        <span class="dr-mob-name">${m.isBoss ? '👑 ' : ''}${m.name}</span>
+        <span class="dr-mob-name">${m.name}</span>
         <span class="dr-mob-fam">${getThemeForMonster(m)}</span>
         <span class="dr-mob-cr">CR ${formatCR(m.cr)}</span>
       </label>

@@ -47,9 +47,28 @@ const OPTION_GROUPS = [
         hint: 'Take the haul 3 seconds after the wheel stops, without waiting for a click.' },
     ]
   },
+  {
+    title: '⚔️ Combat',
+    note: 'Playback speed while a fight is active. Applies to movement, attacks and animations.',
+    rows: [
+      { key: 'combatSpeed', type: 'range', min: 0.5, max: 1.5, step: 0.05,
+        label: 'Combat playback speed',
+        hint: '0.7 ≈ 30% slower; 1.0 is the original speed.' },
+    ]
+  },
 ];
 
 function rowHTML(row, values) {
+  if (row.type === 'range') {
+    const val = values[row.key] != null ? values[row.key] : (row.min || 0);
+    const pct = Math.round(val * 100);
+    return `<label class="opt-vol-row opt-range-row">
+      <span class="opt-vol-label">${row.label}</span>
+      <span class="opt-range-val" data-val-for="${row.key}">${pct}%</span>
+      <input type="range" class="opt-range" data-setting="${row.key}" min="${row.min}" max="${row.max}" step="${row.step}" value="${val}">
+    </label>
+    <div class="opt-row-hint">${row.hint}</div>`;
+  }
   const on = !!values[row.key];
   return `<label class="opt-row">
     <input type="checkbox" class="opt-check" data-setting="${row.key}"${on ? ' checked' : ''}>
@@ -130,6 +149,15 @@ export function openOptions() {
 
   ov.querySelectorAll('.opt-check').forEach(box => {
     box.addEventListener('change', () => setSetting(box.dataset.setting, box.checked));
+  });
+
+  ov.querySelectorAll('.opt-range').forEach(sl => {
+    sl.addEventListener('input', () => {
+      const v = parseFloat(sl.value);
+      setSetting(sl.dataset.setting, v);
+      const val = ov.querySelector(`[data-val-for="${sl.dataset.setting}"]`);
+      if (val) val.textContent = `${Math.round(v * 100)}%`;
+    });
   });
 
   const VOL_SETTERS = { music: setMusicVolume, sfx: setSfxVolume, narr: setNarrationVolume };
