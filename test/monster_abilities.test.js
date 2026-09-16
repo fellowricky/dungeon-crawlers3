@@ -15,14 +15,14 @@ const monsters = JSON.parse(fs.readFileSync(path.join(ROOT, 'src/game/monsters.j
 describe('Monster abilities data (monsters.json)', () => {
   const withAbilities = monsters.filter(m => m.abilities && m.abilities.length);
 
-  it('covers roughly 30% of the non-boss roster', () => {
-    /* Bosses also carry abilities now (cycle spells, auras, death bursts),
-       so the cross-all-with-abilities count is higher than the non-boss
-       share alone. Cap gives headroom for future data-driven expansions. */
-    const nonBoss = monsters.filter(m => !m.isBoss);
-    const share = withAbilities.length / nonBoss.length;
-    expect(share).toBeGreaterThan(0.25);
-    expect(share).toBeLessThan(0.55);
+  it('covers the majority of the roster', () => {
+    /* Phases A–H expanded ability coverage well past the original 30% "lean"
+       guard. The lower bound still catches accidental purges; the upper bound
+       just keeps the roster from being 100% ability-padded (plain attackers
+       and flavor-only monsters are expected). */
+    const share = withAbilities.length / monsters.length;
+    expect(share).toBeGreaterThan(0.4);
+    expect(share).toBeLessThan(0.9);
   });
 
   it('every ability entry is well-formed and references real registry keys', () => {
@@ -35,10 +35,10 @@ describe('Monster abilities data (monsters.json)', () => {
         if (ab.save) {
           expect(abilities, `${m.id}:${ab.key} save.ab`).toContain(ab.save.ab);
           expect(ab.save.dc).toBeGreaterThanOrEqual(8);
-          /* Cap allows for high-tier bosses (CR 15+ in SRD legitimately
-             hit DC 20-22, e.g. balor Death Throes DC 20). Trash mobs
-             stay in the 11-15 range. */
-          expect(ab.save.dc).toBeLessThanOrEqual(22);
+          /* Cap allows for high-tier bosses (SRD legitimately reaches DC 24 —
+             ancient red/gold/silver dragon breaths). Trash mobs stay in the
+             11-15 range. */
+          expect(ab.save.dc).toBeLessThanOrEqual(24);
         }
         if (ab.effect) {
           expect(EFFECTS, `${m.id}:${ab.key} effect key`).toHaveProperty(ab.effect.key);
@@ -46,10 +46,11 @@ describe('Monster abilities data (monsters.json)', () => {
           if (ab.effect.dur == null) expect(['drained', 'corroded']).toContain(ab.effect.key);
         }
         /* an ability must do SOMETHING — dice, a status effect, a kill-heal,
-           a bloodied/kill self-buff, or pure visual flavor via fxOnly. */
+           a bloodied/kill self-buff, a blink/teleport, or pure visual flavor
+           via fxOnly. */
         expect(
-          !!(ab.dice || ab.effect || ab.fxOnly || ab.heal || ab.buff),
-          `${m.id}:${ab.key} has dice, effect, heal, buff, or fxOnly`
+          !!(ab.dice || ab.effect || ab.fxOnly || ab.heal || ab.buff || ab.blink),
+          `${m.id}:${ab.key} has dice, effect, heal, buff, blink, or fxOnly`
         ).toBe(true);
         if (ab.sprite) {
           const p = path.join(ROOT, 'public/dcss/effect', ab.sprite + '.png');
@@ -189,6 +190,66 @@ describe('Monster abilities data (monsters.json)', () => {
        that is what the multiattack pass was for. */
     for (const id of ['adult-red-dragon', 'young-red-dragon', 'troll', 'balor', 'tarrasque']) {
       expect(byId[id].attacksPerTurn, `${id} should multiattack`).toBeGreaterThan(1);
+    }
+  });
+
+  it('Phase H: full-roster ability pass — drains, breaths, flags, blink, invis', () => {
+    const byId = Object.fromEntries(monsters.map(m => [m.id, m]));
+    const has = (id, pred) => byId[id]?.abilities?.some(pred) === true;
+
+    /* Strength / Life Drain → drained (until a rest) */
+    for (const id of ['shadow', 'shadow-fiend', 'freezing-wraith', 'shadow-wraith']) {
+      expect(has(id, a => a.effect?.key === 'drained'), `${id} should drain`).toBe(true);
+    }
+    /* Mephit death bursts */
+    for (const id of ['steam-mephit', 'magma-mephit', 'ice-mephit', 'dust-mephit']) {
+      expect(has(id, a => a.trigger === 'onDeath'), `${id} should explode on death`).toBe(true);
+    }
+    /* Dragon breath coverage: wyrmlings through ancients, incl. the gas breaths */
+    expect(has('brass-dragon-wyrmling', a => a.effect?.key === 'unconscious')).toBe(true);
+    expect(has('copper-dragon-wyrmling', a => a.effect?.key === 'slowed')).toBe(true);
+    expect(has('silver-dragon-wyrmling', a => a.effect?.key === 'paralyzed')).toBe(true);
+    for (const id of ['adult-red-dragon', 'ancient-red-dragon', 'adult-blue-dragon',
+                      'ancient-white-dragon', 'young-brass-dragon', 'dragon-turtle']) {
+      expect(has(id, a => a.trigger === 'cycle' && a.dice), `${id} should have a breath`).toBe(true);
+    }
+    /* Frightful presence on adult/ancient dragons */
+    for (const id of ['adult-blue-dragon', 'ancient-copper-dragon', 'golden-dragon-ancient']) {
+      expect(has(id, a => a.effect?.key === 'frightened'), `${id} should frighten`).toBe(true);
+    }
+    /* Petrify now uses the real petrified condition */
+    for (const id of ['basilisk', 'medusa', 'cockatrice', 'caustic-shrike', 'gorgon']) {
+      expect(has(id, a => a.effect?.key === 'petrified'), `${id} should petrify`).toBe(true);
+    }
+    /* Rampage / aggressive onKill buffs */
+    expect(has('giant-hyena', a => a.trigger === 'onKill' && a.buff)).toBe(true);
+    for (const id of ['orc-warrior', 'orc-priest', 'orc-knight', 'orc-wizard']) {
+      expect(has(id, a => a.trigger === 'onKill' && a.buff), `${id} aggressive`).toBe(true);
+    }
+    /* Invisibility self-buff */
+    for (const id of ['imp', 'quasit', 'sprite', 'invisible-stalker', 'green-hag']) {
+      expect(has(id, a => a.buff?.key === 'invisible'), `${id} should go invisible`).toBe(true);
+    }
+    /* Blink / teleport reposition */
+    for (const id of ['blink-dog', 'phase-spider', 'ghost', 'unicorn', 'marilith']) {
+      expect(has(id, a => a.blink), `${id} should blink`).toBe(true);
+    }
+    /* Shared flags */
+    expect(byId['troll-family']?.regen).toBeUndefined(); // sentinel
+    for (const id of ['deep-troll', 'iron-troll', 'rock-troll', 'vampire-knight', 'oni']) {
+      expect(byId[id].regen, `${id} regen`).toBeGreaterThan(0);
+    }
+    expect(byId['sahuagin'].bloodFrenzy).toBe(true);
+    expect(byId['hobgoblin'].martialAdvantage).toBe(true);
+    expect(byId['swarm-of-rats'].swarm).toBe(true);
+    expect(byId['grey-rat'].packTactics).toBe(true);
+    expect(byId['giant-vulture'].packTactics).toBe(true);
+    expect(byId['night-hag'].magicResistance).toBe(true);
+    expect(byId['unicorn'].magicResistance).toBe(true);
+    /* Deep-dwarf Enlarge */
+    for (const id of ['deep-dwarf-berserker', 'deep-dwarf-artificer', 'deep-dwarf-death-knight']) {
+      expect(has(id, a => a.trigger === 'onBloodied' && a.buff?.key === 'enlarged'),
+        `${id} enlarge`).toBe(true);
     }
   });
 
@@ -353,5 +414,47 @@ describe('Repeat saves shake off conditions', () => {
     expect(hasEffect(hero, 'paralyzed')).toBe(true);
     tickEffects(hero, 7);   // past the first repeat-save checkpoint
     expect(hasEffect(hero, 'paralyzed')).toBe(false);
+  });
+});
+
+describe('Monster ability primitives (Phase H)', () => {
+  it('petrified / enlarged / invisible effect keys are registered', () => {
+    expect(EFFECTS.petrified).toBeDefined();
+    expect(EFFECTS.petrified.incapacitated).toBe(true);
+    expect(EFFECTS.petrified.autoCritMelee).toBe(true);
+    expect(EFFECTS.enlarged).toBeDefined();
+    expect(EFFECTS.enlarged.dmgMul).toBeGreaterThan(1);
+    expect(EFFECTS.invisible).toBeDefined();
+    expect(EFFECTS.invisible.invisible).toBe(true);
+  });
+
+  it('getEffectMods surfaces the invisible flag', () => {
+    const m = { data: { type: 'fiend' } };
+    expect(getEffectMods(m).invisible).toBe(false);
+    applyEffect(m, 'invisible', { duration: 6, elapsed: 0 });
+    expect(getEffectMods(m).invisible).toBe(true);
+  });
+
+  it('petrified and enlarged apply their mechanical modifiers', () => {
+    const p = { data: { type: 'humanoid' } };
+    applyEffect(p, 'petrified', { duration: 6, elapsed: 0 });
+    const pm = getEffectMods(p);
+    expect(pm.incapacitated).toBe(true);
+    expect(pm.autoCritMelee).toBe(true);
+
+    const e = { data: { type: 'humanoid' } };
+    applyEffect(e, 'enlarged', { duration: 6, elapsed: 0 });
+    const em = getEffectMods(e);
+    expect(em.dmgDealtMul).toBeGreaterThan(1);
+    expect(em.dmgBonus).toBeGreaterThan(0);
+  });
+
+  it('revealInvisible drops the invisible effect (engine hook exposed)', () => {
+    expect(typeof monsterAiMethods.revealInvisible).toBe('function');
+    const m = { data: { type: 'fiend' } };
+    applyEffect(m, 'invisible', { duration: 60, elapsed: 0 });
+    expect(hasEffect(m, 'invisible')).toBe(true);
+    monsterAiMethods.revealInvisible.call({ fxLog() {}, fxSprite() {}, _v3: () => ({}) }, m);
+    expect(hasEffect(m, 'invisible')).toBe(false);
   });
 });

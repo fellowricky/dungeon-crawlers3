@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "mcp-obsidian",
+        "G:/obsidain/Ai"
+      ]
+    }
+  }
+}

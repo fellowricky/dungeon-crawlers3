@@ -266,6 +266,35 @@
       image-rendering: pixelated;
     }
 
+    /* Animated entries crop their spritesheet to frame 0 instead of squeezing
+       the whole strip into the box. */
+    .monster-item-thumb { position: relative; }
+
+    .monster-item-frame {
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .monster-item-frame img {
+      display: block;
+      max-width: none;
+      max-height: none;
+      image-rendering: pixelated;
+    }
+
+    .monster-item-anim {
+      position: absolute;
+      right: 2px;
+      bottom: 2px;
+      font-size: 8px;
+      line-height: 1;
+      padding: 2px 3px;
+      border-radius: 3px;
+      color: #0b0e1a;
+      background: var(--gold, #d9a441);
+      pointer-events: none;
+    }
+
     .monster-item-info {
       flex: 1;
       min-width: 0;
@@ -662,6 +691,172 @@
       padding: 6px 10px;
       border-radius: 6px;
       font-size: 12px;
+    }
+
+    /* Animated Sprite Atlas Editor */
+    .anim-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 1200px) {
+      .anim-panels { grid-template-columns: 1fr; }
+    }
+
+    .anim-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .anim-panel.enabled { border-color: rgba(217, 164, 65, 0.35); }
+
+    .anim-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .anim-panel-head .anim-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .anim-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .anim-fields.disabled { opacity: 0.45; pointer-events: none; }
+
+    .anim-num-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .anim-num-row .form-group { flex: 1; min-width: 0; }
+
+    .anim-preview-canvas {
+      width: 100%;
+      height: 176px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0b0e1a;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .anim-preview-meta {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: monospace;
+      text-align: center;
+      min-height: 12px;
+    }
+
+    /* Sprite Sheet Browser Modal */
+    .sheet-picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .sheet-picker-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-bright);
+      border-radius: 12px;
+      width: 820px;
+      max-width: 94vw;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+    }
+
+    .sheet-picker-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .sheet-picker-head h3 { font-size: 15px; color: #fff; }
+
+    .sheet-picker-body {
+      padding: 14px 18px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .sheet-picker-body > input:focus { border-color: var(--gold); }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      grid-auto-flow: dense;
+      gap: 10px;
+    }
+
+    .sheet-grid-item {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      transition: all 0.15s ease;
+    }
+
+    .sheet-grid-item:hover {
+      border-color: var(--gold);
+      background: rgba(217, 164, 65, 0.1);
+    }
+
+    /* Sheets are shown at their natural aspect ratio — never contain-fitted
+       into a square box, which squashes wide animation strips flat. */
+    .sheet-grid-item img {
+      width: 100%;
+      height: auto;
+      max-height: 150px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      background:
+        repeating-conic-gradient(rgba(255, 255, 255, 0.06) 0% 25%, transparent 0% 50%) 0 0 / 16px 16px;
+    }
+
+    /* Wide multi-frame sheets span extra columns so the strip stays readable. */
+    .sheet-grid-item--span2 { grid-column: span 2; }
+    .sheet-grid-item--span3 { grid-column: span 3; }
+
+    .sheet-grid-item .sheet-name {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 4px;
+      word-break: break-all;
+      width: 100%;
+      border-top: 1px solid var(--border);
     }
 
     /* Stat Form Editor */
@@ -1404,7 +1599,8 @@
 
     /* Story Quests View */
     #story-quests-view,
-    #dungeon-rosters-view {
+    #dungeon-rosters-view,
+    #tactical-rooms-view {
       display: none;
       flex-direction: column;
       flex: 1;
@@ -1414,7 +1610,8 @@
     }
 
     #story-quests-view.active,
-    #dungeon-rosters-view.active { display: flex; }
+    #dungeon-rosters-view.active,
+    #tactical-rooms-view.active { display: flex; }
 
     /* Shared: a lane of monster chips with an "add" picker (used by the story
        floor pools, the fallback roster, and the dungeon roster preview). */
@@ -1600,6 +1797,105 @@
     .dr-cov-cell.thin { background: rgba(245, 158, 11, 0.16); color: #fcd34d; }
     .dr-cov-cell.none { background: rgba(239, 68, 68, 0.16); color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); }
     .dr-cov-lvl { font-size: 9px; color: var(--text-muted); text-align: center; }
+
+    /* Tactical / Special Rooms View */
+    .tr-style-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      transition: all 0.15s ease;
+    }
+    .tr-style-card:hover { border-color: var(--border-bright); background: rgba(255, 255, 255, 0.04); }
+    .tr-style-card.active { border-color: var(--gold); background: rgba(217, 164, 65, 0.12); }
+    .tr-theme-tab-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 5px 11px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .tr-theme-tab-btn:hover { color: #fff; border-color: var(--border-bright); }
+    .tr-theme-tab-btn.active { color: #000; background: var(--gold); border-color: var(--gold); }
+    .tr-theme-tab-btn.disabled-biome {
+      opacity: 0.45;
+      text-decoration: line-through;
+      border-style: dashed;
+    }
+    .tr-lvl-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 5px 2px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      transition: all 0.15s ease;
+      min-width: 0;
+    }
+    .tr-lvl-btn:hover { border-color: var(--border-bright); background: rgba(255,255,255,0.05); }
+    .tr-lvl-btn.active {
+      background: rgba(217, 164, 65, 0.18);
+      border-color: var(--gold);
+      color: var(--gold-bright);
+    }
+    .tr-lvl-num { font-size: 11.5px; font-weight: 700; font-family: monospace; }
+    .tr-lvl-count {
+      font-size: 9.5px;
+      padding: 0 4px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--text-muted);
+    }
+    .tr-lvl-btn.active .tr-lvl-count {
+      background: rgba(217, 164, 65, 0.35);
+      color: #fff;
+    }
+    .tr-mob-chip {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: #fff;
+    }
+    .tr-mob-chip .tr-chip-name { font-weight: 600; }
+    .tr-mob-chip .tr-chip-cr { font-size: 10px; font-family: monospace; color: var(--gold-bright); background: rgba(217, 164, 65, 0.15); padding: 1px 4px; border-radius: 3px; }
+    .tr-mob-chip button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+    .tr-mob-chip button:hover { color: var(--red); background: rgba(239, 68, 68, 0.2); }
+    #tr-candidate-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 6px;
+      align-content: start;
+    }
   </style>
 </head>
 
@@ -1638,6 +1934,7 @@
     <button class="app-tab" data-tab="boss-encounters" title="Curated Boss Encounters (100 total across 5 themes x 20 levels)" style="border-color:rgba(217, 164, 65, 0.4);color:var(--gold-bright)">⚔️ Boss Encounters (100)</button>
     <button class="app-tab" data-tab="story-quests" title="Curate each story mission's per-floor mob pools and its final boss">📜 Story Quests</button>
     <button class="app-tab" data-tab="dungeon-rosters" title="Build the monster list each dungeon theme may spawn from">🏰 Dungeon Rosters</button>
+    <button class="app-tab" data-tab="tactical-rooms" title="Curate monster selections for special tactical rooms (Infestations, Nests, Rituals, etc.)">⚔️ Special Rooms</button>
   </nav>
 
 
@@ -1658,7 +1955,6 @@
             <option value="3">CR 2 – 4½</option>
             <option value="4">CR 4½ – 8</option>
             <option value="5">CR 8+</option>
-            <option value="boss">Bosses</option>
           </select>
 
           <select id="type-filter" title="Filter by Creature Type">
@@ -1761,11 +2057,8 @@
                 <input type="checkbox" id="show-hero-ref-toggle" checked>
                 <span style="color:#60a5fa">🧍 Hero Reference</span>
               </label>
-              <select id="hero-ref-select" style="background:var(--bg-input);border:1px solid var(--border);color:#fff;padding:3px 6px;border-radius:4px;font-size:11px" title="Select hero archetype for scale comparison">
-                <option value="human.png">Human (1.0x)</option>
-                <option value="dwarf.png">Dwarf (0.85x)</option>
-                <option value="elf.png">Elf (1.0x)</option>
-                <option value="halfling.png">Halfling (0.65x)</option>
+              <select id="hero-ref-select" style="background:var(--bg-input);border:1px solid var(--border);color:#fff;padding:3px 6px;border-radius:4px;font-size:11px" title="Race of the in-game LPC hero drawn beside the monster for scale">
+                <!-- filled in from the game's playable-race list by populateHeroRefSelect() -->
               </select>
             </div>
             <div class="zoom-buttons">
@@ -1818,6 +2111,21 @@
               <div class="scale-editor-row">
                 <input type="range" id="edit-y-offset-slider" min="-100" max="100" step="1" value="0">
                 <input type="number" id="edit-y-offset-num" min="-200" max="200" step="1" value="0">
+              </div>
+
+              <div class="cb-header" style="margin-top:8px">
+                <span>↔️ Facing</span>
+                <span id="flip-x-label" style="font-family:monospace;color:var(--gold-bright)">art faces left</span>
+              </div>
+              <div class="cb-footer-row" style="gap:8px">
+                <label class="flag-checkbox" title="The engine assumes sprite art faces LEFT and mirrors it when the monster walks right. Tick this for art drawn facing right, so it is not permanently backwards in the dungeon.">
+                  <input type="checkbox" id="flip-x-toggle">
+                  <span style="color:#f59e0b">↔️ Flip Horizontally (art faces right)</span>
+                </label>
+                <button type="button" class="btn btn-xs" id="flip-bulk-btn"
+                  title="Set the flip flag on every monster currently shown in the list on the left. Narrow the list with the search/filters first to limit the scope.">
+                  ↔️ Flip all listed…
+                </button>
               </div>
 
               <div class="cb-footer-row" style="margin-top:6px;gap:8px">
@@ -1933,7 +2241,10 @@
               </div>
               <div class="form-group">
                 <label>Sprite File Path (relative to dcss/monster/)</label>
-                <input type="text" id="edit-sprite-input" placeholder="e.g. animals/rat.png">
+                <div style="display:flex;gap:6px">
+                  <input type="text" id="edit-sprite-input" placeholder="e.g. animals/rat.png" style="flex:1">
+                  <button type="button" class="btn btn-xs sheet-browse-btn" data-target="edit-sprite-input" title="Browse sprite sheets on disk">📁 Browse</button>
+                </div>
               </div>
               <div style="display:flex;gap:12px;margin-top:6px">
                 <div class="form-group" style="flex:1">
@@ -1950,6 +2261,93 @@
               </div>
             </div>
 
+            <!-- Animated Sprite Atlas Editor (Idle / Attack) -->
+            <div class="cb-control-card">
+              <div class="cb-header">
+                <span>🎞️ Animated Sprites (Idle / Attack)</span>
+                <button class="btn btn-xs" id="anim-remove-btn" title="Clear the animation config from this monster and fall back to the static sprite">🗑 Remove Animations</button>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">
+                Optional frame-sliced atlas sheets that replace the static sprite while idling and when attacking.
+                Frames default to 96×96 — larger cells work too, and the in-game billboard scales with frame size.
+                A sheet is laid out as <code>cols × rows</code>; blank <em>Frames</em> plays the whole sheet (or a single row) in order.
+              </div>
+
+              <div class="anim-panels">
+                <!-- Idle panel -->
+                <div class="anim-panel" id="anim-panel-idle">
+                  <div class="anim-panel-head">
+                    <span class="anim-title">🟢 Idle</span>
+                    <label class="flag-checkbox" style="padding:2px 8px;font-size:11px">
+                      <input type="checkbox" id="anim-idle-enabled">
+                      <span>Enabled</span>
+                    </label>
+                  </div>
+                  <div class="anim-fields" id="anim-idle-fields">
+                    <div class="form-group">
+                      <label>Atlas Sprite Path</label>
+                      <div style="display:flex;gap:6px">
+                        <input type="text" id="anim-idle-sprite" placeholder="sprites/rat_idle.png (blank = monster sprite)" style="flex:1">
+                        <button type="button" class="btn btn-xs sheet-browse-btn" data-target="anim-idle-sprite" title="Browse sprite sheets on disk">📁 Browse</button>
+                      </div>
+                    </div>
+                    <div class="anim-num-row">
+                      <div class="form-group"><label>Frame W</label><input type="number" id="anim-idle-fw" value="96" min="1"></div>
+                      <div class="form-group"><label>Frame H</label><input type="number" id="anim-idle-fh" value="96" min="1"></div>
+                      <div class="form-group"><label>Cols</label><input type="number" id="anim-idle-cols" value="8" min="1"></div>
+                      <div class="form-group"><label>Rows</label><input type="number" id="anim-idle-rows" value="1" min="1"></div>
+                    </div>
+                    <div class="anim-num-row">
+                      <div class="form-group"><label>FPS</label><input type="number" id="anim-idle-fps" value="8" min="0.5" step="0.5"></div>
+                      <div class="form-group"><label>Frames (e.g. 0-7, blank = all)</label><input type="text" id="anim-idle-frames" placeholder="all"></div>
+                      <label class="flag-checkbox" style="padding:2px 8px;font-size:11px;align-self:flex-end">
+                        <input type="checkbox" id="anim-idle-loop" checked>
+                        <span>Loop</span>
+                      </label>
+                    </div>
+                  </div>
+                  <canvas class="anim-preview-canvas" id="anim-idle-preview" width="288" height="176"></canvas>
+                  <div class="anim-preview-meta" id="anim-idle-meta">—</div>
+                </div>
+
+                <!-- Attack panel -->
+                <div class="anim-panel" id="anim-panel-attack">
+                  <div class="anim-panel-head">
+                    <span class="anim-title">⚔️ Attack</span>
+                    <label class="flag-checkbox" style="padding:2px 8px;font-size:11px">
+                      <input type="checkbox" id="anim-attack-enabled">
+                      <span>Enabled</span>
+                    </label>
+                  </div>
+                  <div class="anim-fields" id="anim-attack-fields">
+                    <div class="form-group">
+                      <label>Atlas Sprite Path</label>
+                      <div style="display:flex;gap:6px">
+                        <input type="text" id="anim-attack-sprite" placeholder="sprites/rat_attack.png (blank = monster sprite)" style="flex:1">
+                        <button type="button" class="btn btn-xs sheet-browse-btn" data-target="anim-attack-sprite" title="Browse sprite sheets on disk">📁 Browse</button>
+                      </div>
+                    </div>
+                    <div class="anim-num-row">
+                      <div class="form-group"><label>Frame W</label><input type="number" id="anim-attack-fw" value="96" min="1"></div>
+                      <div class="form-group"><label>Frame H</label><input type="number" id="anim-attack-fh" value="96" min="1"></div>
+                      <div class="form-group"><label>Cols</label><input type="number" id="anim-attack-cols" value="6" min="1"></div>
+                      <div class="form-group"><label>Rows</label><input type="number" id="anim-attack-rows" value="1" min="1"></div>
+                    </div>
+                    <div class="anim-num-row">
+                      <div class="form-group"><label>FPS</label><input type="number" id="anim-attack-fps" value="12" min="0.5" step="0.5"></div>
+                      <div class="form-group"><label>Frames (e.g. 0-5, blank = all)</label><input type="text" id="anim-attack-frames" placeholder="all"></div>
+                      <label class="flag-checkbox" style="padding:2px 8px;font-size:11px;align-self:flex-end">
+                        <input type="checkbox" id="anim-attack-loop">
+                        <span>Loop</span>
+                      </label>
+                    </div>
+                  </div>
+                  <canvas class="anim-preview-canvas" id="anim-attack-preview" width="288" height="176"></canvas>
+                  <div class="anim-preview-meta" id="anim-attack-meta">—</div>
+                </div>
+              </div>
+            </div>
+
             <!-- Custom Sprite Tester & Importer -->
             <div class="sprite-tester-box">
               <div class="tester-title">🧪 Custom Sprite File Importer & Tester</div>
@@ -1959,11 +2357,13 @@
               </div>
               <div class="tester-input-group" style="margin-top:6px">
                 <input type="text" id="custom-sprite-input" placeholder="Or enter path (e.g. sprites/wolfsheet1.png or dragons/red_dragon.png)">
+                <button type="button" class="btn sheet-browse-btn" data-target="custom-sprite-input" title="Browse sprite sheets on disk">📁 Browse</button>
                 <button class="btn" id="test-sprite-btn">Preview</button>
                 <button class="btn" id="reset-sprite-btn">Reset</button>
               </div>
               <div style="display:flex;gap:8px;margin-top:6px">
                 <button class="btn" id="copy-json-btn" title="Copy updated sprite property">📋 Copy Sprite Snippet</button>
+                <button class="btn" id="copy-anim-json-btn" title="Copy the animations atlas config block">🎞️ Copy Animations JSON</button>
                 <button class="btn" id="copy-full-json-btn" title="Copy full statblock JSON">📋 Copy Monster JSON</button>
               </div>
             </div>
@@ -2011,10 +2411,6 @@
               <option value="huge">Huge</option>
               <option value="gargantuan">Gargantuan</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label>Boss</label>
-            <label class="checkbox-row"><input type="checkbox" id="edit-isboss"> Flag as a boss (final-floor eligible, boss death spectacle)</label>
           </div>
           <div class="form-group">
             <label>Challenge Rating (CR)</label>
@@ -2799,6 +3195,102 @@
     </div>
   </div>
 
+  <!-- Tactical / Special Rooms Tab -->
+  <div id="tactical-rooms-view">
+    <section class="section-card" style="margin-bottom:14px; padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div style="max-width:820px">
+          <h2 style="font-size:20px; font-weight:700; color:var(--gold-bright); display:flex; align-items:center; gap:8px;">
+            <span>⚔️ Special & Tactical Rooms Curation</span>
+          </h2>
+          <p class="cr-hint" style="margin-top:4px;">
+            Curate the monster rosters for tactical encounter rooms (e.g. <b>Infestations</b>, <b>Brood Nests</b>, <b>Cult Rituals</b>, <b>Graveyards</b>).
+            Choose which species appear in each dungeon theme and level band. Infestation rooms will field hordes of these exact creatures rather than pulling generic dungeon monsters.
+          </p>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-success" id="tr-save-btn" title="Write all tactical room rosters to src/game/tactical_rooms.json">💾 Save to Codebase (tactical_rooms.json)</button>
+          <button class="btn" id="tr-export-btn" title="Download tactical rooms as JSON file">📥 Export JSON</button>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:flex; gap:16px; min-height:650px; align-items:flex-start">
+      <!-- Left Column: Room Style Picker -->
+      <aside class="section-card" style="width:280px; display:flex; flex-direction:column; padding:12px; flex-shrink:0; gap:10px;">
+        <div style="font-weight:700; font-size:13px; color:var(--gold-bright); margin-bottom:2px;">TACTICAL ROOM STYLES</div>
+        <div id="tr-style-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+      </aside>
+
+      <!-- Center / Main Column: Theme & Level Band Selection + Curated Roster -->
+      <main class="section-card" style="flex:1; padding:20px; display:flex; flex-direction:column; gap:14px; min-width:0">
+        <!-- Room Style Header & Theme Filter Bar -->
+        <div style="border-bottom:1px solid var(--border); padding-bottom:12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h2 id="tr-header-title" style="font-size:22px; font-weight:700; color:#fff">Infestation (The Swarm)</h2>
+              <div id="tr-header-sub" style="font-size:12px; color:var(--text-muted); margin-top:2px">A massive single-species horde of vermin or pests filling the chamber</div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-sm" id="tr-theme-toggle-btn" title="Enable or disable this tactical room type for the selected dungeon biome">
+                <span id="tr-theme-toggle-status">✓ Enabled in Ancient</span>
+              </button>
+              <button class="btn btn-xs" id="tr-seed-defaults-btn" title="Seed standard vermin/creatures for this room style, theme and level">🌱 Seed Level Defaults</button>
+              <button class="btn btn-xs" id="tr-copy-next-btn" title="Copy current level curated monsters to the next level">📋 Copy to Next</button>
+              <button class="btn btn-xs" id="tr-apply-range-btn" title="Apply current level curated monsters to a range of levels">⏩ Fill Range</button>
+              <button class="btn btn-xs" id="tr-clear-band-btn" style="color:var(--red); border-color:rgba(239,68,68,0.3)" title="Clear all monsters in this level">✖ Clear Level</button>
+            </div>
+          </div>
+
+          <!-- Dungeon Biome / Theme Selector Tabs -->
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em;">Dungeon Biome / Theme:</div>
+            <div id="tr-theme-tabs" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          </div>
+
+          <!-- Level 1 to 20 Selector -->
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em; display:flex; justify-content:space-between; align-items:center;">
+              <span>Dungeon Level (1–20):</span>
+              <span id="tr-band-cr-hint" style="font-weight:400; color:var(--gold-bright); text-transform:none;">Target CR: ~0.25 (Ceiling CR: 0.5)</span>
+            </div>
+            <div id="tr-level-strip" style="display:grid; grid-template-columns: repeat(10, 1fr); gap:5px;"></div>
+          </div>
+        </div>
+
+        <!-- Active Curated Monsters in this Room Style / Theme / Band -->
+        <div class="mob-lane" style="border-color:rgba(217,164,65,0.35); background:rgba(217,164,65,0.03);">
+          <div class="mob-lane-head">
+            <span style="font-weight:700; font-size:13px; color:var(--gold-bright); display:flex; align-items:center; gap:6px;">
+              <span>🎯 Curated Spawns</span>
+              <span class="badge badge-total" id="tr-curated-count">0 creatures</span>
+            </span>
+            <span style="font-size:11px; color:var(--text-muted);">The room will pick exclusively from this curated list</span>
+          </div>
+          <div id="tr-curated-chips" style="display:flex; flex-wrap:wrap; gap:8px; min-height:42px; align-items:center; padding:4px 0;"></div>
+        </div>
+
+        <!-- Monster Candidate Search & Selection Grid -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; border-top:1px solid var(--border); padding-top:12px">
+          <input type="text" id="tr-search" placeholder="Search candidate monster..." style="flex:1; min-width:160px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:6px 10px; border-radius:6px; font-size:12px">
+          <select id="tr-family-filter" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px"></select>
+          <select id="tr-dungeon-filter" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px">
+            <option value="theme">Only monsters native to this theme</option>
+            <option value="all">All monsters in bestiary</option>
+          </select>
+          <label style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px">CR
+            <input type="number" id="tr-cr-min" step="0.25" min="0" placeholder="min" style="width:60px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px">
+            –
+            <input type="number" id="tr-cr-max" step="0.25" min="0" placeholder="max" style="width:60px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px">
+          </label>
+          <span class="badge badge-total" id="tr-candidate-count" style="margin-left:auto">0 shown</span>
+        </div>
+
+        <div id="tr-candidate-grid"></div>
+      </main>
+    </div>
+  </div>
+
   <!-- Live 3D WebGL Dungeon Combat Room Arena Modal -->
   <div id="arena-modal" class="arena-modal-overlay" style="display:none">
     <div class="arena-modal-content">
@@ -2819,6 +3311,23 @@
 
       <div class="arena-viewport-container" style="flex:1;position:relative;background:#090a10">
         <iframe id="arena-3d-iframe" src="" style="width:100%;height:100%;border:none;display:block"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sprite Sheet Browser Modal -->
+  <div id="sheet-picker-modal" class="sheet-picker-overlay" style="display:none">
+    <div class="sheet-picker-box">
+      <div class="sheet-picker-head">
+        <h3>🗂️ Browse Sprite Sheets</h3>
+        <button class="btn btn-xs" id="sheet-picker-close">✖</button>
+      </div>
+      <div class="sheet-picker-body">
+        <input type="text" id="sheet-picker-search" placeholder="Search paths... (e.g. goblin, rat, sprites)" autocomplete="off">
+        <div id="sheet-picker-count" style="margin-bottom:10px;font-size:11px;color:var(--text-muted)">Loading sprite sheets…</div>
+        <div class="sheet-grid" id="sheet-picker-grid">
+          <!-- Rendered by src/bestiary.js -->
+        </div>
       </div>
     </div>
   </div>

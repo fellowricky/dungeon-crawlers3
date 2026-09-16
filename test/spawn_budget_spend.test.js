@@ -5,21 +5,27 @@ import {
 } from '../src/dungeon/dungeon_generator.js';
 import { crToCost, maxCrForDungeonLevel } from '../src/game/constants.js';
 import { spawnMonster, dungeonMonsterIds, dungeonMonsterCRs } from '../src/game/srd.js';
+import { shouldUseStoryCast } from '../src/game/quest_events.js';
 
 const LEVELS = [1, 2, 4, 8, 12, 16, 20];
 
-/* The CR a spawn point is priced at, mirroring game.js's crOffset handling. */
-function slotCR(sp) {
+/* The CR a spawn point is priced at, mirroring game.js's crOffset handling —
+   including its clamp to the level ceiling (a step-up past the ceiling is priced
+   at the ceiling, exactly what spawnMonster fields). */
+function slotCR(sp, level) {
   let tcr = sp.targetCR ?? 1;
   if (sp.crOffset !== undefined && !sp.fixedCR) {
     tcr = Math.max(0.125, sp.crOffset >= 0
       ? tcr * Math.pow(1.5, sp.crOffset)
       : tcr * Math.pow(0.6, -sp.crOffset));
+    tcr = Math.min(tcr, maxCrForDungeonLevel(level));
   }
   return tcr;
 }
 
-describe('a room spends its threat purse', () => {
+/* Statistical spawn simulations over many seeds: 5–25 s each in isolation,
+   longer under the full suite's worker contention. Not a hang. */
+describe('a room spends its threat purse', { timeout: 90000 }, () => {
   it('gets close to budget instead of stopping at the first unaffordable roll', () => {
     /* The old loop broke on the first CR it could not afford, leaving 13-23%
        of every room unspent. It must now step down the CR ladder instead. */
@@ -88,10 +94,17 @@ describe('a room spends its threat purse', () => {
     }
   });
 
-  it('a bigger budget buys more monsters, up to the cap', () => {
-    const small = buyRoomSpawns({ level: 8, budget: 40, cap: 20 }).crs.length;
-    const big = buyRoomSpawns({ level: 8, budget: 400, cap: 20 }).crs.length;
-    expect(big).toBeGreaterThan(small);
+  it('a bigger budget buys more threat, up to the cap', () => {
+    /* The room draws a single target CR, so a bigger purse does not always mean
+       more BODIES — it can buy the same count at a higher CR. The invariant is
+       threat value: both calls spend their purse to within the cheapest rung, so
+       the bigger purse must field strictly more CR-cost. */
+    const small = buyRoomSpawns({ level: 8, budget: 40, cap: 20 });
+    const big = buyRoomSpawns({ level: 8, budget: 400, cap: 20 });
+    const worth = (r) => r.crs.reduce((a, c) => a + crToCost(c), 0);
+    expect(worth(big)).toBeGreaterThan(worth(small));
+    expect(big.crs.length).toBeLessThanOrEqual(20);
+    /* A purse big enough to fill the whole room does fill it. */
     expect(buyRoomSpawns({ level: 8, budget: 4000, cap: 6 }).crs.length).toBe(6);
   });
 
@@ -116,7 +129,7 @@ describe('a room spends its threat purse', () => {
         for (let s = 0; s < 4; s++) {
           const d = generateDungeon(900 + s, { seed: 900 + s, level, roomCount: 14, themeKey: theme });
           for (const sp of d.spawns) {
-            const tcr = slotCR(sp);
+            const tcr = slotCR(sp, level);
             const spec = spawnMonster(tcr, level, Math.random, roster,
               { dungeonLevel: level, questFloor: 1, floors: 1 }, sp.role || null);
             expect(spec.cr,
@@ -140,7 +153,7 @@ describe('a room spends its threat purse', () => {
         for (let s = 0; s < 6; s++) {
           const d = generateDungeon(900 + s, { seed: 900 + s, level, roomCount: 14, themeKey: theme });
           for (const sp of d.spawns) {
-            const tcr = slotCR(sp);
+            const tcr = slotCR(sp, level);
             const spec = spawnMonster(tcr, level, Math.random, roster,
               { dungeonLevel: level, questFloor: 1, floors: 1 }, sp.role || null);
             paid += crToCost(tcr);
@@ -204,5 +217,43 @@ describe('a room spends its threat purse', () => {
       expect(rooms).toBeGreaterThan(0);
       expect(spent / budget, `level ${level} rooms under-spend`).toBeGreaterThan(0.85);
     }
+  });
+
+  it('generic quests do NOT take the story-cast path, even with a monsterRoster', () => {
+    /* decorateQuest sets q.monsterRoster on EVERY quest. If game.js routes on
+       monsterRoster alone, generic rooms are spawned by planStoryFloorCast —
+       a lane-locked curated cast that ignores the room budget and the level's
+       CR ceiling (this was the bug: level-4 rooms fielding 4 identical CR-2
+       creatures regardless of the 56-point budget). */
+    const generic = { level: 4, theme: 'grim', monsterRoster: { 1: ['giant-rat'], 2: ['ghoul'] } };
+    expect(shouldUseStoryCast(generic, null)).toBe(false);
+
+    const withFloorCast = { level: 4, theme: 'grim' };
+    expect(shouldUseStoryCast(withFloorCast, { monsters: { 1: ['giant-rat'] } })).toBe(true);
+
+    const story = { level: 4, theme: 'grim', story: true, monsterRoster: { 1: ['giant-rat'] } };
+    expect(shouldUseStoryCast(story, null)).toBe(true);
+  });
+
+  it('spawnMonster never exceeds the level ceiling for non-boss spawns', () => {
+    /* A caller asking for a CR above the level (the floor-scaling elite pack)
+       must still field the dearest creature the level actually allows. */
+    for (const level of [4, 8, 12]) {
+      const cap = maxCrForDungeonLevel(level);
+      for (const asked of [cap, cap + 1, cap + 3, 20]) {
+        for (let i = 0; i < 200; i++) {
+          const spec = spawnMonster(asked, level, Math.random, null,
+            { dungeonLevel: level, questFloor: 1, floors: 1 });
+          expect(spec.cr, `lvl ${level} asked ${asked} fielded ${spec.id}@${spec.cr}`)
+            .toBeLessThanOrEqual(cap);
+        }
+      }
+    }
+  });
+
+  it('a bypass (boss) spawn may exceed the level ceiling', () => {
+    const spec = spawnMonster(20, 4, Math.random, null,
+      { dungeonLevel: 4, questFloor: 1, floors: 1 }, 'boss', true, true);
+    expect(spec.cr).toBeGreaterThan(maxCrForDungeonLevel(4));
   });
 });

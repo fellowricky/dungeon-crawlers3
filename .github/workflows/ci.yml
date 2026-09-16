@@ -27,6 +27,9 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Lint for crash-class defects
+      run: npm run lint
+
     - name: Build application
       run: npm run build
 

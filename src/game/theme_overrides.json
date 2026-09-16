@@ -68,8 +68,8 @@
       "embers": 0
     },
     "propScatter": {
-      "coffin": 0.0025,
-      "vase": 0.0125
+      "vase": 0.0125,
+      "grainjars": 0.0035
     },
     "hemi": [
       4742258,
@@ -138,15 +138,15 @@
         "bumpScale": 0.45
       }
     },
-    "fogD": 0.006,
+    "fogD": 0.0039,
     "hemi": [
-      3294776,
-      1054224,
-      1.08
+      1923616,
+      1266276,
+      0.92
     ],
     "dir": [
       7112815,
-      0.57
+      0.68
     ],
     "floor": 5659237,
     "wall": 5840403,
@@ -174,14 +174,20 @@
       "pillars": 0.65,
       "webs": 0.6,
       "moss": 1.05,
-      "icicles": 1.05
+      "icicles": 0
     },
     "tile": {
       "stains": 0.33,
       "growth": 0.38,
       "sprout": 0,
       "runes": 0
-    }
+    },
+    "flame": 52250,
+    "torchLight": [
+      7854410,
+      1.1,
+      7.5
+    ]
   },
   "frost": {
     "tiles": {
@@ -238,10 +244,10 @@
       }
     },
     "decor": {
-      "furniture": 0,
+      "furniture": 1,
       "debris": 2,
       "sconces": 0,
-      "pillars": 0,
+      "pillars": 0.5,
       "bones": 0,
       "icicles": 1.7
     },
@@ -260,11 +266,11 @@
     "hemi": [
       5883391,
       1185828,
-      0.38
+      0.05
     ],
     "dir": [
       9214975,
-      0.68
+      0.46
     ],
     "floor": 15856629,
     "corridor": 16053751,
@@ -282,7 +288,12 @@
     "particles": {
       "n": 600
     },
-    "cap": 47856
+    "cap": 47856,
+    "torchLight": [
+      7324927,
+      1.1,
+      15
+    ]
   },
   "verdant": {
     "tiles": {
@@ -374,7 +385,17 @@
     "particles": {
       "n": 600
     },
-    "pillar": 3606793
+    "pillar": 3606793,
+    "fogD": 0.0032,
+    "hemi": [
+      8026718,
+      1578511,
+      0.63
+    ],
+    "dir": [
+      16772299,
+      0.39
+    ]
   },
   "snowfield": {
     "oc": {
@@ -383,7 +404,10 @@
         "brokenSignpost": 0.058,
         "rocks": 0,
         "cairn": 0,
-        "icebone": 0.018
+        "icebone": 0.022,
+        "snowtree": 0.03,
+        "tree_winter": 0.066,
+        "signpost": 0.046
       }
     },
     "decor": {
@@ -406,10 +430,768 @@
         "rotate": 0,
         "stack": 1,
         "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
       }
     },
     "particles": {
       "n": 600
+    },
+    "groundMat": "ice",
+    "hemi": [
+      7178408,
+      10944509,
+      0.23
+    ],
+    "dir": [
+      15003903,
+      0.85
+    ],
+    "flame": 16768866,
+    "flameCore": 16719904,
+    "tile": {
+      "rough": 1,
+      "stains": 0.19,
+      "growth": 0.27,
+      "sprout": 0.3
+    },
+    "fogD": 0.0001,
+    "fog": 10485755,
+    "bg": 0,
+    "floor": 8886443,
+    "pools": {
+      "glow": 0.35
+    },
+    "canopyTint": 14674418
+  },
+  "molten": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.5
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "decor": {
+      "furniture": 1.65,
+      "icicles": 0,
+      "moss": 0,
+      "bones": 1.4,
+      "webs": 0,
+      "debris": 2
+    },
+    "shafts": false,
+    "tile": {
+      "growth": 0.78,
+      "sprout": 0.67,
+      "stains": 0.83,
+      "embers": 0.27,
+      "runes": 0
+    },
+    "propScatter": {
+      "anvil": 0.003,
+      "stalagmite": 0.0105,
+      "boulderPile": 0.0135,
+      "forgeChains": 0.008,
+      "ingotStack": 0.009,
+      "smeltingCrucible": 0.002
+    },
+    "hemi": [
+      6043686,
+      1707532,
+      0.16
+    ],
+    "dir": [
+      16763032,
+      0.42
+    ],
+    "torchLight": [
+      16741158,
+      1.15,
+      10
+    ]
+  },
+  "forest": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "fogD": 0.0017,
+    "dir": [
+      15586744,
+      0.67
+    ],
+    "hemi": [
+      5268858,
+      1975837,
+      0
+    ]
+  },
+  "moor": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "fogD": 0.0042,
+    "hemi": [
+      5396552,
+      1842712,
+      0
+    ],
+    "dir": [
+      14210236,
+      0.96
+    ],
+    "decor": {
+      "debris": 2,
+      "moss": 0,
+      "bones": 0,
+      "icicles": 0
+    },
+    "tile": {
+      "stains": 0.23,
+      "growth": 0.47,
+      "sprout": 0.47
+    },
+    "oc": {
+      "ground": {
+        "swamptree": 0.042,
+        "tree": 0.026,
+        "debris": 0.072,
+        "moss": 0.026,
+        "signpost": 0.03,
+        "brokenSignpost": 0.038,
+        "wheel": 0.016
+      }
+    },
+    "roots": true
+  },
+  "mire": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "tile": {
+      "stains": 0.17,
+      "growth": 0.31,
+      "sprout": 0.41
+    },
+    "oc": {
+      "ground": {
+        "swamptree": 0.02,
+        "deadtree": 0.042,
+        "debris": 0.072
+      }
+    },
+    "fogD": 0.0038,
+    "hemi": [
+      3951682,
+      1185300,
+      0
+    ],
+    "dir": [
+      11386029,
+      0.65
+    ]
+  },
+  "holdfast": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    }
+  },
+  "boneyard": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "oc": {
+      "ground": {
+        "bush": 0,
+        "cairn": 0.036,
+        "rocks": 0.022,
+        "debris": 0.13,
+        "tombstone": 0.066
+      }
+    },
+    "graveyards": true,
+    "tile": {
+      "growth": 0.22,
+      "sprout": 0.24,
+      "stains": 0.23
+    },
+    "decor": {
+      "bones": 2
+    },
+    "dir": [
+      11120354,
+      0.52
+    ],
+    "hemi": [
+      4872272,
+      1448470,
+      0
+    ]
+  },
+  "ruinfield": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "tile": {
+      "stains": 0.4,
+      "growth": 0.37,
+      "sprout": 0.4
+    },
+    "oc": {
+      "ground": {
+        "pillarA": 0.064,
+        "pillarB": 0.082,
+        "rocks": 0,
+        "debris": 0,
+        "vase": 0.028
+      }
+    },
+    "dir": [
+      6974058,
+      1.61
+    ],
+    "hemi": [
+      8025186,
+      2367770,
+      0.26
+    ]
+  },
+  "ashfield": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "tile": {
+      "stains": 0.31,
+      "growth": 0.41,
+      "sprout": 0.38
+    },
+    "oc": {
+      "ground": {
+        "stakes": 0.056,
+        "anvil": 0.014,
+        "debris": 0.05
+      }
+    },
+    "dir": [
+      15182187,
+      0.52
+    ]
+  },
+  "sporewood": {
+    "tiles": {
+      "floor": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "wall": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      },
+      "cap": {
+        "family": "",
+        "variants": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "sat": 0.25,
+        "target": 0.6,
+        "curve": "gamma",
+        "neutralize": "",
+        "neutralizeAmt": 1,
+        "rotate": 0,
+        "stack": 1,
+        "bumpScale": 0.45
+      }
+    },
+    "dir": [
+      16777215,
+      0.8
+    ],
+    "hemi": [
+      3032888,
+      988946,
+      0
+    ],
+    "flame": 16774193,
+    "pools": {
+      "amount": 0.09
+    },
+    "particles": {
+      "color": 16766773
+    },
+    "floor": 5248535,
+    "pillar": 2635820,
+    "oc": {
+      "ground": {
+        "fren3": 0.032,
+        "fren2": 0.03,
+        "fren4": 0.026,
+        "fren1": 0.026,
+        "mushroomA": 0.05
+      }
+    },
+    "decor": {
+      "debris": 1.5
+    },
+    "tile": {
+      "sprout": 0.31,
+      "stains": 0.38
     }
   }
 }

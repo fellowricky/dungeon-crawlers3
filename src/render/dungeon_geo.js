@@ -108,8 +108,49 @@ export function boxUV(g){
   return g;
 }
 
+export function worldBoxUV(g, scale = 1.0, offU = 0, offV = 0){
+  if (!g.attributes.normal) g.computeVertexNormals();
+  const p = g.attributes.position, n = g.attributes.normal;
+  let uv = g.attributes.uv;
+  if(!uv || uv.count !== p.count){
+    uv = new THREE.BufferAttribute(new Float32Array(p.count * 2), 2);
+    g.setAttribute('uv', uv);
+  }
+  const f = t => {
+    const m = ((t % 1.0) + 1.0) % 1.0;
+    return 0.03 + m * 0.94;
+  };
+  for(let i = 0; i < p.count; i++){
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i)), az = Math.abs(n.getZ(i));
+    let u, v;
+    if(ay >= ax && ay >= az){
+      u = p.getX(i) * scale + offU;
+      v = p.getZ(i) * scale + offV;
+    } else if(ax >= az){
+      u = p.getZ(i) * scale + offU;
+      v = p.getY(i) * scale + offV;
+    } else {
+      u = p.getX(i) * scale + offU;
+      v = p.getY(i) * scale + offV;
+    }
+    uv.setXY(i, f(u), f(v));
+  }
+  return g;
+}
+
 export const GEO = {};
-GEO.floor   = boxUV(chamferBox(0.96,0.22,0.96,0.05).translate(0,-0.22,0));
+/* Floor tiles very nearly fill their 1.0 grid cell. They used to be 0.96,
+   leaving a 0.04 slot between neighbours — invisible enough while every tile
+   was a 0.22-thick slab on a flat plane, but terrain elevation extends each
+   tile down to the level's common floor, and that same slot then ran the full
+   height of the column. A block of raised tiles read as a bundle of separate
+   pillars rather than one mass of rock.
+   The remaining 0.005 keeps adjacent side faces off the same plane (coplanar
+   faces z-fight). Tile definition now comes from chamferBox's TOP bevel, which
+   is where it should come from: joints show on the surface you look down at,
+   not as shafts of daylight through the terrain. */
+const TILE_GAP = 0.005;
+GEO.floor   = boxUV(chamferBox(1 - TILE_GAP,0.22,1 - TILE_GAP,0.05).translate(0,-0.22,0));
 GEO.wall    = boxUV(chamferBox(1,1,1,0.07));
 GEO.wallCap = boxUV(chamferBox(1.09,0.13,1.09,0.035));
 GEO.basin   = new THREE.BoxGeometry(1,0.55,1).translate(0,-0.43,0);
@@ -153,14 +194,45 @@ GEO.chestTrim = mergeGeos([
 ]);
 GEO.chestSeam = new THREE.BoxGeometry(0.6,0.045,0.03).translate(0,0.36,0.25);
 GEO.grave = mergeGeos([
-  xg(new THREE.BoxGeometry(0.36,0.5,0.09), 0,0.25,0, 0,0,0, 1),
-  xg(new THREE.CylinderGeometry(0.18,0.18,0.09,10,1,false,0,Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI/2), 0,0.5,0, 0,0,0, 1)
+  // Stone base foundation
+  xg(chamferBox(0.48, 0.08, 0.28, 0.02), 0, 0, 0, 0, 0, 0, 1),
+  // Main upright stone slab
+  xg(new THREE.BoxGeometry(0.38, 0.54, 0.1), 0, 0.31, 0, 0, 0, 0, 1),
+  // Arched gothic headstone crown
+  xg(new THREE.CylinderGeometry(0.19, 0.19, 0.1, 10, 1, false, 0, Math.PI).rotateX(Math.PI/2).rotateZ(Math.PI/2), 0, 0.58, 0, 0, 0, 0, 1),
+  // Carved cross inlay
+  xg(new THREE.BoxGeometry(0.06, 0.28, 0.12), 0, 0.42, 0, 0, 0, 0, 1),
+  xg(new THREE.BoxGeometry(0.20, 0.06, 0.12), 0, 0.48, 0, 0, 0, 0, 1)
 ]);
 GEO.sarco = mergeGeos([
-  xg(chamferBox(1.5,0.44,0.8,0.06), 0,0,0, 0,0,0, 1),
-  xg(chamferBox(1.38,0.16,0.68,0.05), 0,0.44,0, 0,0,0, 1)
+  // Stepped foundation plinth
+  xg(chamferBox(1.62, 0.10, 0.92, 0.035), 0, 0, 0, 0, 0, 0, 1),
+  // Main casket body
+  xg(chamferBox(1.48, 0.42, 0.78, 0.05), 0, 0.10, 0, 0, 0, 0, 1),
+  // Stepped casket rim
+  xg(chamferBox(1.54, 0.07, 0.84, 0.03), 0, 0.52, 0, 0, 0, 0, 1),
+  // Sloped peak lid
+  xg(chamferBox(1.36, 0.14, 0.66, 0.04), 0, 0.59, 0, 0, 0, 0, 1),
+  // Carved cross relief on lid top
+  xg(new THREE.BoxGeometry(0.82, 0.035, 0.12), 0, 0.68, 0, 0, 0, 0, 1),
+  xg(new THREE.BoxGeometry(0.18, 0.035, 0.40), 0, 0.68, 0, 0, 0, 0, 1)
 ]);
-GEO.candle = new THREE.CylinderGeometry(0.05,0.065,0.18,6).translate(0,0.09,0);
+GEO.candle = mergeGeos([
+  // Wax puddle base
+  xg(new THREE.CylinderGeometry(0.16, 0.18, 0.03, 8), 0, 0.015, 0, 0, 0, 0, 1),
+  // Center main tall candle
+  xg(new THREE.CylinderGeometry(0.045, 0.055, 0.26, 6), 0, 0.14, 0, 0, 0, 0, 1),
+  // Left medium candle
+  xg(new THREE.CylinderGeometry(0.04, 0.048, 0.18, 6), -0.09, 0.10, 0.04, 0.05, 0, -0.05, 1),
+  // Right short candle
+  xg(new THREE.CylinderGeometry(0.038, 0.045, 0.12, 6), 0.08, 0.07, -0.05, -0.05, 0, 0.06, 1)
+]);
+GEO.sepulcherDais = mergeGeos([
+  // Tier 1 broad stone disc
+  xg(new THREE.CylinderGeometry(2.4, 2.5, 0.12, 16), 0, 0.06, 0, 0, 0, 0, 1),
+  // Tier 2 raised step disc
+  xg(new THREE.CylinderGeometry(1.8, 1.9, 0.12, 16), 0, 0.18, 0, 0, 0, 0, 1)
+]);
 GEO.icicle = mergeGeos([
   xg(new THREE.ConeGeometry(0.075,0.5,6).rotateX(Math.PI), 0,-0.25,0, 0,0,0, 1),
   xg(new THREE.ConeGeometry(0.05,0.34,6).rotateX(Math.PI), 0.11,-0.17,0.04, 0,0,0, 1),
@@ -356,31 +428,45 @@ GEO.cauldron = mergeGeos([
   xg(new THREE.CylinderGeometry(0.03,0.03,0.3,5), 0.22,0.12,0, 0,0,-0.4, 1),
   xg(new THREE.CylinderGeometry(0.03,0.03,0.3,5), 0,0.12,0.22, -0.4,0,0, 1)
 ]);
-GEO.ossuaryWall = mergeGeos([
-  // outer frame / border — shallow against wall
-  xg(chamferBox(0.92,1.4,0.08,0.015), 0,0.7,0, 0,0,0, 1),
-  // recessed back panel (slightly darker area)
-  xg(new THREE.BoxGeometry(0.76,1.2,0.04), 0,0.7,0.03, 0,0,0, 1),
-  // stone shelf dividers (horizontal)
-  xg(new THREE.BoxGeometry(0.82,0.04,0.10), 0,0.38,0.02, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.82,0.04,0.10), 0,0.72,0.02, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.82,0.04,0.10), 0,1.06,0.02, 0,0,0, 1),
-  // decorative lintel across top
-  xg(chamferBox(0.96,0.08,0.12,0.01), 0,1.38,0, 0,0,0, 1),
-  // bottom tier skulls (3)
-  xg(new THREE.SphereGeometry(0.08,6,6), -0.24,0.22,0.06, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.08,6,6),  0.00,0.22,0.06, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.08,6,6),  0.24,0.22,0.06, 0,0,0, 1),
-  // middle tier skulls (2)
-  xg(new THREE.SphereGeometry(0.08,6,6), -0.14,0.56,0.06, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.08,6,6),  0.14,0.56,0.06, 0,0,0, 1),
-  // top tier skull (1)
-  xg(new THREE.SphereGeometry(0.08,6,6),  0.00,0.90,0.06, 0,0,0, 1),
-  // long bone fragments on shelves
-  xg(new THREE.CylinderGeometry(0.018,0.018,0.28,5).rotateZ(Math.PI/2), -0.08,0.42,0.05, 0,0.3,0, 1),
-  xg(new THREE.CylinderGeometry(0.018,0.018,0.22,5).rotateZ(Math.PI/2),  0.12,0.76,0.05, 0,-0.2,0, 1),
-  xg(new THREE.CylinderGeometry(0.018,0.018,0.20,5).rotateZ(Math.PI/2), -0.05,1.10,0.05, 0,0.15,0, 1)
+GEO.ossuaryFrame = mergeGeos([
+  // Stone outer arch frame: pillars sit on sill and connect to top lintel
+  xg(chamferBox(0.12,1.5,0.22,0.02), -0.42,0.81,0, 0,0,0, 1),
+  xg(chamferBox(0.12,1.5,0.22,0.02),  0.42,0.81,0, 0,0,0, 1),
+  xg(chamferBox(0.96,0.16,0.24,0.03), 0,1.56,0, 0,0,0, 1),
+  xg(chamferBox(0.96,0.12,0.24,0.03), 0,0.06,0, 0,0,0, 1),
+  // Recessed back cavity wall
+  xg(new THREE.BoxGeometry(0.84,1.44,0.04), 0,0.81,-0.10, 0,0,0, 1),
+  // Stone shelf dividers
+  xg(chamferBox(0.84,0.06,0.20,0.01), 0,0.52,0, 0,0,0, 1),
+  xg(chamferBox(0.84,0.06,0.20,0.01), 0,1.04,0, 0,0,0, 1)
 ]);
+
+GEO.ossuaryBones = mergeGeos([
+  // Bottom tier skulls (4)
+  xg(new THREE.SphereGeometry(0.095,8,7), -0.30,0.22,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7), -0.10,0.22,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7),  0.10,0.22,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7),  0.30,0.22,0.02, 0,0,0, 1),
+  // Bottom tier bone bed
+  xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.10,0.02, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.36,0.02, 0,0,0, 1),
+  // Middle tier skulls (4)
+  xg(new THREE.SphereGeometry(0.095,8,7), -0.30,0.72,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7), -0.10,0.72,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7),  0.10,0.72,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7),  0.30,0.72,0.02, 0,0,0, 1),
+  // Middle tier bone bed
+  xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.58,0.02, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.88,0.02, 0,0,0, 1),
+  // Top tier skulls (3)
+  xg(new THREE.SphereGeometry(0.095,8,7), -0.20,1.22,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.105,8,7),  0.00,1.26,0.02, 0,0,0, 1),
+  xg(new THREE.SphereGeometry(0.095,8,7),  0.20,1.22,0.02, 0,0,0, 1),
+  // Top tier bone bed
+  xg(new THREE.CylinderGeometry(0.022,0.022,0.64,5).rotateZ(Math.PI/2), 0,1.10,0.02, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(0.022,0.022,0.52,5).rotateZ(Math.PI/2), 0,1.38,0.02, 0,0,0, 1)
+]);
+GEO.ossuaryWall = GEO.ossuaryFrame;
 GEO.sporePod = mergeGeos([
   xg(new THREE.SphereGeometry(0.38,9,8, 0,Math.PI*2, 0,Math.PI*0.75), 0,0.3,0, 0,0,0, 1,1.3,1),
   xg(new THREE.SphereGeometry(0.18,7,6), 0.22,0.2,-0.12, 0.2,0,-0.2, 1),
@@ -584,12 +670,12 @@ GEO.archLintel_overland = mergeGeos([
 
 GEO.bossShard = spireGeo(0.34,2.3,0.7);
 GEO.plinth   = chamferBox(0.92,0.5,0.92,0.06);
-GEO.platform = chamferBox(2.35,0.14,2.35,0.06);
+GEO.platform = chamferBox(2.35,0.04,2.35,0.015);
 GEO.crystal = mergeGeos([
   xg(new THREE.OctahedronGeometry(0.3,0), 0,0,0, 0,0,0, 1,1.45,1),
   xg(new THREE.OctahedronGeometry(0.16,0), 0,0.34,0, 0,0.6,0, 1,1.4,1)
 ]);
-GEO.ring     = new THREE.TorusGeometry(0.95,0.07,8,30).rotateX(-Math.PI/2);
+GEO.ring     = new THREE.TorusGeometry(0.95,0.02,6,24).rotateX(-Math.PI/2);
 GEO.portal   = new THREE.CircleGeometry(0.86,24).rotateX(-Math.PI/2);
 GEO.runeRing = new THREE.RingGeometry(1.5,2.3,48).rotateX(-Math.PI/2);
 GEO.shaft    = new THREE.CylinderGeometry(0.45,1.7,6,12,1,true).translate(0,3,0);
@@ -687,3 +773,554 @@ function makeWebMesh(){
   return g;
 }
 GEO.spiderWeb = makeWebMesh();
+
+/* -------- Low-Poly Campfire Geometries (Campfire VR inspired) -------- */
+// Ring of 8 rustic faceted stones surrounding the campfire pit
+const stoneParts = [];
+for (let i = 0; i < 8; i++) {
+  const ang = (i / 8) * Math.PI * 2 + (i % 2 ? 0.08 : -0.06);
+  const rad = 0.44 + (i % 3 === 0 ? 0.04 : (i % 2 === 0 ? -0.03 : 0.01));
+  const sx = 0.13 + (i % 2) * 0.03;
+  const sy = 0.09 + (i % 3) * 0.025;
+  const sz = 0.15 + (i % 2) * 0.02;
+  stoneParts.push(xg(chamferBox(sx, sy, sz, 0.025), Math.cos(ang) * rad, sy * 0.5, Math.sin(ang) * rad, (i % 2) * 0.15, ang + 0.3, (i % 3) * 0.1, 1));
+}
+GEO.campfireStones = mergeGeos(stoneParts);
+
+// 5 low-poly chopped logs arranged in an angled teepee pyre plus base criss-cross logs
+const logParts = [];
+for (let i = 0; i < 5; i++) {
+  const ang = (i / 5) * Math.PI * 2;
+  const logGeo = new THREE.CylinderGeometry(0.042, 0.055, 0.46, 6).rotateZ(Math.PI / 2);
+  const px = Math.cos(ang) * 0.16;
+  const pz = Math.sin(ang) * 0.16;
+  logParts.push(xg(logGeo, px, 0.14, pz, Math.sin(ang) * 0.42, -ang, Math.cos(ang) * 0.42, 1));
+}
+logParts.push(xg(new THREE.CylinderGeometry(0.045, 0.05, 0.50, 6).rotateZ(Math.PI / 2), 0, 0.04, 0, 0, 0.3, 0, 1));
+logParts.push(xg(new THREE.CylinderGeometry(0.045, 0.05, 0.50, 6).rotateZ(Math.PI / 2), 0, 0.04, 0, 0, -1.2, 0, 1));
+GEO.campfireLogs = mergeGeos(logParts);
+
+// Glowing ember bed / coals
+GEO.campfireCoals = mergeGeos([
+  xg(chamferBox(0.48, 0.05, 0.48, 0.02), 0, 0.025, 0, 0, 0.4, 0, 1),
+  xg(new THREE.IcosahedronGeometry(0.075, 0), 0.08, 0.05, 0.06, 0.2, 0.4, 0, 1),
+  xg(new THREE.IcosahedronGeometry(0.065, 0), -0.09, 0.04, 0.05, 0, 0.8, 0.3, 1),
+  xg(new THREE.IcosahedronGeometry(0.07, 0), 0.02, 0.05, -0.09, 0.3, 0, 0.2, 1),
+  xg(new THREE.IcosahedronGeometry(0.06, 0), -0.06, 0.04, -0.06, 0.1, 0.5, 0.1, 1)
+]);
+
+// Multi-faceted low-poly flame plume (outer flame)
+GEO.campfireFlames = mergeGeos([
+  xg(new THREE.ConeGeometry(0.22, 0.54, 6), 0, 0.34, 0, 0, 0.2, 0, 1),
+  xg(new THREE.ConeGeometry(0.16, 0.44, 5), 0.06, 0.28, 0.05, 0.12, 0.8, -0.1, 1),
+  xg(new THREE.ConeGeometry(0.15, 0.40, 5), -0.05, 0.26, -0.04, -0.15, -0.5, 0.12, 1),
+  xg(new THREE.OctahedronGeometry(0.13, 0), 0, 0.24, 0, 0, 0.4, 0, 1, 1.7, 1)
+]);
+
+// Inner bright core flame
+GEO.campfireFlameCore = mergeGeos([
+  xg(new THREE.ConeGeometry(0.12, 0.35, 6), 0, 0.24, 0, 0, 0.3, 0, 1),
+  xg(new THREE.OctahedronGeometry(0.08, 0), 0, 0.18, 0, 0, 0.6, 0, 1, 1.5, 1)
+]);
+
+/* -------- Volcanic & Medieval Industrial Forge Props -------- */
+// Basalt Stalagmite cluster: natural volcanic rock spires emerging directly from the ground without any square base
+const stalagmiteParts = [
+  xg(new THREE.ConeGeometry(0.25, 1.15, 6), 0, 0.55, 0, 0.05, 0.2, -0.04, 1),
+  xg(new THREE.ConeGeometry(0.18, 0.88, 5), 0.16, 0.42, 0.12, -0.08, 0.6, 0.12, 1),
+  xg(new THREE.ConeGeometry(0.15, 0.72, 5), -0.15, 0.35, -0.08, 0.12, -0.4, -0.09, 1),
+  xg(new THREE.ConeGeometry(0.12, 0.52, 5), -0.05, 0.25, 0.18, -0.15, 0.9, -0.1, 1),
+  xg(new THREE.ConeGeometry(0.10, 0.36, 5), 0.18, 0.17, -0.14, 0.20, 0.4, 0.15, 1),
+  xg(new THREE.DodecahedronGeometry(0.15, 0), 0.08, 0.07, 0.08, 0.3, 0.5, 0.2, 1.1, 0.7, 1.2),
+  xg(new THREE.DodecahedronGeometry(0.13, 0), -0.10, 0.06, -0.06, -0.2, 0.8, -0.1, 1.2, 0.6, 1.0)
+];
+GEO.stalagmite = mergeGeos(stalagmiteParts);
+
+// Volcanic Slag Heap / Boulder Pile: faceted cooling magma chunks
+const boulderParts = [
+  xg(new THREE.DodecahedronGeometry(0.26, 0), 0, 0.22, 0, 0.3, 0.5, 0.2, 1, 0.85, 1.1),
+  xg(new THREE.DodecahedronGeometry(0.20, 0), 0.22, 0.16, 0.10, -0.2, 0.8, -0.3, 1.1, 0.9, 0.95),
+  xg(new THREE.DodecahedronGeometry(0.18, 0), -0.20, 0.14, 0.08, 0.4, -0.3, 0.1, 0.9, 0.85, 1.2),
+  xg(new THREE.DodecahedronGeometry(0.15, 0), -0.05, 0.12, -0.22, -0.3, 0.2, 0.5, 1.2, 0.8, 0.9),
+  xg(new THREE.DodecahedronGeometry(0.14, 0), 0.18, 0.11, -0.18, 0.1, -0.6, -0.2, 1, 0.8, 1),
+  xg(new THREE.DodecahedronGeometry(0.12, 0), 0.04, 0.38, 0.02, 0.5, 0.2, -0.4, 1, 0.9, 1)
+];
+GEO.boulderPile = mergeGeos(boulderParts);
+
+// Heavy Forged Iron Floor Chains: resting strictly on top of the stone floor without clipping
+const chainParts = [];
+const ringGeo = new THREE.TorusGeometry(0.075, 0.024, 6, 12);
+chainParts.push(xg(new THREE.TorusGeometry(0.12, 0.032, 6, 14), 0, 0.032, 0, Math.PI / 2, 0, 0, 1));
+const chainPath = [
+  { x: 0.10, z: 0.03, a: 0.3 },
+  { x: 0.22, z: 0.08, a: 0.6 },
+  { x: 0.33, z: 0.16, a: 1.0 },
+  { x: 0.40, z: 0.28, a: 1.4 },
+  { x: 0.38, z: 0.40, a: 2.1 },
+  { x: -0.10, z: -0.05, a: -0.4 },
+  { x: -0.21, z: -0.13, a: -0.9 },
+  { x: -0.28, z: -0.25, a: -1.3 },
+  { x: -0.37, z: -0.35, a: -1.8 }
+];
+chainPath.forEach((pt, idx) => {
+  const isFlat = idx % 2 === 0;
+  const linkY = isFlat ? 0.024 : 0.062;
+  chainParts.push(xg(ringGeo, pt.x, linkY, pt.z, isFlat ? (Math.PI / 2) : 0.35, pt.a, isFlat ? 0 : (Math.PI / 2), 1));
+});
+GEO.forgeChains = mergeGeos(chainParts);
+
+// Heavy Forged Wall Chains: iron wall bracket with hanging chain links dangling down wall face
+const wallChainParts = [
+  xg(chamferBox(0.24, 0.06, 0.08, 0.015), 0, 1.70, 0.04, 0, 0, 0, 1),
+  xg(new THREE.TorusGeometry(0.06, 0.02, 6, 10), -0.05, 1.63, 0.06, 0, 0, 0, 1),
+  xg(new THREE.TorusGeometry(0.06, 0.02, 6, 10), 0.05, 1.63, 0.06, 0, 0, 0, 1)
+];
+const hLinkGeo = new THREE.TorusGeometry(0.065, 0.02, 6, 10);
+const leftLinks = [1.52, 1.39, 1.26, 1.13, 1.00, 0.87, 0.74, 0.61, 0.48];
+leftLinks.forEach((y, i) => {
+  const isFlat = i % 2 === 0;
+  wallChainParts.push(xg(hLinkGeo, -0.05, y, 0.06, 0, isFlat ? 0 : Math.PI / 2, 0, 1));
+});
+const rightLinks = [1.52, 1.39, 1.26, 1.13, 1.00, 0.87];
+rightLinks.forEach((y, i) => {
+  const isFlat = i % 2 === 0;
+  wallChainParts.push(xg(hLinkGeo, 0.05, y, 0.06, 0, isFlat ? 0 : Math.PI / 2, 0, 1));
+});
+wallChainParts.push(xg(new THREE.TorusGeometry(0.08, 0.024, 6, 12), 0.05, 0.75, 0.06, Math.PI / 2, 0, 0, 1));
+GEO.hangingChains = mergeGeos(wallChainParts);
+
+// Ingot Stack: pyramid of cast iron / steel metal bars
+const ingotParts = [];
+const barGeo = chamferBox(0.38, 0.07, 0.14, 0.02);
+ingotParts.push(xg(barGeo, 0, 0.035, -0.16, 0, 0, 0, 1));
+ingotParts.push(xg(barGeo, 0, 0.035, 0, 0, 0, 0, 1));
+ingotParts.push(xg(barGeo, 0, 0.035, 0.16, 0, 0, 0, 1));
+ingotParts.push(xg(barGeo, -0.08, 0.105, 0, 0, Math.PI / 2, 0, 1));
+ingotParts.push(xg(barGeo, 0.08, 0.105, 0, 0, Math.PI / 2, 0, 1));
+ingotParts.push(xg(barGeo, 0, 0.175, 0, 0, 0, 0, 1));
+GEO.ingotStack = mergeGeos(ingotParts);
+
+// Gold Bullion Stack: gleaming pyramid of gold treasure bars
+const goldParts = [];
+const goldBarGeo = chamferBox(0.36, 0.065, 0.14, 0.018);
+// Bottom tier (3 parallel bars)
+goldParts.push(xg(goldBarGeo, 0, 0.033, -0.15, 0, 0, 0, 1));
+goldParts.push(xg(goldBarGeo, 0, 0.033, 0, 0, 0, 0, 1));
+goldParts.push(xg(goldBarGeo, 0, 0.033, 0.15, 0, 0, 0, 1));
+// Second tier (2 perpendicular crosswise bars)
+goldParts.push(xg(goldBarGeo, -0.075, 0.098, 0, 0, Math.PI / 2, 0, 1));
+goldParts.push(xg(goldBarGeo, 0.075, 0.098, 0, 0, Math.PI / 2, 0, 1));
+// Top tier (crowning bar)
+goldParts.push(xg(goldBarGeo, 0, 0.163, 0, 0, 0, 0, 1));
+// Two loose gleaming bars angled beside the stack
+goldParts.push(xg(goldBarGeo, 0.22, 0.033, 0.08, 0, 0.25, 0, 1));
+goldParts.push(xg(goldBarGeo, -0.21, 0.045, -0.06, 0.18, -0.3, 0, 1));
+GEO.goldBullion = mergeGeos(goldParts);
+
+// High-performance procedural grass tufts (reeds, swamp grass, marsh tussocks)
+function makeGrassTuftGeo(bladeCount, baseHeight, spreadRadius, seed) {
+  let s = seed || 1;
+  const rng = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  
+  const positions = [];
+  const uvs = [];
+  const indices = [];
+  let vertOffset = 0;
+
+  for (let b = 0; b < bladeCount; b++) {
+    const angle = (b / bladeCount) * Math.PI * 2 + (rng() - 0.5) * 0.45;
+    const leanDir = angle;
+    const h = baseHeight * (0.75 + rng() * 0.5);
+    const w = 0.05 + rng() * 0.025;
+    const leanAmt = (0.12 + rng() * 0.18) * spreadRadius;
+    
+    const cosA = Math.cos(angle);
+    const sinA = Math.sin(angle);
+    const perpX = -sinA * (w * 0.5);
+    const perpZ = cosA * (w * 0.5);
+
+    const tiers = [
+      { y: 0,        wMult: 1.0, lean: 0.0 },
+      { y: h * 0.4,  wMult: 0.8, lean: leanAmt * 0.35 },
+      { y: h * 0.75, wMult: 0.5, lean: leanAmt * 0.75 },
+      { y: h,        wMult: 0.0, lean: leanAmt * 1.15 }
+    ];
+
+    const p0x = -perpX, p0z = -perpZ;
+    const p1x = perpX,  p1z = perpZ;
+    positions.push(p0x, 0, p0z,  p1x, 0, p1z);
+    uvs.push(0, 0,  1, 0);
+
+    const mLeanX = Math.cos(leanDir) * tiers[1].lean;
+    const mLeanZ = Math.sin(leanDir) * tiers[1].lean;
+    positions.push(mLeanX - perpX * tiers[1].wMult, tiers[1].y, mLeanZ - perpZ * tiers[1].wMult);
+    positions.push(mLeanX + perpX * tiers[1].wMult, tiers[1].y, mLeanZ + perpZ * tiers[1].wMult);
+    uvs.push(0, 0.4,  1, 0.4);
+
+    const uLeanX = Math.cos(leanDir) * tiers[2].lean;
+    const uLeanZ = Math.sin(leanDir) * tiers[2].lean;
+    positions.push(uLeanX - perpX * tiers[2].wMult, tiers[2].y, uLeanZ - perpZ * tiers[2].wMult);
+    positions.push(uLeanX + perpX * tiers[2].wMult, tiers[2].y, uLeanZ + perpZ * tiers[2].wMult);
+    uvs.push(0, 0.75,  1, 0.75);
+
+    const tLeanX = Math.cos(leanDir) * tiers[3].lean;
+    const tLeanZ = Math.sin(leanDir) * tiers[3].lean;
+    positions.push(tLeanX, tiers[3].y, tLeanZ);
+    uvs.push(0.5, 1.0);
+
+    const base = vertOffset;
+    indices.push(
+      base,     base + 1, base + 3,
+      base,     base + 3, base + 2,
+      base + 2, base + 3, base + 5,
+      base + 2, base + 5, base + 4,
+      base + 4, base + 5, base + 6
+    );
+
+    vertOffset += 7;
+  }
+
+  // Spherical/hemispherical foliage normals:
+  // Radiate upward and outward from the clump center so the grass tuft shades
+  // like a 3D volumetric clump, properly receiving directional sunlight and ambient light.
+  const normals = [];
+  for (let i = 0; i < positions.length; i += 3) {
+    const px = positions[i];
+    const py = positions[i + 1];
+    const pz = positions[i + 2];
+    const nx = px * 1.5;
+    const ny = Math.max(0.40, 0.65 + py * 0.5);
+    const nz = pz * 1.5;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    normals.push(nx / len, ny / len, nz / len);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  return geo;
+}
+
+GEO.swampgrass  = makeGrassTuftGeo(8, 0.68, 1.0, 42);
+GEO.swampgrass2 = makeGrassTuftGeo(7, 0.58, 1.2, 88);
+GEO.swampgrass3 = makeGrassTuftGeo(9, 0.78, 1.1, 123);
+
+// Smelting Crucible: heavy iron melting pot
+const cruciblePotParts = [
+  xg(new THREE.CylinderGeometry(0.32, 0.22, 0.38, 12, 1, false), 0, 0.21, 0, 0, 0, 0, 1),
+  xg(new THREE.TorusGeometry(0.33, 0.04, 6, 16), 0, 0.39, 0, Math.PI / 2, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.04, 0.05, 0.22, 6), 0.20, 0.10, 0.12, 0.25, 0.5, 0, 1),
+  xg(new THREE.CylinderGeometry(0.04, 0.05, 0.22, 6), -0.20, 0.10, 0.12, 0.25, -2.6, 0, 1),
+  xg(new THREE.CylinderGeometry(0.04, 0.05, 0.22, 6), 0, 0.10, -0.23, -0.3, 0, 0, 1),
+  xg(new THREE.TorusGeometry(0.08, 0.025, 6, 10), 0.34, 0.28, 0, 0, 0, Math.PI / 2, 1),
+  xg(new THREE.TorusGeometry(0.08, 0.025, 6, 10), -0.34, 0.28, 0, 0, 0, Math.PI / 2, 1)
+];
+GEO.smeltingCrucible = mergeGeos(cruciblePotParts);
+
+// Molten liquid metal inside crucible
+GEO.crucibleLiquid = mergeGeos([
+  xg(new THREE.CylinderGeometry(0.28, 0.26, 0.04, 12), 0, 0.35, 0, 0, 0, 0, 1)
+]);
+
+// Medieval Forged Iron Bridge Railing / Parapet
+/* NOTE ON ANCHORING: chamferBox(w,h,d) spans y from 0 to h — its base sits at
+   the origin, it is NOT centred. ConeGeometry and CylinderGeometry ARE centred.
+   Mixing the two conventions is what left the timber railing's posts floating
+   a fifth of a unit above its own curb with the rails upside-down beneath
+   them. Every y below is therefore the BASE of a chamferBox and the CENTRE of
+   a cylinder/cone. Railing base sits at y = 0 so it can be dropped straight
+   onto a deck. */
+const railingParts = [
+  // curb along the deck edge
+  xg(chamferBox(0.98, 0.05, 0.08, 0.015), 0, 0, 0, 0, 0, 0, 1),
+  // posts, rising from the curb
+  xg(chamferBox(0.07, 0.44, 0.07, 0.012), -0.45, 0.05, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.07, 0.44, 0.07, 0.012), 0.45, 0.05, 0, 0, 0, 0, 1),
+  // pyramid finials, centred on the post tops (0.05 + 0.44 = 0.49)
+  xg(new THREE.ConeGeometry(0.05, 0.07, 4), -0.45, 0.525, 0, 0, Math.PI / 4, 0, 1),
+  xg(new THREE.ConeGeometry(0.05, 0.07, 4), 0.45, 0.525, 0, 0, Math.PI / 4, 0, 1),
+  // handrail just under the finials, and a mid rail
+  xg(chamferBox(0.94, 0.04, 0.05, 0.008), 0, 0.40, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.94, 0.028, 0.035, 0.006), 0, 0.20, 0, 0, 0, 0, 1),
+  // iron balusters spanning curb to handrail (centred geometry)
+  xg(new THREE.CylinderGeometry(0.016, 0.016, 0.35, 6), -0.22, 0.225, 0, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.016, 0.016, 0.35, 6), 0, 0.225, 0, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.016, 0.016, 0.35, 6), 0.22, 0.225, 0, 0, 0, 0, 1)
+];
+GEO.bridgeRailing = mergeGeos(railingParts);
+
+// 3D Elevated Medieval Magma Bridge Segment (Span with integrated side railings)
+const bridgeDeckParts = [
+  // Heavy elevated main stone/iron slab (deck raised to y = 0.14)
+  xg(chamferBox(0.98, 0.12, 0.98, 0.02), 0, 0.08, 0, 0, 0, 0, 1),
+  // Forged iron border rim / grating trims
+  xg(chamferBox(0.98, 0.03, 0.08, 0.01), 0, 0.15, -0.45, 0, 0, 0, 1),
+  xg(chamferBox(0.98, 0.03, 0.08, 0.01), 0, 0.15, 0.45, 0, 0, 0, 1),
+  xg(chamferBox(0.08, 0.03, 0.98, 0.01), -0.45, 0.15, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.08, 0.03, 0.98, 0.01), 0.45, 0.15, 0, 0, 0, 0, 1),
+  // Cross iron reinforcing straps
+  xg(chamferBox(0.90, 0.02, 0.12, 0.008), 0, 0.145, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.12, 0.02, 0.90, 0.008), 0, 0.145, 0, 0, 0, 0, 1),
+  // Heavy undercarriage support I-beam girders spanning into the lava chasm
+  xg(chamferBox(0.94, 0.16, 0.14, 0.02), 0, -0.04, -0.36, 0, 0, 0, 1),
+  xg(chamferBox(0.94, 0.16, 0.14, 0.02), 0, -0.04, 0.36, 0, 0, 0, 1),
+  // Under-chasm masonry support piers extending down into the glowing molten lava
+  xg(new THREE.CylinderGeometry(0.09, 0.12, 0.55, 8), -0.38, -0.20, -0.36, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.09, 0.12, 0.55, 8), 0.38, -0.20, -0.36, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.09, 0.12, 0.55, 8), -0.38, -0.20, 0.36, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.09, 0.12, 0.55, 8), 0.38, -0.20, 0.36, 0, 0, 0, 1),
+  /* Railings are NOT part of the deck. Baked in here they appeared on every
+     tile of a 3-wide bridge, so the two interior rows fenced the middle of the
+     crossing. They are emitted per-EDGE instead (see the bridge block in
+     dungeon_generator.js), which puts them only where the deck actually ends. */
+];
+GEO.magmaBridge = mergeGeos(bridgeDeckParts);
+
+// 3D Elevated Medieval Magma Bridge Approach Ramp (Transition from floor y=0 to bridge y=0.14)
+const approachParts = [
+  xg(chamferBox(0.98, 0.08, 0.98, 0.02), 0, 0.04, 0, 0.07, 0, 0, 1),
+  xg(chamferBox(0.94, 0.025, 0.22, 0.01), 0, 0.08, 0.38, 0.07, 0, 0, 1),
+  xg(chamferBox(0.94, 0.025, 0.22, 0.01), 0, 0.03, -0.38, 0.07, 0, 0, 1)
+];
+GEO.magmaBridgeApproach = mergeGeos(approachParts);
+
+/* ── Timber footbridge (verdant water crossings) ──────────────────────────
+   Same footprint and deck height as the magma bridge so the two share the
+   generator's bridge logic, the railing offsets and the approach ramp; only
+   the construction and material differ — sawn planks on stringers over
+   trestle piles, rather than iron plate on girders. */
+const woodDeckParts = [
+  // sawn planks running across the direction of travel
+  ...[-2, -1, 0, 1, 2].map(i =>
+    xg(chamferBox(0.17, 0.07, 0.98, 0.008), i * 0.196, 0.105, 0, 0, 0, 0, 1)),
+  // stringers carrying the planks along the span
+  xg(chamferBox(0.98, 0.07, 0.11, 0.012), 0, 0.035, -0.38, 0, 0, 0, 1),
+  xg(chamferBox(0.98, 0.07, 0.11, 0.012), 0, 0.035, 0.38, 0, 0, 0, 1),
+  // trestle piles into the water
+  xg(new THREE.CylinderGeometry(0.055, 0.075, 0.55, 7), -0.36, -0.22, -0.38, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.055, 0.075, 0.55, 7), 0.36, -0.22, -0.38, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.055, 0.075, 0.55, 7), -0.36, -0.22, 0.38, 0, 0, 0, 1),
+  xg(new THREE.CylinderGeometry(0.055, 0.075, 0.55, 7), 0.36, -0.22, 0.38, 0, 0, 0, 1)
+];
+GEO.woodBridge = mergeGeos(woodDeckParts);
+
+/* Timber railing — squared posts and two rails, no iron finials. Sits at the
+   same local origin as GEO.bridgeRailing so both take the same placement. */
+const woodRailingParts = [
+  // sill on the deck edge
+  xg(chamferBox(0.98, 0.05, 0.09, 0.012), 0, 0, 0, 0, 0, 0, 1),
+  // squared posts rising from the sill
+  xg(chamferBox(0.10, 0.45, 0.10, 0.012), -0.44, 0.05, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.10, 0.45, 0.10, 0.012), 0.44, 0.05, 0, 0, 0, 0, 1),
+  // top rail set just below the post tops (0.05 + 0.45 = 0.50)
+  xg(chamferBox(0.96, 0.06, 0.08, 0.01), 0, 0.40, 0, 0, 0, 0, 1),
+  // lower rail
+  xg(chamferBox(0.96, 0.045, 0.06, 0.008), 0, 0.16, 0, 0, 0, 0, 1),
+  // uprights between the two rails
+  xg(chamferBox(0.05, 0.20, 0.05, 0.008), -0.17, 0.20, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.05, 0.20, 0.05, 0.008), 0.17, 0.20, 0, 0, 0, 0, 1)
+];
+GEO.woodRailing = mergeGeos(woodRailingParts);
+
+/* ==========================================================================
+   NORSE & BARBARIAN GLACIAL FROST THEME PROPS
+   ========================================================================== */
+
+// 1. Mammoth Tusks — Sweeping grand ivory tusks mounted in a carved stone plinth
+const tuskParts = [
+  // Heavy stone mounting plinth
+  xg(chamferBox(0.85, 0.16, 0.45, 0.025), 0, 0.08, 0, 0, 0, 0, 1),
+  // Iron binding collars
+  xg(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), -0.26, 0.18, 0, 0, 0, 0.18, 1),
+  xg(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), 0.26, 0.18, 0, 0, 0, -0.18, 1),
+  // Left Sweeping Mammoth Tusk (segmented curve rising and flaring outward)
+  xg(new THREE.CylinderGeometry(0.10, 0.12, 0.40, 8), -0.28, 0.36, 0, 0, 0, 0.22, 1),
+  xg(new THREE.CylinderGeometry(0.08, 0.10, 0.42, 8), -0.35, 0.72, 0.03, 0.10, 0, 0.38, 1),
+  xg(new THREE.CylinderGeometry(0.05, 0.08, 0.44, 8), -0.46, 1.08, 0.08, 0.18, 0, 0.55, 1),
+  xg(new THREE.ConeGeometry(0.05, 0.45, 8), -0.58, 1.42, 0.14, 0.28, 0, 0.75, 1),
+  // Right Sweeping Mammoth Tusk (mirrored)
+  xg(new THREE.CylinderGeometry(0.10, 0.12, 0.40, 8), 0.28, 0.36, 0, 0, 0, -0.22, 1),
+  xg(new THREE.CylinderGeometry(0.08, 0.10, 0.42, 8), 0.35, 0.72, 0.03, 0.10, 0, -0.38, 1),
+  xg(new THREE.CylinderGeometry(0.05, 0.08, 0.44, 8), 0.46, 1.08, 0.08, 0.18, 0, -0.55, 1),
+  xg(new THREE.ConeGeometry(0.05, 0.45, 8), 0.58, 1.42, 0.14, 0.28, 0, -0.75, 1),
+  // Central mammoth skull crest plate
+  xg(chamferBox(0.24, 0.22, 0.22, 0.03), 0, 0.22, 0, 0.15, 0, 0, 1)
+];
+GEO.mammothTusks = mergeGeos(tuskParts);
+
+// 2. Runic Standing Stone / Obelisk — Weathered Norse megalith with carved runic relief
+const runicObeliskParts = [
+  // Stepped stone base foundation
+  xg(chamferBox(0.70, 0.12, 0.60, 0.03), 0, 0.06, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.55, 0.10, 0.48, 0.02), 0, 0.16, 0, 0, 0, 0, 1),
+  // Tapered hexagonal standing monolith
+  xg(new THREE.CylinderGeometry(0.22, 0.30, 1.65, 6), 0, 0.98, 0, 0, Math.PI / 6, 0, 1),
+  // Serpentine knotwork / carved relief framing bands on stone
+  xg(chamferBox(0.44, 0.06, 0.44, 0.015), 0, 0.50, 0, 0, Math.PI / 6, 0, 1),
+  xg(chamferBox(0.40, 0.06, 0.40, 0.015), 0, 1.45, 0, 0, Math.PI / 6, 0, 1),
+  // Weathered pyramidal stone cap
+  xg(new THREE.ConeGeometry(0.24, 0.40, 6), 0, 1.98, 0, 0, Math.PI / 6, 0, 1)
+];
+GEO.runicObelisk = mergeGeos(runicObeliskParts);
+
+// Glowing Norse Rune Glyph insets (Elder Futhark bindrunes, Algiz, Othala, Tiwaz, Thurisaz)
+const runeGlowParts = [
+  // Front Face Runes (Z = +0.26)
+  // Algiz (Protection) Rune: vertical stem + diagonal branches
+  xg(chamferBox(0.025, 0.28, 0.02, 0.005), 0, 1.25, 0.26, 0, 0, 0, 1),
+  xg(chamferBox(0.14, 0.02, 0.02, 0.005), -0.04, 1.33, 0.26, 0, 0, 0.65, 1),
+  xg(chamferBox(0.14, 0.02, 0.02, 0.005), 0.04, 1.33, 0.26, 0, 0, -0.65, 1),
+  // Othala / Ingwaz (Ancestral Power) Diamond Bindrune
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), 0, 0.98, 0.26, 0, 0, Math.PI / 4, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), 0, 0.98, 0.26, 0, 0, -Math.PI / 4, 1),
+  // Tiwaz (Warrior / Victory) Arrow Rune
+  xg(chamferBox(0.025, 0.26, 0.02, 0.005), 0, 0.72, 0.26, 0, 0, 0, 1),
+  xg(chamferBox(0.10, 0.02, 0.02, 0.005), -0.03, 0.81, 0.26, 0, 0, -0.70, 1),
+  xg(chamferBox(0.10, 0.02, 0.02, 0.005), 0.03, 0.81, 0.26, 0, 0, 0.70, 1),
+
+  // Back Face Runes (Z = -0.26)
+  xg(chamferBox(0.025, 0.28, 0.02, 0.005), 0, 1.25, -0.26, 0, 0, 0, 1),
+  xg(chamferBox(0.14, 0.02, 0.02, 0.005), -0.04, 1.33, -0.26, 0, 0, 0.65, 1),
+  xg(chamferBox(0.14, 0.02, 0.02, 0.005), 0.04, 1.33, -0.26, 0, 0, -0.65, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), 0, 0.98, -0.26, 0, 0, Math.PI / 4, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), 0, 0.98, -0.26, 0, 0, -Math.PI / 4, 1),
+
+  // Left Face Runes (X = -0.22, Z = 0.13, rotated 60 deg)
+  xg(chamferBox(0.025, 0.35, 0.02, 0.005), -0.22, 1.05, 0.13, 0, Math.PI / 3, 0, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), -0.22, 1.15, 0.13, 0, Math.PI / 3, 0.70, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), -0.22, 0.95, 0.13, 0, Math.PI / 3, -0.70, 1),
+
+  // Right Face Runes (X = +0.22, Z = 0.13, rotated -60 deg)
+  xg(chamferBox(0.025, 0.35, 0.02, 0.005), 0.22, 1.05, 0.13, 0, -Math.PI / 3, 0, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), 0.22, 1.15, 0.13, 0, -Math.PI / 3, -0.70, 1),
+  xg(chamferBox(0.12, 0.02, 0.02, 0.005), 0.22, 0.95, 0.13, 0, -Math.PI / 3, 0.70, 1),
+
+  // Apex Cap Rune Crystal Core (pulsing cyan tip)
+  xg(new THREE.ConeGeometry(0.08, 0.18, 6), 0, 2.08, 0, 0, Math.PI / 6, 0, 1)
+];
+GEO.runicObeliskGlow = mergeGeos(runeGlowParts);
+
+// 3. Viking Round Shield Rack — Timber stand holding painted bossed round shields
+const shieldRackParts = [
+  // Wooden A-frame stand base & uprights
+  xg(chamferBox(0.85, 0.06, 0.35, 0.015), 0, 0.03, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.06, 0.65, 0.06, 0.01), -0.38, 0.35, 0, 0, 0, -0.12, 1),
+  xg(chamferBox(0.06, 0.65, 0.06, 0.01), 0.38, 0.35, 0, 0, 0, 0.12, 1),
+  xg(chamferBox(0.80, 0.05, 0.05, 0.01), 0, 0.55, 0, 0, 0, 0, 1),
+  // Center Round Shield with iron boss
+  xg(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 16), 0, 0.42, 0.06, Math.PI / 2 - 0.15, 0, 0, 1),
+  xg(new THREE.SphereGeometry(0.055, 8, 8), 0, 0.42, 0.08, 0, 0, 0, 1),
+  // Left Round Shield (angled)
+  xg(new THREE.CylinderGeometry(0.19, 0.19, 0.03, 16), -0.26, 0.38, 0.04, Math.PI / 2 - 0.15, 0.25, 0, 1),
+  xg(new THREE.SphereGeometry(0.05, 8, 8), -0.26, 0.38, 0.06, 0, 0, 0, 1),
+  // Right Round Shield (angled)
+  xg(new THREE.CylinderGeometry(0.19, 0.19, 0.03, 16), 0.26, 0.38, 0.04, Math.PI / 2 - 0.15, -0.25, 0, 1),
+  xg(new THREE.SphereGeometry(0.05, 8, 8), 0.26, 0.38, 0.06, 0, 0, 0, 1)
+];
+GEO.shieldRack = mergeGeos(shieldRackParts);
+
+// 4. Barbarian Longhouse Hearth Fire Pit — Low stone-lined pit with glowing coals
+const hearthPitParts = [
+  // Low perimeter stone curb
+  xg(chamferBox(0.92, 0.12, 0.72, 0.025), 0, 0.06, 0, 0, 0, 0, 1),
+  // Inner coal / ember bed
+  xg(chamferBox(0.70, 0.04, 0.50, 0.01), 0, 0.08, 0, 0, 0, 0, 1),
+  // Charred crossed logs
+  xg(new THREE.CylinderGeometry(0.045, 0.05, 0.55, 6), 0, 0.11, 0, 0, Math.PI / 4, Math.PI / 2, 1),
+  xg(new THREE.CylinderGeometry(0.045, 0.05, 0.55, 6), 0, 0.12, 0, 0, -Math.PI / 4, Math.PI / 2, 1)
+];
+GEO.hearthPit = mergeGeos(hearthPitParts);
+
+// 5. Glacial Shaman Bone Totem — Wrapped mammoth ribs, bone fetishes & horned skull
+const boneTotemParts = [
+  // Stone plinth
+  xg(chamferBox(0.42, 0.10, 0.42, 0.02), 0, 0.05, 0, 0, 0, 0, 1),
+  // Central carved totem post
+  xg(new THREE.CylinderGeometry(0.07, 0.09, 1.45, 8), 0, 0.78, 0, 0, 0, 0, 1),
+  // Mid-height flanking curved rib bones
+  xg(new THREE.CylinderGeometry(0.025, 0.04, 0.45, 6), -0.20, 0.75, 0, 0, 0, 0.65, 1),
+  xg(new THREE.CylinderGeometry(0.025, 0.04, 0.45, 6), 0.20, 0.75, 0, 0, 0, -0.65, 1),
+  // Horned Beast Skull Trophy at top
+  xg(chamferBox(0.18, 0.16, 0.18, 0.03), 0, 1.40, 0.04, 0.2, 0, 0, 1),
+  // Sweeping horns
+  xg(new THREE.ConeGeometry(0.04, 0.40, 6), -0.22, 1.52, 0, 0, 0, 1.1, 1),
+  xg(new THREE.ConeGeometry(0.04, 0.40, 6), 0.22, 1.52, 0, 0, 0, -1.1, 1)
+];
+GEO.boneTotem = mergeGeos(boneTotemParts);
+
+// 6. Glacial Ice Crystal Spire — Multi-tiered cluster of faceted translucent ice shards
+const glacialSpireParts = [
+  // Main soaring hexagonal ice crystal
+  xg(new THREE.CylinderGeometry(0.08, 0.20, 1.35, 6), 0, 0.68, 0, 0.05, 0, 0.06, 1),
+  xg(new THREE.ConeGeometry(0.08, 0.35, 6), 0.03, 1.45, 0.04, 0.05, 0, 0.06, 1),
+  // Left angled crystal shard
+  xg(new THREE.CylinderGeometry(0.05, 0.12, 0.85, 6), -0.24, 0.42, 0.08, 0.15, 0, 0.35, 1),
+  xg(new THREE.ConeGeometry(0.05, 0.22, 6), -0.37, 0.88, 0.13, 0.15, 0, 0.35, 1),
+  // Right angled crystal shard
+  xg(new THREE.CylinderGeometry(0.06, 0.14, 0.95, 6), 0.26, 0.46, -0.06, -0.12, 0, -0.32, 1),
+  xg(new THREE.ConeGeometry(0.06, 0.25, 6), 0.40, 0.98, -0.10, -0.12, 0, -0.32, 1),
+  // Front small shard
+  xg(new THREE.ConeGeometry(0.06, 0.45, 6), 0.06, 0.22, 0.25, 0.38, 0, 0.08, 1)
+];
+GEO.glacialSpire = mergeGeos(glacialSpireParts);
+
+// Corner Rubble Variant A — Two fallen ashlar blocks and stone fragments nestled in a 90° corner (no base plate)
+const cornerRubbleAParts = [
+  // Main fallen wall brick (angled in the corner)
+  xg(worldBoxUV(chamferBox(0.36, 0.16, 0.22, 0.025), 1.0, 0.1, 0.1), -0.10, 0.08, -0.08, 0.05, 0.35, -0.04, 1),
+  // Secondary fallen masonry block pitched forward
+  xg(worldBoxUV(chamferBox(0.26, 0.14, 0.19, 0.02), 1.0, 0.45, 0.2), 0.10, 0.07, 0.06, 0.04, -0.65, 0.08, 1),
+  // Fractured stone fragments and chips directly on floor
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.08, 0), 1.2, 0.6, 0.3), -0.16, 0.045, 0.14, 0.4, 0.8, -0.2, 1, 0.8, 1.1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.065, 0), 1.2, 0.2, 0.7), 0.18, 0.038, -0.10, 0.1, 1.2, 0.5, 1, 0.7, 1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.05, 0), 1.2, 0.8, 0.5), 0.03, 0.03, 0.18, 0.7, 0.2, 0.3, 1, 0.8, 0.8)
+];
+GEO.cornerRubbleA = mergeGeos(cornerRubbleAParts);
+
+// Corner Rubble Variant B — Sheared lintel slab with propped half-brick and chips
+const cornerRubbleBParts = [
+  // Sheared lintel / slab chunk
+  xg(worldBoxUV(chamferBox(0.48, 0.14, 0.22, 0.025), 1.0, 0.05, 0.4), -0.06, 0.07, -0.08, -0.05, -0.42, 0.02, 1),
+  // Tumbled half-brick on side
+  xg(worldBoxUV(chamferBox(0.22, 0.14, 0.18, 0.02), 1.0, 0.55, 0.15), 0.15, 0.07, -0.04, 0.08, 0.75, -0.10, 1),
+  // Chipped rock chunks
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.075, 0), 1.2, 0.2, 0.2), -0.18, 0.045, 0.10, 0.3, 0.5, 0.1, 1.1, 0.7, 0.9),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.06, 0), 1.2, 0.7, 0.8), 0.06, 0.035, 0.16, -0.2, 0.9, 0.4, 0.8, 0.9, 0.8),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.05, 0), 1.2, 0.4, 0.6), -0.22, 0.03, -0.14, 0.5, 0.1, -0.4, 1, 0.8, 1)
+];
+GEO.cornerRubbleB = mergeGeos(cornerRubbleBParts);
+
+// Corner Rubble Variant C — Crushed masonry fragments and tumbled cobblestones
+const cornerRubbleCParts = [
+  xg(worldBoxUV(chamferBox(0.24, 0.12, 0.20, 0.02), 1.0, 0.2, 0.5), -0.08, 0.06, -0.06, 0.1, 0.25, -0.08, 1),
+  xg(worldBoxUV(chamferBox(0.18, 0.10, 0.16, 0.015), 1.0, 0.7, 0.1), 0.08, 0.05, -0.10, -0.08, 0.8, 0.12, 1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.09, 0), 1.2, 0.1, 0.9), -0.02, 0.05, 0.08, 0.4, 0.2, 0.1, 1.2, 0.7, 1.0),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.07, 0), 1.2, 0.4, 0.4), 0.15, 0.04, 0.06, -0.2, 0.6, 0.4, 0.9, 0.8, 1.1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.06, 0), 1.2, 0.8, 0.2), -0.18, 0.035, -0.02, 0.2, 1.1, -0.3, 1.1, 0.7, 0.8),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.05, 0), 1.2, 0.3, 0.6), -0.10, 0.03, 0.18, 0.7, 0.1, 0.2, 0.8, 0.8, 0.9),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.04, 0), 1.2, 0.5, 0.7), 0.08, 0.025, 0.18, 0.1, 0.4, 0.8, 1.0, 0.7, 1.0)
+];
+GEO.cornerRubbleC = mergeGeos(cornerRubbleCParts);
+
+// Corner Rubble Variant D — Tall upright leaning cornerstone block with flat companion brick
+const cornerRubbleDParts = [
+  xg(worldBoxUV(chamferBox(0.24, 0.28, 0.22, 0.025), 1.0, 0.12, 0.6), -0.12, 0.14, -0.12, -0.10, 0.78, 0.10, 1),
+  xg(worldBoxUV(chamferBox(0.32, 0.12, 0.20, 0.02), 1.0, 0.4, 0.3), 0.06, 0.06, 0.04, 0.04, -0.35, -0.04, 1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.08, 0), 1.2, 0.35, 0.15), -0.18, 0.045, 0.08, 0.3, -0.4, 0.2, 1, 0.8, 1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.055, 0), 1.2, 0.65, 0.85), 0.16, 0.035, -0.10, -0.2, 0.6, -0.3, 0.9, 0.7, 1.1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.045, 0), 1.2, 0.25, 0.75), 0.02, 0.028, 0.18, 0.5, 0.2, 0.6, 1.0, 0.8, 0.9)
+];
+GEO.cornerRubbleD = mergeGeos(cornerRubbleDParts);
+
+// Single fallen wall ashlar brick for wall fringes & corridor debris
+const fallenBrickParts = [
+  xg(worldBoxUV(chamferBox(0.38, 0.16, 0.22, 0.025), 1.0, 0.15, 0.25), 0, 0.08, 0, 0.05, 0.15, -0.03, 1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.06, 0), 1.2, 0.3, 0.5), 0.22, 0.04, 0.08, 0.2, 0.8, 0.3, 1, 0.8, 1),
+  xg(worldBoxUV(new THREE.IcosahedronGeometry(0.045, 0), 1.2, 0.7, 0.1), -0.20, 0.03, -0.07, 0.5, 0.3, -0.2, 1, 0.9, 0.8)
+];
+GEO.fallenBrick = mergeGeos(fallenBrickParts);
+
+
+

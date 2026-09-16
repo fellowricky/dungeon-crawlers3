@@ -1,6 +1,7 @@
 /**
  * Shop System — an overlay shown between dungeon floors.
  */
+import { rollItem, bonusText, ilvlText, migrateItem, slotsFor, compareItemStats, addToInventory } from './items.js';
 import { log, updateResources } from './ui.js';
 import { refreshMenus } from './menus.js';
 
@@ -55,13 +56,20 @@ export function showShop() {
   const hasDiscount = buffs.some(b => b.type === 'merchantDiscount');
   const priceMult = hasDiscount ? 0.85 : 1;
 
-  // The between-floor merchant is a camp restock: potions only. Gear shopping
-  // lives in the town shop (world map) so mid-crawl stops stay quick.
+  // The between-floor merchant is a camp restock: potions plus a couple of
+  // scrolls/potion trinkets rolled at the party's tier. Gear shopping lives in
+  // the town shop (world map) so mid-crawl stops stay quick.
   shopInventory = [
     { type: 'potion', kind: 'heal',     name: 'Healing Potion',          icon: '🧪', price: Math.round(100 * priceMult), desc: 'Heals the most wounded hero (2d4+2)' },
     { type: 'potion', kind: 'greater',  name: 'Greater Healing Potion',  icon: '⚗️', price: Math.round(350 * priceMult), desc: 'Greater healing (4d4+4)' },
     { type: 'potion', kind: 'superior', name: 'Superior Healing Potion', icon: '🍶', price: Math.round(800 * priceMult), desc: 'Superior healing (8d4+8)' },
   ];
+
+  const tier = G.partyLevel ? G.partyLevel() : 1;
+  for (let i = 0; i < 2; i++) {
+    const it = rollItem(tier, Math.random, 'trinket', { source: 'chest' });
+    if (it) shopInventory.push({ type: 'gear', item: it, price: Math.round(it.value * 2 * priceMult) });
+  }
 
   if (hasDiscount) log(`💰 Merchant's favour — all prices reduced 15% this visit.`, 'treasure');
 
@@ -106,11 +114,18 @@ function renderShop() {
 
   $('shop-gold').textContent = G.gold;
 
+  const renderIcon = icon => (icon && icon.includes('/'))
+    ? `<img src="./${icon}" style="width:28px;height:28px;image-rendering:pixelated;vertical-align:middle;" />`
+    : (icon || '');
+
   const grid = $('shop-grid');
   grid.innerHTML = shopInventory.map((shopObj, i) => {
-    return `<div class="bag-item ${selItem === shopObj ? 'sel' : ''}" data-i="${i}" style="border-color:#ccc">
-      <span class="bag-ico">${shopObj.icon}</span>
-      <span class="bag-r" style="background:#ccc"></span>
+    const isGear = shopObj.type === 'gear';
+    const icon = isGear ? shopObj.item.icon : shopObj.icon;
+    const color = isGear ? shopObj.item.color : '#ccc';
+    return `<div class="bag-item ${selItem === shopObj ? 'sel' : ''}" data-i="${i}" style="border-color:${color}">
+      <span class="bag-ico">${renderIcon(icon)}</span>
+      <span class="bag-r" style="background:${color}"></span>
     </div>`;
   }).join('');
 
@@ -124,11 +139,49 @@ function renderShop() {
   const detail = $('shop-detail');
   if (selItem) {
     const affordable = G.gold >= selItem.price;
+    const isGear = selItem.type === 'gear';
+    let name = selItem.name, desc = selItem.desc || '', slotLine = '';
+    if (isGear) {
+      migrateItem(selItem.item);
+      const it = selItem.item;
+      name = it.name;
+      slotLine = `<div class="id-slot">${it.slot} — ${it.rarity} · ${ilvlText(it)}</div>`;
+      if (it.scroll || it.potion) {
+        desc = (it.scroll ? 'Casts its spell while equipped, consuming one charge per cast.' : 'Drinkable buff — consumes a charge.')
+          + ` ${it.charges} charge${it.charges === 1 ? '' : 's'}.`;
+      } else {
+        desc = bonusText(it) || 'No bonuses';
+      }
+    }
+
+    let compHTML = '';
+    if (isGear) {
+      const leaderHero = G.heroes?.find(h => !h.temp && h.data?.hp > 0)?.data || G.heroes?.[0]?.data;
+      if (leaderHero && selItem.item.slot !== 'dye') {
+        const opts = slotsFor(selItem.item.slot);
+        const equipped = opts.map(s => leaderHero.equipment?.[s]).find(Boolean) || null;
+        const diffs = compareItemStats(selItem.item, equipped, leaderHero.level);
+        if (diffs.length > 0) {
+          const tags = diffs.map(d => `<span class="diff-tag ${d.isPositive ? 'pos' : (d.isNegative ? 'neg' : 'neutral')}">${d.text}</span>`).join(' ');
+          const eqName = equipped ? equipped.name : '(Empty slot)';
+          compHTML = `
+            <div class="id-compare">
+              <div class="id-compare-header">
+                <span class="id-compare-label">vs ${leaderHero.name} (${eqName}):</span>
+              </div>
+              <div class="id-compare-diffs">${tags}</div>
+            </div>
+          `;
+        }
+      }
+    }
 
     detail.innerHTML = `
       <div class="item-detail" style="margin-top: 0">
-        <div class="id-name">${selItem.icon} ${selItem.name}</div>
-        <div class="id-bonus">${selItem.desc}</div>
+        <div class="id-name">${renderIcon(isGear ? selItem.item.icon : selItem.icon)} ${name}</div>
+        ${slotLine}
+        <div class="id-bonus">${desc}</div>
+        ${compHTML}
         <div class="id-actions" style="margin-top:10px">
           <button id="shop-buy" ${affordable ? '' : 'disabled'}>Buy for ${selItem.price}g</button>
         </div>
@@ -141,8 +194,13 @@ function renderShop() {
       buyBtn.addEventListener('click', () => {
         if (G.gold >= selItem.price) {
           G.gold -= selItem.price;
-          G.potions[selItem.kind]++;
-          log(`🛒 Bought ${selItem.name} for ${selItem.price}g.`, 'sys');
+          if (selItem.type === 'gear') {
+            addToInventory(G.inventory, selItem.item, G);
+            log(`🛒 Bought ${selItem.item.name} for ${selItem.price}g.`, 'sys');
+          } else {
+            G.potions[selItem.kind]++;
+            log(`🛒 Bought ${selItem.name} for ${selItem.price}g.`, 'sys');
+          }
 
           updateResources(G);
           refreshMenus(G);

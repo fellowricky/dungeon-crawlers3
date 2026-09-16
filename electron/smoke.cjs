@@ -50,7 +50,7 @@ app.whenReady().then(() => {
       const probe = await win.webContents.executeJavaScript(`(() => ({
         game: window.__game ? window.__game.state : null,
         three: !!window.__THREE__,
-        /* the topnav Options button — replaced the old #audio-ctl volume
+        /* the #hud-top-right Options gear — replaced the old #audio-ctl volume
            popover when volume moved into the Options panel */
         optionsBtn: !!document.getElementById('nav-options'),
         optionsOverlay: !!document.getElementById('options-overlay'),

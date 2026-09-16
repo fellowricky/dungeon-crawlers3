@@ -1,0 +1,28 @@
+{
+  "sheet": [
+    90,
+    80
+  ],
+  "slice": [
+    7,
+    5,
+    5,
+    5
+  ],
+  "thickness": [
+    4,
+    4,
+    3,
+    4
+  ],
+  "tile": [
+    80,
+    68
+  ],
+  "period_detected": [
+    null,
+    null
+  ],
+  "fill": "#222a35",
+  "source": "frame_hud.png"
+}

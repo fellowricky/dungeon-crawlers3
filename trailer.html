@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dungeon Crawlers — Trailer Rig</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-dark:#090b12; --bg-panel:#111422; --border:rgba(255,255,255,.08);
+      --text-main:#e2e4f0; --text-muted:#8e95b0;
+      --gold:#d9a441; --red:#ef4444; --green:#10b981;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family:'Outfit',system-ui,sans-serif;background:var(--bg-dark);
+      color:var(--text-main);overflow:hidden;height:100vh;
+    }
+    /* The shared renderer appends its canvas to body; the rig sizes the
+       drawing buffer to the shot and lets CSS letterbox it into the window. */
+    body > canvas{
+      position:fixed;inset:0;z-index:0;width:100%!important;height:100%!important;
+      object-fit:contain;background:#000;
+    }
+    #bar{
+      position:fixed;left:0;right:0;bottom:0;z-index:10;
+      display:flex;align-items:center;gap:12px;padding:10px 14px;
+      background:rgba(17,20,34,.92);backdrop-filter:blur(8px);
+      border-top:1px solid var(--border);font-size:13px;
+    }
+    #bar h1{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--gold)}
+    select,button{
+      font-family:inherit;font-size:12px;padding:6px 12px;border-radius:6px;
+      background:#0e101a;color:var(--text-main);border:1px solid var(--border);cursor:pointer;
+    }
+    button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+    button:disabled{opacity:.4;cursor:default}
+    #status{margin-left:auto;color:var(--text-muted);font-variant-numeric:tabular-nums}
+    #status.ok{color:var(--green)} #status.err{color:var(--red)} #status.warn{color:var(--gold)}
+    #ffmpeg{
+      display:none;position:fixed;left:14px;bottom:56px;z-index:10;
+      background:rgba(17,20,34,.94);border:1px solid var(--border);border-radius:6px;
+      padding:8px 12px;font-family:ui-monospace,Consolas,monospace;font-size:11px;
+      color:var(--text-muted);user-select:all;
+    }
+  </style>
+</head>
+<body>
+  <div id="ffmpeg"></div>
+  <div id="bar">
+    <h1>TRAILER RIG</h1>
+    <select id="shot"></select>
+    <button id="preview">▶ Preview</button>
+    <button id="record">● Render MP4</button>
+    <button id="frames">PNG frames</button>
+    <div id="status"></div>
+  </div>
+  <script type="module" src="/src/trailer.js"></script>
+</body>
+</html>

@@ -22,12 +22,16 @@
     "electron": "electron .",
     "app": "vite build && electron .",
     "pack:win": "vite build && node scripts/pack.mjs",
+    "pack:web": "node scripts/pack_web.mjs",
+    "lint": "eslint src sim scripts electron",
     "test": "vitest run && node smoke_quests.mjs && electron electron/smoke.cjs"
   },
   "devDependencies": {
     "@electron/packager": "^20.0.2",
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
     "three": "^0.185.0",
     "vite": "^8.0.0",
     "vitest": "^4.1.10"
@@ -50,5 +54,8 @@
     "portable": {
       "artifactName": "DungeonCrawlers-${version}-portable.exe"
     }
+  },
+  "dependencies": {
+    "nixie-fx": "^0.1.3"
   }
 }

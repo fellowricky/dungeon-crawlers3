@@ -66,6 +66,7 @@
     "ring": 0.5,
     "gloves": 0.5,
     "boots": 0.5,
+    "trinket": 0.6,
     "kit": 0.5
   },
   "rarityMult": {
@@ -144,14 +145,21 @@
     }
   },
   "basePricing": {
-    "_note": "How much of the budget the base item itself eats. damageDieRef is the free baseline die (a d4 costs nothing); every point of average damage above it costs `costs.dmg`.",
+    "_note": "How much of the budget the base item itself eats. damageDieRef is the free baseline die (a d4 costs nothing); every point of average damage above it costs `costs.dmg`. ARMOUR AND HELMS ARE NOT PRICED FROM THEIR AC. Those bases carry a `tier` in items.json, and tierIlvl says which item level each tier unlocks at; the base is charged the whole base-share of THAT level's budget, so it lands there by construction. That is what lets the weight classes share unlock levels while their AC numbers differ -- alignment is authored, not derived. The maths is slot-agnostic (both cost and budget carry slotWeight), so any slot listed here gets tier pricing; slots absent from it (shields) still price off acBase.",
     "damageDieRef": 4,
-    "armorAcRef": 10,
-    "armorDexDiscount": {
-      "none": 1,
-      "light": 1,
-      "medium": 0.9,
-      "heavy": 0.7
+    "tierIlvl": {
+      "armor": [
+        1,
+        4,
+        7,
+        11,
+        15
+      ],
+      "helm": [
+        1,
+        7,
+        15
+      ]
     },
     "twoHandedDiscount": 0.85,
     "rangedMult": 1,

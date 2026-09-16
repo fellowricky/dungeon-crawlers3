@@ -20,3 +20,31 @@ pnpm-debug.log*
 .claude/
 .opencode/
 *.local
+trailer_out/
+
+# Icon forge working files: regenerable Krea2 output, not source.
+# Keep the manifest, hints, picks and scripts; drop the 900+ raw variants.
+tools/icon_forge/raw/
+tools/icon_forge/_cropped/
+tools/icon_forge/*.log
+tools/icon_forge/batch_*.json
+tools/icon_forge/flagged.png
+tools/icon_forge/fixed3.png
+tools/icon_forge/screen.json
+
+# Working scratch: per-session experiments, never source.
+scratch/
+/scratch_*
+public/scratch_picker/
+__pycache__/
+*.pyc
+
+# Editor backups and autosaves (Krita, gedit-style tilde files).
+*~
+*-autosave.kra
+
+# Screen recordings dropped at the repo root.
+/*.mp4
+
+# itch.io butler CLI: downloaded tool, not source.
+tools/butler.exe

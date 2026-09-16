@@ -137,4 +137,37 @@ describe('Hero Exploration AI Stuck Recovery', () => {
     expect(leader.moving).toBe(false);
     expect(leader.stuckHandled).toBe(true);
   });
+
+  it('treats void tiles (0) and negative cells as blocked in blocked()', () => {
+    const grid = new Uint8Array(100).fill(0); // All void
+    grid[55] = FLOOR; // Only cell 55 is floor
+    const game = Object.assign({}, pathfindingMethods, {
+      D: { W: 10, H: 10, grid },
+      cellOf: (x, z) => (x < 0 || z < 0 || x >= 10 || z >= 10) ? -1 : Math.floor(z) * 10 + Math.floor(x)
+    });
+
+    // Probing in void tile (e.g. cell 11 at x=1.5, z=1.5) must be blocked
+    expect(game.blocked(1.5, 1.5, 0.22)).toBe(true);
+
+    // Probing completely outside map boundaries (negative coords) must be blocked
+    expect(game.blocked(-2, -2, 0.22)).toBe(true);
+
+    // Probing on floor cell 55 (at x=5.5, z=5.5) with small radius should be clear
+    expect(game.blocked(5.5, 5.5, 0.22)).toBe(false);
+  });
+
+  it('nearFloorCell recovers valid floor even from out of bounds / void start', () => {
+    const grid = new Uint8Array(100).fill(0);
+    grid[44] = FLOOR;
+    grid[45] = FLOOR;
+    const game = Object.assign({}, pathfindingMethods, {
+      D: { W: 10, H: 10, grid, solidProps: null },
+      roomAnchor: [44]
+    });
+
+    // Given negative cell -1, nearFloorCell finds nearest floor
+    const recovered = game.nearFloorCell(-1, 50);
+    expect(recovered).toBeGreaterThanOrEqual(0);
+    expect(grid[recovered]).toBe(FLOOR);
+  });
 });

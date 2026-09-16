@@ -70,6 +70,27 @@ describe('GuildManager', () => {
     expect(fakeGame.potions.heal).toBe(2);
   });
 
+  it('dispatches catch-up training XP to assigned idle heroes and respects party level cap', () => {
+    guild.upgradeFacility('training_grounds'); // Level 1 (6% rate)
+    guild.assignHero('Arthur', 'training_grounds');
+
+    fakeGame.heroes = [
+      { data: { name: 'Active1', level: 3 } },
+      { data: { name: 'Active2', level: 3 } }
+    ];
+
+    // Arthur is level 1 with 0 XP. Active party is level 3.
+    guild.dispatchDungeonXp(500); // 6% of 500 = 30 XP
+    expect(fakeGame.storedHeroes[0].xp).toBe(30);
+
+    // If Arthur is already at party level (Level 3), he gains 0 XP
+    fakeGame.storedHeroes[0].level = 3;
+    fakeGame.storedHeroes[0].xp = 900;
+    guild.dispatchDungeonXp(500);
+    expect(fakeGame.storedHeroes[0].xp).toBe(900); // capped, no increase
+    expect(fakeGame.storedHeroes[0].level).toBe(3);
+  });
+
   it('serializes and deserializes guild state correctly', () => {
     guild.upgradeFacility('blacksmith');
     guild.upgradeFacility('apothecary');
@@ -199,3 +220,243 @@ describe('GuildManager — Armory', () => {
     expect(FACILITY_DEFINITIONS.armory.getEffectText(3)).toMatch(/\d+/);
   });
 });
+
+/* ── Cartographer: Pre-Scouting & Expeditions ───────────────────────── */
+describe('GuildManager — Cartographer & Expeditions', () => {
+  let fakeGame, guild;
+
+  beforeEach(() => {
+    fakeGame = {
+      gold: 5000,
+      inventory: [],
+      storedHeroes: [
+        { name: 'Robin', id: 'Robin', classKey: 'ranger', level: 3, xp: 0, stats: { int: 12, wis: 14 } },
+        { name: 'Shadow', id: 'Shadow', classKey: 'rogue', level: 2, xp: 0, stats: { int: 14, dex: 16 } },
+        { name: 'Boran', id: 'Boran', classKey: 'fighter', level: 3, xp: 0, stats: { str: 16, con: 14 } }
+      ],
+      saveGame: () => {}
+    };
+    guild = new GuildManager(fakeGame);
+    fakeGame.guild = guild;
+  });
+
+  it('pre-scouts dungeon rooms based on cartographer facility level', () => {
+    const fakeDungeon = {
+      rooms: [{ id: 0, type: 'entrance' }, { id: 1, type: 'combat' }, { id: 2, type: 'treasure' }, { id: 3, type: 'shrine' }, { id: 4, type: 'boss' }],
+      boss: 4
+    };
+
+    // Level 0 (Locked) -> 0 scouted rooms
+    expect(guild.getDungeonPreScoutedRooms(fakeDungeon)).toHaveLength(0);
+
+    // Level 1 -> 1 room
+    guild.facilityLevels.cartographer = 1;
+    const scoutedLvl1 = guild.getDungeonPreScoutedRooms(fakeDungeon);
+    expect(scoutedLvl1.length).toBeGreaterThanOrEqual(1);
+
+    // Level 4 -> Pre-scouts treasure/shrine rooms first
+    guild.facilityLevels.cartographer = 4;
+    const scoutedLvl4 = guild.getDungeonPreScoutedRooms(fakeDungeon);
+    expect(scoutedLvl4).toContain(2); // treasure room prioritized
+
+    // Assigning a Ranger/Rogue scout increases scout count
+    guild.assignHero('Robin', 'cartographer');
+    const scoutedWithHero = guild.getDungeonPreScoutedRooms(fakeDungeon);
+    expect(scoutedWithHero.length).toBe(scoutedLvl4.length + 1);
+  });
+
+  it('dispatches squads, ticks floor progress, and claims rewards', () => {
+    guild.facilityLevels.cartographer = 1;
+    const res = guild.dispatchExpedition('forage_forest', ['Robin', 'Shadow']);
+    expect(res.ok).toBe(true);
+    expect(guild.activeExpeditions).toHaveLength(1);
+
+    const exp = guild.activeExpeditions[0];
+    expect(exp.floorsRemaining).toBe(4);
+
+    // Tick 4 floors
+    for (let i = 0; i < 4; i++) {
+      guild.onFloorCleared();
+    }
+
+    expect(exp.completed).toBe(true);
+    expect(exp.floorsRemaining).toBe(0);
+
+    const initialGold = fakeGame.gold;
+    const claimRes = guild.claimExpedition(exp.id);
+    expect(claimRes.ok).toBe(true);
+    expect(fakeGame.gold).toBeGreaterThan(initialGold);
+    expect(guild.materials.iron).toBeGreaterThan(0);
+    expect(guild.activeExpeditions).toHaveLength(0);
+  });
+});
+
+/* ── Academy: Research Tree ─────────────────────────────────────────── */
+describe('GuildManager — Academy Tech Tree', () => {
+  let fakeGame, guild;
+
+  beforeEach(() => {
+    fakeGame = {
+      gold: 500000,
+      inventory: [],
+      storedHeroes: [],
+      partyLevel: () => 16,
+      saveGame: () => {}
+    };
+    guild = new GuildManager(fakeGame);
+    fakeGame.guild = guild;
+    guild.facilityLevels.academy = 1;
+    guild.tomes = 100;
+  });
+
+  it('enforces tech tree prerequisites, party level gates, and deducts gold and tomes', () => {
+    expect(guild.hasTech('m1_vitality')).toBe(true); // default unlocked
+
+    // Cannot unlock Tier 3 before Tier 2
+    expect(guild.canUnlockTech('m3_warlord')).toBe(false);
+
+    // Unlock Tier 2 (Req Level 7)
+    expect(guild.canUnlockTech('m2_striking')).toBe(true);
+    guild.unlockTech('m2_striking');
+    expect(guild.hasTech('m2_striking')).toBe(true);
+
+    // Unlock Tier 3 (Req Level 12)
+    expect(guild.canUnlockTech('m3_warlord')).toBe(true);
+    guild.unlockTech('m3_warlord');
+    expect(guild.hasTech('m3_warlord')).toBe(true);
+    expect(guild.getTechBonus('physDmgBonus')).toBe(0.12);
+
+    // Unlock Tier 4 (Req Level 16)
+    expect(guild.canUnlockTech('m4_legend')).toBe(true);
+    guild.unlockTech('m4_legend');
+    expect(guild.hasTech('m4_legend')).toBe(true);
+    expect(guild.getTechBonus('extraAttacks')).toBe(1);
+  });
+
+  it('blocks unlock when party level is below minimum requirement', () => {
+    fakeGame.partyLevel = () => 5; // Level 5 party
+    expect(guild.canUnlockTech('m2_striking')).toBe(false); // requires level 7
+  });
+});
+
+/* ── Enchanter: Disenchanting & Runecrafting ─────────────────────────── */
+describe('GuildManager — Enchanter Spire', () => {
+  let fakeGame, guild;
+
+  beforeEach(() => {
+    fakeGame = { gold: 10000, inventory: [], storedHeroes: [], saveGame: () => {} };
+    guild = new GuildManager(fakeGame);
+    fakeGame.guild = guild;
+    guild.facilityLevels.enchanter = 1;
+  });
+
+  it('disenchants gear into Arcane Dust and Essences', () => {
+    const rareSword = { name: 'Rare Blade', slot: 'weapon', rarity: 'rare' };
+    fakeGame.inventory.push(rareSword);
+
+    const initialDust = guild.essences.dust;
+    const res = guild.disenchantItem(rareSword);
+
+    expect(res.ok).toBe(true);
+    expect(guild.essences.dust).toBeGreaterThan(initialDust);
+    expect(fakeGame.inventory).not.toContain(rareSword);
+  });
+
+  it('crafts and applies runes to equipment', () => {
+    guild.essences.dust = 50;
+    guild.essences.fire = 10;
+
+    const craftRes = guild.craftRune('rune_flame');
+    expect(craftRes.ok).toBe(true);
+    expect(guild.craftedRunes).toHaveLength(1);
+
+    const sword = { name: 'Broadsword', slot: 'weapon', kind: 'weapon' };
+    fakeGame.inventory.push(sword);
+
+    const applyRes = guild.applyRuneToItem(sword, guild.craftedRunes[0].id);
+    expect(applyRes.ok).toBe(true);
+    expect(sword.inscribedRune).toBeDefined();
+    expect(sword.inscribedRune.runeKey).toBe('rune_flame');
+    expect(guild.craftedRunes).toHaveLength(0);
+  });
+});
+
+/* ── War Room & Blacksmith ──────────────────────────────────────────── */
+describe('GuildManager — War Room & Blacksmith Salvage', () => {
+  let fakeGame, guild;
+
+  beforeEach(() => {
+    fakeGame = { gold: 10000, inventory: [], storedHeroes: [], saveGame: () => {} };
+    guild = new GuildManager(fakeGame);
+    fakeGame.guild = guild;
+    guild.facilityLevels.war_room = 1;
+    guild.facilityLevels.blacksmith = 1;
+  });
+
+  it('sets slaying orders and battle doctrines', () => {
+    expect(guild.setSlayingOrder('dragon_hunt')).toBe(true);
+    expect(guild.activeSlayingOrder).toBe('dragon_hunt');
+
+    expect(guild.setBattleDoctrine('ambush')).toBe(true);
+    expect(guild.activeDoctrine).toBe('ambush');
+  });
+
+  it('salvages equipment into Iron and Leather materials', () => {
+    const ironHelm = { name: 'Iron Helmet', slot: 'armor' };
+    fakeGame.inventory.push(ironHelm);
+
+    const initialIron = guild.materials.iron;
+    const res = guild.salvageItem(ironHelm);
+
+    expect(res.ok).toBe(true);
+    expect(guild.materials.iron).toBeGreaterThan(initialIron);
+    expect(fakeGame.inventory).not.toContain(ironHelm);
+  });
+
+  it('crafts targeted equipment based on PS score and applies hero artisan bonus', () => {
+    // Level 1 Blacksmith Max PS is 35
+    expect(guild.getMaxCraftablePS()).toBe(35);
+
+    // Target PS 50 is blocked at Level 1
+    const overLimit = guild.craftEquipment('weapon', 50);
+    expect(overLimit.ok).toBe(false);
+
+    // Assign hero to grant artisan bonus
+    fakeGame.storedHeroes.push({ name: 'Thor', stats: { str: 18 }, level: 4 });
+    guild.assignHero('Thor', 'blacksmith');
+    const heroBonus = guild.getAssignedBlacksmithBonus();
+    expect(heroBonus.bonusPS).toBeGreaterThan(0);
+
+    // Craft within PS limit
+    guild.materials.iron = 20;
+    guild.materials.leather = 20;
+    const craftRes = guild.craftEquipment('weapon', 30);
+
+    expect(craftRes.ok).toBe(true);
+    expect(craftRes.item).toBeDefined();
+    expect(craftRes.item.slot).toBe('weapon');
+    expect(fakeGame.inventory).toContain(craftRes.item);
+    expect(craftRes.finalPS).toBeGreaterThan(0);
+  });
+
+  it('bulk salvages unlocked gear by PS score while protecting locked and higher PS gear', () => {
+    const lowSword = { name: 'Rusty Dagger', slot: 'weapon', baseKey: 'Dagger', rarity: 'common' }; // low PS
+    const lockedLowBoots = { name: 'Old Boots', slot: 'boots', baseKey: 'Boots', rarity: 'common', locked: true }; // locked
+    const highPlate = { name: 'Radiant Plate', slot: 'armor', baseKey: 'Plate Armor', rarity: 'legendary', affixes: [{ key: 'ac_bonus', n: 5 }] }; // high PS
+    const potion = { name: 'Health Potion', kind: 'potion' };
+
+    fakeGame.inventory = [lowSword, lockedLowBoots, highPlate, potion];
+
+    // Bulk salvage everything with PS <= 30
+    const res = guild.salvageByPowerScore(30);
+
+    expect(res.ok).toBe(true);
+    expect(res.count).toBe(1); // Only lowSword salvaged
+    expect(fakeGame.inventory).not.toContain(lowSword);
+    expect(fakeGame.inventory).toContain(lockedLowBoots); // protected
+    expect(fakeGame.inventory).toContain(highPlate); // higher PS kept
+    expect(fakeGame.inventory).toContain(potion); // potions kept
+    expect(guild.materials.iron).toBeGreaterThan(0);
+  });
+});
+

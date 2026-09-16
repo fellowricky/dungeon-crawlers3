@@ -22,7 +22,7 @@ const ABILITY_LABEL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WI
 const MELEE_CLASSES = new Set(['fighter', 'barbarian', 'monk', 'paladin', 'rogue', 'bard']);
 /* Skill points banked per level-up, spent on the 5e skill checks (see SKILLS in
    srd.js, which re-exports this). Defined here because srd.js imports us. */
-export const SKILL_POINTS_PER_LEVEL = 2;
+export const SKILL_POINTS_PER_LEVEL = 1;
 
 /* ================================================================
    Fighting styles (Fighter L1, Ranger L2, Paladin L2, etc.)
@@ -58,8 +58,8 @@ export const FEATS = {
   },
   mobile: {
     label: 'Mobile',
-    desc: '+15% move speed and +1 AC while moving through danger.',
-    pb: { speed: 0.15, ac: 1 }
+    desc: '+10 ft Move (2 tiles) and +1 AC while moving through danger.',
+    pb: { move: 10, ac: 1 }
   },
   alert: {
     label: 'Alert',
@@ -257,8 +257,8 @@ export const FEATS = {
   /* ---- Utility half-feats --------------------------------------------- */
   athlete: {
     label: 'Athlete',
-    desc: '+1 STR and quicker on your feet.',
-    pb: { str: 1, speed: 0.1 }
+    desc: '+1 STR and +5 ft Move (1 tile).',
+    pb: { str: 1, move: 5 }
   },
   observant: {
     label: 'Observant',
@@ -292,8 +292,8 @@ export const FEATS = {
   },
   dungeonDelver: {
     label: 'Dungeon Delver',
-    desc: 'Ever-watchful: quicker on your feet and sharper on skill challenges.',
-    pb: { speed: 0.1 },
+    desc: 'Ever-watchful: +5 ft Move (1 tile) and sharper on skill challenges.',
+    pb: { move: 5 },
     skillBonus: 1
   }
 };
@@ -522,12 +522,27 @@ export const FEATURES = {
   },
   flurryOfBlows: {
     label: 'Flurry of Blows',
-    desc: 'Once per short rest, strike a third time.',
+    desc: 'Spend 1 Ki after attacking to make two unarmed strikes as a bonus action.',
     combat: 'flurry'
+  },
+  patientDefense: {
+    label: 'Patient Defense',
+    desc: 'Spend 1 Ki as a bonus action to Dodge (+5 AC).',
+    combat: 'patientDefense'
+  },
+  stepOfTheWind: {
+    label: 'Step of the Wind',
+    desc: 'Spend 1 Ki as a bonus action to Dash or Disengage (+50% speed).',
+    combat: 'stepOfTheWind'
+  },
+  stunningStrike: {
+    label: 'Stunning Strike',
+    desc: 'Spend 1 Ki on a melee hit to force a CON save vs Stun.',
+    combat: 'stunningStrike'
   },
   martialArts: {
     label: 'Martial Arts',
-    desc: '+1 AC and +1 damage with unarmed strikes.',
+    desc: '+1 AC, unarmed strike scales with level, and free bonus unarmed strike.',
     pb: { ac: 1, dmg: 1 }
   },
   divineSmite: {
@@ -585,26 +600,6 @@ export const FEATURES = {
     desc: 'Your cantrip is Eldritch Blast; +1 beam at level 5.',
     combat: 'eldritchBlast'
   },
-  agonizingBlast: {
-    label: 'Agonizing Blast',
-    desc: 'Add CHA mod to Eldritch Blast damage for each beam that hits.',
-    combat: 'agonizingBlast'
-  },
-  repellingBlast: {
-    label: 'Repelling Blast',
-    desc: 'Eldritch Blast pushes target 10 feet back on hit.',
-    combat: 'repellingBlast'
-  },
-  graspOfHadar: {
-    label: 'Grasp of Hadar',
-    desc: 'Eldritch Blast pulls target 10 feet closer on hit.',
-    combat: 'graspOfHadar'
-  },
-  lanceOfLethargy: {
-    label: 'Lance of Lethargy',
-    desc: 'Eldritch Blast reduces target speed by 10 ft on hit.',
-    combat: 'lanceOfLethargy'
-  },
   arcaneRecovery: {
     label: 'Arcane Recovery',
     desc: 'On a short rest, recover half your spell slots (rounded up).',
@@ -632,7 +627,7 @@ export const FEATURES = {
   },
   ki: {
     label: 'Ki',
-    desc: 'Ki-powered techniques (Flurry and more).',
+    desc: 'Pool of Ki points equal to your Monk level. Recharges on short rest.',
     combat: 'ki'
   },
   stillMind: {
@@ -647,8 +642,8 @@ export const FEATURES = {
   },
   naturalExplorer: {
     label: 'Natural Explorer',
-    desc: '+8% move speed in the wilds (everywhere, here).',
-    pb: { speed: 0.08 }
+    desc: '+5 ft Move (1 tile) in the wilds (everywhere, here).',
+    pb: { move: 5 }
   },
   primevalAwareness: {
     label: 'Primeval Awareness',
@@ -823,8 +818,8 @@ export const FEATURES = {
   /* ===== Ranger L11-20 ===== */
   vanish: {
     label: 'Vanish',
-    desc: '+10% speed, +1 AC; hide as a bonus action.',
-    pb: { speed: 0.1, ac: 1 }
+    desc: '+5 ft Move (1 tile), +1 AC; hide as a bonus action.',
+    pb: { move: 5, ac: 1 }
   },
   feralSenses: {
     label: 'Feral Senses',
@@ -858,6 +853,80 @@ export const FEATURES = {
   }
 };
 
+/* ================================================================
+   Eldritch Invocations — warlock-only picks, chosen (never handed out) at
+   levels 2 (x2), 5, 7, 9, 12, 15, 18, matching the SRD invocations-known
+   curve of 2/3/4/5/6/7/8.
+
+   These live in their own map rather than FEATURES because they are stored on
+   h.invocations, not h.features. hasFeature() already reads both arrays, so
+   anything keyed off a `combat` tag keeps working unchanged.
+
+   SRD invocations that are purely narrative (Beast Speech, Eyes of the Rune
+   Keeper, Mask of Many Faces, ...) are deliberately omitted: there is no
+   mechanic behind them in a dungeon crawler, and a dead option in a level-up
+   list reads as a trap. `minLevel` gates the two that the SRD gates.
+   ================================================================ */
+export const INVOCATIONS = {
+  agonizingBlast: {
+    label: 'Agonizing Blast',
+    desc: 'Add your CHA modifier to each Eldritch Blast beam that hits.',
+    combat: 'agonizingBlast'
+  },
+  repellingBlast: {
+    label: 'Repelling Blast',
+    desc: 'Eldritch Blast pushes its target 10 feet back on hit.',
+    combat: 'repellingBlast'
+  },
+  graspOfHadar: {
+    label: 'Grasp of Hadar',
+    desc: 'Eldritch Blast pulls its target 10 feet closer on hit.',
+    combat: 'graspOfHadar'
+  },
+  lanceOfLethargy: {
+    label: 'Lance of Lethargy',
+    desc: 'Eldritch Blast cuts the target speed by 10 ft on hit.',
+    combat: 'lanceOfLethargy'
+  },
+  eldritchSpear: {
+    label: 'Eldritch Spear',
+    desc: 'Eldritch Blast reaches far further (+20 ft range).',
+    combat: 'eldritchSpear'
+  },
+  armorOfShadows: {
+    label: 'Armor of Shadows',
+    desc: 'Mage armor at will: +1 AC.',
+    pb: { ac: 1 }
+  },
+  fiendishVigor: {
+    label: 'Fiendish Vigor',
+    desc: 'False life at will: +5 maximum HP.',
+    pb: { hp: 5 }
+  },
+  devilsSight: {
+    label: "Devil's Sight",
+    desc: 'See normally in darkness: +1 to attack rolls.',
+    pb: { atk: 1 }
+  },
+  beguilingInfluence: {
+    label: 'Beguiling Influence',
+    desc: 'Supernatural presence: +1 Charisma.',
+    pb: { cha: 1 }
+  },
+  thirstingBlade: {
+    label: 'Thirsting Blade',
+    desc: 'Attack twice, instead of once, when you attack with a weapon.',
+    minLevel: 5,
+    combat: 'thirstingBlade'
+  },
+  lifedrinker: {
+    label: 'Lifedrinker',
+    desc: 'Your pact-charged strikes deal +3 damage.',
+    minLevel: 12,
+    pb: { dmg: 3 }
+  }
+};
+
 /* Subclass passive boosts at L6 / L10 / L14 / L18 (on top of L3 pick) */
 export const SUBCLASS_MILESTONES = {
   fighter: {
@@ -867,8 +936,8 @@ export const SUBCLASS_MILESTONES = {
                 14: { pb: { ac: 1, hp: 8 }, label: 'Iron Bulwark' }, 18: { pb: { ac: 2, hp: 12 }, label: 'Living Wall' } }
   },
   rogue: {
-    thief: { 6: { pb: { speed: 0.1 }, label: 'Supreme Sneak' }, 10: { pb: { ac: 1, dmg: 1 }, label: 'Use Magic Device' },
-             14: { pb: { speed: 0.1, dmg: 2 }, label: 'Master Infiltrator' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Ghost in the Dark' } },
+    thief: { 6: { pb: { move: 5 }, label: 'Supreme Sneak' }, 10: { pb: { ac: 1, dmg: 1 }, label: 'Use Magic Device' },
+             14: { pb: { move: 5, dmg: 2 }, label: 'Master Infiltrator' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Ghost in the Dark' } },
     nightblade: { 6: { pb: { crit: 1 }, label: 'Assassinate' }, 10: { pb: { dmg: 2 }, label: 'Death Strike+' },
                   14: { pb: { crit: 1, dmg: 2 }, label: 'Death Mark' }, 18: { pb: { dmg: 4 }, label: 'Executioner' } }
   },
@@ -903,8 +972,8 @@ export const SUBCLASS_MILESTONES = {
             14: { pb: { dmg: 2, hp: 10 }, label: 'Thousand Forms' }, 18: { pb: { dmg: 4, ac: 1 }, label: 'Primal Avatar' } }
   },
   monk: {
-    openhand: { 6: { pb: { dmg: 1 }, label: 'Wholeness of Body' }, 10: { pb: { ac: 1, speed: 0.1 }, label: 'Quivering Palm Ready' },
-                14: { pb: { dmg: 2, ac: 1 }, label: 'Tranquility' }, 18: { pb: { dmg: 3, speed: 0.1 }, label: 'Grandmaster' } },
+    openhand: { 6: { pb: { dmg: 1 }, label: 'Wholeness of Body' }, 10: { pb: { ac: 1, move: 5 }, label: 'Quivering Palm Ready' },
+                14: { pb: { dmg: 2, ac: 1 }, label: 'Tranquility' }, 18: { pb: { dmg: 3, move: 5 }, label: 'Grandmaster' } },
     shadow: { 6: { pb: { ac: 1 }, label: 'Shadow Step+' }, 10: { pb: { dmg: 2 }, label: 'Opportunist' },
               14: { pb: { ac: 1, dmg: 2 }, label: 'Cloak of Shadows' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Shadow Master' } }
   },
@@ -952,6 +1021,16 @@ function fightingStyle(id, styles) {
 }
 function learnSpell(id, classKey, tier, title) {
   return { type: 'choice', pick: 'spell', id, title: title || `Learn a spell`, classKey, tier };
+}
+function invocation(id) {
+  return { type: 'choice', pick: 'invocation', id, title: 'Choose an Eldritch Invocation' };
+}
+/* Mystic Arcanum: a warlock spell of the given level that is cast once per long
+   rest off its own charge, never off a pact slot (which never exceeds 5th). */
+function arcanum(id, tier) {
+  const ord = { 6: '6th', 7: '7th', 8: '8th', 9: '9th' }[tier] || `${tier}th`;
+  return { type: 'choice', pick: 'arcanum', id, classKey: 'warlock', tier,
+           title: `Mystic Arcanum (${ord})` };
 }
 function wildShapeFormChoice() {
   return { type: 'choice', pick: 'wildShapeForm', id: 'wild_shape_form', title: 'Choose Wild Shape Form' };
@@ -1014,18 +1093,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('cleric_sp4', 'cleric', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('cleric_sp4b', 'cleric', 4, 'Additional domain spell')],
-      12: [asi(12)],
-      13: [learnSpell('cleric_sp5b', 'cleric', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14), auto('destroyUndeadGreater')],
-      15: [],
-      16: [asi(16)],
-      17: [learnSpell('cleric_sp5c', 'cleric', 5, 'Mastery spell')],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('divineInterventionImproved')]
+    9: [learnSpell('cleric_sp5', 'cleric', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('cleric_sp6', 'cleric', 6, 'Learn a 6th-level prayer')],
+    12: [asi(12)],
+    13: [learnSpell('cleric_sp7', 'cleric', 7, 'Learn a 7th-level prayer')],
+    14: [asi(14), milestone(14), auto('destroyUndeadGreater')],
+    15: [learnSpell('cleric_sp8', 'cleric', 8, 'Learn an 8th-level prayer')],
+    16: [asi(16)],
+    17: [learnSpell('cleric_sp9', 'cleric', 9, 'Divine Miracle: 9th-level prayer')],
+    18: [asi(18), milestone(18)],
+    19: [learnSpell('cleric_sp9b', 'cleric', 9, 'Divine Miracle: high-tier prayer')],
+    20: [asi(20), auto('divineInterventionImproved')]
   },
   wizard: {
     1: [learnSpell('wiz_sp1', 'wizard', 1, 'Learn a 1st-level spell'), auto('arcaneRecovery')],
@@ -1036,18 +1115,18 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('wiz_sp4', 'wizard', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('wiz_sp4b', 'wizard', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('wiz_sp5b', 'wizard', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [],
-      16: [asi(16)],
-      17: [learnSpell('wiz_sp5c', 'wizard', 5, 'Mastery spell')],
-      18: [asi(18), milestone(18), auto('spellMastery')],
-      19: [],
-      20: [asi(20), auto('signatureSpells')]
+    9: [learnSpell('wiz_sp5', 'wizard', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('wiz_sp6', 'wizard', 6, 'Learn a 6th-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('wiz_sp7', 'wizard', 7, 'Learn a 7th-level spell')],
+    14: [asi(14), milestone(14)],
+    15: [learnSpell('wiz_sp8', 'wizard', 8, 'Learn an 8th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('wiz_sp9', 'wizard', 9, 'Mastery: 9th-level spell')],
+    18: [asi(18), milestone(18), auto('spellMastery')],
+    19: [learnSpell('wiz_sp9b', 'wizard', 9, 'Mastery: high-tier spell')],
+    20: [asi(20), auto('signatureSpells')]
   },
   barbarian: {
     1: [auto('rage')],
@@ -1058,40 +1137,48 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [auto('brutalCritical')],
     8: [asi(8)],
-       9: [],
-       10: [asi(10), milestone(10)],
-       11: [auto('relentlessRage')],
-       12: [asi(12)],
-       13: [auto('brutalCritical2')],
-       14: [asi(14), milestone(14)],
-       15: [auto('persistentRage')],
-       16: [asi(16)],
-       17: [auto('brutalCritical3')],
-       18: [asi(18), auto('indomitableMight'), milestone(18)],
-       19: [],
-       20: [asi(20), auto('primalChampion')]
+    9: [],
+    10: [asi(10), milestone(10)],
+    11: [auto('relentlessRage')],
+    12: [asi(12)],
+    13: [auto('brutalCritical2')],
+    14: [asi(14), milestone(14)],
+    15: [auto('persistentRage')],
+    16: [asi(16)],
+    17: [auto('brutalCritical3')],
+    18: [asi(18), auto('indomitableMight'), milestone(18)],
+    19: [],
+    20: [asi(20), auto('primalChampion')]
   },
   bard: {
-    1: [auto('bardicInspiration'), learnSpell('bard_sp1', 'bard', 1)],
-    2: [auto('jackOfAllTrades'), auto('songOfRest')],
-    3: [subclass(), learnSpell('bard_sp2', 'bard', 2)],
-    4: [asi(4)],
-    5: [learnSpell('bard_sp3', 'bard', 3)],
-    6: [milestone(6)],
-    7: [learnSpell('bard_sp4', 'bard', 4, 'Learn a 4th-level spell')],
-    8: [asi(8)],
-     9: [learnSpell('bard_sp5', 'bard', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('bard_sp4b', 'bard', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('bard_sp5b', 'bard', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [auto('inspiredPerformance')],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('superiorInspiration')]
+    /* Only three picks at level 1: healer classes are handed Cure Wounds for
+       free (grantHealerCureWounds), and that free spell counts toward the
+       SRD's four-spells-known. */
+    1: [auto('bardicInspiration'),
+        learnSpell('brd_kn1a', 'bard', 1), learnSpell('brd_kn1b', 'bard', 1),
+        learnSpell('brd_kn1c', 'bard', 1)],
+    2: [auto('jackOfAllTrades'), auto('songOfRest'), learnSpell('brd_kn2', 'bard', 1)],
+    3: [subclass(), learnSpell('brd_kn3', 'bard', 2)],
+    4: [asi(4), learnSpell('brd_kn4', 'bard', 2)],
+    5: [learnSpell('brd_kn5', 'bard', 3)],
+    6: [milestone(6), learnSpell('brd_kn6', 'bard', 3)],
+    7: [learnSpell('brd_kn7', 'bard', 4)],
+    8: [asi(8), learnSpell('brd_kn8', 'bard', 4)],
+    9: [learnSpell('brd_kn9', 'bard', 5)],
+    10: [asi(10), milestone(10),
+         learnSpell('brd_kn10a', 'bard', 5), learnSpell('brd_kn10b', 'bard', 5)],
+    11: [learnSpell('brd_kn11', 'bard', 6)],
+    12: [asi(12)],
+    13: [learnSpell('brd_kn13', 'bard', 7)],
+    14: [asi(14), milestone(14),
+         learnSpell('brd_kn14a', 'bard', 7), learnSpell('brd_kn14b', 'bard', 7)],
+    15: [auto('inspiredPerformance'), learnSpell('brd_kn15', 'bard', 8)],
+    16: [asi(16)],
+    17: [learnSpell('brd_kn17', 'bard', 9)],
+    18: [asi(18), milestone(18),
+         learnSpell('brd_kn18a', 'bard', 9), learnSpell('brd_kn18b', 'bard', 9)],
+    19: [],
+    20: [asi(20), auto('superiorInspiration')]
   },
   druid: {
     1: [wildShapeFormChoice(), learnSpell('druid_sp1', 'druid', 1)],
@@ -1102,128 +1189,135 @@ export const CLASS_PROGRESSION = {
     6: [milestone(6)],
     7: [learnSpell('druid_sp4', 'druid', 4, 'Learn a 4th-level spell')],
     8: [asi(8)],
-     9: [learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('druid_sp4b', 'druid', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('druid_sp5b', 'druid', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('beastSpells')],
-      19: [],
-      20: [asi(20), auto('archdruid')]
+    9: [learnSpell('druid_sp5', 'druid', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10)],
+    11: [learnSpell('druid_sp6', 'druid', 6, 'Learn a 6th-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('druid_sp7', 'druid', 7, 'Learn a 7th-level spell')],
+    14: [asi(14), milestone(14)],
+    15: [learnSpell('druid_sp8', 'druid', 8, 'Learn an 8th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('druid_sp9', 'druid', 9, 'Archdruid: 9th-level spell')],
+    18: [asi(18), milestone(18), auto('beastSpells')],
+    19: [learnSpell('druid_sp9b', 'druid', 9, 'Archdruid: high-tier spell')],
+    20: [asi(20), auto('archdruid')]
   },
   monk: {
     1: [auto('martialArts'), auto('ki')],
-    2: [auto('flurryOfBlows')],
+    2: [auto('flurryOfBlows'), auto('patientDefense'), auto('stepOfTheWind')],
     3: [subclass()],
     4: [asi(4)],
-    5: [auto('extraAttack')],
+    5: [auto('extraAttack'), auto('stunningStrike')],
     6: [milestone(6)],
     7: [auto('stillMind')],
     8: [asi(8)],
-      9: [],
-      10: [asi(10), milestone(10)],
-      11: [],
-      12: [asi(12)],
-      13: [auto('tongueSunMoon')],
-      14: [asi(14), milestone(14), auto('diamondSoul')],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('emptyBody')],
-      19: [],
-      20: [asi(20), auto('perfectSelf')]
+    9: [],
+    10: [asi(10), milestone(10)],
+    11: [],
+    12: [asi(12)],
+    13: [auto('tongueSunMoon')],
+    14: [asi(14), milestone(14), auto('diamondSoul')],
+    15: [],
+    16: [asi(16)],
+    17: [],
+    18: [asi(18), milestone(18), auto('emptyBody')],
+    19: [],
+    20: [asi(20), auto('perfectSelf')]
   },
   paladin: {
     1: [auto('divineSmite'), auto('layOnHands')],
-    2: [fightingStyle('fs_paladin', FS_MELEE), learnSpell('pal_sp1', 'paladin', 1)],
-    3: [subclass()],
+    2: [fightingStyle('fs_paladin', FS_MELEE), learnSpell('pal_sp1', 'paladin', 1, 'Learn a 1st-level prayer'), learnSpell('pal_sp1b', 'paladin', 1, 'Learn another 1st-level prayer')],
+    3: [subclass(), learnSpell('pal_sp1c', 'paladin', 1, 'Learn a 1st-level prayer')],
     4: [asi(4)],
-    5: [auto('extraAttack')],
+    5: [auto('extraAttack'), learnSpell('pal_sp2', 'paladin', 2, 'Learn a 2nd-level prayer')],
     6: [auto('auraProtection'), milestone(6)],
-    7: [auto('divineHealth')],
+    7: [auto('divineHealth'), learnSpell('pal_sp2b', 'paladin', 2, 'Learn a 2nd-level prayer')],
     8: [asi(8)],
-      9: [learnSpell('pal_sp2', 'paladin', 2)],
-      10: [asi(10), milestone(10)],
-      11: [auto('improvedDivineSmite'), learnSpell('pal_sp3', 'paladin', 3, 'Higher prayer')],
-      12: [asi(12)],
-      13: [],
-      14: [asi(14), milestone(14), auto('cleansingTouch')],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('auraImproved')],
-      19: [],
-      20: [asi(20), auto('oathCapstone')]
+    9: [learnSpell('pal_sp3', 'paladin', 3, 'Learn a 3rd-level prayer')],
+    10: [asi(10), milestone(10)],
+    11: [auto('improvedDivineSmite'), learnSpell('pal_sp3b', 'paladin', 3, 'Higher prayer')],
+    12: [asi(12)],
+    13: [learnSpell('pal_sp4', 'paladin', 4, 'Learn a 4th-level prayer')],
+    14: [asi(14), milestone(14), auto('cleansingTouch')],
+    15: [learnSpell('pal_sp4b', 'paladin', 4, 'Learn a 4th-level prayer')],
+    16: [asi(16)],
+    17: [learnSpell('pal_sp5', 'paladin', 5, 'Learn a 5th-level prayer')],
+    18: [asi(18), milestone(18), auto('auraImproved')],
+    19: [learnSpell('pal_sp5b', 'paladin', 5, 'Learn a 5th-level prayer')],
+    20: [asi(20), auto('oathCapstone')]
   },
   ranger: {
     1: [auto('favoredEnemy'), auto('naturalExplorer')],
-    2: [fightingStyle('fs_ranger', FS_RANGED), learnSpell('rng_sp1', 'ranger', 1)],
-    3: [subclass()],
+    2: [fightingStyle('fs_ranger', FS_RANGED), learnSpell('rng_sp1', 'ranger', 1, 'Learn a 1st-level spell'), learnSpell('rng_sp1b', 'ranger', 1, 'Learn another 1st-level spell')],
+    3: [subclass(), learnSpell('rng_sp1c', 'ranger', 1, 'Learn a 1st-level spell')],
     4: [asi(4)],
-    5: [auto('extraAttack')],
+    5: [auto('extraAttack'), learnSpell('rng_sp2', 'ranger', 2, 'Learn a 2nd-level spell')],
     6: [milestone(6)],
-    7: [auto('primevalAwareness')],
+    7: [auto('primevalAwareness'), learnSpell('rng_sp2b', 'ranger', 2, 'Learn a 2nd-level spell')],
     8: [asi(8)],
-      9: [learnSpell('rng_sp2', 'ranger', 2)],
-      10: [asi(10), milestone(10), auto('colossusSlayerClass')],
-      11: [],
-      12: [asi(12)],
-      13: [],
-      14: [asi(14), milestone(14), auto('vanish')],
-      15: [],
-      16: [asi(16)],
-      17: [],
-      18: [asi(18), milestone(18), auto('feralSenses')],
-      19: [],
-      20: [asi(20), auto('foeSlayer')]
+    9: [learnSpell('rng_sp3', 'ranger', 3, 'Learn a 3rd-level spell')],
+    10: [asi(10), milestone(10), auto('colossusSlayerClass')],
+    11: [learnSpell('rng_sp3b', 'ranger', 3, 'Learn a 3rd-level spell')],
+    12: [asi(12)],
+    13: [learnSpell('rng_sp4', 'ranger', 4, 'Learn a 4th-level spell')],
+    14: [asi(14), milestone(14), auto('vanish')],
+    15: [learnSpell('rng_sp4b', 'ranger', 4, 'Learn a 4th-level spell')],
+    16: [asi(16)],
+    17: [learnSpell('rng_sp5', 'ranger', 5, 'Learn a 5th-level spell')],
+    18: [asi(18), milestone(18), auto('feralSenses')],
+    19: [learnSpell('rng_sp5b', 'ranger', 5, 'Learn a 5th-level spell')],
+    20: [asi(20), auto('foeSlayer')]
   },
   sorcerer: {
-    1: [learnSpell('sorc_sp1', 'sorcerer', 1), auto('tidesOfChaos')],
-    2: [auto('fontOfMagic')],
-    3: [subclass(), auto('metamagic'), learnSpell('sorc_sp2', 'sorcerer', 2)],
-    4: [asi(4)],
-    5: [learnSpell('sorc_sp3', 'sorcerer', 3)],
-    6: [milestone(6)],
-    7: [learnSpell('sorc_sp4', 'sorcerer', 4, 'Learn a 4th-level spell')],
-    8: [asi(8)],
-      9: [learnSpell('sorc_sp5', 'sorcerer', 5, 'Learn a 5th-level spell')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('sorc_sp4b', 'sorcerer', 4, 'Additional spell')],
-      12: [asi(12)],
-      13: [learnSpell('sorc_sp5b', 'sorcerer', 5, 'Higher-tier spell')],
-      14: [asi(14), milestone(14)],
-      15: [],
-      16: [asi(16)],
-      17: [auto('metamagicExpert')],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('sorcerousRestoration')]
+    1: [auto('tidesOfChaos'),
+        learnSpell('sor_kn1a', 'sorcerer', 1), learnSpell('sor_kn1b', 'sorcerer', 1)],
+    2: [auto('fontOfMagic'), learnSpell('sor_kn2', 'sorcerer', 1)],
+    3: [subclass(), auto('metamagic'), learnSpell('sor_kn3', 'sorcerer', 2)],
+    4: [asi(4), learnSpell('sor_kn4', 'sorcerer', 2)],
+    5: [learnSpell('sor_kn5', 'sorcerer', 3)],
+    6: [milestone(6), learnSpell('sor_kn6', 'sorcerer', 3)],
+    7: [learnSpell('sor_kn7', 'sorcerer', 4)],
+    8: [asi(8), learnSpell('sor_kn8', 'sorcerer', 4)],
+    9: [learnSpell('sor_kn9', 'sorcerer', 5, 'Learn a 5th-level spell')],
+    10: [asi(10), milestone(10), learnSpell('sor_kn10', 'sorcerer', 5)],
+    11: [],
+    12: [asi(12), learnSpell('sor_kn12', 'sorcerer', 6, 'Learn a 6th-level spell')],
+    13: [],
+    14: [asi(14), milestone(14), learnSpell('sor_kn14', 'sorcerer', 7, 'Learn a 7th-level spell')],
+    15: [],
+    16: [asi(16), learnSpell('sor_kn16', 'sorcerer', 8, 'Learn an 8th-level spell')],
+    17: [auto('metamagicExpert')],
+    18: [asi(18), milestone(18), learnSpell('sor_kn18', 'sorcerer', 9, 'Mastery: 9th-level spell')],
+    19: [],
+    20: [asi(20), auto('sorcerousRestoration')]
   },
+  /* Spells known follow the SRD warlock curve exactly: 2 at level 1, then one
+     per level to 9, then one every other level (11/13/15/17/19) — 15 by 20.
+     The tier tracks the pact slot level (1st at L1-2, 2nd at L3-4, 3rd at
+     L5-6, 4th at L7-8, 5th from L9), so every spell learned is castable.
+     Invocations and Mystic Arcanum are picks, never handouts. */
   warlock: {
-    1: [auto('pactMagic'), auto('eldritchBlast'), learnSpell('wlk_sp1', 'warlock', 1)],
-    2: [auto('agonizingBlast')],
-    3: [subclass(), learnSpell('wlk_sp2', 'warlock', 2)],
-    4: [asi(4)],
-    5: [auto('repellingBlast'), learnSpell('wlk_sp3', 'warlock', 3)],
-    6: [milestone(6)],
-    7: [auto('graspOfHadar'), learnSpell('wlk_sp4', 'warlock', 4, 'Learn a 4th-level spell')],
-    8: [asi(8)],
-    9: [auto('lanceOfLethargy')],
-      10: [asi(10), milestone(10)],
-      11: [learnSpell('wlk_sp4b', 'warlock', 4, 'Mystic Arcanum')],
-      12: [asi(12)],
-      13: [learnSpell('wlk_mystic7', 'warlock', 5, 'Mystic Arcanum (7th)')],
-      14: [asi(14), milestone(14)],
-      15: [learnSpell('wlk_mystic8', 'warlock', 5, 'Mystic Arcanum (8th)')],
-      16: [asi(16)],
-      17: [learnSpell('wlk_mystic9', 'warlock', 5, 'Mystic Arcanum (9th)')],
-      18: [asi(18), milestone(18)],
-      19: [],
-      20: [asi(20), auto('eldritchMaster')]
+    1: [auto('pactMagic'), auto('eldritchBlast'),
+        learnSpell('wlk_kn1a', 'warlock', 1), learnSpell('wlk_kn1b', 'warlock', 1)],
+    2: [invocation('wlk_inv2a'), invocation('wlk_inv2b'), learnSpell('wlk_kn2', 'warlock', 1)],
+    3: [subclass(), learnSpell('wlk_kn3', 'warlock', 2)],
+    4: [asi(4), learnSpell('wlk_kn4', 'warlock', 2)],
+    5: [invocation('wlk_inv5'), learnSpell('wlk_kn5', 'warlock', 3)],
+    6: [milestone(6), learnSpell('wlk_kn6', 'warlock', 3)],
+    7: [invocation('wlk_inv7'), learnSpell('wlk_kn7', 'warlock', 4)],
+    8: [asi(8), learnSpell('wlk_kn8', 'warlock', 4)],
+    9: [invocation('wlk_inv9'), learnSpell('wlk_kn9', 'warlock', 5)],
+    10: [asi(10), milestone(10)],
+    11: [arcanum('wlk_arc6', 6), learnSpell('wlk_kn11', 'warlock', 5)],
+    12: [asi(12), invocation('wlk_inv12')],
+    13: [arcanum('wlk_arc7', 7), learnSpell('wlk_kn13', 'warlock', 5)],
+    14: [asi(14), milestone(14)],
+    15: [arcanum('wlk_arc8', 8), invocation('wlk_inv15'), learnSpell('wlk_kn15', 'warlock', 5)],
+    16: [asi(16)],
+    17: [arcanum('wlk_arc9', 9), learnSpell('wlk_kn17', 'warlock', 5)],
+    18: [asi(18), milestone(18), invocation('wlk_inv18')],
+    19: [learnSpell('wlk_kn19', 'warlock', 5)],
+    20: [asi(20), auto('eldritchMaster')]
   }
 };
 
@@ -1349,17 +1443,42 @@ export function isCasterClass(classKey) {
    Anything not listed defaults to one use per short rest, which is what the
    old shared flag already promised per feature. */
 const CHARGE_DEFS = {
-  rage:           { max: 'pb', recharge: 'long' },
-  wildShapeClass: { max: 'pb', recharge: 'short' },
+  rage:               { max: 'pb', recharge: 'long' },
+  wildShapeClass:     { max: 'pb', recharge: 'short' },
   /* Flurry of Blows and Patient Defense deliberately share one pool — the
      game's simplified ki model (see runCombatReflexes in combat.js). */
-  flurryOfBlows:  { max: 'pb', recharge: 'short' },
-  indomitable:    { max: 1, recharge: 'long' },
-  rallyingCry:    { max: 1, recharge: 'long' },
-  preserveLife:   { max: 1, recharge: 'long' }
+  flurryOfBlows:      { max: 'pb', recharge: 'short' },
+  bardicInspiration:  { max: 'pb', recharge: 'short' },
+  cunningActionClass: { max: 'pb', recharge: 'short' },
+  indomitable:        { max: 1, recharge: 'long' },
+  rallyingCry:        { max: 1, recharge: 'long' },
+  preserveLife:       { max: 1, recharge: 'long' },
+  tidesOfChaos:       { max: 1, recharge: 'long' },
+  lucky:              { max: 3, recharge: 'long' },
+  fiendishBlessing:   { max: 1, recharge: 'short' },
+  feyPresence:        { max: 1, recharge: 'short' },
+  dragonBreath:       { max: 1, recharge: 'short' },
+  wildSurge:          { max: 1, recharge: 'short' },
+  combatInspiration:  { max: 1, recharge: 'short' },
+  cuttingWords:       { max: 1, recharge: 'short' },
+  bearTotem:          { max: 1, recharge: 'short' },
+  quiveringPalm:      { max: 1, recharge: 'short' },
+  shadowStep:         { max: 1, recharge: 'short' },
+  sacredWeapon:       { max: 1, recharge: 'short' },
+  vowOfEnmity:        { max: 1, recharge: 'short' },
+  colossusSlayer:     { max: 1, recharge: 'short' },
+  summonCompanion:    { max: 1, recharge: 'short' },
+  frenzy:             { max: 1, recharge: 'short' },
+  entangle:           { max: 1, recharge: 'short' },
+  actionSurgeClass:   { max: 1, recharge: 'short' },
+  secondWindClass:    { max: 1, recharge: 'short' },
+  fastHands:          { max: 1, recharge: 'short' },
+  remarkableAthlete:  { max: 1, recharge: 'short' },
+  deathstrike:        { max: 1, recharge: 'short' },
+  guidedStrike:       { max: 1, recharge: 'short' }
 };
 
-const DEFAULT_CHARGE = { max: 'pb', recharge: 'short' };
+const DEFAULT_CHARGE = { max: 1, recharge: 'short' };
 
 /** Pool shape for a charge key. `spell:<key>` inherits the spell's recharge. */
 export function chargeDef(key, hero) {
@@ -1368,6 +1487,11 @@ export function chargeDef(key, hero) {
 
   let def = CHARGE_DEFS[key];
   if (!def) {
+    /* Mystic Arcanum: one casting per long rest, per arcanum, on its own pool
+       — deliberately not a pact slot, which caps at 5th level forever. */
+    if (typeof key === 'string' && key.startsWith('arcanum:')) {
+      return { max: 1, recharge: 'long' };
+    }
     if (typeof key === 'string' && key.startsWith('spell:')) {
       const sp = SPELLS[key.slice(6)];
       const long = sp && (sp.recharge === 'long' || sp.recharge === 'day');
@@ -1418,6 +1542,39 @@ export function restoreCharges(h, bucket) {
   }
 }
 
+/* ── Ki Points Pool (Monk = level >= 2, short/long rest recharge) ── */
+
+/** Remaining Ki points. */
+export function kiLeft(h) {
+  if (!h) return 0;
+  const d = h.data || h;
+  if (d.ki === undefined) {
+    d.ki = d.kiMax !== undefined ? d.kiMax : (d.level >= 2 ? d.level : 0);
+  }
+  return Math.max(0, d.ki || 0);
+}
+
+export function hasKi(h, cost = 1) {
+  return kiLeft(h) >= cost;
+}
+
+export function spendKi(h, cost = 1) {
+  if (!h) return false;
+  const d = h.data || h;
+  if (!hasKi(d, cost)) return false;
+  d.ki = (d.ki || 0) - cost;
+  return true;
+}
+
+export function restoreKi(h, amount) {
+  if (!h) return 0;
+  const d = h.data || h;
+  const max = d.kiMax !== undefined ? d.kiMax : (d.level >= 2 ? d.level : 0);
+  const before = d.ki || 0;
+  d.ki = amount !== undefined ? Math.min(max, (d.ki || 0) + amount) : max;
+  return d.ki - before;
+}
+
 /* ================================================================
    Hero helpers
    ================================================================ */
@@ -1442,8 +1599,14 @@ export function featureBonuses(h) {
   };
 
   for (const key of h.features || []) {
-    const f = FEATURES[key];
+    /* legacy saves can still carry an invocation key in `features` — it was an
+       automatic grant before invocations became a pick */
+    const f = FEATURES[key] || INVOCATIONS[key];
     if (f) add(f.pb);
+  }
+  for (const key of h.invocations || []) {
+    const inv = INVOCATIONS[key];
+    if (inv) add(inv.pb);
   }
   for (const key of h.feats || []) {
     const f = FEATS[key];
@@ -1466,7 +1629,10 @@ export function initProgressionFields(h) {
   if (!h.features) h.features = [];
   if (!h.feats) h.feats = [];
   if (!h.knownSpells) h.knownSpells = [];
+  if (!h.invocations) h.invocations = [];
+  if (!h.arcana) h.arcana = [];
   if (!h.pendingChoices) h.pendingChoices = [];
+  if (!h.resolvedChoices) h.resolvedChoices = [];
   if (!h.subclassMilestones) h.subclassMilestones = [];
   if (h.fightingStyle === undefined) h.fightingStyle = null;
   if (h.spellCd === undefined) h.spellCd = {};
@@ -1488,50 +1654,116 @@ export function initProgressionFields(h) {
 export function grantHealerCureWounds(h) {
   if (!h || !CLASSES[h.classKey]?.healer) return;
   if (!h.knownSpells) h.knownSpells = [];
-  if (!h.knownSpells.includes('cureWounds')) h.knownSpells.push('cureWounds');
+  if (!h.knownSpells.includes('cureWounds') && SPELLS['cureWounds']) {
+    h.knownSpells.push('cureWounds');
+  }
 }
 
-function unlockFeature(h, key, log) {
-  if (!key || hasFeature(h, key)) return;
+function unlockFeature(h, key, log = null) {
+  initProgressionFields(h);
+  if (h.features.includes(key)) return;
   h.features.push(key);
-  const f = FEATURES[key];
-  if (log && f) log(`✨ ${h.name} gains ${f.label}: ${f.desc}`, 'level');
-  /* class flags used by older combat code */
+  const feat = FEATURES[key];
+  if (log && feat) log(`✨ ${h.name} unlocked feature: ${feat.label}`, 'feature');
   if (key === 'secondWind') h.secondWind = true;
 }
 
 function queueChoice(h, grant) {
-  /* don't double-queue the same choice id */
+  /* don't double-queue the same choice id or re-queue already resolved choice */
+  if (h.resolvedChoices && h.resolvedChoices.includes(grant.id)) return;
   if (h.pendingChoices.some(c => c.id === grant.id)) return;
   const choice = { ...grant };
-  /* materialize options for UI */
+  choice.options = buildChoiceOptions(h, grant);
+  /* a pick with nothing left to offer is not a pick */
+  if (choice.options && choice.options.length === 0) return;
+  h.pendingChoices.push(choice);
+}
+
+/* Options for a grant, against the hero's CURRENT state. Must be recomputed
+   whenever that state changes: a level granting two picks from one pool (the
+   warlock's two level-1 spells, its two level-2 invocations) would otherwise
+   show the second pick a list still containing what the first one just took,
+   and picking it twice would quietly burn the pick. */
+function buildChoiceOptions(h, grant) {
   if (grant.pick === 'asiOrFeat') {
-    choice.options = buildAsiFeatOptions(h);
-  } else if (grant.pick === 'fightingStyle') {
-    choice.options = (grant.styles || Object.keys(FIGHTING_STYLES)).map(k => ({
+    return buildAsiFeatOptions(h);
+  }
+  if (grant.pick === 'fightingStyle') {
+    return (grant.styles || Object.keys(FIGHTING_STYLES)).map(k => ({
       key: k,
       label: FIGHTING_STYLES[k].label,
       desc: FIGHTING_STYLES[k].desc
     }));
-  } else if (grant.pick === 'spell') {
+  }
+  if (grant.pick === 'spell') {
+    return spellOptions(h, grant.classKey, grant.tier);
+  }
+  if (grant.pick === 'invocation') {
+    const level = Math.max(1, h.level || 1);
+    return Object.entries(INVOCATIONS)
+      .filter(([k, inv]) => !(h.invocations || []).includes(k)
+                         && !(h.features || []).includes(k)
+                         && level >= (inv.minLevel || 1))
+      .map(([k, inv]) => ({ key: k, label: inv.label, desc: inv.desc }));
+  }
+  if (grant.pick === 'arcanum') {
+    /* Arcanum draws from exactly its own tier — the whole point is a spell far
+       above what a 5th-level pact slot could ever pay for. */
     const pool = (SPELL_POOLS[grant.classKey] && SPELL_POOLS[grant.classKey][grant.tier]) || [];
-    choice.options = pool
-      .filter(k => !h.knownSpells.includes(k) && SPELLS[k])
+    return pool
+      .filter(k => SPELLS[k] && !h.knownSpells.includes(k) && !(h.arcana || []).includes(k))
       .map(k => ({
         key: k,
         label: SPELLS[k].label,
-        desc: `L${SPELLS[k].level} — ${SPELLS[k].desc}`
+        desc: `L${SPELLS[k].level} — ${SPELLS[k].desc} (once per long rest)`
       }));
-    /* if nothing left to learn, skip */
-    if (choice.options.length === 0) return;
-  } else if (grant.pick === 'wildShapeForm') {
-    choice.options = Object.values(WILD_SHAPE_FORMS).map(wf => ({
+  }
+  if (grant.pick === 'wildShapeForm') {
+    return Object.values(WILD_SHAPE_FORMS).map(wf => ({
       key: wf.key,
       label: `${wf.icon} ${wf.label}`,
       desc: wf.desc
     }));
   }
-  h.pendingChoices.push(choice);
+  return null;
+}
+
+/* Re-materialize every still-pending pick against current state, dropping any
+   that no longer has anything to offer. */
+function refreshPendingOptions(h) {
+  const kept = [];
+  for (const c of h.pendingChoices) {
+    const opts = buildChoiceOptions(h, c);
+    if (opts && opts.length === 0) {
+      if (!h.resolvedChoices.includes(c.id)) h.resolvedChoices.push(c.id);
+      continue;
+    }
+    if (opts) c.options = opts;
+    kept.push(c);
+  }
+  h.pendingChoices = kept;
+}
+
+/* Spells a hero may still learn at a tier. A tier pool can run dry — the
+   warlock's 5th-tier list is a single spell but is drawn from five times — and
+   an empty option list makes queueChoice drop the pick silently, quietly
+   eating a level-up reward. So fall back through the lower tiers, which is
+   also just SRD-legal: you may always learn a spell below your maximum. */
+function spellOptions(h, classKey, tier) {
+  const byClass = SPELL_POOLS[classKey] || {};
+  const seen = new Set();
+  const opts = [];
+  for (let t = tier; t >= 1; t--) {
+    for (const k of (byClass[t] || [])) {
+      if (seen.has(k) || !SPELLS[k]) continue;
+      if (h.knownSpells.includes(k)) continue;
+      seen.add(k);
+      opts.push({ key: k, label: SPELLS[k].label, desc: `L${SPELLS[k].level} — ${SPELLS[k].desc}` });
+    }
+    /* Only reach down a tier when this one had nothing left to offer. */
+    if (opts.length) break;
+  }
+  return opts;
 }
 
 function buildAsiFeatOptions(h) {
@@ -1545,6 +1777,10 @@ function buildAsiFeatOptions(h) {
       label: 'Ability Score Improvement',
       desc: 'Gain 2 ability points to allot among your stats (cap 20).',
       kind: 'asi',
+      /* Two, per the SRD: an ASI is +2 to one score or +1 to two. Banking the
+         pair and letting spendAbilityPoint apply them one at a time covers both
+         splits without a separate UI. This read 1, against the comment directly
+         above it, so every ASI level was worth half of what it should be. */
       amount: 2
     });
   }
@@ -1602,13 +1838,11 @@ export function applyLevelGrants(h, level, log = null, opts = {}) {
      of class. Migration/re-apply must not double-bank points. */
   if (level > 1 && !opts.autosOnly) {
     h.pendingSkillRank = (h.pendingSkillRank || 0) + SKILL_POINTS_PER_LEVEL;
-    if (log) log(`📘 ${h.name} gained ${SKILL_POINTS_PER_LEVEL} skill points.`, 'level');
+    if (log) log(`📘 ${h.name} gained ${SKILL_POINTS_PER_LEVEL === 1 ? '1 skill point' : `${SKILL_POINTS_PER_LEVEL} skill points`}.`, 'level');
   }
 
-  /* Class talents are the stopgap for dead levels: if this level's progression
-     table is empty, the level would otherwise grant nothing, so bank a talent
-     point instead. (Fighter 9/15/19, rogue 9/13/17/19, and so on.) */
-  if (level > 1 && !opts.autosOnly && grants.length === 0) {
+  /* Class talents: 1 point earned on every odd level (including level 1). */
+  if (!opts.autosOnly && (level % 2 === 1)) {
     h.pendingSkill = (h.pendingSkill || 0) + 1;
     if (log) log(`⭐ ${h.name} gained a talent point.`, 'level');
   }
@@ -1636,11 +1870,162 @@ export function seedNewHeroProgression(h, log = null) {
 }
 
 /**
+ * Count total spell choice grants configured for a class up through a given level.
+ */
+export function countSpellGrantsUpTo(classKey, maxLevel) {
+  const table = CLASS_PROGRESSION[classKey];
+  if (!table) return 0;
+  let count = 0;
+  for (let lv = 1; lv <= maxLevel; lv++) {
+    const grants = table[lv] || [];
+    for (const g of grants) {
+      if (g.type === 'choice' && g.pick === 'spell') count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Synchronize any missing leveled spell choices for heroes (such as Rangers/Paladins
+ * who leveled up under earlier progression tables that had fewer spell grants).
+ */
+export function syncMissingSpellChoices(h) {
+  initProgressionFields(h);
+  const table = CLASS_PROGRESSION[h.classKey];
+  if (!table) return;
+
+  const currentLevel = Math.max(1, h.level || 1);
+  for (let lv = 1; lv <= currentLevel; lv++) {
+    const grants = table[lv] || [];
+    for (const g of grants) {
+      if (g.type === 'choice' && g.pick === 'spell') {
+        if (!h.resolvedChoices) h.resolvedChoices = [];
+        if (h.resolvedChoices.includes(g.id)) continue;
+        if (h.pendingChoices.some(c => c.id === g.id)) continue;
+
+        const totalGrantsSoFar = countSpellGrantsUpTo(h.classKey, lv);
+        /* Some knownSpells were never paid for by a grant and must not be
+           counted against the entitlement, or they silently swallow picks the
+           hero is owed: Mystic Arcanum (its own grants) and the free Cure
+           Wounds every healer class starts with (grantHealerCureWounds). */
+        const arcana = h.arcana || [];
+        const freebies = CLASSES[h.classKey]?.healer ? ['cureWounds'] : [];
+        const knownCount = (h.knownSpells || [])
+          .filter(k => !arcana.includes(k) && !freebies.includes(k)).length;
+        const currentTotal = knownCount + (h.pendingChoices?.filter(c => c.pick === 'spell').length || 0);
+        if (currentTotal < totalGrantsSoFar) {
+          queueChoice(h, g);
+        } else {
+          h.resolvedChoices.push(g.id);
+        }
+      }
+    }
+  }
+}
+
+/** True when this spell is one of the hero's Mystic Arcanum castings. */
+export function isArcanum(h, key) {
+  if (!h) return false;
+  const d = h.data || h;
+  return !!(d.arcana && d.arcana.includes(key));
+}
+
+/**
+ * Count invocation grants configured for a class up through a given level.
+ */
+export function countInvocationGrantsUpTo(classKey, maxLevel) {
+  const table = CLASS_PROGRESSION[classKey];
+  if (!table) return 0;
+  let count = 0;
+  for (let lv = 1; lv <= maxLevel; lv++) {
+    for (const g of (table[lv] || [])) {
+      if (g.type === 'choice' && g.pick === 'invocation') count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Bring a hero built under the old warlock table onto the new one.
+ *
+ * Invocations used to be automatic grants living in `features`; they are now
+ * picks living in `invocations`. Move any the hero already earned across so
+ * nothing is lost, then queue only the shortfall — a level-6 warlock who was
+ * handed Agonizing Blast and Repelling Blast keeps both and picks the one the
+ * SRD says they are still owed, rather than being handed three or reset to
+ * zero.
+ */
+export function syncMissingInvocations(h) {
+  initProgressionFields(h);
+  const table = CLASS_PROGRESSION[h.classKey];
+  if (!table) return;
+
+  /* legacy auto-grants: features that are really invocations */
+  for (const key of [...h.features]) {
+    if (!INVOCATIONS[key]) continue;
+    if (!h.invocations.includes(key)) h.invocations.push(key);
+    h.features.splice(h.features.indexOf(key), 1);
+  }
+
+  const currentLevel = Math.max(1, h.level || 1);
+  for (let lv = 1; lv <= currentLevel; lv++) {
+    for (const g of (table[lv] || [])) {
+      if (!(g.type === 'choice' && g.pick === 'invocation')) continue;
+      if (h.resolvedChoices.includes(g.id)) continue;
+      if (h.pendingChoices.some(c => c.id === g.id)) continue;
+
+      const owed = countInvocationGrantsUpTo(h.classKey, lv);
+      const have = h.invocations.length
+                 + h.pendingChoices.filter(c => c.pick === 'invocation').length;
+      if (have < owed) queueChoice(h, g);
+      else h.resolvedChoices.push(g.id);
+    }
+  }
+}
+
+/* Old Mystic Arcanum ids were ordinary spell picks; the new ones are their own
+   pick type. Without this map a level-13 warlock would be re-offered arcana
+   they already chose. */
+const LEGACY_ARCANUM_IDS = {
+  wlk_arc6: 'wlk_mystic6', wlk_arc7: 'wlk_mystic7',
+  wlk_arc8: 'wlk_mystic8', wlk_arc9: 'wlk_mystic9'
+};
+
+/**
+ * Reclassify already-known high-level warlock spells as Mystic Arcanum. Before
+ * this they were learned as ordinary spells and were flatly uncastable: pact
+ * slots stop at 5th level, so nothing could ever pay for a 6th+ spell.
+ */
+export function syncMissingArcana(h) {
+  initProgressionFields(h);
+  if (h.classKey !== 'warlock') return;
+
+  for (const key of h.knownSpells) {
+    const sp = SPELLS[key];
+    if (sp && (sp.level || 0) >= 6 && !h.arcana.includes(key)) h.arcana.push(key);
+  }
+  for (const [newId, oldId] of Object.entries(LEGACY_ARCANUM_IDS)) {
+    if (h.resolvedChoices.includes(oldId) && !h.resolvedChoices.includes(newId)) {
+      h.resolvedChoices.push(newId);
+    }
+  }
+  /* the level-19 duplicate arcanum is gone; its spell stays known */
+  if (h.resolvedChoices.includes('wlk_mystic9b') && !h.resolvedChoices.includes('wlk_kn19')) {
+    h.resolvedChoices.push('wlk_kn19');
+  }
+}
+
+/**
  * Migrate legacy heroes: unlock auto features for levels already gained,
  * do not dump every historical choice on them.
  */
 export function migrateProgression(h) {
   initProgressionFields(h);
+  /* arcana first: it reclassifies known spells, and the spell-choice sync
+     counts knownSpells minus arcana to decide what is still owed */
+  syncMissingArcana(h);
+  syncMissingInvocations(h);
+  syncMissingSpellChoices(h);
   if (h.progressionVersion >= 1) return;
   for (let lv = 1; lv <= h.level; lv++) {
     applyLevelGrants(h, lv, null, { autosOnly: true });
@@ -1679,13 +2064,27 @@ export function resolveChoice(h, choiceId, optionKey) {
     h.fightingStyle = opt.key;
   } else if (choice.pick === 'spell') {
     if (!h.knownSpells.includes(opt.key)) h.knownSpells.push(opt.key);
+  } else if (choice.pick === 'invocation') {
+    if (!h.invocations) h.invocations = [];
+    if (!h.invocations.includes(opt.key)) h.invocations.push(opt.key);
+  } else if (choice.pick === 'arcanum') {
+    if (!h.arcana) h.arcana = [];
+    if (!h.arcana.includes(opt.key)) h.arcana.push(opt.key);
+    /* Also a known spell so it shows up in the caster UI; the arcanum list is
+       what tells the cast path to bill it to a charge instead of a slot. */
+    if (!h.knownSpells.includes(opt.key)) h.knownSpells.push(opt.key);
+    if (h.charges) delete h.charges['arcanum:' + opt.key];
   } else if (choice.pick === 'wildShapeForm') {
     h.wildShapeForm = opt.key;
   } else {
     return { ok: false, reason: 'Unknown choice type.' };
   }
 
+  if (!h.resolvedChoices) h.resolvedChoices = [];
+  if (!h.resolvedChoices.includes(choiceId)) h.resolvedChoices.push(choiceId);
+
   h.pendingChoices.splice(idx, 1);
+  refreshPendingOptions(h);
   return { ok: true, choice, opt };
 }
 
@@ -1696,8 +2095,12 @@ export function pendingChoiceCount(h) {
 export function listUnlockedFeatureLabels(h) {
   const out = [];
   for (const key of h.features || []) {
-    const f = FEATURES[key];
+    const f = FEATURES[key] || INVOCATIONS[key];
     if (f) out.push({ key, label: f.label, desc: f.desc });
+  }
+  for (const key of h.invocations || []) {
+    const inv = INVOCATIONS[key];
+    if (inv) out.push({ key, label: `Invocation: ${inv.label}`, desc: inv.desc });
   }
   if (h.fightingStyle && FIGHTING_STYLES[h.fightingStyle]) {
     const fs = FIGHTING_STYLES[h.fightingStyle];
@@ -1712,7 +2115,12 @@ export function listUnlockedFeatureLabels(h) {
   }
   for (const sp of h.knownSpells || []) {
     const s = SPELLS[sp];
-    if (s) out.push({ key: sp, label: `Spell: ${s.label}`, desc: s.desc });
+    if (!s) continue;
+    if ((h.arcana || []).includes(sp)) {
+      out.push({ key: sp, label: `Arcanum: ${s.label}`, desc: `${s.desc} (once per long rest)` });
+    } else {
+      out.push({ key: sp, label: `Spell: ${s.label}`, desc: s.desc });
+    }
   }
   return out;
 }

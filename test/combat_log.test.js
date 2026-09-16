@@ -158,6 +158,22 @@ describe('Combat Log Improvements', () => {
       expect(line.children[0].innerHTML).toContain('vs AC 15');
     });
 
+    it('dims attack roll math embedded in the message', () => {
+      /* The damage has to come LAST on a hit line, so the roll math moved out
+         of the dim `detail` span and into the message itself. It still has to
+         READ as secondary, or the line is a wall of equal-weight numbers. */
+      log('Sable -> Suture-Thing: hit (6+7=13 vs AC 13) - 13 dmg', 'roll');
+      const line = lastLine();
+      expect(line.innerHTML).toContain('log-roll-detail');
+      /* the damage stays outside the dim span, at the end of the line */
+      expect(line.innerHTML.trim().endsWith('13 dmg')).toBe(true);
+    });
+
+    it('dims roll math carrying an advantage tag', () => {
+      log('Sable -> Suture-Thing: miss (2+7=9 vs AC 13, dis)', 'miss');
+      expect(lastLine().innerHTML).toContain('log-roll-detail');
+    });
+
     it('adds no detail span when no detail is supplied', () => {
       log('plain line', 'roll');
       expect(lastLine().children).toHaveLength(0);

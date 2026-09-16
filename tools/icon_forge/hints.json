@@ -1,0 +1,50 @@
+{
+ "status__blinded": [
+  "a single closed eye with a bold diagonal slash across it",
+  "pale grey and dark slate"
+ ],
+ "status__poisoned": [
+  "one fat teardrop of venom with two small bubbles rising off it",
+  "acid green with pale green highlight and dark green shadow"
+ ],
+ "status__stunned": [
+  "a thick spiral swirl with two small four-pointed stars orbiting it",
+  "pale yellow and white, chunky strokes"
+ ],
+ "status__frightened": [
+  "a wide-eyed screaming face, mouth open in a jagged O, both hands raised beside the cheeks",
+  "bone white and deep violet"
+ ],
+ "status__restrained": [
+  "two heavy chain links crossed over each other",
+  "iron grey with dark shadow"
+ ],
+ "status__slowed": [
+  "an hourglass with sand pooled in the lower bulb",
+  "muted amber and dull bronze"
+ ],
+ "status__burning": [
+  "one bold upright tongue of fire with three clear lobes",
+  "hot orange core fading to yellow, deep red base"
+ ],
+ "status__wounded": [
+  "one heavy blood drop with a smaller drop falling beside it",
+  "crimson with bright red highlight and dark maroon base"
+ ],
+ "status__hasted": [
+  "a bold lightning bolt with two speed streaks trailing behind it",
+  "bright yellow-white with violet edges"
+ ],
+ "status__shielded": [
+  "a solid heater shield seen face on with a raised boss in the centre",
+  "steel blue-grey with a pale rim light"
+ ],
+ "status__invisible": [
+  "a hollow dotted outline of a figure, only the outline visible",
+  "faint pale cyan on nothing, very low contrast"
+ ],
+ "status__raging": [
+  "a clenched fist raised with two short anger marks above it",
+  "hot red and dark maroon"
+ ]
+}

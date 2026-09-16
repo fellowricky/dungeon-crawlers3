@@ -10,7 +10,8 @@ import {
 import {
   featureBonuses, spellSlotsFor, seedNewHeroProgression, migrateProgression,
   applyLevelGrants, initProgressionFields, pendingChoiceCount, hasFeature,
-  totalSlots, equipmentGrants, hasDualWielder, featACBonus, SKILL_POINTS_PER_LEVEL
+  totalSlots, equipmentGrants, hasDualWielder, featACBonus, isCasterClass,
+  SKILL_POINTS_PER_LEVEL
 } from './features.js';
 export { SKILL_POINTS_PER_LEVEL };
 import { getRaceDefaults, migrateVisualColors } from './appearance.js';
@@ -174,6 +175,7 @@ export const CLASS_SAVES = {
   sorcerer:  ['con','cha'],
   warlock:   ['wis','cha'],
   wolf:      ['str','dex'],
+  familiar:  ['dex','wis'],
 };
 
 /* XP needed to REACH each level (index = level) — tripled after level 2 */
@@ -203,7 +205,8 @@ export const RACES = {
   tiefling:   { label:'Tiefling', bonus:{cha:2,int:1}, speed:1.0, speedFt:30, trait:'Hellish Resistance: +1 AC and fire resistance.' },
   /* Not a player option — the stat block behind the ranger's wolf companion.
      `internal` keeps it out of every race picker; see PLAYABLE_RACES. */
-  wolf:       { label:'Wolf', internal:true, bonus:{str:2,dex:2,con:2,int:0,wis:2,cha:0}, speed:1.2, speedFt:40, trait:'Pack Tactics: Advantage on attacks when near an ally.' }
+  wolf:       { label:'Wolf', internal:true, bonus:{str:2,dex:2,con:2,int:0,wis:2,cha:0}, speed:1.2, speedFt:40, trait:'Pack Tactics: Advantage on attacks when near an ally.' },
+  familiar:   { label:'Familiar', internal:true, bonus:{str:0,dex:2,con:0,int:0,wis:2,cha:0}, speed:1.2, speedFt:40, trait:'Flyby: Agile natural attacks.' }
 };
 
 
@@ -240,7 +243,7 @@ export const CLASSES = {
       { key:'deadlyAim',  name:'Deadly Aim', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
       { key:'assassin',   name:'Assassin',   max:2, desc:'Crit range widens by 1 per rank (crit on 19, then 18).', b:{crit:1} },
       { key:'evasion',    name:'Evasion',    max:4, desc:'+1 AC per rank.',               b:{ac:1} },
-      { key:'fleetfoot',  name:'Fleet-Foot', max:4, desc:'+8% move speed per rank.',      b:{speed:0.08} }
+      { key:'fleetfoot',  name:'Fleet-Foot', max:4, desc:'+5 ft Move (1 tile) per rank.',      b:{move:5} }
     ],
     skillChoices: {
       count: 4,
@@ -251,7 +254,7 @@ export const CLASSES = {
     label:'Cleric', color:0x5a8fe8, hitDie:8, armorProf:'medium', shieldProf:true, weaponProf:'simple',
     statPriority:['wis','con','str','cha','dex','int'],
     baseAC:16, acDesc:'Scale mail + shield',
-    attack:{ name:'Sacred Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true },
+    attack:{ name:'Sacred Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true, isSave:true, saveAbility:'dex' },
     feature:'Cure Wounds: heals the most wounded ally (slots recharge on short/long rest).',
     healer:true,
     skills:[
@@ -269,7 +272,7 @@ export const CLASSES = {
     label:'Wizard', color:0x9b6cf0, hitDie:6, armorProf:'none', shieldProf:false, weaponProf:'simple',
     statPriority:['int','con','dex','wis','cha','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
-    attack:{ name:'Fire Bolt', ability:'int', dmg:[1,10], range:8, melee:false, cantripScale:true },
+    attack:{ name:'Fire Bolt', ability:'int', dmg:[1,10], range:8, melee:false, cantripScale:true, isSave:true, saveAbility:'dex' },
     feature:'Arcane Study: at level 3, chooses a school with slot-fueled spells.',
     blaster:true,
     skills:[
@@ -322,7 +325,7 @@ export const CLASSES = {
     label:'Druid', color:0x2ecc71, hitDie:8, armorProf:'medium', shieldProf:true, weaponProf:'simple', weaponSpecific:['Scimitar'],
     statPriority:['wis','con','dex','int','cha','str'],
     baseAC:12, acPlusDex:true, acDesc:'Leather Shield + Hide',
-    attack:{ name:'Produce Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true },
+    attack:{ name:'Produce Flame', ability:'wis', dmg:[1,8], range:6, melee:false, cantripScale:true, isSave:true, saveAbility:'wis' },
     feature:'Wild Shape: transforms into a Bear (+20 temp HP, 2d6 claws).',
     healer:true,
     skills:[
@@ -341,11 +344,11 @@ export const CLASSES = {
     statPriority:['dex','wis','con','str','cha','int'],
     baseAC:12, acPlusDex:true, acDesc:'Unarmored Defense',
     attack:{ name:'Unarmed Strike', ability:'dex', dmg:[1,6], range:1.4, melee:true },
-    feature:'Flurry of Blows: spend Ki to attack three times in one turn.',
+    feature:'Ki Pool: spend Ki for Flurry of Blows, Patient Defense, Step of the Wind, and Stunning Strike.',
     skills:[
       { key:'martialArts', name:'Martial Arts', max:5, desc:'+1 attack damage per rank.', b:{dmg:1} },
       { key:'unarmoredDef', name:'Unarmored Defense', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'fastMovement', name:'Fast Movement', max:4, desc:'+8% move speed per rank.', b:{speed:0.08} },
+      { key:'fastMovement', name:'Fast Movement', max:4, desc:'+5 ft Move (1 tile) per rank.', b:{move:5} },
       { key:'kiVitality', name:'Ki Vitality', max:5, desc:'+5 max HP per rank.', b:{hp:5} }
     ],
     skillChoices: {
@@ -391,7 +394,7 @@ export const CLASSES = {
     label:'Sorcerer', color:0xe67e22, hitDie:6, armorProf:'none', shieldProf:false, weaponProf:'simple',
     statPriority:['cha','con','dex','int','wis','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
-    attack:{ name:'Fire Bolt', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
+    attack:{ name:'Chill Touch', ability:'cha', dmg:[1,8], range:8, melee:false, cantripScale:true, isSave:true, saveAbility:'con' },
     feature:'Tides of Chaos: once per short rest, gain advantage (+5 to hit).',
     blaster:true,
     skills:[
@@ -409,7 +412,7 @@ export const CLASSES = {
     label:'Warlock', color:0x9b59b6, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple',
     statPriority:['cha','con','dex','wis','int','str'],
     baseAC:11, acPlusDex:true, acDesc:'Leather Armor + Dex',
-    attack:{ name:'Eldritch Blast', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true },
+    attack:{ name:'Eldritch Blast', ability:'cha', dmg:[1,10], range:8, melee:false, cantripScale:true, isSave:true, saveAbility:'cha' },
     feature:'Eldritch Blast: fires 1 beam of force (1d10), +1 beam at level 5.',
     blaster:true,
     skills:[
@@ -430,6 +433,15 @@ export const CLASSES = {
     baseAC:13, acPlusDex:true, acDesc:'Natural armor + Dex',
     attack:{ name:'Bite', ability:'dex', dmg:[1,8], range:1.5, melee:true },
     feature:'Pack Tactics & Trip Bite.',
+    skills:[]
+  },
+  /* Familiar companion stat block */
+  familiar: {
+    label:'Familiar', internal:true, color:0x88ccff, hitDie:4, armorProf:'none', shieldProf:false, weaponProf:'simple',
+    statPriority:['dex','wis','int','con','str','cha'],
+    baseAC:11, acPlusDex:true, acDesc:'Natural armor + Dex',
+    attack:{ name:'Talon', ability:'dex', dmg:[1,4], range:1.5, melee:true },
+    feature:'Flyby: Agile natural attacks.',
     skills:[]
   }
 };
@@ -466,7 +478,7 @@ export const SUBCLASSES = {
   },
   rogue: {
     thief: { label:'Thief', srd:true,
-      passive:'Fast Hands: +10% move speed, +25% gold. Opportunist: +1d4 damage to wounded foes.', pb:{speed:0.10}, chestGold:0.25, passiveKey:'opportunist',
+      passive:'Fast Hands: +5 ft Move (1 tile), +25% gold. Opportunist: +1d4 damage to wounded foes.', pb:{move:5}, chestGold:0.25, passiveKey:'opportunist',
       active:{ key:'fastHands', name:'Fast Hands', recharge:'short',
         desc:'Use sleight of hand to throw a smoke bomb, blinding all nearby enemies for 6s.' } },
     /* internal key stays 'nightblade' to preserve existing saves; the SRD/PHB
@@ -528,7 +540,7 @@ export const SUBCLASSES = {
   },
   monk: {
     openhand: { label:'Open Hand', srd:true,
-      passive:'Open Hand Technique: +10% speed; your first hit each fight strikes with extra force.', pb:{speed:0.10}, passiveKey:'openHandTech',
+      passive:'Open Hand Technique: +5 ft Move (1 tile); your first hit each fight strikes with extra force.', pb:{move:5}, passiveKey:'openHandTech',
       active:{ key:'quiveringPalm', name:'Quivering Palm', recharge:'short',
         desc:'Deliver a vibrations strike to a boss/elite dealing 4d10 damage.' } },
     shadow: { label:'Way of Shadow',
@@ -586,7 +598,30 @@ export const WILD_SHAPE_FORMS = {
     icon: '🐻',
     stat: 'con',
     desc: 'Tank Specialization (+4 CON, +2 STR, +2 AC, massive HP pool).',
-    sprite: 'dcss/monster/animals/grizzly_bear.png',
+    sprite: 'sprites/bear.png',
+    animations: {
+      idle: {
+        sprite: 'sprites/Bear/Idle/bear_idle_spritesheet_96x96.png',
+        frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+        fps: 8, loop: true
+      },
+      attack: {
+        sprite: 'sprites/Bear/Attack/bear_attack_spritesheet_96x96.png',
+        frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+        fps: 12, loop: false
+      }
+    },
+    /* Frame size does not set apparent size: the bear is drawn only 34px tall
+       inside its 96px frame (35%), where the wolf fills 62px (65%). On the
+       shared BeastSprite default of 1.6 the bear therefore rendered at little
+       over HALF the wolf's on-screen height — the tank form was the smallest
+       beast in the game. 3.1 puts it at ~1.06x the wolf's height and ~1.8x its
+       width, which is the bulk a bear should read with.
+       Its feet also sit 27px above the frame bottom (the wolf's: 16), so it
+       needs its own foot line or the default 4% anchor floats it. */
+    scaleX: 3.1,
+    scaleY: 3.1,
+    anchorY: 27 / 96,
     hpFormula: (level, conM) => 25 + level * 6 + Math.max(0, conM) * 2,
     acBonus: 2,
     statBonus: { con: 4, str: 2 },
@@ -600,6 +635,22 @@ export const WILD_SHAPE_FORMS = {
     stat: 'str',
     desc: 'Offense Specialization (+4 STR, +2 DEX, +1 AC, Expanded Crit Range 18–20).',
     sprite: 'sprites/wolf.png',
+    animations: {
+      idle: {
+        sprite: 'sprites/Wolf/Idle/wolf_idle_spritesheet_96x96.png',
+        frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+        fps: 8, loop: true
+      },
+      attack: {
+        sprite: 'sprites/Wolf/Attack/wolf_attack_spritesheet_96x96.png',
+        frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+        fps: 12, loop: false
+      }
+    },
+    /* Paws sit 16px above the bottom of the 96px frame, so the shared 4%
+       anchor left the wolf hovering too — less than the bear, but still off
+       the floor. See BeastSprite's anchorY. */
+    anchorY: 16 / 96,
     hpFormula: (level, strM) => 18 + level * 5 + Math.max(0, strM) * 2,
     acBonus: 1,
     statBonus: { str: 4, dex: 2 },
@@ -613,7 +664,19 @@ export const WILD_SHAPE_FORMS = {
     icon: '🦅',
     stat: 'dex',
     desc: 'Speed & Evasion Specialization (+4 DEX, +2 WIS, +2 AC, Evasion & Disadvantage to foes).',
-    sprite: 'dcss/monster/raven.png',
+    sprite: 'sprites/eagle.png',
+    animations: {
+      idle: {
+        sprite: 'sprites/Eagle/Idle/eagle_idle_spritesheet_96x96.png',
+        frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+        fps: 8, loop: true
+      },
+      attack: {
+        sprite: 'sprites/Eagle/Attack/eagle_attack_spritesheet_96x96.png',
+        frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+        fps: 12, loop: false
+      }
+    },
     /* BeastSprite defaults to 1.6, which suits the bulky bear and wolf sheets
        but rendered the raven-sized eagle far larger than the hero. 1.0 is a
        ~37% reduction and lines the bird up with the other beast forms. */
@@ -623,6 +686,10 @@ export const WILD_SHAPE_FORMS = {
     acBonus: 2,
     statBonus: { dex: 4, wis: 2 },
     evasion: true,
+    /* The one form with wings: liquid is not terrain to it, so the druid may
+       cross a pool or a lava flow the rest of the party has to walk around.
+       Read by canFly (pathfinding.js) straight off the active form. */
+    flying: true,
     speedBonus: 1.3
   }
 };
@@ -651,12 +718,123 @@ export const cantripDice = lvl => lvl >= 17 ? 4 : lvl >= 11 ? 3 : lvl >= 5 ? 2 :
 /* ---------------- monsters (external JSON with 308 SRD stat blocks) ----------------
    Loaded from monsters.json. CR (Challenge Rating) is the sole balance axis:
    spawn picks a target CR from the dungeon-level curve, then filters this flat
-   list by a CR window around it. Bosses carry an `isBoss` flag. */
+   list by a CR window around it. Curated boss fights are driven by the mission
+   (finalBossId / boss_encounters.json), not by a per-monster boss flag. */
 import MONSTERS_RAW from './monsters.json' with { type: 'json' };
 import BOSS_ENCOUNTERS_RAW from './boss_encounters.json' with { type: 'json' };
+import TACTICAL_ROOMS_RAW from './tactical_rooms.json' with { type: 'json' };
 import { CR_SCALING_TABLE, getCRScale, crForDungeonLevel, maxCrForDungeonLevel, crToCost as crCost } from './constants.js';
 
-export { BOSS_ENCOUNTERS_RAW };
+export { BOSS_ENCOUNTERS_RAW, TACTICAL_ROOMS_RAW };
+
+export function getCuratedTacticalRooms() {
+  let edits = {};
+  try { edits = JSON.parse(globalThis.localStorage?.getItem('dc_tactical_rooms_edits') || '{}'); } catch {}
+  if (!edits || Object.keys(edits).length === 0) return TACTICAL_ROOMS_RAW;
+  const merged = JSON.parse(JSON.stringify(TACTICAL_ROOMS_RAW));
+  for (const [styleKey, styleData] of Object.entries(edits)) {
+    if (!merged[styleKey]) merged[styleKey] = {};
+    for (const [key, val] of Object.entries(styleData)) {
+      if (key === 'enabledThemes') {
+        merged[styleKey].enabledThemes = [...val];
+      } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+        merged[styleKey][key] = { ...(merged[styleKey][key] || {}), ...val };
+      } else {
+        merged[styleKey][key] = val;
+      }
+    }
+  }
+  return merged;
+}
+
+export function isRoomStyleEnabled(styleId, themeKey) {
+  const all = getCuratedTacticalRooms();
+  const tKey = (themeKey || 'ancient').toLowerCase();
+  if (all && all[styleId]) {
+    const styleData = all[styleId];
+    if (Array.isArray(styleData.enabledThemes)) {
+      return styleData.enabledThemes.includes(tKey);
+    }
+  }
+  return true;
+}
+
+export function getCuratedTacticalRoom(roomStyle, theme, level = 1) {
+  const all = getCuratedTacticalRooms();
+  if (!all || !roomStyle) return null;
+  const styleData = all[roomStyle];
+  if (!styleData) return null;
+
+  const tKey = (theme || 'ancient').toLowerCase();
+  if (Array.isArray(styleData.enabledThemes) && !styleData.enabledThemes.includes(tKey)) {
+    return null;
+  }
+
+  const themeData = styleData[tKey] || styleData['all'];
+  if (!themeData) return null;
+
+  const lvl = Math.min(20, Math.max(1, Math.round(level || 1)));
+
+  const sanitize = (list) => {
+    if (!Array.isArray(list)) return null;
+    const valid = list.filter(id => MONSTERS_BY_ID[id]);
+    return valid.length > 0 ? valid : null;
+  };
+
+  // 1. Try exact level match (e.g. "1", "2" ... "20")
+  if (Array.isArray(themeData[String(lvl)]) && themeData[String(lvl)].length) {
+    const s = sanitize(themeData[String(lvl)]);
+    if (s) return s;
+  }
+
+  // 2. Nearest level check among configured numbered levels
+  const numKeys = Object.keys(themeData)
+    .map(Number)
+    .filter(n => isFinite(n) && n >= 1 && n <= 20 && Array.isArray(themeData[String(n)]) && themeData[String(n)].length)
+    .sort((a, b) => a - b);
+
+  if (numKeys.length > 0) {
+    let closest = numKeys[0];
+    let minDiff = Math.abs(numKeys[0] - lvl);
+    for (const k of numKeys) {
+      const diff = Math.abs(k - lvl);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = k;
+      }
+    }
+    const s = sanitize(themeData[String(closest)]);
+    if (s) return s;
+  }
+
+  // 3. Try parsing bands like "1-2", "3-5", "6-9", "10+", etc.
+  for (const [bandKey, list] of Object.entries(themeData)) {
+    if (!Array.isArray(list) || !list.length) continue;
+    if (bandKey.endsWith('+')) {
+      const min = parseInt(bandKey, 10);
+      if (!isNaN(min) && lvl >= min) {
+        const s = sanitize(list);
+        if (s) return s;
+      }
+    } else if (bandKey.includes('-')) {
+      const [minStr, maxStr] = bandKey.split('-');
+      const min = parseInt(minStr, 10);
+      const max = parseInt(maxStr, 10);
+      if (!isNaN(min) && !isNaN(max) && lvl >= min && lvl <= max) {
+        const s = sanitize(list);
+        if (s) return s;
+      }
+    }
+  }
+
+  // 4. Fallback to first available band for this theme
+  const bands = Object.entries(themeData).filter(([_, list]) => Array.isArray(list) && list.length);
+  if (bands.length > 0) {
+    return sanitize(bands[0][1]);
+  }
+
+  return null;
+}
 
 export function getCuratedBossEncounters() {
   let edits = {};
@@ -774,11 +952,6 @@ export const MONSTERS_BY_ID = (() => {
   return m;
 })();
 
-/** All boss-flagged monster ids — used by quests to pre-roll a final boss.
- *  A monster is a boss via the `isBoss: true` data flag (formerly tier "boss"). */
-export const BOSS_MONSTERS = MONSTERS_ALL.filter(s => s.isBoss);
-export const BOSS_IDS = BOSS_MONSTERS.map(s => s.id);
-
 /** Display name for a monster id; falls back to a cleaned id. */
 export function monsterName(id) {
   if (!id) return 'something ancient';
@@ -845,9 +1018,10 @@ const themesList = [
 const THEME_NAMES = new Set(themesList.map(t => t.name));
 
 export function getThemeForMonster(m) {
+  if (!m || typeof m !== 'object') return 'Unknown';
   if (m.theme && THEME_NAMES.has(m.theme)) return m.theme;
-  const id = m.id.toLowerCase();
-  const name = m.name.toLowerCase();
+  const id = (m.id || '').toLowerCase();
+  const name = (m.name || '').toLowerCase();
   const type = (m.type || '').toLowerCase();
   const tags = (m.tags || []).map(t => t.toLowerCase());
 
@@ -1170,12 +1344,19 @@ export function spawnMonster(targetCR, effectiveLevel, rngPick, allowedNames = n
        species at each rung, so variety comes from species rather than from
        drifting off-price. Failing that, step DOWN to the dearest CR at or below
        the target. Only if the pool has nothing at or below do we look upward,
-       because at that point there is nothing weaker to field. */
-    const atCR = pool.filter(spec => spec.cr === tcr);
+       because at that point there is nothing weaker to field.
+
+       The level's ceiling (maxCR) is a HARD cap for every non-boss spawn. An
+       exact match at tcr and the at-or-below step both honour it, so a caller
+       that asks for a CR above the level (e.g. the floor-scaling elite pack)
+       still fields the dearest creature the level actually allows. Only a
+       deliberate boss override (bypassCeiling) may field above it. */
+    const ceiling = bypassCeiling ? Infinity : maxCR;
+    const atCR = pool.filter(spec => spec.cr === tcr && spec.cr <= ceiling);
     if (atCR.length) {
       filtered = atCR;
     } else {
-      const atOrBelow = pool.filter(spec => spec.cr <= tcr);
+      const atOrBelow = pool.filter(spec => spec.cr <= Math.min(tcr, ceiling));
       if (atOrBelow.length) {
         let bestCR = -1;
         for (const spec of atOrBelow) if (spec.cr > bestCR) bestCR = spec.cr;
@@ -1272,12 +1453,76 @@ export function spawnMonster(targetCR, effectiveLevel, rngPick, allowedNames = n
     statblock: spec.statblock ? JSON.parse(JSON.stringify(spec.statblock)) : undefined,
     variants: spec.variants ? [...spec.variants] : undefined,
     packTactics: spec.packTactics,
+    /* SRD hobgoblin Martial Advantage (+2d6 when an ally is adjacent to the
+       target). monster_ai.js reads m.data.martialAdvantage; without this line
+       the flag sits in monsters.json and never reaches the spawned monster. */
+    martialAdvantage: spec.martialAdvantage,
     undeadFortitude: spec.undeadFortitude,
     magicResistance: spec.magicResistance,
     regen: spec.regen,
     colorBalance: spec.colorBalance ? JSON.parse(JSON.stringify(spec.colorBalance)) : undefined,
     yOffset: spec.yOffset,
+    flipX: !!spec.flipX,
+    /* Animated idle/attack atlas configs written by the bestiary editor — the
+       runtime uses these to swap the static billboard for a sliced sheet. */
+    animations: spec.animations ? JSON.parse(JSON.stringify(spec.animations)) : undefined,
+    /* Ranged presentation. `cantripClass` names a hero cantrip class so a
+       monster caster's basic attack is delivered by fxCantripDelivery — the same
+       code and art the heroes use — instead of an arrow; `rangedDmgType` picks
+       the element sheet when that class has no composite animation.
+       NOTE: this object is an explicit projection of `spec`, not a spread, so a
+       field left out here silently never reaches the runtime no matter how
+       correct monsters.json looks. */
+    cantripClass: spec.cantripClass,
+    rangedDmgType: spec.rangedDmgType,
   };
+}
+
+/* Hard cap on how many copies of a single creature one room may field. Rooms
+   buy a dominant CR and every same-band spawn used to lock onto the first
+   species drawn, so a room read as "seven ghouls plus a filler". pickRoomSpecies
+   (below) enforces this cap per room while preferring creatures of the room's
+   dominant family, so variety keeps the room's vibe. */
+export const SPECIES_CAP = 3;
+
+/** Pick the species for one spawn slot in a room, capping duplicates.
+ *
+ *  bandPool      species ids already rolled for this band/role in this room
+ *                (mutated in place: a freshly rolled species is appended)
+ *  counts        { [speciesId]: n } fielded so far in this room (read-only here)
+ *  anchorFamily  the room's vibe family (getThemeForMonster) of its first species
+ *  familyOf      (id) => family string, e.g. getThemeForMonster(MONSTERS_BY_ID[id])
+ *  window        candidate species ids within this slot's CR window (roster-scoped,
+ *                never empty — the caller falls back to the full roster)
+ *  roll(pool)    () => speciesId drawn from `pool` — wraps spawnMonster so a roll
+ *                can never import an off-roster creature
+ *
+ *  Reuses a pool species that is under the cap, preferring the room's own family,
+ *  then picks from the window's under-cap species (same-family preferred). Only
+ *  when every species in the window is at the cap does it take a duplicate — a
+ *  roster band with one creature has nothing else to offer, and an empty slot is
+ *  worse. Deterministic: no retry loop that could randomly miss an alternative. */
+export function pickRoomSpecies({ bandPool, counts = {}, anchorFamily = null, familyOf = () => null, window, roll }) {
+  const underCap = (id) => (counts[id] || 0) < SPECIES_CAP;
+  const sameVibe = (id) => !anchorFamily || familyOf(id) === anchorFamily;
+
+  /* 1) Reuse a species this band has already rolled before rolling new ones —
+        keeps the room's CR/role mix stable. Prefer the room's vibe family. */
+  const reuse = bandPool.find((id) => underCap(id) && sameVibe(id))
+    ?? bandPool.find(underCap);
+  if (reuse) return reuse;
+
+  /* 2) The window's under-cap species, same family preferred. `window` is already
+        CR-windowed so a same-family pick can never drift off the slot's CR. It may
+        be null (no roster constraint — an un-themed dungeon), which the roll
+        passes straight to spawnMonster for its full-bestiary fallback. */
+  const fresh = window ? window.filter(underCap) : [];
+  const fam = anchorFamily ? fresh.filter((id) => familyOf(id) === anchorFamily) : fresh;
+  const pool = fam.length ? fam : (fresh.length ? fresh : window);
+
+  const id = roll(pool);
+  if (!bandPool.includes(id)) bandPool.push(id);
+  return id;
 }
 
 /* ---------------- hero construction ---------------- */
@@ -1325,10 +1570,11 @@ export function getDefaultProficiencies(raceKey, classKey) {
   return list;
 }
 
-export function makeHero(name, raceKey, classKey, baseStats, visual, chosenProficiencies = null){
+export function makeHero(name, raceKey, classKey, baseStats = {}, visual = null, chosenProficiencies = null){
   const race = RACES[raceKey], cls = CLASSES[classKey];
   const stats = {};
-  for(const ab of ABILITIES) stats[ab] = (baseStats[ab]||8) + (race.bonus[ab]||0);
+  const bStats = baseStats || {};
+  for(const ab of ABILITIES) stats[ab] = (bStats[ab]||8) + (race.bonus[ab]||0);
 
   const proficiencies = chosenProficiencies || getDefaultProficiencies(raceKey, classKey);
 
@@ -1343,6 +1589,7 @@ export function makeHero(name, raceKey, classKey, baseStats, visual, chosenProfi
     features:[], feats:[], knownSpells:[], pendingChoices:[],
     subclassMilestones:[], fightingStyle:null, spellCd:{},
     progressionVersion:0,
+    scale: 1.0,
     aiPrefs:{ targeting:'nearest', movementStyle:'standard', abilityUsage:'balanced', potionTrigger:'emergency' }
   };
   
@@ -1363,12 +1610,46 @@ export function createWolfCompanion(lvl = 1) {
   const level = Math.max(1, lvl | 0);
   const visual = {
     isWolf: true,
-    /* Single static wolf sprite (64x64). The animated wolfsheet1.png atlas is
-       mis-aligned, so use one full-frame image for now. To switch back to the
-       sheet later: set singleImage:false + spriteSheet:'sprites/wolfsheet1.png'
-       + atlasTotalCols:10, atlasOriginCol:5, atlasRows:6. */
-    singleImage: true,
-    spriteSheet: 'sprites/wolf.png'
+    /* Frame-sliced idle/attack sheets, same block shape as a monster's
+       `animations`. WolfSprite checks visual.animations FIRST and it takes
+       precedence over both the single-image and wolfsheet1.png atlas modes
+       (sprite_animator.js:528), so the old 64x64 sprites/wolf.png and the
+       mis-aligned LPC atlas are both bypassed rather than deleted.
+
+       flipX follows the same convention as monsters: it means the SOURCE art
+       faces right, so setDirection flips when the wolf moves left. */
+    flipX: true,
+    /* WolfSprite sizes its quad as 1.125 * spriteScale, with no frameWidth term
+       — unlike the monster path, which divides by 32 — so a monster `scale`
+       value would be meaningless here. 1.47 puts the wolf's shoulder at ~0.75
+       world units against the old sprite's 1.072: the previous 64x64 art was
+       nearly square and stood almost as tall as a hero, while this one is a
+       true side-on wolf at 87px tall by 128px long, so matching the old HEIGHT
+       would have made it half again as wide as before. Sized to read as a wolf
+       beside the ranger rather than to preserve the old number. */
+    spriteScaleX: 1.47,
+    spriteScaleY: 1.47,
+    animations: {
+      idle: {
+        frameWidth: 192, frameHeight: 192, cols: 19, rows: 1,
+        fps: 8, loop: true,
+        sprite: 'sprites/WarWolf/Idle/war_wolf_idle_spritesheet_192x192.png'
+      },
+      attack: {
+        frameWidth: 192, frameHeight: 192, cols: 19, rows: 1,
+        fps: 12, loop: false,
+        sprite: 'sprites/WarWolf/Attack/war_wolf_attack_spritesheet_192x192.png'
+      },
+      /* Optional third state. sprite_animator.js loads 'walk' when present and
+         game.js then treats this sprite like an LPC hero: walk while moving,
+         idle at rest. A companion without this key keeps its idle running the
+         whole time, which is the old behaviour. */
+      walk: {
+        frameWidth: 192, frameHeight: 192, cols: 19, rows: 1,
+        fps: 12, loop: true,
+        sprite: 'sprites/WarWolf/Walk/war_wolf_walk_spritesheet_192x192.png'
+      }
+    }
   };
   const baseStats = {
     str: 14 + Math.floor(level / 4),
@@ -1408,26 +1689,65 @@ export function createWolfCompanion(lvl = 1) {
 
 export function createFamiliarCompanion(kind = 'owl', lvl = 1) {
   const level = Math.max(1, lvl | 0);
+  const cleanKind = (kind || 'owl').replace('Familiar', '').toLowerCase();
   const profiles = {
     owl: {
       name: 'Owl Familiar',
-      sprite: 'dcss/monster/flying_skull.png',
+      sprite: 'sprites/giant_owl.png',
+      animations: {
+        idle: {
+          sprite: 'sprites/Owl/Idle/owl_idle_spritesheet_96x96.png',
+          frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+          fps: 8, loop: true
+        },
+        attack: {
+          sprite: 'sprites/Owl/Attack/owl_attack_spritesheet_96x96.png',
+          frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+          fps: 12, loop: false
+        }
+      },
       stats: { str: 6, dex: 16 + Math.floor(level / 3), con: 10 + Math.floor(level / 4), int: 10, wis: 14, cha: 10 },
+      flying: true,
       weaponName: 'Talon',
       dmg: [1, 4, Math.floor(level / 2)],
       dmgType: 'slashing'
     },
     imp: {
       name: 'Imp Familiar',
-      sprite: 'dcss/monster/imp.png',
+      sprite: 'sprites/imp.png',
+      animations: {
+        idle: {
+          sprite: 'sprites/Imp/Idle/imp_idle_spritesheet_96x96.png',
+          frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+          fps: 8, loop: true
+        },
+        attack: {
+          sprite: 'sprites/Imp/Attack/imp_attack_spritesheet_96x96.png',
+          frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+          fps: 12, loop: false
+        }
+      },
       stats: { str: 10, dex: 14 + Math.floor(level / 4), con: 12 + Math.floor(level / 4), int: 14 + Math.floor(level / 3), wis: 12, cha: 14 },
+      flying: true,
       weaponName: 'Sting',
       dmg: [1, 6, Math.floor(level / 2)],
       dmgType: 'fire'
     },
     viper: {
       name: 'Viper Familiar',
-      sprite: 'dcss/monster/viper.png',
+      sprite: 'sprites/viper.png',
+      animations: {
+        idle: {
+          sprite: 'sprites/Viper/Idle/viper_idle_spritesheet_96x96.png',
+          frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+          fps: 8, loop: true
+        },
+        attack: {
+          sprite: 'sprites/Viper/Attack/viper_attack_spritesheet_96x96.png',
+          frameWidth: 96, frameHeight: 96, cols: 19, rows: 1,
+          fps: 12, loop: false
+        }
+      },
       stats: { str: 8, dex: 16 + Math.floor(level / 3), con: 11 + Math.floor(level / 4), int: 8, wis: 12, cha: 8 },
       weaponName: 'Venom Bite',
       dmg: [1, 4, Math.floor(level / 2)],
@@ -1435,12 +1755,22 @@ export function createFamiliarCompanion(kind = 'owl', lvl = 1) {
     }
   };
 
-  const p = profiles[kind] || profiles.owl;
-  const visual = { singleImage: true, spriteSheet: p.sprite };
-  const data = makeHero(p.name, 'human', 'wizard', p.stats, visual);
+  const p = profiles[cleanKind] || profiles.owl;
+  /* Frame-sliced idle/attack sheets, when the profile has them, are passed
+     through to the visual so WolfSprite plays them instead of the single
+     static image. Profiles without them still fall back to singleImage. */
+  const visual = { singleImage: true, spriteSheet: p.sprite, spriteScaleX: 0.85, spriteScaleY: 0.85 };
+  if (p.animations) visual.animations = p.animations;
+  const data = makeHero(p.name, 'familiar', 'familiar', p.stats, visual);
   data.level = level;
   data.isFamiliar = true;
-  data.familiarKind = kind;
+  data.familiarKind = cleanKind;
+  /* Owl and imp are on the wing; the viper is not. canFly reads this flag, so
+     a flying familiar crosses a pool instead of stalling on the bank while the
+     party walks round it. */
+  if (p.flying) data.flying = true;
+  data.knownSpells = [];
+  data.aiPrefs = { targeting: 'nearest', movementStyle: 'standard', abilityUsage: 'balanced', potionTrigger: 'emergency' };
 
   data.equipment = {
     weapon: {
@@ -1478,6 +1808,15 @@ export function normalizeHero(h){
   migrateVisualColors(h.visual, h.raceKey);
   if(h.pendingAbility === undefined) h.pendingAbility = 0;
   if(h.pendingSkill === undefined) h.pendingSkill = 0;
+  /* Class talents: ensure heroes have banked/spent points for odd levels reached (Lv 1, 3, 5...) */
+  if (!CLASSES[h.classKey]?.internal) {
+    const totalTalentsExpected = Math.ceil(Math.max(1, h.level || 1) / 2);
+    const spentTalents = Object.values(h.skills || {}).reduce((sum, r) => sum + (r || 0), 0);
+    const currentTotal = (h.pendingSkill || 0) + spentTalents;
+    if (currentTotal < totalTalentsExpected) {
+      h.pendingSkill = (h.pendingSkill || 0) + (totalTalentsExpected - currentTotal);
+    }
+  }
   /* Saves from before skill ranks existed: bank the points they'd have earned
      (2 per level-up past 1) so nothing is lost, and start with no ranks spent. */
   if(!h.skillRanks) h.skillRanks = {};
@@ -1531,34 +1870,16 @@ export function normalizeHero(h){
     }
   }
 
-  /* AI priorities tab — Tactical Directives per-hero settings */
+  /* AI priorities tab — Tactical Directives per-hero settings. Casters open on
+     Tactical Kite; everyone else advances to reach. */
   if (!h.aiPrefs) h.aiPrefs = {};
-  if (!h.aiPrefs.targeting) {
-    if (h.aiPrefs.behaviorMode === 'defensive') h.aiPrefs.targeting = 'guard_backline';
-    else if (h.aiPrefs.behaviorMode === 'aggressive') h.aiPrefs.targeting = 'focus_low';
-    else h.aiPrefs.targeting = 'nearest';
-  }
+  if (!h.aiPrefs.targeting) h.aiPrefs.targeting = 'nearest';
   if (!h.aiPrefs.movementStyle) {
-    if (h.aiPrefs.combatMovement != null && h.aiPrefs.combatMovement <= 0.1) h.aiPrefs.movementStyle = 'hold';
-    else if (h.aiPrefs.combatMovement != null && h.aiPrefs.combatMovement >= 0.8) h.aiPrefs.movementStyle = 'flank';
-    else if (['wizard', 'sorcerer', 'warlock', 'ranger'].includes(h.classKey)) h.aiPrefs.movementStyle = 'kite';
-    else h.aiPrefs.movementStyle = 'standard';
+    h.aiPrefs.movementStyle =
+      ['wizard', 'sorcerer', 'warlock', 'ranger'].includes(h.classKey) ? 'kite' : 'standard';
   }
-  if (!h.aiPrefs.abilityUsage) {
-    if (h.aiPrefs.abilityUse != null && h.aiPrefs.abilityUse <= 0.1) h.aiPrefs.abilityUsage = 'conservative';
-    else if (h.aiPrefs.abilityUse != null && h.aiPrefs.abilityUse >= 0.85) h.aiPrefs.abilityUsage = 'unleash';
-    else h.aiPrefs.abilityUsage = 'balanced';
-  }
-  if (!h.aiPrefs.potionTrigger) {
-    if (h.aiPrefs.potionThreshold != null) {
-      if (h.aiPrefs.potionThreshold <= 0.05) h.aiPrefs.potionTrigger = 'off';
-      else if (h.aiPrefs.potionThreshold <= 0.35) h.aiPrefs.potionTrigger = 'emergency';
-      else if (h.aiPrefs.potionThreshold <= 0.65) h.aiPrefs.potionTrigger = 'proactive';
-      else h.aiPrefs.potionTrigger = 'early';
-    } else {
-      h.aiPrefs.potionTrigger = 'emergency';
-    }
-  }
+  if (!h.aiPrefs.abilityUsage) h.aiPrefs.abilityUsage = 'balanced';
+  if (!h.aiPrefs.potionTrigger) h.aiPrefs.potionTrigger = 'emergency';
 
   migrateProgression(h);
 
@@ -1750,6 +2071,20 @@ export function recalc(h){
     h.layOnHands = Math.min(h.layOnHands, h.layOnHandsMax);
   }
 
+  /* monk ki pool (SRD 5e: monk level >= 2) */
+  if(h.classKey === 'monk' || hasFeature(h, 'ki')) {
+    const prevMax = h.kiMax || 0;
+    h.kiMax = h.level >= 2 ? h.level : 0;
+    if(h.ki === undefined) {
+      h.ki = h.kiMax;
+    } else if (h.kiMax > prevMax) {
+      h.ki = Math.min(h.kiMax, (h.ki || 0) + (h.kiMax - prevMax));
+    } else {
+      h.ki = Math.max(0, Math.min(h.ki, h.kiMax));
+    }
+    h.kiSaveDC = 8 + profBonus(h.level) + mod(eff.wis);
+  }
+
   /* Leveled spell slots (SRD tables): { spellLevel: count }. Casting spends
      the lowest slot ≥ the spell's level — no upcasting. */
   const slotsMax = spellSlotsFor(h.classKey, h.level);
@@ -1831,21 +2166,57 @@ export function buildWeaponProfile(h, item, opts = {}){
   };
 }
 const CANTRIP_DMG_TYPE = {
-  cleric:'radiant', wizard:'fire', druid:'fire', sorcerer:'fire', warlock:'force'
+  cleric:'radiant', wizard:'fire', druid:'fire', sorcerer:'necrotic', warlock:'force'
 };
+/* Class cantrip → SPELLS key, so manual-mode casting (and the cast VFX) use the
+   right spell definition. */
+export const CANTRIP_SPELL_KEY = {
+  cleric:'sacredFlame', wizard:'fireBolt', druid:'produceFlame', sorcerer:'chillTouch', warlock:'eldritchBlast'
+};
+
+/* Cantrips target saving throws instead of Armor Class:
+   - Fire Bolt: DEX Save
+   - Eldritch Blast: CHA Save
+   - Chill Touch: CON Save
+   - Produce Flame: WIS Save
+   - Sacred Flame: DEX Save */
+export const CANTRIP_SAVE_ABILITY = {
+  sacredFlame: 'dex',
+  fireBolt: 'dex',
+  produceFlame: 'wis',
+  chillTouch: 'con',
+  eldritchBlast: 'cha'
+};
+
 export function buildCantripProfile(h){
   const cls = CLASSES[h.classKey];
   if (!cls.attack || !cls.attack.cantripScale) return null;
   const a = cls.attack;
+  /* Eldritch Spear: the invocation exists to outrange everything else. */
+  const range = a.range + (hasFeature(h, 'eldritchSpear') ? 4 : 0);
+  /* Eldritch Blast is the one cantrip that does NOT scale by adding dice to a
+     single attack — it adds whole beams, each its own attack roll and each
+     carrying Agonizing Blast's CHA on its own. Rolling 4d10 once at level 17
+     is both the wrong shape and a quiet nerf to Agonizing Blast, which the SRD
+     pays out per beam. */
+  const beams = CANTRIP_SPELL_KEY[h.classKey] === 'eldritchBlast'
+    ? cantripDice(h.level) : 0;
+  const nameKey = a.nameKey || CANTRIP_SPELL_KEY[h.classKey] || null;
+  const saveAbility = a.saveAbility || CANTRIP_SAVE_ABILITY[nameKey] || 'dex';
   return {
     name: a.name, ability: a.ability, dmg: a.dmg.slice(),
-    range: a.range, melee: !!a.melee, cantripScale: true,
-    dmgType: CANTRIP_DMG_TYPE[h.classKey] || 'fire', source: 'cantrip'
+    range, melee: !!a.melee, cantripScale: true, beams,
+    nameKey,
+    dmgType: CANTRIP_DMG_TYPE[h.classKey] || 'fire', source: 'cantrip',
+    isSave: true,
+    saveAbility
   };
 }
 export function unarmedFallback(h){
   if (h.classKey === 'monk') {
-    return { name:'Unarmed Strike', ability:'dex', dmg:[1,6], range:1.4, melee:true,
+    const lvl = h.level || 1;
+    const die = lvl >= 17 ? 10 : (lvl >= 11 ? 8 : (lvl >= 5 ? 6 : 4));
+    return { name:'Unarmed Strike', ability:'dex', dmg:[1, die], range:1.4, melee:true,
              cantripScale:false, dmgType:'bludgeoning', source:'unarmed' };
   }
   return { name:'Unarmed Strike', ability:'str', dmg:[1,1], range:1.4, melee:true,
@@ -1890,7 +2261,9 @@ export function pickAttackProfile(h){
 export function heroDamage(h, crit, profile){
   const p = profile || h.weaponProfile || h.lastProfile;
   if (!p) return roll(1, 1, h.dmgBonus);
-  let dice = p.cantripScale ? cantripDice(h.level) : p.dmg[0];
+  /* A beam profile rolls its own dice once per beam; everything else with
+     cantripScale grows a single roll. */
+  let dice = (p.cantripScale && !p.beams) ? cantripDice(h.level) : p.dmg[0];
   if (crit) dice *= 2;
   if (crit && RACES[h.raceKey].savageCrit && p.melee) dice += 1;
   /* cantrips and TWF offhand attacks don't add ability mod; weapons do.
@@ -1900,7 +2273,18 @@ export function heroDamage(h, crit, profile){
   /* Flat elemental damage from gear rides along on every hit. Not doubled on a
      crit — it isn't a die, and doubling it would make elemental affixes scale
      with crit rate on top of their own value, which isn't what they're priced for. */
-  return roll(dice, p.dmg[1], abilityBonus + h.dmgBonus + (h.elemDamageTotal || 0));
+  /* A connecting hit always does at least 1. `roll()` is a plain sum with no
+     lower bound, so a negative ability modifier drags a small die to zero or
+     below — and this is not an edge case: makeHero defaults any unspecified
+     stat to 8 (mod -1), and abilityForWeapon returns 'str' for EVERY
+     non-finesse melee weapon. So a caster swinging a quarterstaff rolls
+     1d6-1 and whiffs for 0 about one hit in six.
+
+     Both call sites are past their miss check, so reaching here means the blow
+     landed. A landed blow that does nothing reads as a bug to the player even
+     when the arithmetic is defensible — and a negative would have HEALED the
+     target, since both application paths use `hp -= d`. */
+  return Math.max(1, roll(dice, p.dmg[1], abilityBonus + h.dmgBonus + (h.elemDamageTotal || 0)));
 }
 
 /* level-up: HP grows via recalc; class progression grants features / choices
@@ -1978,12 +2362,25 @@ export function canEquip(h, item){
     return WEAPON_RANK[wType] <= profRank;
   }
 
-  /* 3. Body armor — light / medium / heavy proficiency gate */
-  if (item.slot === 'armor') {
+  /* 3. Body armor and helms — light / medium / heavy proficiency gate.
+        Helms use the SAME ranks as body armor, so cloth hats (prof 'none', the
+        Wizard Hat included) stay open to every class exactly as robes do, while
+        a great helm needs heavy proficiency. Items predating the helm tags have
+        no `prof`; migrateItem backfills it from the base so an old save cannot
+        keep a helm its wearer could no longer pick up. */
+  if (item.slot === 'armor' || item.slot === 'helm') {
     const armorRank = Math.max(PROF_RANK[cls.armorProf || 'none'], grants.armorRank);
     return PROF_RANK[item.prof || 'none'] <= armorRank;
   }
 
-  /* 4. Helm, gloves, boots, ring, amulet — always equippable (like 5e magic items) */
+  /* 4. Gloves, boots, ring, amulet — always equippable (like 5e magic items) */
+
+  /* 5. Trinket slot — a general consumable slot. Scrolls are caster-only;
+        potions/charns (casterOnly:false) are usable by any class. */
+  if (item.slot === 'trinket') {
+    if (item.casterOnly) return isCasterClass(h.classKey);
+    return true;
+  }
+
   return true;
 }

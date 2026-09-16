@@ -8,6 +8,7 @@
  */
 import { INTRO_CRAWL } from './story.js';
 import { playNarration, queueNarration, stopNarration, preloadNarration, isNarrationActive } from './audio.js';
+import { hideLoadingScreen } from '../ui/loading_screen.js';
 
 let root = null;
 let done = false;
@@ -80,6 +81,11 @@ export function showIntroCrawl(onDone) {
   root.classList.add('show');
   /* two frames so the initial transform commits before the animation starts */
   requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('run')));
+
+  /* Embarking from party setup raises the loading curtain and hands over to
+     the crawl, which is not a floor load and so never lowers it. Drop it now
+     that the crawl is on screen, or the run starts behind a frozen curtain. */
+  hideLoadingScreen();
 
   /* Warm every paragraph's buffer up front so the chain has no fetch/decode
      stalls between lines, then play: p0 via playNarration (hard-resets any

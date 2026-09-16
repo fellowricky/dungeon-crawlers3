@@ -1,0 +1,1409 @@
+{
+  "swarm": {
+    "enabledThemes": [
+      "ancient",
+      "grim",
+      "molten",
+      "frost",
+      "verdant",
+      "forest",
+      "moor",
+      "mire",
+      "holdfast"
+    ],
+    "ancient": {
+      "1": [
+        "giant-rat",
+        "giant-bat",
+        "skeleton"
+      ],
+      "2": [
+        "giant-rat",
+        "giant-bat",
+        "skeleton"
+      ],
+      "3": [
+        "giant-centipede",
+        "swarm-of-bats",
+        "swarm-of-rats"
+      ],
+      "4": [
+        "giant-centipede",
+        "swarm-of-bats",
+        "swarm-of-rats"
+      ],
+      "5": [
+        "giant-centipede",
+        "swarm-of-bats",
+        "swarm-of-rats"
+      ],
+      "6": [
+        "giant-centipede",
+        "brain-worm-swarm"
+      ],
+      "7": [
+        "giant-centipede",
+        "brain-worm-swarm"
+      ],
+      "8": [
+        "giant-centipede",
+        "brain-worm-swarm"
+      ],
+      "9": [
+        "giant-centipede",
+        "brain-worm-swarm"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    },
+    "grim": {
+      "1": [
+        "grave-rat",
+        "crypt-bat",
+        "skeleton"
+      ],
+      "2": [
+        "grave-rat",
+        "crypt-bat",
+        "skeleton"
+      ],
+      "3": [
+        "swarm-of-rats",
+        "swarm-of-centipedes",
+        "wolf-spider"
+      ],
+      "4": [
+        "swarm-of-rats",
+        "swarm-of-centipedes",
+        "wolf-spider"
+      ],
+      "5": [
+        "swarm-of-rats",
+        "swarm-of-centipedes",
+        "wolf-spider"
+      ],
+      "6": [
+        "phase-spider",
+        "giant-slug"
+      ],
+      "7": [
+        "phase-spider",
+        "giant-slug"
+      ],
+      "8": [
+        "phase-spider",
+        "giant-slug"
+      ],
+      "9": [
+        "phase-spider",
+        "giant-slug"
+      ],
+      "10": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "11": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "12": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "13": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "14": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "15": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "16": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "17": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "18": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "19": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "20": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ]
+    },
+    "molten": {
+      "1": [
+        "cinder-rat",
+        "ash-mite",
+        "fire-bat"
+      ],
+      "2": [
+        "cinder-rat",
+        "ash-mite",
+        "fire-bat"
+      ],
+      "3": [
+        "fire-crab",
+        "giant-fire-beetle",
+        "ember-magmin"
+      ],
+      "4": [
+        "fire-crab",
+        "giant-fire-beetle",
+        "ember-magmin"
+      ],
+      "5": [
+        "fire-crab",
+        "giant-fire-beetle",
+        "ember-magmin"
+      ],
+      "6": [
+        "giant-scorpion",
+        "rock-worm"
+      ],
+      "7": [
+        "giant-scorpion",
+        "rock-worm"
+      ],
+      "8": [
+        "giant-scorpion",
+        "rock-worm"
+      ],
+      "9": [
+        "giant-scorpion",
+        "rock-worm"
+      ],
+      "10": [
+        "salamander"
+      ],
+      "11": [
+        "salamander"
+      ],
+      "12": [
+        "salamander"
+      ],
+      "13": [
+        "salamander"
+      ],
+      "14": [
+        "salamander"
+      ],
+      "15": [
+        "salamander"
+      ],
+      "16": [
+        "salamander"
+      ],
+      "17": [
+        "salamander"
+      ],
+      "18": [
+        "salamander"
+      ],
+      "19": [
+        "salamander"
+      ],
+      "20": [
+        "salamander"
+      ]
+    },
+    "frost": {
+      "1": [
+        "giant-rat",
+        "giant-bat"
+      ],
+      "2": [
+        "giant-rat",
+        "giant-bat"
+      ],
+      "3": [
+        "swarm-of-rats",
+        "ghost-moth"
+      ],
+      "4": [
+        "swarm-of-rats",
+        "ghost-moth"
+      ],
+      "5": [
+        "swarm-of-rats",
+        "ghost-moth"
+      ],
+      "6": [
+        "rock-worm",
+        "spiny-worm"
+      ],
+      "7": [
+        "rock-worm",
+        "spiny-worm"
+      ],
+      "8": [
+        "rock-worm",
+        "spiny-worm"
+      ],
+      "9": [
+        "rock-worm",
+        "spiny-worm"
+      ],
+      "10": [
+        "frost-giant"
+      ],
+      "11": [
+        "frost-giant"
+      ],
+      "12": [
+        "frost-giant"
+      ],
+      "13": [
+        "frost-giant"
+      ],
+      "14": [
+        "frost-giant"
+      ],
+      "15": [
+        "frost-giant"
+      ],
+      "16": [
+        "frost-giant"
+      ],
+      "17": [
+        "frost-giant"
+      ],
+      "18": [
+        "frost-giant"
+      ],
+      "19": [
+        "frost-giant"
+      ],
+      "20": [
+        "frost-giant"
+      ]
+    },
+    "verdant": {
+      "1": [
+        "ant-worker",
+        "ant-drone",
+        "widowsilk-fang"
+      ],
+      "2": [
+        "ant-worker",
+        "ant-drone",
+        "widowsilk-fang"
+      ],
+      "3": [
+        "widowsilk-weaver",
+        "swarm-of-insects",
+        "swarm-of-centipedes"
+      ],
+      "4": [
+        "widowsilk-weaver",
+        "swarm-of-insects",
+        "swarm-of-centipedes"
+      ],
+      "5": [
+        "widowsilk-weaver",
+        "swarm-of-insects",
+        "swarm-of-centipedes"
+      ],
+      "6": [
+        "giant-leech-swarm",
+        "phase-spider"
+      ],
+      "7": [
+        "giant-leech-swarm",
+        "phase-spider"
+      ],
+      "8": [
+        "giant-leech-swarm",
+        "phase-spider"
+      ],
+      "9": [
+        "giant-leech-swarm",
+        "phase-spider"
+      ],
+      "10": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "11": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "12": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "13": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "14": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "15": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "16": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "17": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "18": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "19": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ],
+      "20": [
+        "giant-tarantula",
+        "broodmother-spider"
+      ]
+    },
+    "forest": {
+      "1": [
+        "giant-rat",
+        "giant-centipede",
+        "giant-ant"
+      ],
+      "2": [
+        "giant-rat",
+        "giant-centipede",
+        "giant-ant"
+      ],
+      "3": [
+        "swarm-of-bats",
+        "swarm-of-insects",
+        "giant-spider"
+      ],
+      "4": [
+        "swarm-of-bats",
+        "swarm-of-insects",
+        "giant-spider"
+      ],
+      "5": [
+        "swarm-of-bats",
+        "swarm-of-insects",
+        "giant-spider"
+      ],
+      "6": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "7": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "8": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "9": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "10": [
+        "giant-tarantula"
+      ],
+      "11": [
+        "giant-tarantula"
+      ],
+      "12": [
+        "giant-tarantula"
+      ],
+      "13": [
+        "giant-tarantula"
+      ],
+      "14": [
+        "giant-tarantula"
+      ],
+      "15": [
+        "giant-tarantula"
+      ],
+      "16": [
+        "giant-tarantula"
+      ],
+      "17": [
+        "giant-tarantula"
+      ],
+      "18": [
+        "giant-tarantula"
+      ],
+      "19": [
+        "giant-tarantula"
+      ],
+      "20": [
+        "giant-tarantula"
+      ]
+    },
+    "moor": {
+      "1": [
+        "giant-rat",
+        "giant-mosquito",
+        "giant-leech"
+      ],
+      "2": [
+        "giant-rat",
+        "giant-mosquito",
+        "giant-leech"
+      ],
+      "3": [
+        "swarm-of-bats",
+        "swarm-of-rats",
+        "giant-cockroach"
+      ],
+      "4": [
+        "swarm-of-bats",
+        "swarm-of-rats",
+        "giant-cockroach"
+      ],
+      "5": [
+        "swarm-of-bats",
+        "swarm-of-rats",
+        "giant-cockroach"
+      ],
+      "6": [
+        "ghost-moth",
+        "giant-leech-swarm"
+      ],
+      "7": [
+        "ghost-moth",
+        "giant-leech-swarm"
+      ],
+      "8": [
+        "ghost-moth",
+        "giant-leech-swarm"
+      ],
+      "9": [
+        "ghost-moth",
+        "giant-leech-swarm"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    },
+    "mire": {
+      "1": [
+        "giant-leech",
+        "giant-mosquito",
+        "giant-rat"
+      ],
+      "2": [
+        "giant-leech",
+        "giant-mosquito",
+        "giant-rat"
+      ],
+      "3": [
+        "giant-cockroach",
+        "giant-blowfly",
+        "swarm-of-insects"
+      ],
+      "4": [
+        "giant-cockroach",
+        "giant-blowfly",
+        "swarm-of-insects"
+      ],
+      "5": [
+        "giant-cockroach",
+        "giant-blowfly",
+        "swarm-of-insects"
+      ],
+      "6": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "7": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "8": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "9": [
+        "giant-leech-swarm",
+        "ankheg"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    },
+    "holdfast": {
+      "1": [
+        "giant-rat",
+        "giant-bat",
+        "giant-cockroach"
+      ],
+      "2": [
+        "giant-rat",
+        "giant-bat",
+        "giant-cockroach"
+      ],
+      "3": [
+        "swarm-of-rats",
+        "swarm-of-bats"
+      ],
+      "4": [
+        "swarm-of-rats",
+        "swarm-of-bats"
+      ],
+      "5": [
+        "swarm-of-rats",
+        "swarm-of-bats"
+      ],
+      "6": [
+        "giant-centipede",
+        "giant-scorpion"
+      ],
+      "7": [
+        "giant-centipede",
+        "giant-scorpion"
+      ],
+      "8": [
+        "giant-centipede",
+        "giant-scorpion"
+      ],
+      "9": [
+        "giant-centipede",
+        "giant-scorpion"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    }
+  },
+  "miniboss": {
+    "enabledThemes": [
+      "ancient",
+      "grim",
+      "molten",
+      "frost",
+      "verdant",
+      "forest",
+      "moor",
+      "mire",
+      "holdfast"
+    ]
+  },
+  "ritual": {
+    "enabledThemes": [
+      "ancient",
+      "grim",
+      "frost",
+      "molten",
+      "holdfast"
+    ],
+    "ancient": {
+      "1": [
+        "cultist"
+      ],
+      "2": [
+        "cultist"
+      ],
+      "3": [
+        "cult-leader",
+        "deep-elf-priest"
+      ],
+      "4": [
+        "cult-leader",
+        "deep-elf-priest"
+      ],
+      "5": [
+        "cult-leader",
+        "deep-elf-priest"
+      ],
+      "6": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "7": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "8": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "9": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "10": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "11": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "12": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "13": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "14": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "15": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "16": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "17": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "18": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "19": [
+        "deep-elf-mage",
+        "wizard"
+      ],
+      "20": [
+        "deep-elf-mage",
+        "wizard"
+      ]
+    },
+    "grim": {
+      "1": [
+        "cultist"
+      ],
+      "2": [
+        "cultist"
+      ],
+      "3": [
+        "cult-leader",
+        "deep-elf-priest"
+      ],
+      "4": [
+        "cult-leader",
+        "deep-elf-priest"
+      ],
+      "5": [
+        "cult-leader",
+        "deep-elf-priest"
+      ],
+      "6": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "7": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "8": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "9": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "10": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "11": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "12": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "13": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "14": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "15": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "16": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "17": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "18": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "19": [
+        "deep-elf-mage",
+        "lich"
+      ],
+      "20": [
+        "deep-elf-mage",
+        "lich"
+      ]
+    }
+  },
+  "ambush": {
+    "enabledThemes": [
+      "ancient",
+      "grim",
+      "molten",
+      "frost",
+      "verdant",
+      "forest",
+      "moor",
+      "mire",
+      "holdfast"
+    ]
+  },
+  "killzone": {
+    "enabledThemes": [
+      "holdfast",
+      "ancient",
+      "grim",
+      "frost"
+    ]
+  },
+  "nest": {
+    "enabledThemes": [
+      "verdant",
+      "forest",
+      "mire",
+      "moor"
+    ],
+    "verdant": {
+      "1": [
+        "ant-queen",
+        "spider-queen"
+      ],
+      "2": [
+        "ant-queen",
+        "spider-queen"
+      ],
+      "3": [
+        "spider-queen",
+        "ettercap"
+      ],
+      "4": [
+        "spider-queen",
+        "ettercap"
+      ],
+      "5": [
+        "spider-queen",
+        "ettercap"
+      ],
+      "6": [
+        "broodmother-spider"
+      ],
+      "7": [
+        "broodmother-spider"
+      ],
+      "8": [
+        "broodmother-spider"
+      ],
+      "9": [
+        "broodmother-spider"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    },
+    "forest": {
+      "1": [
+        "spider-queen",
+        "giant-spider"
+      ],
+      "2": [
+        "spider-queen",
+        "giant-spider"
+      ],
+      "3": [
+        "ettercap",
+        "ankheg"
+      ],
+      "4": [
+        "ettercap",
+        "ankheg"
+      ],
+      "5": [
+        "ettercap",
+        "ankheg"
+      ],
+      "6": [
+        "broodmother-spider"
+      ],
+      "7": [
+        "broodmother-spider"
+      ],
+      "8": [
+        "broodmother-spider"
+      ],
+      "9": [
+        "broodmother-spider"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    },
+    "mire": {
+      "1": [
+        "spider-queen",
+        "giant-toad"
+      ],
+      "2": [
+        "spider-queen",
+        "giant-toad"
+      ],
+      "3": [
+        "ettercap",
+        "ankheg"
+      ],
+      "4": [
+        "ettercap",
+        "ankheg"
+      ],
+      "5": [
+        "ettercap",
+        "ankheg"
+      ],
+      "6": [
+        "broodmother-spider"
+      ],
+      "7": [
+        "broodmother-spider"
+      ],
+      "8": [
+        "broodmother-spider"
+      ],
+      "9": [
+        "broodmother-spider"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    },
+    "moor": {
+      "1": [
+        "spider-queen",
+        "giant-spider"
+      ],
+      "2": [
+        "spider-queen",
+        "giant-spider"
+      ],
+      "3": [
+        "ettercap"
+      ],
+      "4": [
+        "ettercap"
+      ],
+      "5": [
+        "ettercap"
+      ],
+      "6": [
+        "broodmother-spider"
+      ],
+      "7": [
+        "broodmother-spider"
+      ],
+      "8": [
+        "broodmother-spider"
+      ],
+      "9": [
+        "broodmother-spider"
+      ],
+      "10": [
+        "broodmother-spider"
+      ],
+      "11": [
+        "broodmother-spider"
+      ],
+      "12": [
+        "broodmother-spider"
+      ],
+      "13": [
+        "broodmother-spider"
+      ],
+      "14": [
+        "broodmother-spider"
+      ],
+      "15": [
+        "broodmother-spider"
+      ],
+      "16": [
+        "broodmother-spider"
+      ],
+      "17": [
+        "broodmother-spider"
+      ],
+      "18": [
+        "broodmother-spider"
+      ],
+      "19": [
+        "broodmother-spider"
+      ],
+      "20": [
+        "broodmother-spider"
+      ]
+    }
+  },
+  "juggernaut": {
+    "enabledThemes": [
+      "molten",
+      "ancient",
+      "holdfast",
+      "frost"
+    ]
+  },
+  "duelists": {
+    "enabledThemes": [
+      "ancient",
+      "grim",
+      "molten",
+      "frost",
+      "verdant",
+      "forest",
+      "moor",
+      "mire",
+      "holdfast"
+    ]
+  },
+  "necromantic": {
+    "enabledThemes": [
+      "grim",
+      "ancient"
+    ],
+    "grim": {
+      "1": [
+        "skeleton",
+        "zombie"
+      ],
+      "2": [
+        "skeleton",
+        "zombie"
+      ],
+      "3": [
+        "ghoul",
+        "specter",
+        "shadow"
+      ],
+      "4": [
+        "ghoul",
+        "specter",
+        "shadow"
+      ],
+      "5": [
+        "ghoul",
+        "specter",
+        "shadow"
+      ],
+      "6": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "7": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "8": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "9": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "10": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "11": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "12": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "13": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "14": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "15": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "16": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "17": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "18": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "19": [
+        "wraith",
+        "wight",
+        "mummy"
+      ],
+      "20": [
+        "wraith",
+        "wight",
+        "mummy"
+      ]
+    },
+    "ancient": {
+      "1": [
+        "skeleton",
+        "zombie"
+      ],
+      "2": [
+        "skeleton",
+        "zombie"
+      ],
+      "3": [
+        "mummy",
+        "ghoul",
+        "specter"
+      ],
+      "4": [
+        "mummy",
+        "ghoul",
+        "specter"
+      ],
+      "5": [
+        "mummy",
+        "ghoul",
+        "specter"
+      ],
+      "6": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "7": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "8": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "9": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "10": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "11": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "12": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "13": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "14": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "15": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "16": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "17": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "18": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "19": [
+        "wraith",
+        "mummy-lord"
+      ],
+      "20": [
+        "wraith",
+        "mummy-lord"
+      ]
+    }
+  },
+  "arcane_surge": {
+    "enabledThemes": [
+      "ancient",
+      "molten",
+      "frost",
+      "verdant"
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "sheet": [
+    20,
+    19
+  ],
+  "slice": [
+    6,
+    6,
+    6,
+    6
+  ],
+  "thickness": [
+    4,
+    5,
+    4,
+    5
+  ],
+  "tile": [
+    8,
+    7
+  ],
+  "period_detected": [
+    null,
+    null
+  ],
+  "fill": "#1a1e24",
+  "keep_fill": false,
+  "source": "slot.png"
+}

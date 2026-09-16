@@ -139,6 +139,30 @@ export const EFFECTS = {
     incapacitated:true, defAdvantage:true, autoCritMelee:true,
     desc:'Cannot act. Melee hits auto-crit.'
   },
+  petrified: {
+    label:'Petrified', category:'debuff', color:0x8f8f9a, float:'#b8b8c4',
+    acPenalty:0, speedMul:0, dmgMul:1,
+    incapacitated:true, defAdvantage:true, autoCritMelee:true,
+    desc:'Turned to stone. Cannot act. Melee hits auto-crit.'
+  },
+  enlarged: {
+    label:'Enlarged', category:'buff', color:0xffb45a, float:'#ffb45a',
+    acBonus:0, speedMul:1, dmgMul:1.25,
+    dmgBonus:2,
+    desc:'Magically enlarged: +25% damage dealt, +2 damage.'
+  },
+  invisible: {
+    label:'Invisible', category:'buff', color:0xaabbcc, float:'#aabbcc',
+    acBonus:0, speedMul:1, dmgMul:1,
+    invisible:true,
+    desc:'Hidden from enemies until it attacks.'
+  },
+  giantStrength: {
+    label:'Giant Strength', category:'buff', color:0xc9a24a, float:'#c9a24a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    atkBonus:2, dmgBonus:2,
+    desc:'Potent strength: +2 to hit and +2 damage.'
+  },
 
   /* ── Class / Spell Buffs ── */
   raging: {
@@ -157,6 +181,14 @@ export const EFFECTS = {
     acBonus:0, speedMul:1, dmgMul:1,
     atkAdvantage:1, consumeOnAttack:true,
     desc:'Advantage on next attack roll.'
+  },
+  foresight: {
+    label:'Foresight', category:'buff', color:0xffd9a0, float:'#ffd9a0',
+    acBonus:3, speedMul:1, dmgMul:1,
+    atkAdvantage:1,
+    /* Deliberately NOT consumeOnAttack — unlike Bardic Inspiration this is a
+       9th-level effect that stands for the whole fight. */
+    desc:'Advantage on attack rolls. +3 AC from glimpsing what comes next.'
   },
   shielded: {
     label:'Shielded', category:'buff', color:0x88aaff, float:'#88aaff',
@@ -259,6 +291,22 @@ export const EFFECTS = {
     acPenalty:0, speedMul:1, dmgMul:1,
     dotData:true,
     desc:'Bleeding: loses HP each second.'
+  },
+  /* Potion of Heroism: Bless's +1d4 on attacks (the tempHp is granted by the
+     potion itself, see _usePotion). */
+  heroism: {
+    label:'Heroic', category:'buff', color:0xffd27a, float:'#ffd27a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    blessDice:true,
+    desc:'Heroic: +1d4 to attack rolls.'
+  },
+  /* Potion of Resistance, flattened: this game has no per-type resistance
+     channel on heroes, so it shaves a quarter off everything instead. */
+  resistant: {
+    label:'Resistant', category:'buff', color:0x9fd0b0, float:'#9fd0b0',
+    acBonus:0, speedMul:1, dmgMul:1,
+    dmgTakenMul:0.75,
+    desc:'Resistant: takes 25% less damage.'
   },
   magicWeapon: {
     label:'Magic Weapon', category:'buff', color:0xb08cff, float:'#b08cff',
@@ -487,6 +535,7 @@ export function getEffectMods(e) {
     atkDisadvantage:false, atkAdvantage:0, autoCritMelee:false,
     wildShapeDmg:false, sacredDice:false, blessDice:false,
     cantAttackSource:null, acFloor:0, magicWeapon:false,
+    invisible:false,
   };
   if (!e._effects) { e._effectCache = m; return m; }
   for (const [k, eff] of Object.entries(e._effects)) {
@@ -510,6 +559,7 @@ export function getEffectMods(e) {
     if (d.sacredDice) m.sacredDice = true;
     if (d.blessDice) m.blessDice = true;
     if (d.cantAttackSource && eff.source) m.cantAttackSource = eff.source;
+    if (d.invisible) m.invisible = true;
   }
   e._effectCache = m;
   return m;

@@ -1,0 +1,394 @@
+{
+ "spell__magicMissile": [
+  "three small glowing darts flying in a fan",
+  "magenta and pale blue"
+ ],
+ "spell__shield": [
+  "a hexagonal barrier plate glowing at the rim",
+  "pale blue and white"
+ ],
+ "spell__scorchingRay": [
+  "three tapering darts of flame streaking diagonally, each with a bright core and a sharp pointed tip",
+  "hot orange and yellow with deep red edges"
+ ],
+ "spell__fireball": [
+  "a round ball of fire with a trailing tail",
+  "hot orange core fading to yellow, deep red base"
+ ],
+ "spell__haste": [
+  "a winged boot with two speed streaks behind it",
+  "bright yellow-white and pale blue"
+ ],
+ "spell__bless": [
+  "three small radiant motes above an open palm",
+  "warm white and pale gold"
+ ],
+ "spell__spiritualWeapon": [
+  "a floating sword with a ghostly hilt, no hand holding it",
+  "magenta and pale blue"
+ ],
+ "spell__spiritGuardians": [
+  "a ring of three small spirit wisps circling a centre point",
+  "warm white and pale gold"
+ ],
+ "spell__entangle": [
+  "thick vines twisting up and knotting together",
+  "forest green and dark brown"
+ ],
+ "spell__moonbeam": [
+  "a vertical beam of light with a crescent moon at its top",
+  "pale silver-white and cool blue"
+ ],
+ "spell__callLightning": [
+  "a storm cloud with one bolt striking down from it",
+  "bright yellow-white with violet edges"
+ ],
+ "spell__healingWord": [
+  "a bold plus cross with two small sparkles",
+  "healing green and warm white"
+ ],
+ "spell__shatter": [
+  "a shattering crystal breaking into sharp shards",
+  "stormy grey-blue with white highlights"
+ ],
+ "spell__chaosBolt": [
+  "a bolt split into four differently coloured segments",
+  "magenta, cyan, orange and green"
+ ],
+ "spell__dragonBreathSpell": [
+  "a spreading cone of flame from a narrow point",
+  "hot orange fading to yellow, deep red base"
+ ],
+ "spell__hex": [
+  "a jagged occult sigil inside a broken circle",
+  "deep violet and black"
+ ],
+ "spell__armsOfHadar": [
+  "three black tentacles bursting outward from a centre",
+  "bone white and dark purple-black"
+ ],
+ "spell__thunderousSmite": [
+  "a hammer striking down with a sound ring bursting out",
+  "stormy grey-blue with white highlights"
+ ],
+ "spell__huntersMark": [
+  "a crosshair ring with a notch at each compass point",
+  "hunter green and dark bronze"
+ ],
+ "spell__blindness": [
+  "an eye and an ear side by side, both struck through",
+  "pale grey and dark slate"
+ ],
+ "spell__holdPerson": [
+  "a human figure locked rigid inside a glowing ring",
+  "pale gold and cold steel grey"
+ ],
+ "spell__sleep": [
+  "a closed eye with three small z shapes rising",
+  "deep indigo and pale grey"
+ ],
+ "spell__fear": [
+  "a fleeing figure looking back over its shoulder",
+  "deep violet and sickly green"
+ ],
+ "spell__slow": [
+  "an hourglass with a downward arrow beside it",
+  "muted amber and dull bronze"
+ ],
+ "spell__bane": [
+  "a downward arrow inside a dark ring",
+  "sickly green and dark violet"
+ ],
+ "spell__faerieFire": [
+  "a figure outline traced in glowing motes of light",
+  "pale cyan and magenta"
+ ],
+ "spell__rayOfEnfeeblement": [
+  "a thin sickly beam striking a drooping arm",
+  "sickly green and dark violet"
+ ],
+ "spell__web": [
+  "a corner spider web spanning a square frame",
+  "off white and grey"
+ ],
+ "spell__hideousLaughter": [
+  "a wide grinning open mouth with two laugh marks",
+  "rose pink and deep violet"
+ ],
+ "spell__lesserRestoration": [
+  "a bold plus cross inside a clean circular ring, thick strokes",
+  "healing green and warm white"
+ ],
+ "spell__greaterRestoration": [
+  "a large plus cross inside a double radiant ring",
+  "healing green and pale gold"
+ ],
+ "spell__protectionFromEvil": [
+  "a shield with a warding rune glowing on its face",
+  "warm white and pale gold"
+ ],
+ "spell__grease": [
+  "a spreading dark puddle with a slick highlight",
+  "oily brown-black with a yellow sheen"
+ ],
+ "spell__inflictWounds": [
+  "a clawed hand grasping, dark wisps curling off it",
+  "bone white and dark purple-black"
+ ],
+ "spell__acidArrow": [
+  "an arrow with a dripping corrosive head",
+  "acid green and yellow-green"
+ ],
+ "spell__mistyStep": [
+  "a figure dissolving into a puff of mist",
+  "pale cyan and soft white"
+ ],
+ "spell__silence": [
+  "a bell with a bold diagonal slash across it",
+  "pale grey and dark slate"
+ ],
+ "spell__bestowCurse": [
+  "a skull inside a jagged sigil ring",
+  "deep violet and black"
+ ],
+ "spell__lightningBolt": [
+  "a single long bolt striking diagonally",
+  "bright yellow-white with violet edges"
+ ],
+ "spell__massHealingWord": [
+  "a plus cross with three small crosses radiating out",
+  "healing green and warm white"
+ ],
+ "spell__vampiricTouch": [
+  "a clawed hand drawing a red thread of life from below",
+  "blood red and dark purple-black"
+ ],
+ "spell__iceStorm": [
+  "three jagged ice shards falling point down",
+  "pale cyan and white with a deep blue core"
+ ],
+ "spell__blight": [
+  "a withered leaf curling and blackening",
+  "sickly green and dark purple-black"
+ ],
+ "spell__deathWard": [
+  "a skull inside a protective glowing ring",
+  "warm white and pale gold"
+ ],
+ "spell__wallOfFire": [
+  "a vertical wall of flame standing in a row",
+  "hot orange fading to yellow, deep red base"
+ ],
+ "spell__coneOfCold": [
+  "a spreading cone of frost shards from a narrow point",
+  "pale cyan and white with a deep blue core"
+ ],
+ "spell__flameStrike": [
+  "a column of fire falling from above in a pillar",
+  "hot orange and pale gold"
+ ],
+ "spell__massCureWounds": [
+  "a large plus cross with four small crosses around it",
+  "healing green and warm white"
+ ],
+ "spell__holdMonster": [
+  "a horned beast head locked inside a glowing ring",
+  "pale gold and cold steel grey"
+ ],
+ "spell__guidingBolt": [
+  "a radiant spear of light streaking downward",
+  "warm white and pale gold"
+ ],
+ "spell__thunderwave": [
+  "three expanding sound rings pushing outward",
+  "stormy grey-blue with white highlights"
+ ],
+ "spell__cureWounds": [
+  "an open palm with a plus cross floating above it",
+  "healing green and warm white"
+ ],
+ "spell__shieldOfFaith": [
+  "a heater shield with a radiant glow behind it",
+  "warm white and pale gold"
+ ],
+ "spell__magicWeapon": [
+  "a sword blade wreathed in a soft arcane glow",
+  "pale blue and violet"
+ ],
+ "spell__barkskin": [
+  "a round shield made of layered tree bark",
+  "bark brown and moss green"
+ ],
+ "spell__enlargeReduce": [
+  "a small figure and a large figure with a double arrow between",
+  "warm amber and dark bronze"
+ ],
+ "spell__eldritchBlast": [
+  "two braided ropes of crackling energy arcing across the frame, tapering to sharp points at both ends",
+  "magenta and pale blue"
+ ],
+ "spell__chillTouch": [
+  "a skeletal hand reaching upward",
+  "bone white and dark purple-black"
+ ],
+ "spell__chromaticOrb": [
+  "a faceted sphere split into four coloured quarters",
+  "red, blue, green and gold quarters"
+ ],
+ "spell__rayOfSickness": [
+  "a sickly beam with bubbles rising off it",
+  "sickly green and dark violet"
+ ],
+ "spell__flamingSphere": [
+  "a rolling ball of fire with a flame crest on top",
+  "hot orange fading to yellow, deep red base"
+ ],
+ "spell__mirrorImage": [
+  "three overlapping figure outlines, one solid two ghosted",
+  "pale cyan and deep indigo"
+ ],
+ "spell__counterspell": [
+  "a spell sigil cracked in half by a bold X",
+  "deep violet and pale blue"
+ ],
+ "spell__hypnoticPattern": [
+  "a swirling concentric spiral of colour",
+  "magenta, violet and cyan"
+ ],
+ "spell__polymorph": [
+  "a frog and a wolf head split by a diagonal line",
+  "forest green and warm brown"
+ ],
+ "spell__dimensionDoor": [
+  "a doorway of light standing free with nothing behind it",
+  "pale cyan and deep indigo"
+ ],
+ "spell__cloudkill": [
+  "a low rolling cloud of toxic fog with a skull in it",
+  "sickly green and dark violet"
+ ],
+ "spell__animateObjects": [
+  "a chair and a jug floating with motion marks",
+  "magenta and pale blue"
+ ],
+ "spell__findFamiliar": [
+  "a small owl perched, seen from the front",
+  "warm brown and pale gold"
+ ],
+ "spell__spikeGrowth": [
+  "a cluster of sharp thorny spikes rising from the ground",
+  "thorn brown and dull green"
+ ],
+ "spell__passWithoutTrace": [
+  "a boot print fading into shadow",
+  "deep indigo and muted grey"
+ ],
+ "spell__crusadersMantle": [
+  "a banner on a pole with radiant motes around it",
+  "warm white and pale gold"
+ ],
+ "spell__banishment": [
+  "a figure being pulled into a swirling portal",
+  "deep violet and pale cyan"
+ ],
+ "spell__steelWindStrike": [
+  "five sword blades fanned in a sweeping arc",
+  "cold steel grey with a bright edge"
+ ],
+ "spell__disintegrate": [
+  "a solid block crumbling into fine motes",
+  "magenta and pale blue"
+ ],
+ "spell__chainLightning": [
+  "a bolt forking into three branching arcs",
+  "bright yellow-white with violet edges"
+ ],
+ "spell__heal": [
+  "a large bold plus cross with a radiant ring behind",
+  "healing green and warm white"
+ ],
+ "spell__sunbeam": [
+  "a bright sun disc with a beam lancing from it",
+  "warm white and pale gold"
+ ],
+ "spell__harm": [
+  "a clawed hand clutching a withering heart",
+  "sickly green and dark purple-black"
+ ],
+ "spell__fingerOfDeath": [
+  "a skeletal finger pointing forward with a dark wisp",
+  "bone white and dark purple-black"
+ ],
+ "spell__fireStorm": [
+  "several flame columns rising in a row",
+  "hot orange fading to yellow, deep red base"
+ ],
+ "spell__regenerate": [
+  "a curling new shoot sprouting with two leaves",
+  "healing green and warm white"
+ ],
+ "spell__prismaticSpray": [
+  "a fan of seven coloured beams from one point",
+  "red orange yellow green blue indigo violet"
+ ],
+ "spell__sunburst": [
+  "a sun disc with bold rays bursting in all directions",
+  "warm white and pale gold"
+ ],
+ "spell__earthquake": [
+  "cracked ground splitting in a jagged fissure",
+  "earth brown and grey stone"
+ ],
+ "spell__mindBlank": [
+  "a head silhouette with a blank shield over the brain",
+  "pale blue and cold steel grey"
+ ],
+ "spell__dominateMonster": [
+  "a horned beast head with a control sigil on its brow",
+  "deep violet and magenta"
+ ],
+ "spell__meteorSwarm": [
+  "three burning meteors falling with fire trails",
+  "hot orange fading to yellow, deep red base"
+ ],
+ "spell__timeStop": [
+  "a clock face with its hands frozen and a crack across it",
+  "pale gold and deep indigo"
+ ],
+ "spell__powerWordKill": [
+  "a skull with a single bold rune above it",
+  "bone white and dark purple-black"
+ ],
+ "spell__massHeal": [
+  "a large radiant plus cross with a ring of small crosses",
+  "healing green and pale gold"
+ ],
+ "spell__wish": [
+  "a shooting star with a long sparkling trail",
+  "pale gold and warm white"
+ ],
+ "spell__dominatePerson": [
+  "a head silhouette with a control sigil on the brow",
+  "deep violet and magenta"
+ ],
+ "spell__forcecage": [
+  "a cube cage of glowing bars",
+  "magenta and pale blue"
+ ],
+ "spell__foresight": [
+  "an open eye with a radiant ring around the iris",
+  "pale gold and deep violet"
+ ],
+ "spell__powerWordHeal": [
+  "a bold plus cross with a single rune above it",
+  "healing green and pale gold"
+ ],
+ "spell__stormOfVengeance": [
+  "a dark storm cloud with three bolts striking down",
+  "bright yellow-white and stormy grey-blue"
+ ],
+ "spell__trueResurrection": [
+  "a figure rising from a burst of radiant light",
+  "warm white and pale gold"
+ ]
+}

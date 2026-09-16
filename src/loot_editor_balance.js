@@ -239,15 +239,21 @@ export function renderBalancePanels() {
 
   const bpRows = numericKeys(T.basePricing).map(k =>
     knobRow(k, 'basePricing.' + k, T.basePricing[k]));
-  for (const k of numericKeys(T.basePricing.armorDexDiscount)) {
-    bpRows.push(knobRow('dex discount — ' + k,
-      'basePricing.armorDexDiscount.' + k, T.basePricing.armorDexDiscount[k]));
+  for (const slot of Object.keys(T.basePricing.tierIlvl || {})) {
+    T.basePricing.tierIlvl[slot].forEach((lvl, i) => {
+      bpRows.push(knobRow(slot + ' tier ' + (i + 1) + ' — unlocks at ilvl',
+        'basePricing.tierIlvl.' + slot + '.' + i, lvl));
+    });
   }
   out.push(knobPanel('🗡️ Base item pricing',
     'The base is charged against the same budget as its affixes. That is what replaced the '
     + 'old hand-maintained minimum-floor table — an expensive base simply cannot fit a low '
     + 'budget, so nothing has to gate it explicitly. <code>damageDieRef</code> is the free '
-    + 'baseline die.',
+    + 'baseline die. Armour and helms are the exception: they are priced from their authored '
+    + '<code>tier</code> rather than their AC, so light, medium and heavy can share unlock levels '
+    + 'even though their AC numbers differ. These knobs set which item level each tier unlocks '
+    + 'at; which tier a base belongs to lives on the base itself. Any slot listed here gets tier '
+    + 'pricing — slots absent from it (shields) still price off their chassis AC.',
     bpRows.join('')));
 
   out.push(knobPanel('🔥 Elemental type multipliers',

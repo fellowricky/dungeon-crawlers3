@@ -34,13 +34,23 @@ describe('VFX Texture Caching & Preloading', () => {
   });
 
   it('preloadAllSpellAndCombatVFX pre-populates common spell and combat effect textures', () => {
-    preloadAllSpellAndCombatVFX();
+    const compileSpy = vi.fn();
+    const initTexSpy = vi.fn();
+    const mockRenderer = {
+      compile: compileSpy,
+      initTexture: initTexSpy
+    };
+    const mockScene = new THREE.Scene();
+    const mockCam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+
+    preloadAllSpellAndCombatVFX(mockRenderer, mockScene, mockCam);
 
     const slashTex = getOrLoadSpriteTexture('dcss/effect/kny_slash_0.png');
     const boltTex = getOrLoadSpriteTexture('dcss/effect/magic_bolt_1.png');
 
     expect(slashTex).toBeDefined();
     expect(boltTex).toBeDefined();
+    expect(compileSpy).toHaveBeenCalled();
   });
 
   it('spawnSpriteEffect reuses cached textures on first cast', () => {

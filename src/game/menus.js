@@ -15,17 +15,20 @@ import { CLASSES, RACES, ABILITIES, ABILITY_LABEL, mod, fmtMod,
 import { listUnlockedFeatureLabels, totalSlots, slotBreakdown,
   chargeDef, chargesLeft } from './features.js';
 import { isIdentityColorBalance, loadBalancedCanvas } from './color_balance.js';
+import { iconHtml } from './icons.js';
 import {
   SLOTS, SLOT_LABEL, slotsFor, bonusText, perkText, ilvlText,
   RARITIES, getBaseStatsText, migrateItem, previewBonuses, effectiveIlvl, itemCategory,
-  itemPoints
+  itemPoints, compareItemStats, weaponTags, itemReqText, bonusLabel, qtyOf
 } from './items.js';
 import { drawHeroPortrait } from './sprite_animator.js';
 import { refreshWorldMapPanel } from './worldmap.js';
 import { DYEABLE_SLOTS } from './inventory.js';
 import { EFFECTS } from './conditions.js';
+import { SPELLS } from './spells.js';
 import { BESTIARY_UNLOCK } from './constants.js';
 import { openOptions } from './options_ui.js';
+import { openHelp } from './help_ui.js';
 
 const CLASS_ICON = { 
   fighter:'⚔️', rogue:'🏹', cleric:'✨', wizard:'🔮',
@@ -40,10 +43,11 @@ const BAG_CATS = [
   { key:'weapon',    label:'Weapons',     icon:'⚔️' },
   { key:'armor',     label:'Armor',       icon:'🛡️' },
   { key:'accessory', label:'Accessories', icon:'💍' },
+  { key:'consumable',label:'Consumables', icon:'🧪' },
   { key:'other',     label:'Other',       icon:'🧰' }
 ];
 const BAG_CAT_LABEL = Object.fromEntries(BAG_CATS.map(c=>[c.key,c.label]));
-const BAG_CAT_EMPTY = { all:'', weapon:'weapons', armor:'armor', accessory:'accessories', other:'other items' };
+const BAG_CAT_EMPTY = { all:'', weapon:'weapons', armor:'armor', accessory:'accessories', consumable:'scrolls or potions', other:'other items' };
 
 let G = null;              // game controller
 let selHero = 0;           // selected hero index
@@ -51,6 +55,7 @@ let tab = 'equip';         // 'equip' | 'skills' | 'srdSkills' | 'ai'
 let selItem = null;        // selected bag item
 let open = false;
 let bagFilter = 'all';     // active bag category tab
+let bagMinPS = 0;          // junk floor: hide bag items below this power score (0 = show all)
 let dragCtx = null;        // drag-and-drop context { kind:'bag'|'slot', index?, slot? }
 let toastTimer = null;     // cs-toast hide timer
 
@@ -60,15 +65,39 @@ const hex = n => '#'+n.toString(16).padStart(6,'0');
 export function initMenus(game){
   G = game;
 
-  const nav = document.createElement('div');
-  nav.id = 'topnav';
+  /* The two nav buttons live in opposite top corners (see the #hud-top-left /
+     #hud-top-right anchors in index.html), so they are built and placed
+     separately rather than as one bar. Falling back to <body> keeps the
+     headless/stubbed-DOM tests working when the anchors are absent. */
+
   /* One Party button covers gear AND level-ups — the character screen's own tabs
      already switch between them, so a separate Level Up button was a second door
      into the same room. It keeps the pending-points badge and pulse. */
-  nav.innerHTML = `
-    <button id="nav-party" title="Equipment, inventory & level-up points">🎒 <span>Party</span><span id="nav-party-badge" class="badge" style="display:none">0</span></button>
-    <button id="nav-options" title="Options — volume, combat log & automation">⚙️ <span>Options</span></button>`;
-  document.body.appendChild(nav);
+  const partyBtn = document.createElement('button');
+  partyBtn.id = 'nav-party';
+  partyBtn.className = 'hud-nav-btn';
+  partyBtn.title = 'Equipment, inventory & level-up points';
+  partyBtn.innerHTML = `🎒 <span>Party</span><span id="nav-party-badge" class="badge" style="display:none">0</span>`;
+  (document.getElementById('hud-top-left') || document.body).appendChild(partyBtn);
+
+  /* Options is icon-only — the gear reads on its own and the top-right corner
+     is shared with the floor readout. */
+  const optionsBtn = document.createElement('button');
+  optionsBtn.id = 'nav-options';
+  optionsBtn.className = 'hud-nav-btn hud-nav-icon';
+  optionsBtn.title = 'Options — volume, combat log & automation';
+  optionsBtn.setAttribute('aria-label', 'Options');
+  optionsBtn.textContent = '⚙️';
+  (document.getElementById('hud-top-right') || document.body).appendChild(optionsBtn);
+
+  const helpBtn = document.createElement('button');
+  helpBtn.id = 'nav-help';
+  helpBtn.className = 'hud-nav-btn hud-nav-icon';
+  helpBtn.title = 'How to play — the loop, combat rules and keys';
+  helpBtn.setAttribute('aria-label', 'How to play');
+  helpBtn.textContent = '❓';
+  (document.getElementById('hud-top-right') || document.body).appendChild(helpBtn);
+  helpBtn.addEventListener('click', () => openHelp('loop'));
 
   const ov = document.createElement('div');
   ov.id = 'charscreen';
@@ -131,12 +160,13 @@ export function refreshMenus(game = G){
 
 export function openMenu(which){
   if(!G || G.heroes.length===0) return;
-  /* Point selHero to a real hero if it currently points to a companion/temp ally */
-  const realIdx = G.heroes.findIndex(h => !h.companion && !h.temp);
-  if (realIdx >= 0 && (selHero < 0 || selHero >= G.heroes.length || G.heroes[selHero]?.companion || G.heroes[selHero]?.temp)) {
+  /* Point selHero to a rail-eligible hero (roster member or temp quest ally) if it
+     currently points to a summoned companion, or is otherwise out of range. */
+  const realIdx = G.heroes.findIndex(h => !h.companion);
+  if (realIdx >= 0 && (selHero < 0 || selHero >= G.heroes.length || G.heroes[selHero]?.companion)) {
     selHero = realIdx;
   }
-  tab = which; open = true; selItem = null; bagFilter = 'all';
+  tab = which; open = true; selItem = null; bagFilter = 'all'; bagMinPS = 0;
   G.setPaused(true);
   $('charscreen').classList.add('show');
   render();
@@ -188,8 +218,8 @@ function render(){
 
 function renderRail(){
   const rail = $('cs-rail');
-  const real = G.heroes.map((h,i)=>({h,i})).filter(e => !e.h.companion && !e.h.temp);
-  /* If the selected index points to a companion or temp ally, reset to the first real hero */
+  const real = G.heroes.map((h,i)=>({h,i})).filter(e => !e.h.companion);
+  /* If the selected index points to a summoned companion, reset to the first eligible hero */
   if (!real.some(e => e.i === selHero) && real.length > 0) selHero = real[0].i;
   rail.innerHTML = real.map(({h,i})=>{
     const d = h.data, cls = CLASSES[d.classKey];
@@ -198,7 +228,7 @@ function renderRail(){
       <span class="rail-ico" style="background:${hex(cls.color)}22;border-color:${hex(cls.color)}">
         <canvas class="rail-canvas" width="64" height="64" data-i="${i}"></canvas>
       </span>
-      <span class="rail-meta"><b>${d.name}</b><i>Lv ${d.level} ${cls.label}</i></span>
+      <span class="rail-meta"><b>${d.name}</b><i>Lv ${d.level} ${cls.label}${h.temp?' (Ally)':''}</i></span>
       ${pend?`<span class="rail-badge">${pend}</span>`:''}
     </button>`;
   }).join('');
@@ -241,57 +271,99 @@ function statsPanelHTML(d){
   }).join('');
   return `<div class="cs-stats">
     <h3>Hero Stats</h3>
+    <div class="stat-body">
+    <div class="stat-list">
     <div class="stat-row"><span>Attack</span><b>${fmtMod(d.atkBonus)} to hit</b></div>
     <div class="stat-row"><span>Damage</span><b>${dmgString(d)}</b></div>
     <div class="stat-row"><span>Crit</span><b>${d.critRange}—20</b></div>
     <div class="stat-row"><span>HP</span><b>${d.hp} / ${d.maxHp}</b></div>
     <div class="stat-row"><span>Armor Class</span><b>${d.ac}</b></div>
-    <div class="stat-row"><span>Move Speed</span><b>${Math.round(d.speedMult*100)}%</b></div>
+    <div class="stat-row"><span>Combat Move</span><b>${d.speedFt || 30} ft (${Math.floor((d.speedFt || 30)/5)} tiles)</b></div>
+    <div class="stat-row"><span>Explore Speed</span><b>${Math.round(d.speedMult*100)}%</b></div>
     ${cls.healer?`<div class="stat-row"><span>Heal / cast</span><b>1d8+${mod(d.effStats[cls.attack.ability])+d.healBonus}</b></div>`:''}
+    </div>
     <div class="cs-abils">${ab}</div>
-    <div class="cs-feature">${CLASS_ICON[d.classKey]} ${(d.weaponProfile || d.cantripProfile || cls.attack).name} — ${cls.acDesc}<br>${cls.feature}
-    ${d.subclass?`<br>🌟 ${subclassOf(d).label}: ${subclassOf(d).passive}`:''}<br><i>${race.trait}</i></div>
+    </div>
   </div>`;
+}
+
+/* Class kit, class feature and racial trait. This used to trail the stats panel
+   on the Equipment tab; it is prose about the build rather than a live number,
+   so it reads better next to the other build choices on Attributes. */
+function classFeatureHTML(d){
+  const cls = CLASSES[d.classKey], race = RACES[d.raceKey];
+  return `<div class="cs-feature sk-feature">
+    ${iconHtml('class', d.classKey, CLASS_ICON[d.classKey])} ${(d.weaponProfile || d.cantripProfile || cls.attack).name} — ${cls.acDesc}<br>${cls.feature}<br><i>${race.trait}</i></div>`;
 }
 
 function equipHTML(){
   const d = G.heroes[selHero].data;
 
   /* equipment slots — filled slots are draggable so they can be dragged off
-     (unequip) or rearranged (e.g. ring1 -> ring2). */
-  const slots = SLOTS.map(s=>{
+     (unequip) or rearranged (e.g. ring1 -> ring2). The doll lays them out by
+     key rather than in SLOTS order, so build one at a time and look them up. */
+  const slotHTML = (key) => {
+    const s = SLOTS.find(x=>x.key===key);
+    if(!s) return '';
     const it = d.equipment[s.key];
     if(it){
       migrateItem(it);
       const leg = it.rarity === 'legendary' ? ' legendary-slot' : '';
       const tipPerk = perkText(it);
+      const tLine = trinketLine(it);
+      const chargeBadge = (it.charges != null) ? `<span class="eq-charges" title="${it.charges} charge${it.charges === 1 ? '' : 's'} remaining">×${it.charges}</span>` : '';
+      const tTip = (it.scroll || it.potion)
+        ? `${it.name}\n${ilvlText(it, d.level)}\n${tLine || ''}\n${it.charges} charge${it.charges === 1 ? '' : 's'} remaining`
+        : `${it.name}\n${ilvlText(it, d.level)}\n${bonusText(it, d.level)}${tipPerk ? '\n' + tipPerk : ''}`;
       return `<div class="eq-slot filled${leg}" data-slot="${s.key}" draggable="true" style="border-color:${it.color}"
-        title="${it.name}\n${ilvlText(it, d.level)}\n${bonusText(it, d.level)}${tipPerk ? '\n' + tipPerk : ''}">
+        title="${tTip}">
         <span class="eq-ico">${itemIconHTML(it.icon)}</span>
+        ${chargeBadge}
         <span class="eq-slotlabel" style="color:${it.color}">${SLOT_LABEL[s.key]}</span></div>`;
     }
-    return `<div class="eq-slot" data-slot="${s.key}"><span class="eq-ph">${s.icon}</span>
+    return `<div class="eq-slot" data-slot="${s.key}"><span class="eq-ph">${itemIconHTML(s.icon)}</span>
       <span class="eq-slotlabel">${s.label}</span></div>`;
-  }).join('');
+  };
+  /* Paper-doll columns: worn-on-the-body down the left, held/carried down the
+     right, and the paired slots (rings, kits) in a rank beneath the portrait.
+     Four rows a side means the portrait cell is tall enough to be a portrait
+     without pushing the panel past the frame height. */
+  const dollLeft  = ['helm','amulet','armor','gloves'].map(slotHTML).join('');
+  const dollRight = ['weapon','offhand','boots','trinket'].map(slotHTML).join('');
+  const dollFoot  = ['ring1','ring2','kit1','kit2'].map(slotHTML).join('');
 
   /* category-filtered bag. data-i stays indexed against the FULL inventory so
      equip/sell address the right item regardless of the active tab. */
   const shown = bagFilter==='all' ? G.inventory.slice() : G.inventory.filter(it=>itemCategory(it)===bagFilter);
+  /* The PS slider narrows the GRID only. `shown` stays category-only because
+     the bulk-sell panel is built from it, and sellByRarity re-filters by
+     category alone — if the slider trimmed that list the buttons would promise
+     one count and sell a larger one. */
+  const psOf = (it) => itemPoints(it) || 0;
+  const maxPS = shown.reduce((m,it)=>Math.max(m, psOf(it)), 0);
+  const inPS = (it) => psOf(it) >= bagMinPS;
+  const visible = shown.filter(inPS);
+  const hiddenByPS = shown.length - visible.length;
   let bag;
   if(G.inventory.length===0){
     bag = `<div class="bag-empty">Your bag is empty. Loot some chests!</div>`;
   } else if(shown.length===0){
     bag = `<div class="bag-empty">No ${BAG_CAT_EMPTY[bagFilter]} here.</div>`;
+  } else if(visible.length===0){
+    bag = `<div class="bag-empty">Everything here scores under PS ${bagMinPS}. Lower the junk floor to see it.</div>`;
   } else {
     bag = G.inventory.map((it,i)=>{
       if(bagFilter!=='all' && itemCategory(it)!==bagFilter) return '';
+      if(!inPS(it)) return '';
       migrateItem(it);
       const leg = it.rarity === 'legendary' ? ' legendary-item' : '';
       const lockBadge = it.locked ? '<span class="bag-lock-badge" title="Locked (Protected from sell-all)">🔒</span>' : '';
+      const qty = qtyOf(it);
+      const qtyBadge = qty > 1 ? `<span class="bag-qty">×${qty}</span>` : '';
       return `<div class="bag-item${leg} ${selItem===it?'sel':''}" data-i="${i}" draggable="true"
-        style="border-color:${it.color}" title="${it.name}${it.locked ? ' (Locked)' : ''}">
+        style="border-color:${it.color}" title="${it.name}${qty > 1 ? ` ×${qty}` : ''}${it.locked ? ' (Locked)' : ''}">
         <span class="bag-ico">${itemIconHTML(it.icon)}</span>
-        ${lockBadge}
+        ${lockBadge}${qtyBadge}
         <span class="bag-r" style="background:${it.slot==='dye' ? it.dyeColor : it.color}"></span></div>`;
     }).join('');
   }
@@ -306,36 +378,84 @@ function equipHTML(){
 
   const cls = CLASSES[d.classKey];
   return `
-    <div class="cs-portrait">
-      <div class="pt-art" style="background:radial-gradient(circle at 50% 40%, ${hex(cls.color)}33, transparent 70%)">
-        <canvas class="pt-canvas" width="64" height="64"></canvas>
+    <div class="cs-hero">
+      <div class="cs-doll">
+        <div class="eq-col">${dollLeft}</div>
+        <div class="cs-portrait">
+          <div class="pt-art" style="background:radial-gradient(circle at 50% 40%, ${hex(cls.color)}33, transparent 70%)">
+            <canvas class="pt-canvas" width="64" height="64"></canvas>
+          </div>
+          <div class="pt-name">${d.name}</div>
+          <div class="pt-sub">Lv ${d.level} ${RACES[d.raceKey].label} ${cls.label}</div>
+        </div>
+        <div class="eq-col">${dollRight}</div>
+        <div class="eq-row">${dollFoot}</div>
       </div>
-      <div class="pt-name">${d.name}</div>
-      <div class="pt-sub">Lv ${d.level} ${RACES[d.raceKey].label} ${cls.label}</div>
+      <div class="cs-equip-foot">
+        <label class="eq-cosmetic" title="Hides the headgear sprite on this hero only. The helm stays equipped and keeps all of its bonuses.">
+          <input type="checkbox" id="eq-hide-helm"${d.visual && d.visual.hideHelm ? ' checked' : ''}>
+          <span>Hide this hero's hat</span>
+        </label>
+        <div class="eq-hint">Click an equipped item to remove · Double-click or drag bag items to equip.</div>
+      </div>
+      ${statsPanelHTML(d)}
+      ${activeEffectsHTML(d)}
     </div>
-    <div class="cs-equip">
-      <div class="eq-grid">${slots}</div>
-      <label class="eq-cosmetic" title="Hides the headgear sprite on this hero only. The helm stays equipped and keeps all of its bonuses.">
-        <input type="checkbox" id="eq-hide-helm"${d.visual && d.visual.hideHelm ? ' checked' : ''}>
-        <span>Hide this hero's hat</span>
-      </label>
-      <div class="eq-hint">Click an equipped item to remove · Double-click or drag bag items to equip.</div>
-    </div>
-    ${statsPanelHTML(d)}
     <div class="cs-bag">
       <h3>Bag <span class="bag-count">${G.inventory.length}</span>
         <span class="bag-sort">
+          <button class="sort-btn" data-sort="ps-desc" title="Sort: strongest first (power score)">⚔🔽</button>
+          <button class="sort-btn" data-sort="ps-asc" title="Sort: weakest first (power score)">⚔🔼</button>
           <button class="sort-btn" data-sort="rarity-desc" title="Sort: best rarity first">🔽</button>
           <button class="sort-btn" data-sort="rarity-asc" title="Sort: worst rarity first">🔼</button>
           <button class="sort-btn" data-sort="name" title="Sort: by name">🔤</button>
         </span>
       </h3>
       <div class="bag-tabs">${bagTabs}</div>
+      ${psFilterHTML(maxPS, hiddenByPS)}
       <div class="bag-grid">${bag}</div>
+      ${bulkSellHTML(visible)}
       <div class="cs-bag-foot">${detailHTML(d)}</div>
-      ${bulkSellHTML(shown)}
+    </div>`;
+}
+
+function inlineComparisonHTML(hero, item) {
+  if (!hero || !item || item.slot === 'dye') return '';
+  const opts = slotsFor(item.slot);
+  if (!opts || !opts.length) return '';
+  const equippedList = opts.map(s => hero.equipment?.[s]).filter(Boolean);
+  let equipped = null;
+  if (equippedList.length > 1) {
+    equipped = equippedList.reduce((min, eq) => itemPoints(eq) < itemPoints(min) ? eq : min, equippedList[0]);
+  } else if (equippedList.length === 1) {
+    equipped = equippedList[0];
+  }
+  const diffs = compareItemStats(item, equipped, hero.level);
+  if (!diffs.length && !equipped) return '';
+
+  const eqText = equipped
+    ? `<span style="color:${equipped.color}">${itemIconHTML(equipped.icon)} ${equipped.name}</span>`
+    : `<span style="color:#8a8474"><i>(Empty slot)</i></span>`;
+
+  let diffsHTML = '';
+  if (diffs.length > 0) {
+    diffsHTML = diffs.map(d => {
+      const cls = d.isPositive ? 'pos' : (d.isNegative ? 'neg' : 'neutral');
+      return `<span class="diff-tag ${cls}">${d.text}</span>`;
+    }).join(' ');
+  } else {
+    diffsHTML = `<span class="diff-tag neutral">Equal stats</span>`;
+  }
+
+  return `
+    <div class="id-compare">
+      <div class="id-compare-header">
+        <span class="id-compare-label">vs Equipped:</span>
+        <span class="id-compare-eq">${eqText}</span>
+      </div>
+      <div class="id-compare-diffs">${diffsHTML}</div>
     </div>
-    ${activeEffectsHTML(d)}`;
+  `;
 }
 
 /* Selected-item detail + Equip/Sell actions. Extracted so the single-click
@@ -343,6 +463,10 @@ function equipHTML(){
    rebuilding the bag grid — which would destroy the .bag-item element mid
    double-click and mid-drag, breaking both interactions. */
 function detailHTML(d){
+  /* Nothing selected renders nothing at all — inspection is the hover tooltip's
+     job, so reserving a card's worth of height for it just cost bag rows. The
+     card still appears on selection because Equip / Sell / Lock live in it, and
+     it sits BELOW the sell row so appearing pushes nothing around. */
   if(!selItem) return '';
   migrateItem(selItem);
   const isLocked = !!selItem.locked;
@@ -351,21 +475,45 @@ function detailHTML(d){
     return `<div class="item-detail">
         <div class="id-name" style="color:${selItem.color}">${itemIconHTML(selItem.icon)} ${selItem.name}
           <span class="dye-swatch" style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-left:6px;background:${selItem.dyeColor};border:1px solid rgba(255,255,255,0.35)"></span></div>
-        <div class="id-slot">Dye — ${cap(selItem.rarity)}</div>
+        <div class="id-slot">Dye — ${cap(selItem.rarity)}${qtyLine(selItem)}</div>
         <div class="id-bonus">Drag onto an equipped item to recolor it (helm, armor, weapon, shield, gloves, amulet, boots).</div>
         <div class="id-actions">
           <button id="id-lock">${isLocked ? '🔒 Locked' : '🔓 Lock'}</button>
-          <button id="id-sell" ${isLocked ? 'disabled title="Unlock item to sell"' : ''}>Sell — ${selItem.value}g</button>
+          ${sellButtons(selItem, isLocked)}
         </div>
       </div>`;
   }
   const eqOk = canEquip(d, selItem);
+  const compHTML = inlineComparisonHTML(d, selItem);
+  /* Trinkets (scrolls/potions) carry a spell or buff instead of stat bonuses —
+     show that plus their charge count. */
+  if(selItem.scroll || selItem.potion){
+    const tLine = trinketLine(selItem);
+    const eqWarn = !eqOk
+      ? (selItem.casterOnly ? 'Only spellcasters can use this scroll.' : `${CLASSES[d.classKey].label} can't use this.`)
+      : '';
+    return `<div class="item-detail">
+      <div class="id-name" style="color:${selItem.color}">${itemIconHTML(selItem.icon)} ${selItem.name} ${isLocked ? '🔒' : ''}</div>
+      <div class="id-slot">${cap(selItem.slot)} — ${cap(selItem.rarity)} · ${ilvlText(selItem, d.level)}${qtyLine(selItem)}</div>
+      <div class="id-bonus">${tLine || 'No bonuses'}</div>
+      <div class="id-perk">${selItem.charges} charge${selItem.charges === 1 ? '' : 's'} each</div>
+      ${compHTML}
+      <div class="id-actions">
+        <button id="id-equip" ${eqOk?'':'disabled'} title="${eqOk?'':(selItem.casterOnly ? 'Caster classes only' : 'Not proficient')}">Equip ${qtyOf(selItem) > 1 ? 'one ' : ''}on ${d.name}</button>
+        <button id="id-lock">${isLocked ? '🔒 Locked' : '🔓 Lock'}</button>
+        ${sellButtons(selItem, isLocked)}
+      </div>
+      ${eqWarn ? `<div class="id-warn">${eqWarn}</div>` : ''}
+      <div class="id-hint">${selItem.thrown ? 'Thrown in combat by whoever carries it — no magic needed. One charge per throw.' : selItem.scroll ? 'Casts the spell while equipped, consuming one charge per cast.' : 'Drink while equipped (uses a charge).'} When the last charge goes, the next one in the bag is readied automatically. Double-click or drag to a slot to equip.</div>
+    </div>`;
+  }
   const pLine = perkText(selItem);
   return `<div class="item-detail${selItem.rarity==='legendary'?' legendary-detail':''}">
       <div class="id-name" style="color:${selItem.color}">${itemIconHTML(selItem.icon)} ${selItem.name} ${isLocked ? '🔒' : ''}</div>
-      <div class="id-slot">${cap(selItem.slot)} — ${cap(selItem.rarity)} · ${ilvlText(selItem, d.level)}</div>
+      <div class="id-slot">${cap(selItem.slot)} — ${cap(selItem.rarity)} · ${ilvlText(selItem, d.level)} · <span style="color:#5fd46a; font-weight:600;">PS ${itemPoints(selItem)}</span></div>
       <div class="id-bonus">${bonusText(selItem, d.level)||'No bonuses'}</div>
       ${pLine ? `<div class="id-perk">${pLine}</div>` : ''}
+      ${compHTML}
       <div class="id-actions">
         <button id="id-equip" ${eqOk?'':'disabled'} title="${eqOk?'':'Class not proficient'}">Equip on ${d.name}</button>
         <button id="id-lock">${isLocked ? '🔒 Locked' : '🔓 Lock'}</button>
@@ -376,6 +524,62 @@ function detailHTML(d){
     </div>`;
 }
 
+/* Stack readouts for the detail panel. Stacks sell one unit per click by
+   default — the whole-stack button is separate and says its total, so a
+   fat stack of rare dyes is never a single misclick from gone. */
+function qtyLine(it){
+  const q = qtyOf(it);
+  return q > 1 ? ` · <b>×${q}</b> in bag` : '';
+}
+function sellButtons(it, isLocked){
+  const q = qtyOf(it);
+  const dis = isLocked ? 'disabled title="Unlock item to sell"' : '';
+  const one = `<button id="id-sell" ${dis}>Sell${q > 1 ? ' one' : ''} — ${it.value}g</button>`;
+  const all = q > 1 ? `<button id="id-sell-all" ${dis}>Sell all ×${q} — ${(it.value | 0) * q}g</button>` : '';
+  return one + all;
+}
+
+/**
+ * Minimum-power-score filter for the bag grid.
+ *
+ * Rarity says how many affix rolls an item got; PS says how much it is actually
+ * worth wearing, so this is the axis worth filtering on when the bag fills up
+ * with well-rolled commons and badly-rolled epics. Hidden only — nothing is
+ * sold or discarded, and the bulk-sell panel is unaffected.
+ *
+ * Rendered only when the current tab holds something with a PS at all, so it
+ * does not appear over dyes and potions (which score 0 and would all vanish the
+ * moment the slider left zero).
+ */
+function psFilterHTML(maxPS, hiddenByPS) {
+  if (!(maxPS > 0)) return '';
+  /* One floor, not two sliders. A max-PS cap meant hiding your best finds,
+     which nobody wants, and dragging a range to a precise number is the wrong
+     input for what players actually do here: knock out the junk and move on.
+     The presets come off the bag's own spread so the numbers mean something
+     relative to what you are carrying rather than being absolute PS trivia. */
+  const steps = [...new Set([0.25, 0.5, 0.75]
+    .map(f => Math.max(5, Math.round(maxPS * f / 5) * 5))
+    .filter(v => v > 0 && v <= maxPS))];
+  const chip = (val, label, tip) => `
+    <button class="ps-chip${bagMinPS === val ? ' on' : ''}" data-psfloor="${val}" title="${tip}">${label}</button>`;
+  const chips = chip(0, 'All', 'Show every item in the bag')
+    + steps.map(v => chip(v, `&lt;${v}`, `Hide bag items under ${v} power score`)).join('');
+  const sell = (bagMinPS > 0 && hiddenByPS > 0)
+    ? `<button class="ps-sell" data-pssell="${bagMinPS}"
+        title="Sell the ${hiddenByPS} hidden item(s) under PS ${bagMinPS}. Locked and legendary items are never sold.">
+        Sell ${hiddenByPS} junk</button>`
+    : '';
+  const hint = bagMinPS > 0
+    ? `<span class="ps-hidden">${hiddenByPS} hidden</span>`
+    : '<span class="ps-hidden dim">showing all</span>';
+  return `<div class="ps-filter">
+    <span class="ps-filter-label" title="Power score floor">Junk</span>
+    <span class="ps-chips">${chips}</span>
+    ${hint}${sell}
+  </div>`;
+}
+
 /** Count items per rarity and render bulk-sell buttons.
  *  `pool` is the (already category-filtered) bag list — bulk-sell operates only
  *  on the active tab's UNLOCKED items. */
@@ -383,16 +587,31 @@ function bulkSellHTML(pool){
   const RARITY_ORDER = ['legendary','epic','rare','uncommon','common'];
   const unlocked = pool.filter(it => !it.locked);
   const counts = {};
-  for(const it of unlocked) counts[it.rarity] = (counts[it.rarity]||0) + 1;
+  for(const it of unlocked) counts[it.rarity] = (counts[it.rarity]||0) + qtyOf(it);
   const rows = RARITY_ORDER.filter(r => counts[r]).map(r => {
-    const totalVal = unlocked.filter(it => it.rarity === r).reduce((s,it) => s + it.value, 0);
     const c = RARITIES[r].color;
-    return `<button class="sell-rarity-btn" data-rarity="${r}" style="border-color:${c}; color:${c}">
-      Sell all ${r} (${counts[r]}) — ${totalVal}g</button>`;
+    const totalVal = unlocked.filter(it => it.rarity === r).reduce((s,it) => s + (it.value | 0) * qtyOf(it), 0);
+    /* Chip per rarity on one line. The gold total moved to the tooltip: it was
+       five stacked full-width rows of it, and the number is confirmation
+       detail, not something you scan for. */
+    return `<button class="sell-rarity-btn" data-rarity="${r}" style="border-color:${c}; color:${c}"
+      title="Sell all ${r} items shown (${counts[r]}) for ${totalVal}g">${cap(r)} <b>${counts[r]}</b></button>`;
   });
   if(!rows.length) return '';
   const scope = bagFilter!=='all' ? ` · ${BAG_CAT_LABEL[bagFilter]}` : '';
-  return `<div class="bulk-sell"><div class="bulk-sell-title">Sell by rarity${scope}</div><div class="bulk-sell-btns">${rows.join('')}</div></div>`;
+  /* Say the PS window out loud. These buttons destroy items, and they now sell
+     exactly what the filter is showing — the player has to be able to see that
+     the sale is narrowed without inferring it from the counts. */
+  const psActive = bagMinPS > 0;
+  const psScope = psActive ? ` · PS ${bagMinPS}+` : '';
+  const note = psActive
+    ? `<div class="bulk-sell-note" style="font-size:15px; opacity:0.75;">Only items shown by the power-score filter are sold.</div>`
+    : '';
+  return `<div class="bulk-sell">
+    <div class="bulk-sell-row">
+      <span class="bulk-sell-title">Sell all${scope}${psScope}</span>
+      <span class="bulk-sell-btns">${rows.join('')}</span>
+    </div>${note}</div>`;
 }
 
 /**
@@ -449,7 +668,7 @@ function activeEffectsHTML(d) {
     const def = EFFECTS[key];
     if (!def) return '';
 
-    const icon = EFFECT_ICONS[key] || '•';
+    const icon = iconHtml('status', key, EFFECT_ICONS[key] || '•');
     const color = def.color ? '#' + def.color.toString(16).padStart(6,'0') : '#aaa';
     const catClass = def.category === 'buff' ? 'ae-buff'
                    : def.category === 'dot'  ? 'ae-dot'
@@ -572,10 +791,28 @@ function wireEquip(){
   main.querySelectorAll('.sort-btn').forEach(btn => {
     btn.addEventListener('click', () => { G.sortInventory(btn.dataset.sort); selItem = null; render(); });
   });
+  /* junk floor: pick a threshold, then optionally dump what it hides */
+  main.querySelectorAll('.ps-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bagMinPS = Math.max(0, parseInt(btn.dataset.psfloor, 10) || 0);
+      selItem = null;
+      render();
+    });
+  });
+  const psSell = main.querySelector('.ps-sell');
+  if (psSell) psSell.addEventListener('click', () => {
+    const floor = Math.max(0, parseInt(psSell.dataset.pssell, 10) || 0);
+    if (!floor) return;
+    const n = G.sellBelowPS(floor, bagFilter === 'all' ? null : bagFilter);
+    if (!n) flashNotice('Nothing to sell there — the rest is locked or legendary.');
+    selItem = null;
+    render();
+  });
   /* bulk sell by rarity (respects the active category tab) */
   main.querySelectorAll('.sell-rarity-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      G.sellByRarity(btn.dataset.rarity, bagFilter==='all' ? null : bagFilter);
+      G.sellByRarity(btn.dataset.rarity, bagFilter==='all' ? null : bagFilter,
+        { min: bagMinPS, max: null });
       selItem = null;
       render();
     });
@@ -618,7 +855,14 @@ function wireDetail(){
     render();
   });
   const sell = main.querySelector('#id-sell');
-  if(sell) sell.addEventListener('click', ()=>{ if(!selItem || selItem.locked) return; G.sellItem(selItem); selItem = null; render(); });
+  if(sell) sell.addEventListener('click', ()=>{
+    if(!selItem || selItem.locked) return;
+    G.sellItem(selItem, 1);
+    if(!G.inventory.includes(selItem)) selItem = null;
+    render();
+  });
+  const sellAll = main.querySelector('#id-sell-all');
+  if(sellAll) sellAll.addEventListener('click', ()=>{ if(!selItem || selItem.locked) return; G.sellItem(selItem, Infinity); selItem = null; render(); });
 }
 
 /* Whether a bag item can land on this equipment slot. Mirrors equipItem()'s
@@ -742,80 +986,203 @@ function flashNotice(msg){
 }
 
 /* --- icon renderer helper --- */
+/* Size lives in CSS (.item-ico), not an inline style — an inline width beats
+   every selector, so a 28px icon could not grow to fill the big equip slots. */
 function itemIconHTML(icon, className="") {
   if (icon && icon.includes('/')) {
-    return `<img class="${className}" src="./${icon}" style="width:28px;height:28px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;" />`;
+    return `<img class="item-ico ${className}" src="./${icon}" />`;
   }
   return icon || '';
 }
 
-/* --- bag hover comparison tooltip --- */
-function itemTipBlock(it, heading, headColor, heroLevel=null){
-  if(!it) return `<div class="tt-block empty"><div class="tt-head">${heading}</div><i>— empty —</i></div>`;
-  migrateItem(it);
-  let bText = bonusText(it, heroLevel);
-  if(!bText){
-    const baseStats = getBaseStatsText(it.slot, it.name);
-    bText = baseStats || 'No bonuses';
+/* Display line for a trinket (scroll/potion): the spell or buff it carries. */
+function trinketLine(it){
+  if(!it) return '';
+  if(it.scroll && it.spellKey){
+    const sp = SPELLS[it.spellKey];
+    if(sp) return `${sp.label}${sp.level ? ' (Lv ' + sp.level + ')' : ''} — ${sp.desc}`;
+    return it.spellKey;
   }
-  const pLine = perkText(it);
-  return `<div class="tt-block">
+  if(it.potion && it.buffKey){
+    const eff = EFFECTS[it.buffKey];
+    const extra = it.tempHp > 0 ? ` +${it.tempHp} temporary HP.` : '';
+    if(eff) return `${eff.label} — ${eff.desc}${extra}`;
+    return it.buffKey;
+  }
+  if(it.potion && it.cures && it.cures.length){
+    return `Cures ${it.cures.map(c => (EFFECTS[c] && EFFECTS[c].label) || c).join(', ')}.`;
+  }
+  return '';
+}
+
+/* --- bag hover comparison tooltip ---------------------------------------
+   Two cards side by side rather than one stacked above the other, so a
+   comparison is read across a row instead of up and down. Within a card the
+   order is: what it is (name + what you must be proficient in), what it
+   fundamentally does (the damage die / AC base, on its own line), then the
+   affixes rolled on top of that, then the perk, then the score. The old
+   version ran the base die and every affix together into one em-dash
+   separated sentence, which is what made it unreadable at a glance. */
+
+/* Fixed row order so nothing shuffles between renders. Keys not listed here
+   are appended afterwards, sorted. */
+const TT_STAT_ORDER = ['ac','atk','dmg','hp','crit','heal',
+  'str','dex','con','int','wis','cha','move','speed'];
+
+function ttStatText(k, v){
+  const sign = v > 0 ? '+' : '';
+  if (k === 'speed') return sign + Math.round(v * 100) + '%';
+  if (k === 'move')  return sign + v + ' ft';
+  return sign + v;
+}
+
+/** Flatten an item's bonuses to a {key: value} map, kit skills included. */
+function ttBonusMap(it, heroLevel){
+  if (!it) return {};
+  const b = previewBonuses(it, effectiveIlvl(it, heroLevel)) || {};
+  const out = {};
+  for (const k in b){
+    if (k === 'skills'){
+      for (const sk in b.skills) if (b.skills[sk]) out['skill:' + sk] = b.skills[sk];
+      continue;
+    }
+    if (b[k]) out[k] = b[k];
+  }
+  return out;
+}
+
+function ttLabel(k){
+  if (k.indexOf('skill:') === 0) return SKILLS[k.slice(6)]?.label || k.slice(6);
+  return bonusLabel(k);
+}
+
+/** Union of the two items' stat keys, in display order. */
+function ttOrderedKeys(...maps){
+  const seen = new Set();
+  for (const m of maps) for (const k in m) if (k !== '__ps') seen.add(k);
+  const ordered = TT_STAT_ORDER.filter(k => seen.has(k));
+  const rest = [...seen].filter(k => !TT_STAT_ORDER.includes(k)).sort();
+  return [...ordered, ...rest];
+}
+
+/** The headline stat: the reason the item exists, on its own line. */
+function ttPrimaryHTML(it){
+  if (it.slot === 'weapon' && it.dmg){
+    const tags = weaponTags(it);
+    const die = `${it.dmg[0]}d${it.dmg[1]}${it.dmgType ? ' ' + it.dmgType : ''}`;
+    return `<div class="tt-primary">${die}</div>`
+      + (tags.length ? `<div class="tt-tags">${tags.join(' \u00b7 ')}</div>` : '');
+  }
+  if (it.armorBase) return `<div class="tt-primary">AC ${it.armorBase}</div>`;
+  if (it.acBase)    return `<div class="tt-primary">+${it.acBase} AC</div>`;
+  return '';
+}
+
+/** One card. `keys` is the shared row set, so both cards line up row for row. */
+function ttCard(it, heading, headColor, heroLevel, keys, cmpMap){
+  if (!it){
+    return `<div class="tt-card empty">
+      <div class="tt-head">${heading}</div>
+      <div class="tt-none">nothing equipped</div></div>`;
+  }
+  migrateItem(it);
+  const sub = [cap(it.rarity), itemReqText(it)].filter(Boolean).join(' \u00b7 ');
+
+  if (it.scroll || it.potion){
+    return `<div class="tt-card">
+      <div class="tt-head" style="color:${headColor}">${heading}</div>
+      <div class="tt-name" style="color:${it.color}">${itemIconHTML(it.icon)} ${it.name}</div>
+      <div class="tt-sub">${sub}</div>
+      <div class="tt-primary">${trinketLine(it) || 'Consumable'}</div>
+      <div class="tt-rows"><div class="tt-row"><span>Charges</span><b>${it.charges}</b></div></div>
+    </div>`;
+  }
+
+  const mine = ttBonusMap(it, heroLevel);
+  const rows = (keys || []).map(k => {
+    const v = mine[k];
+    const has = v !== undefined;
+    /* A stat this item does NOT carry is still a delta when the thing being
+       replaced carried it \u2014 that is a loss on equip, and the most important
+       number in the tooltip. Compute the difference before deciding how to
+       draw the row, treating "absent" as zero rather than skipping it. */
+    let d = '';
+    if (cmpMap){
+      const diff = (has ? v : 0) - (cmpMap[k] || 0);
+      if (diff) d = `<i class="tt-d ${diff > 0 ? 'pos' : 'neg'}">${ttStatText(k, diff)}</i>`;
+    }
+    if (!has){
+      return `<div class="tt-row none"><span>${ttLabel(k)}</span><b>\u2014</b>${d}</div>`;
+    }
+    return `<div class="tt-row"><span>${ttLabel(k)}</span><b>${ttStatText(k, v)}</b>${d}</div>`;
+  }).join('');
+
+  const perk = perkText(it);
+  const ps = itemPoints(it);
+  let psD = '';
+  if (cmpMap){
+    const diff = ps - (cmpMap.__ps || 0);
+    if (diff) psD = `<i class="tt-d ${diff > 0 ? 'pos' : 'neg'}">${diff > 0 ? '+' : ''}${diff}</i>`;
+  }
+  return `<div class="tt-card">
     <div class="tt-head" style="color:${headColor}">${heading}</div>
     <div class="tt-name" style="color:${it.color}">${itemIconHTML(it.icon)} ${it.name}</div>
-    <div class="tt-ps">PS ${itemPoints(it)}</div>
-    <div class="tt-sub">${cap(it.slot)} — ${cap(it.rarity)} · ${ilvlText(it, heroLevel)}</div>
-    <div class="tt-bonus">${bText}</div>
-    ${pLine ? `<div class="tt-perk">${pLine}</div>` : ''}
+    <div class="tt-sub">${sub}${heroLevel != null ? ' \u00b7 ' + ilvlText(it, heroLevel) : ''}</div>
+    ${ttPrimaryHTML(it)}
+    ${rows ? `<div class="tt-rows">${rows}</div>` : ''}
+    ${perk ? `<div class="tt-perk">${perk}</div>` : ''}
+    <div class="tt-foot"><span>Power Score</span><b>${ps}</b>${psD}</div>
   </div>`;
 }
-function compareTooltipHTML(item, hero){
+
+/* Single-card hover (an equipped slot, with nothing to compare against). */
+export function itemTipBlock(it, heading, headColor, heroLevel=null, compareWith=undefined){
+  const keys = ttOrderedKeys(ttBonusMap(it, heroLevel));
+  const cmp = compareWith === undefined ? null
+    : Object.assign(ttBonusMap(compareWith, heroLevel),
+                    { __ps: compareWith ? itemPoints(compareWith) : 0 });
+  return ttCard(it, heading, headColor, heroLevel, keys, cmp);
+}
+
+export function compareTooltipHTML(item, hero){
   migrateItem(item);
-  /* dyes: no gear comparison — name, swatch, and how to use */
+  /* dyes: no gear comparison - name, swatch, and how to use */
   if(item.slot==='dye'){
     return `
-      <div class="tt-block">
+      <div class="tt-card">
         <div class="tt-name" style="color:${item.color}">${itemIconHTML(item.icon)} ${item.name}
-          <span style="display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-left:5px;background:${item.dyeColor};border:1px solid rgba(255,255,255,0.35)"></span></div>
-        <div class="tt-sub">Dye — ${cap(item.rarity)}</div>
-        <div class="tt-bonus">Drag onto an equipped item to recolor it.</div>
+          <span style="display:inline-block;width:12px;height:12px;vertical-align:middle;margin-left:5px;background:${item.dyeColor};border:1px solid rgba(255,255,255,0.35)"></span></div>
+        <div class="tt-sub">Dye \u00b7 ${cap(item.rarity)}</div>
+        <div class="tt-primary">Drag onto equipped gear to recolor it.</div>
       </div>`;
   }
   const opts = slotsFor(item.slot);
-  const equipped = opts.map(s=>hero.equipment[s]).find(Boolean) || null;
+  const equippedList = opts.map(s=>hero.equipment?.[s]).filter(Boolean);
+  let equipped = null;
+  if (equippedList.length > 1) {
+    equipped = equippedList.reduce((min, eq) => itemPoints(eq) < itemPoints(min) ? eq : min, equippedList[0]);
+  } else if (equippedList.length === 1) {
+    equipped = equippedList[0];
+  }
   if (equipped) migrateItem(equipped);
   const eqOk = canEquip(hero, item);
-  const delta = equipped ? bonusDeltaHTML(item, equipped, hero.level) : '';
+
+  /* One row set across both cards: a stat only one of them carries still gets a
+     line on the other side showing a dash. That alignment is what makes the
+     comparison readable without parsing two independent lists. */
+  const bagMap = ttBonusMap(item, hero.level);
+  const eqMap  = ttBonusMap(equipped, hero.level);
+  const keys   = ttOrderedKeys(bagMap, eqMap);
+  const cmp    = Object.assign({}, eqMap, { __ps: equipped ? itemPoints(equipped) : 0 });
+
   return `
-    ${itemTipBlock(item, 'In bag', '#8fb0d8', hero.level)}
-    <div class="tt-vs">vs. equipped</div>
-    ${itemTipBlock(equipped, 'Equipped', '#c8b06a', hero.level)}
-    ${delta}
-    ${eqOk?'':`<div class="tt-warn">${CLASSES[hero.classKey].label} can't use this.</div>`}`;
+    <div class="tt-compare">
+      ${ttCard(item, 'In bag', '#8fb0d8', hero.level, keys, cmp)}
+      ${ttCard(equipped, 'Equipped', '#c8b06a', hero.level, keys, null)}
+    </div>
+    ${eqOk?'':`<div class="tt-warn">${item.casterOnly ? 'Only spellcasters can use this.' : `${CLASSES[hero.classKey].label} can't use this.`}</div>`}`;
 }
 
-/** Green/red stat deltas between bag item and equipped piece. */
-function bonusDeltaHTML(bag, eq, heroLevel){
-  const keys = ['ac','atk','dmg','hp','crit','heal','str','dex','con','int','wis','cha','speed'];
-  const label = { ac:'AC', atk:'Hit', dmg:'Dmg', hp:'HP', crit:'Crit', heal:'Heal',
-    str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS', cha:'CHA', speed:'Spd' };
-  const bagB = previewBonuses(bag, effectiveIlvl(bag, heroLevel));
-  const eqB = previewBonuses(eq, effectiveIlvl(eq, heroLevel));
-  const parts = [];
-  for (const k of keys) {
-    const d = (bagB[k]||0) - (eqB[k]||0);
-    if (!d) continue;
-    const sign = d > 0 ? '+' : '';
-    const col = d > 0 ? '#5fd46a' : '#e0705a';
-    const txt = k === 'speed'
-      ? `${sign}${Math.round(d*100)}% ${label[k]}`
-      : `${sign}${d} ${label[k]}`;
-    parts.push(`<span style="color:${col}">${txt}</span>`);
-  }
-  if (bag.perk && !eq.perk) parts.push(`<span style="color:#e8a83f">+perk</span>`);
-  else if (!bag.perk && eq.perk) parts.push(`<span style="color:#e0705a">−perk</span>`);
-  if (!parts.length) return '';
-  return `<div class="tt-delta">${parts.join(' · ')}</div>`;
-}
 function positionTooltip(e){
   const tip = $('cs-tooltip');
   if(!tip || tip.style.display==='none') return;
@@ -836,21 +1203,18 @@ function skillsHTML(){
   const levelXpRequired = nextLevelXp ? (nextLevelXp - currentLevelMinXp) : 0;
   const pct = levelXpRequired > 0 ? Math.min(100, Math.max(0, (levelXpProgress / levelXpRequired) * 100)) : 100;
 
+  /* One row, not three: label, bar and counts share a line so the XP strip
+     costs ~40px instead of ~110 and the rest of the tab fits without scrolling. */
   const xpBarHTML = `
-    <div class="sk-xp-row" style="margin: -10px 0 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 14px;">
-      <div style="display: flex; justify-content: space-between; font-size: 14px; color: #8a8474; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; font-weight: 600;">
-        <span>Experience Points</span>
-        ${nextLevelXp ? `${Math.round(pct)}% to Level ${d.level + 1}` : `<span>Max Level</span>`}
-      </div>
-      <div style="height: 8px; background: #12131b; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative;">
-        <div style="width: ${pct}%; height: 100%; background: linear-gradient(90deg, #9b6cf0 0%, #7a6cf0 100%); box-shadow: 0 0 6px rgba(122,108,240,0.4); transition: width 0.3s ease-out;"></div>
-      </div>
-      <div style="display: flex; justify-content: space-between; font-size: 14px; color: #a8a294; margin-top: 5px; font-family: monospace;">
-        <span>Current: ${d.xp} XP</span>
-        ${nextLevelXp ? `Progress: ${levelXpProgress} / ${levelXpRequired} XP` : `${d.xp} XP total`}
-      </div>
+    <div class="sk-xp-row">
+      <span class="xp-label">XP</span>
+      <span class="xp-track"><span class="xp-fill" style="width:${pct}%"></span></span>
+      <span class="xp-nums">${nextLevelXp
+        ? `${levelXpProgress} / ${levelXpRequired} &middot; ${Math.round(pct)}% to Lv ${d.level + 1}`
+        : `${d.xp} XP &middot; Max Level`}</span>
     </div>
   `;
+
 
   /* Saving throws. recalc() stores the TOTAL bonus in d.saves for every ability
      the class is proficient in (and any the gear touches); everything else is
@@ -858,6 +1222,8 @@ function skillsHTML(){
   const profSaves = CLASS_SAVES[d.classKey] || [];
   const pb = profBonus(d.level);
 
+  /* Only show the ＋ column while the hero actually has points banked. */
+  const spendAbility = d.pendingAbility > 0;
   const abils = ABILITIES.map(k=>{
     const eff = d.effStats[k];
     const canAdd = d.pendingAbility>0 && d.stats[k]<20;
@@ -867,20 +1233,22 @@ function skillsHTML(){
       + (isProf ? ` — proficient (${fmtMod(mod(eff))} mod ${fmtMod(pb)} prof)` : ' — not proficient');
     return `<div class="sk-ab">
       <span class="sk-ab-l">${ABILITY_LABEL[k]}</span>
-      <span class="sk-ab-v">${d.stats[k]}${eff>d.stats[k]?`<i class="up">→${eff}</i>`:''} <em>${fmtMod(mod(eff))}</em></span>
+      <span class="sk-ab-v">${d.stats[k]}${eff>d.stats[k]?`<i class="up">→${eff}</i>`:''}</span>
+      <span class="sk-ab-m">${fmtMod(mod(eff))}</span>
       <span class="sk-ab-save ${isProf?'prof':''}" title="${saveTip}">
         <span class="sv-pip"></span><b>SAVE</b> <em>${fmtMod(save)}</em></span>
-      <button class="sk-plus" data-ab="${k}" ${canAdd?'':'disabled'}>＋</button>
+      ${spendAbility ? `<button class="sk-plus" data-ab="${k}" ${canAdd?'':'disabled'}>＋</button>` : ''}
     </div>`;
   }).join('');
 
+  const spendSkill = d.pendingSkill > 0;
   const skills = (cls.skills||[]).map(s=>{
     const rank = d.skills[s.key]||0;
     const canAdd = d.pendingSkill>0 && rank<s.max;
     const pips = Array.from({length:s.max},(_,i)=>`<span class="pip ${i<rank?'on':''}"></span>`).join('');
     return `<div class="sk-skill">
       <div class="sk-s-top"><b>${s.name}</b><span class="sk-pips">${pips}</span>
-        <button class="sk-plus" data-skill="${s.key}" ${canAdd?'':'disabled'}>＋</button></div>
+        ${spendSkill ? `<button class="sk-plus" data-skill="${s.key}" ${canAdd?'':'disabled'}>＋</button>` : ''}</div>
       <div class="sk-s-desc">${s.desc}</div>
     </div>`;
   }).join('');
@@ -959,11 +1327,52 @@ function skillsHTML(){
     const formCards = Object.values(WILD_SHAPE_FORMS).map(wf => `
       <button class="ws-form-card ${curForm === wf.key ? 'chosen' : ''}" data-wsform="${wf.key}" style="flex:1; padding:8px; border:1px solid ${curForm === wf.key ? '#2ecc71' : '#4a4238'}; background:${curForm === wf.key ? 'rgba(46,204,113,0.15)' : 'rgba(20,20,25,0.6)'}; color:#fff; cursor:pointer; border-radius:4px; text-align:left;">
         <div style="font-weight:bold; color:#2ecc71;">${wf.icon} ${wf.label}</div>
-        <div style="font-size:11px; opacity:0.85; margin-top:4px;">${wf.desc}</div>
+        <div style="font-size:16px; opacity:0.85; margin-top:4px;">${wf.desc}</div>
       </button>`).join('');
+    /* Drop Wild Shape + the "only when out of slots" policy live here, in the
+       druid's own panel. `dropWildShape` already existed as a manual-combat
+       bonus action, but that bar only renders on a hero's turn in manual
+       control mode — in auto mode (the default) there was no way to reach it,
+       and the policy flag had a reader in combat.js and no writer anywhere, so
+       it was permanently off. */
+    const inForm = !!d.inWildShape;
+    const onlySlots = !!d.wildShapeOnlyOutOfSlots;
     wildShapeFormHTML = `<div class="sk-subclass chosen" style="margin-top:10px;">
       <h3>🌿 Wild Shape Form <i>click to select active form</i></h3>
       <div class="ws-form-cards" style="display:flex; gap:8px; margin-top:8px;">${formCards}</div>
+      <div class="ws-controls" style="display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+        <button class="ws-drop" ${inForm ? '' : 'disabled'}
+          title="${inForm ? 'Revert to natural form now' : 'Only available while transformed'}"
+          style="padding:7px 12px; border:1px solid ${inForm ? '#2ecc71' : '#3a352e'}; border-radius:4px;
+                 background:${inForm ? 'rgba(46,204,113,0.15)' : 'rgba(20,20,25,0.5)'};
+                 color:${inForm ? '#fff' : '#6d675e'}; cursor:${inForm ? 'pointer' : 'default'};">
+          🌿 Drop Wild Shape
+        </button>
+        <label class="ws-only-slots" title="Auto-combat keeps casting while slots remain, and only transforms once they are spent."
+          style="display:flex; align-items:center; gap:6px; font-size:18px; color:#cfc7b8; cursor:pointer;">
+          <input type="checkbox" data-wsonlyslots ${onlySlots ? 'checked' : ''} style="cursor:pointer;">
+          Wild Shape only when out of spell slots
+        </label>
+      </div>
+    </div>`;
+  }
+
+  let familiarChoiceHTML = '';
+  const knowsFindFamiliar = (d.classKey === 'wizard' || d.classKey === 'warlock' || (d.knownSpells && d.knownSpells.includes('findFamiliar')));
+  if (knowsFindFamiliar) {
+    const curFam = d.familiarChoice || 'owlFamiliar';
+    const famCards = [
+      { key: 'owlFamiliar', icon: '🦉', label: 'Owl Familiar', desc: 'Dexterous flyer with keen senses and slashing talons' },
+      { key: 'impFamiliar', icon: '👿', label: 'Imp Familiar', desc: 'Fiendish familiar with fire sting and high magic acumen' },
+      { key: 'viperFamiliar', icon: '🐍', label: 'Viper Familiar', desc: 'Swift serpent with venomous bite attacks' }
+    ].map(f => `
+      <button class="fam-form-card ${curFam === f.key ? 'chosen' : ''}" data-famchoice="${f.key}" style="flex:1; padding:8px; border:1px solid ${curFam === f.key ? '#88ccff' : '#4a4238'}; background:${curFam === f.key ? 'rgba(136,204,255,0.15)' : 'rgba(20,20,25,0.6)'}; color:#fff; cursor:pointer; border-radius:4px; text-align:left;">
+        <div style="font-weight:bold; color:#88ccff;">${f.icon} ${f.label}</div>
+        <div style="font-size:16px; opacity:0.85; margin-top:4px;">${f.desc}</div>
+      </button>`).join('');
+    familiarChoiceHTML = `<div class="sk-subclass chosen" style="margin-top:10px;">
+      <h3>🦉 Find Familiar Form <i>click to choose active familiar</i></h3>
+      <div class="fam-form-cards" style="display:flex; gap:8px; margin-top:8px;">${famCards}</div>
     </div>`;
   }
 
@@ -983,20 +1392,25 @@ function skillsHTML(){
     </div>
     ${xpBarHTML}
     ${choicesHTML}
-    ${subclassHTML}
     ${wildShapeFormHTML}
-    ${featListHTML}
+    ${familiarChoiceHTML}
     <div class="sk-cols">
+      <div class="sk-build">
+        <h3>${cls.label} Path</h3>
+        ${subclassHTML}
+        ${classFeatureHTML(d)}
+      </div>
       <div class="sk-abils">
-        <h3>Ability Scores <i>raise via ASI choices (L4/8/10)</i></h3>
+        <h3>Ability Scores</h3>
         ${abils}
         <div class="sk-ab-legend">● proficient save — ability mod ${fmtMod(pb)} proficiency${profSaves.length?` (${profSaves.map(a=>ABILITY_LABEL[a]).join(', ')})`:''}</div>
       </div>
       <div class="sk-skills">
-        <h3>${cls.label} Talents <i>earned on levels with no other reward</i></h3>
+        <h3>${cls.label} Talents</h3>
         ${skills}
       </div>
     </div>
+    ${featListHTML}
     ${pendingPoints(d)===0?`<div class="sk-none">No choices to make — level up for new features.</div>`:''}`;
 }
 
@@ -1014,6 +1428,20 @@ function wireSkills(){
   });
   main.querySelectorAll('.ws-form-card').forEach(b=>{
     b.addEventListener('click', ()=>{ d.wildShapeForm = b.dataset.wsform; render(); });
+  });
+  main.querySelectorAll('.ws-drop').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const h = G.heroes[selHero];
+      if (!h || !h.data.inWildShape || typeof G.revertWildShape !== 'function') return;
+      G.revertWildShape(h, 0, { voluntary: true });
+      render();
+    });
+  });
+  main.querySelectorAll('[data-wsonlyslots]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ d.wildShapeOnlyOutOfSlots = cb.checked; render(); });
+  });
+  main.querySelectorAll('.fam-form-card').forEach(b=>{
+    b.addEventListener('click', ()=>{ d.familiarChoice = b.dataset.famchoice; render(); });
   });
   main.querySelectorAll('.fc-opt').forEach(b=>{
     b.addEventListener('click', ()=>{
@@ -1113,7 +1541,7 @@ function srdSkillsHTML(){
         <span class="pt-pill ${banked > 0 ? 'hot' : ''}">${banked} skill point${banked === 1 ? '' : 's'}</span>
       </div>
     </div>
-    <div class="srd-prof-header-bar" style="margin-bottom:12px; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); display:flex; gap:24px; flex-wrap:wrap; font-size:13px; align-items:center;">
+    <div class="srd-prof-header-bar" style="margin-bottom:12px; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); display:flex; gap:24px; flex-wrap:wrap; font-size:20px; align-items:center;">
       <div>🛡️ <b>Armor:</b> <span style="color:#a8e6cf; margin-left:4px;">${armorProfList.join(', ')}</span></div>
       <div>⚔️ <b>Weapons:</b> <span style="color:#ffd3b6; margin-left:4px;">${weaponProfList.join(', ')}</span></div>
     </div>
@@ -1375,11 +1803,10 @@ const TYPE_ICON = {
   fey:'🧚', elemental:'🔥', giant:'🗿', ooze:'🫧', construct:'🗿',
   dragon:'🐉', aberration:'👁', celestial:'😇'
 };
-/* Bestiary grouping by CR band (replaces the old tier sections). Section 5 is
-   the boss roster, grouped together regardless of CR. Bands mirror crBandIndex. */
-const BEST_SECTION = m => m.isBoss ? 5 : crBandIndex(m.cr);
+/* Bestiary grouping by CR band. Bands mirror crBandIndex. */
+const BEST_SECTION = m => crBandIndex(m.cr);
 const BEST_SECTION_LABELS = [
-  'CR 0 – ½', 'CR ½ – 2', 'CR 2 – 4½', 'CR 4½ – 8', 'CR 8+', '☠ Bosses'
+  'CR 0 – ½', 'CR ½ – 2', 'CR 2 – 4½', 'CR 4½ – 8', 'CR 8+'
 ];
 const crStr = cr => cr===0.125 ? '1/8' : cr===0.25 ? '1/4' : cr===0.5 ? '1/2' : String(cr);
 const sensLabel = (k,v) => k==='passivePerception'
@@ -1434,7 +1861,7 @@ function bestiaryHTML(){
     const kills = best[m.id] || 0;
     if(kills >= BESTIARY_UNLOCK){
       rows += `<button class="best-row unlocked${selMonster===m.id?' sel':''}" data-id="${m.id}">
-        <span class="best-ico" style="background:${hex(m.color)}33;border-color:${hex(m.color)}">${TYPE_ICON[m.type]||'❔'}</span>
+        <span class="best-ico" style="background:${hex(m.color)}33;border-color:${hex(m.color)}">${iconHtml('ctype', m.type, TYPE_ICON[m.type] || '❔')}</span>
         <span class="best-nm">${m.name}</span>
         <span class="best-cr">CR ${crStr(m.cr)}</span></button>`;
     } else {
@@ -1462,6 +1889,28 @@ function bestiaryHTML(){
     </div>
     <div class="best-detail">${detail}</div>
   </div>`;
+}
+
+/* Same rule makeMonsterMesh uses: a bare filename is a DCSS monster tile,
+   anything already rooted is taken as-is. The codex used to prefix
+   unconditionally, which 404'd every ANIMATED creature — their `sprite` is
+   their idle spritesheet, which already lives under sprites/. */
+function codexSpritePath(raw){
+  const s = raw || 'orc.png';
+  return /^(dcss\/|sprites\/|\.\/|\/|https?:|data:)/.test(s) ? s : 'dcss/monster/' + s;
+}
+
+/** A creature with sheets gets a live portrait — idle, then attack, on a loop.
+ *  Everything else keeps the still image (which is also what `tintCodexSprites`
+ *  recolours; sheet art is already final and needs no balance pass). */
+function codexPortrait(m){
+  const flip = m.flipX ? 'transform:scaleX(-1);' : '';
+  const a = m.animations;
+  const usable = c => c && c.sprite && (c.cols | 0) > 0 && (c.rows == null || c.rows === 1);
+  if (a && usable(a.idle)) {
+    return `<span class="ms-anim" data-mon="${m.id}" style="${flip}"></span>`;
+  }
+  return `<img class="ms-sprite" data-mon="${m.id}" src="${codexSpritePath(m.sprite)}" alt="${m.name}" style="${flip}">`;
 }
 
 function monsterStatHTML(m, kills){
@@ -1503,7 +1952,7 @@ function monsterStatHTML(m, kills){
   return `<div class="ms">
     <div class="ms-head">
       <span class="ms-sprite-wrap" style="background:${hex(m.color)}22;border-color:${hex(m.color)}88">
-        <img class="ms-sprite" data-mon="${m.id}" src="dcss/monster/${m.sprite}" alt="${m.name}">
+        ${codexPortrait(m)}
       </span>
       <div class="ms-title"><h2>${m.name}</h2>
         <div class="ms-sub">${cap(m.size)} ${m.type} · CR ${crStr(m.cr)} · ${m.xp} XP${fam?' · '+fam.name:''}${sb.source==='synth'?' · <i class="ms-synth">homebrew</i>':''}</div></div>
@@ -1532,6 +1981,78 @@ function wireBestiary(){
   $('cs-main').querySelectorAll('.best-tab').forEach(b =>
     b.addEventListener('click', ()=>{ bestTheme = b.dataset.theme; render(); }));
   tintCodexSprites();
+  startCodexAnim();
+}
+
+/* ── codex portrait animation ────────────────────────────────────────────
+   Plays the creature's idle sheet through once, then its attack sheet, then
+   repeats — so the statblock shows both of the poses it actually uses in a
+   fight rather than a frozen frame.
+
+   Driven by background-position on a single element rather than a canvas: the
+   sheets are one row of equal cells, which is exactly the case the CSS sprite
+   trick handles, and it costs no texture upload. Only one statblock is on
+   screen at a time, so there is only ever one of these running. */
+let _codexAnim = null;
+
+function stopCodexAnim(){
+  if (_codexAnim && _codexAnim.raf && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(_codexAnim.raf);
+  }
+  _codexAnim = null;
+}
+
+function startCodexAnim(){
+  stopCodexAnim();
+  if (typeof requestAnimationFrame !== 'function') return;
+  const host = $('cs-main');
+  const el = host && host.querySelector('.ms-anim[data-mon]');
+  if (!el) return;
+  const m = MONSTERS_ALL.find(x => x.id === el.dataset.mon);
+  const a = m && m.animations;
+  if (!a) return;
+
+  /* Attack is optional — a creature with only an idle sheet just loops idle. */
+  const clips = [a.idle, a.attack].filter(c => c && c.sprite && (c.cols | 0) > 0);
+  if (!clips.length) return;
+
+  let clipI = 0, frame = 0, acc = 0, last = performance.now();
+
+  const showClip = (c) => {
+    el.style.backgroundImage = `url("${c.sprite}")`;
+    el.style.backgroundSize = `${(c.cols | 0) * 100}% 100%`;
+  };
+  const showFrame = (c, f) => {
+    const cols = c.cols | 0;
+    el.style.backgroundPosition = cols > 1 ? `${(f / (cols - 1)) * 100}% 0` : '0 0';
+  };
+
+  showClip(clips[0]);
+  showFrame(clips[0], 0);
+
+  const step = (now) => {
+    /* The panel is rebuilt wholesale on every render, so a stale loop would go
+       on animating a detached node forever. */
+    if (!el.isConnected) { stopCodexAnim(); return; }
+    acc += now - last;
+    last = now;
+    let guard = 0;
+    let spf = 1000 / (clips[clipI].fps || 12);
+    while (acc >= spf && guard++ < 60) {
+      acc -= spf;
+      frame++;
+      if (frame >= (clips[clipI].cols | 0)) {
+        frame = 0;
+        clipI = (clipI + 1) % clips.length;
+        showClip(clips[clipI]);
+        spf = 1000 / (clips[clipI].fps || 12);
+      }
+    }
+    showFrame(clips[clipI], frame);
+    _codexAnim.raf = requestAnimationFrame(step);
+  };
+
+  _codexAnim = { el, raf: requestAnimationFrame(step) };
 }
 
 /* Bake the bestiary editor's colour balance into the codex portrait, so the

@@ -3,13 +3,14 @@ import { makeHero, CLASSES, MONSTERS_ALL } from './game/srd.js';
 import {
   makeHeroMesh, makeMonsterMesh, updateProjectiles, updateWorldFx,
   updateFloatTexts, spawnSpriteEffect, spawnSheetEffect, spawnSlash,
-  spawnProjectile, spawnBeamEffect, makeFloatText
+  spawnProjectile, spawnBeamEffect, spawnAoEVisual, makeFloatText
 } from './game/entities.js';
-import { ABILITY_FX } from './game/combat.js';
+import { ABILITY_FX, CANTRIP_FX } from './game/combat.js';
+import { VFX_ANIMS, spawnCompositeAnimation, updateCompositeFX } from './game/vfx_animations.js';
 import { SPELLS } from './game/spells.js';
 import { BOSS_SPELLS, BOSS_SPELL_FX } from './game/monster_ai.js';
 import { GIGAPACK_REGISTRY } from './game/gigapack_registry.js';
-import { playSfx, spellSfx } from './game/audio.js';
+import { playSfx, spellSfx, cantripSfx } from './game/audio.js';
 import { _v } from './game/shared.js';
 
 /* ─────────────────────────────────────────────────────────────
@@ -446,6 +447,13 @@ const paramMonsterId = urlParams.get('monster');
 const paramScale = parseFloat(urlParams.get('scale')) || null;
 const paramSprite = urlParams.get('sprite');
 const paramName = urlParams.get('name');
+/* The bestiary arena passes the live idle/attack atlas config so the preview
+   animates exactly as configured in the editor. */
+const paramAnimationsRaw = urlParams.get('animations');
+let paramAnimations = null;
+if (paramAnimationsRaw) {
+  try { paramAnimations = JSON.parse(paramAnimationsRaw); } catch { paramAnimations = null; }
+}
 
 // Populate Attacker & Target Select Dropdowns with MONSTERS_ALL & HERO CLASSES
 if (el.attackerSelect && el.targetSelect) {
@@ -485,7 +493,25 @@ let targetUnit = null;
 
 let currentKey = '';
 
+/* Cantrip preview keys use `cantrip:<classKey>`; resolve the playable caster
+   classes' signature cantrips (those with a real cantripProfile) so the test
+   page drives CANTRIP_FX exactly like the in-game strike() path. */
+function cantripClassKey(value) {
+  return value && value.startsWith('cantrip:') ? value.slice('cantrip:'.length) : null;
+}
+
+function cantripLabel(classKey) {
+  return (CLASSES[classKey] && CLASSES[classKey].attack && CLASSES[classKey].attack.name) || classKey;
+}
+
 function updateSkillLabels() {
+  const ck = cantripClassKey(currentKey);
+  if (ck) {
+    const label = cantripLabel(ck);
+    if (el.skillName) el.skillName.textContent = label;
+    if (el.infoLabel) el.infoLabel.textContent = label;
+    return;
+  }
   const fx = ABILITY_FX[currentKey] || BOSS_SPELL_FX[currentKey] || {};
   const label = fx.label || currentKey;
   if (el.skillName) el.skillName.textContent = label;
@@ -500,7 +526,13 @@ function buildUnit(presetKey, isAttacker) {
     const scale = (isAttacker && paramScale) ? paramScale : (monData ? monData.scale : 1.0);
     const sprite = (isAttacker && paramSprite) ? paramSprite : (monData ? monData.sprite : `${presetKey}.png`);
     const name = (isAttacker && paramName) ? paramName : (monData ? monData.name : presetKey);
-    return createMonster(name, sprite, scale, monData || {});
+    let fullData = monData || {};
+    /* URL animations (from the bestiary arena) win over the monsters.json copy
+       so the preview matches what the editor currently has configured. */
+    if (paramAnimations && (paramAnimations.idle || paramAnimations.attack)) {
+      fullData = { ...fullData, animations: paramAnimations };
+    }
+    return createMonster(name, sprite, scale, fullData);
   }
 
   switch (presetKey) {
@@ -590,6 +622,20 @@ function populateSkillsForAttacker(unit) {
     el.select.appendChild(profileGroup);
   }
 
+  // Class Cantrips Group — plays each class's signature cantrip through
+  // CANTRIP_FX, the same animated sheets the in-game strike() path uses.
+  const cantripGroup = document.createElement('optgroup');
+  cantripGroup.label = '🪄 Class Cantrips';
+  Object.entries(CLASSES)
+    .filter(([, c]) => c.attack && c.attack.cantripScale)
+    .forEach(([classKey]) => {
+      const opt = document.createElement('option');
+      opt.value = `cantrip:${classKey}`;
+      opt.textContent = `${cantripLabel(classKey)} (${classKey})`;
+      cantripGroup.appendChild(opt);
+    });
+  el.select.appendChild(cantripGroup);
+
   // Full Game Catalog Group
   const catalogGroup = document.createElement('optgroup');
   catalogGroup.label = '🌟 All Game Spells & VFX';
@@ -640,11 +686,45 @@ function getProjectileKind(key, fx) {
   return 'magic';
 }
 
+/* Replay a class cantrip the way the in-game auto-battler does (strike()):
+   cast SFX → animated projectile (the class's Gigapack projSheet) → on hit the
+   class's CANTRIP_FX pixel-art burst + impact ring + SFX. */
+function playCantripVFX(classKey, source, target) {
+  const cfx = CANTRIP_FX[classKey];
+  if (!cfx) return;
+
+  const sx = source.x, sz = source.z;
+  const tx = target.x, tz = target.z;
+  const color = cfx.color || 0xe8d8a8;
+  const tScale = target.data?.scale || 1;
+
+  if (el.sfxCb?.checked) playSfx(cantripSfx(classKey), { volume: 0.4 });
+
+  const from = new THREE.Vector3(sx, 0.55, sz);
+  const to = new THREE.Vector3(tx, 0.4 * tScale + 0.4, tz);
+
+  spawnProjectile(scene, from, to, 'bolt', color, () => {
+    if (target.dead) return;
+    if (el.sfxCb?.checked) playSfx('spellImpact', { volume: 0.75 });
+    spawnSlash(scene, { x: tx, z: tz }, color, tScale * 0.9);
+    spawnSheetEffect(scene, cfx, to, cfx.scale * Math.max(1, tScale * 0.8), cfx.dur || 1.0);
+    if (target.ent?.anim) target.ent.anim.play('hit');
+  }, { sheetDef: cfx.projSheet ? GIGAPACK_REGISTRY[cfx.projSheet] : null, scale: 1.4 });
+}
+
 function playSkillVFX(key, source, target) {
   if (!source || !target) return;
 
   const sx = source.x, sz = source.z;
   const tx = target.x, tz = target.z;
+
+  // Class cantrips — replay the in-game strike() path (projectile + the
+  // class's CANTRIP_FX pixel-art impact burst).
+  const ck = cantripClassKey(key);
+  if (ck) {
+    playCantripVFX(ck, source, target);
+    return;
+  }
 
   const mData = source.data || {};
   const isMonsterMelee = (key === 'monster_melee_attack' || key.startsWith('action_'));
@@ -674,19 +754,20 @@ function playSkillVFX(key, source, target) {
   const isRanged = fx.isRanged ?? true;
   const color = fx.color ?? 0xffaa22;
 
-  const triggerImpact = (impactX, impactZ) => {
+  const triggerImpact = (fxRef, impactX, impactZ, opts = {}) => {
+    const fxr = fxRef || fx;
     const hitPos = new THREE.Vector3(impactX, 0.8, impactZ);
-    const scale = fx.scale || 1.2;
-    const dur = fx.dur || 0.6;
+    const scale = opts.scale != null ? opts.scale : (fxr.scale || 1.2);
+    const dur = opts.dur != null ? opts.dur : (fxr.dur || 0.6);
 
-    const sheetDef = fx.sheetDef || (fx.sheetKey ? GIGAPACK_REGISTRY[fx.sheetKey] : null);
+    const sheetDef = fxr.sheetDef || (fxr.sheetKey ? GIGAPACK_REGISTRY[fxr.sheetKey] : null);
     if (sheetDef) spawnSheetEffect(scene, sheetDef, hitPos, scale, dur);
-    if (fx.sprite) {
-      const spriteDef = fx.frames ? { sprite: fx.sprite, frames: fx.frames, frameInterval: fx.frameInterval } : fx.sprite;
+    if (fxr.sprite) {
+      const spriteDef = fxr.frames ? { sprite: fxr.sprite, frames: fxr.frames, frameInterval: fxr.frameInterval } : fxr.sprite;
       spawnSpriteEffect(scene, spriteDef, hitPos, scale, dur);
     }
-    if (fx.color != null) spawnSlash(scene, { x: impactX, z: impactZ }, fx.color, 1.4);
-    if (fx.label) makeFloatText(scene, fx.label, _v.set(impactX, 1.6, impactZ), fx.float || '#e8c25a');
+    if (fxr.color != null) spawnSlash(scene, { x: impactX, z: impactZ }, fxr.color, opts.ring != null ? opts.ring : 1.4);
+    if (fxr.label) makeFloatText(scene, fxr.label, _v.set(impactX, 1.6, impactZ), fxr.float || '#e8c25a');
 
     shakeCamera(0.32);
     if (target.ent?.anim) target.ent.anim.play('hit');
@@ -698,14 +779,60 @@ function playSkillVFX(key, source, target) {
       engine: { scene },
       monsters: [target],
       heroes: [source],
+      summons: { spawn: () => null },
       fxNow: performance.now() / 1000,
       _v3(x, y, z) { return new THREE.Vector3(x, y, z); },
+      fxLog() {},
+      fxPlaySfx(name, opts) { if (el.sfxCb?.checked) playSfx(name, opts); },
+      fxSchedule(delayMs, cb) { setTimeout(cb, delayMs); },
+      /* Faithful replica of combat.playAbilityFx: honors at/alsoAt/ring/scale/
+         dur/floatY so AoE spells show every cluster burst at the right size —
+         and, like the real one, checks VFX_ANIMS first so any spell with an
+         authored composite (travel + impact) animation previews with it
+         instead of always falling back to the legacy ABILITY_FX flourish. */
       playAbilityFx(h, k, opts = {}) {
         if (el.sfxCb?.checked) playSfx(spellSfx(k), { volume: 0.65 });
         const at = opts.at || h;
-        triggerImpact(at.x != null ? at.x : tx, at.z != null ? at.z : tz);
+        const atX = at.x != null ? at.x : tx;
+        const atZ = at.z != null ? at.z : tz;
+        const anim = VFX_ANIMS[k];
+        if (anim) {
+          const from = new THREE.Vector3(h.x != null ? h.x : sx, 0.55, h.z != null ? h.z : sz);
+          const toY = at.data && at.data.scale != null ? 0.4 * at.data.scale + 0.4 : 0.55;
+          const to = new THREE.Vector3(atX, toY, atZ);
+          spawnCompositeAnimation(scene, anim, { from, to, onImpact: opts.onImpact });
+          for (const t of opts.alsoAt || []) {
+            if (!t || t === at) continue;
+            const ty = t.data && t.data.scale != null ? 0.4 * t.data.scale + 0.4 : 0.45;
+            spawnCompositeAnimation(scene, anim, { from, to: new THREE.Vector3(t.x, ty, t.z), skipTravel: true, travelSound: false, impactSound: false });
+          }
+          return;
+        }
+        const fxr = ABILITY_FX[k] || { sprite: 'dcss/effect/magic_bolt_1.png', color: 0xc0a060, label: null, float: '#e8c25a' };
+        const scale = opts.scale != null ? opts.scale : (fxr.scale || 2.0);
+        const dur = opts.dur != null ? opts.dur : (fxr.dur || 0.45);
+
+        const sheetDef = fxr.sheetDef || (fxr.sheetKey ? GIGAPACK_REGISTRY[fxr.sheetKey] : null);
+        if (sheetDef) spawnSheetEffect(scene, sheetDef, new THREE.Vector3(atX, 0.55, atZ), scale, dur);
+        if (fxr.sprite) {
+          const spriteDef = fxr.frames ? { sprite: fxr.sprite, frames: fxr.frames, frameInterval: fxr.frameInterval } : fxr.sprite;
+          spawnSpriteEffect(scene, spriteDef, new THREE.Vector3(atX, 0.55, atZ), scale, dur);
+        }
+        if (fxr.color != null) spawnSlash(scene, { x: atX, z: atZ }, fxr.color, opts.ring != null ? opts.ring : 1.2);
+        if (fxr.label) makeFloatText(scene, fxr.label, new THREE.Vector3(atX, opts.floatY != null ? opts.floatY : 1.35, atZ), fxr.float || '#e8c25a');
+
+        for (const t of opts.alsoAt || []) {
+          if (!t || t === at) continue;
+          const x = t.x != null ? t.x : tx;
+          const z = t.z != null ? t.z : tz;
+          if (sheetDef) spawnSheetEffect(scene, sheetDef, new THREE.Vector3(x, 0.45, z), scale * 0.85, dur * 0.9);
+          if (fxr.sprite) {
+            const spriteDef2 = fxr.frames ? { sprite: fxr.sprite, frames: fxr.frames, frameInterval: fxr.frameInterval } : fxr.sprite;
+            spawnSpriteEffect(scene, spriteDef2, new THREE.Vector3(x, 0.45, z), scale * 0.85, dur * 0.9);
+          }
+          if (fxr.color != null) spawnSlash(scene, { x, z }, fxr.color, 0.9);
+        }
       },
-      fxLog() {},
       fxProjectile(from, to, kind, col, onHit, opts) {
         spawnProjectile(scene, from, to, kind, col, onHit, opts);
       },
@@ -721,13 +848,38 @@ function playSkillVFX(key, source, target) {
       fxText(text, pos, col) {
         makeFloatText(scene, text, pos, col);
       },
+      healHero(a, amt) {
+        if (!a || !a.data) return;
+        if (a.data.maxHp != null && a.data.hp != null) {
+          a.data.hp = Math.min(a.data.maxHp, (a.data.hp || 0) + amt);
+        }
+        const x = a.x != null ? a.x : tx, z = a.z != null ? a.z : tz;
+        makeFloatText(scene, `+${amt}`, _v.set(x, 1.3, z), '#6ae06a');
+        spawnSpriteEffect(scene, 'dcss/effect/gold_sparkles_1.png', new THREE.Vector3(x, 1.0, z), 1.4, 0.5);
+      },
+      resolveMoonbeamDamage(zone, m) {
+        if (!m || m.dead) return;
+        const from = new THREE.Vector3(m.x, 6.0, m.z);
+        const to = new THREE.Vector3(m.x, 0.4, m.z);
+        spawnBeamEffect(scene, from, to, {
+          type: 'pillar', color: 0xb08cff, coreColor: 0xffffff,
+          width: 1.6, duration: 0.7, opacity: 0.5, targetBurst: 'round_light_burst_001_large_yellow'
+        });
+        makeFloatText(scene, '2d10 radiant', _v.set(m.x, 1.4, m.z), '#b08cff');
+      },
       spellDamage(m, dmg) {
-        triggerImpact(m.x, m.z);
+        triggerImpact(fx, m.x, m.z);
       },
       spellSave() { return false; },
       markSpellUsed() {},
       concentrate() {},
-      spawnAoEZone() {}
+      /* Render the real persistent-zone visual (faerie fire sparkle cube, web,
+         moonbeam beam, wall of fire loop sheet, entangle vines…). A finite
+         duration keeps previewed zones from piling up while looping. */
+      spawnAoEZone(caster, spellKey, x, z, radius, options = {}) {
+        const visual = spawnAoEVisual(scene, { x, z }, options.color || 0xffffff, radius, 4.0, { ...options });
+        return { id: 'z_test', caster, spellKey, x, z, radius, visual, options, savesThisTurn: new Set(), affectedTargets: new Set(), data: { hp: 1 } };
+      }
     };
 
     const res = SPELLS[key].cast(gameMock, source, target, [source], 1);
@@ -748,10 +900,10 @@ function playSkillVFX(key, source, target) {
     const projSheet = fx.projSheet || 'directional_fire_burst_001_large_red';
 
     spawnProjectile(scene, from, to, projKind, color, () => {
-      triggerImpact(tx, tz);
+      triggerImpact(fx, tx, tz);
     }, { projSheet });
   } else {
-    triggerImpact(tx, tz);
+    triggerImpact(fx, tx, tz);
   }
 }
 
@@ -821,6 +973,7 @@ function animate(time) {
   // Update Three.js FX
   updateProjectiles(scene, dt);
   updateWorldFx(scene, dt);
+  updateCompositeFX(scene, dt);
   updateFloatTexts(scene, cam);
 
   // Camera Shake Decay

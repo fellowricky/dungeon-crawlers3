@@ -73,6 +73,11 @@ export function applyShortRestToHero(h, opts = {}) {
     h.layOnHands = Math.min(h.layOnHandsMax, (h.layOnHands || 0) + gain);
   }
 
+  /* Monk Ki pool — fully restored on short rest (5e SRD 30 min meditation) */
+  if (h.kiMax) {
+    h.ki = h.kiMax;
+  }
+
   /* Song of Rest is no longer a short-rest effect — it is a passive
      post-combat heal (10% max HP) applied in combat.js when a room's last
      monster dies. Short rests already heal the party, so the old bonus was
@@ -99,6 +104,7 @@ export function applyLongRestToHero(h) {
   if (h.hp > 0 && h.maxHp) h.hp = h.maxHp;
   if (totalSlots(h.slotsMax) > 0) h.slots = { ...h.slotsMax };
   if (h.layOnHandsMax) h.layOnHands = h.layOnHandsMax;
+  if (h.kiMax) h.ki = h.kiMax;
 }
 
 /**

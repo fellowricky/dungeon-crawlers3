@@ -37,8 +37,36 @@ export const SETTING_DEFAULTS = Object.freeze({
 
   /* ── automation ── */
   autoSkillChallenges: false,  // pick the best approach instead of asking
-  autoLootChests: false,       // wheel still spins; shortens the take-loot wait
+
+  /* ── combat ── */
+  combatSpeed: 0.7,   // combat dt multiplier — 0.7 ≈ 30% slower; 1.0 = original speed
+  initiativeReveal: true,  // play the d20 roll-off when a fight starts (2.5s)
+
+  /* ── camera ──
+     Both default ON: the director only ever pulls BACK from the zoom the
+     player last chose by hand, and hands control over entirely for three
+     seconds after any camera input, so neither can take a view away from
+     someone who has asked for it. */
+  cameraAutoFrame: true,   // zoom out to fit the fight; heroes are never cropped
+  cameraActionZoom: true,  // punch in for tighter dramatic shots on attacks and spells
+  cameraAutoRotate: true,  // quarter-turn around walls standing in the way
+  cameraActionRotate: true,// rotate for cooler angles along the line of action
+
+  /* ── graphics & comfort ──
+     The game idles for hours on whatever machine is on the desk, so the render
+     cost needs a dial. Defaults are what shipped ('high', everything on). */
+  graphicsQuality: 'high', // 'low' | 'medium' | 'high' — lights, shadows, post-processing, pixel ratio
+  screenShake: true,       // camera shake on heavy hits and explosions
+  hitStop: true,           // the brief freeze-frame on hits and crits
+  filmGrain: true,         // the post-process grain and tilt-shift blur
+  uiScale: 1.0,            // HUD scale multiplier (0.8 – 1.4)
+  perfOverlay: false,      // frame-time / draw-call readout (also F3)
+
+  /* ── onboarding ── */
+  seenTips: {},            // first-run tips already shown (help_ui.js firstRunTip)
 });
+
+export const GRAPHICS_QUALITY_LEVELS = Object.freeze(['low', 'medium', 'high']);
 
 /** Which log category each setting suppresses when switched off. */
 const LOG_SUPPRESS_CLASS = Object.freeze({

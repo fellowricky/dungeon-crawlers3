@@ -28,4 +28,36 @@ describe('Fog of War Object Hiding', () => {
     expect(mockMesh.lastMatrix.elements[5]).toBe(0);
     expect(mockMesh.lastMatrix.elements[10]).toBe(0);
   });
+
+  it('keeps particles visible when anchored to revealed overland cells', () => {
+    const mockPosArray = [0, 0, 0,  1, 0, 1];
+    const mockParts = {
+      userData: {
+        fogCells: [5, 12],
+        origY: [0.3, 0.4]
+      },
+      geometry: {
+        getAttribute(name) {
+          if (name === 'position') return { array: mockPosArray, needsUpdate: false };
+        }
+      }
+    };
+
+    const game = {
+      engine: {
+        getMeshes: () => ({}),
+        getLights: () => [],
+        getParticles: () => mockParts,
+        getStandalone: () => []
+      },
+      revealed: { 5: 1 }, // Cell 5 is revealed, cell 12 is unrevealed
+      D: { W: 10, H: 10, roomId: new Int32Array(100).fill(-1) }
+    };
+    Object.assign(game, fogMethods);
+
+    game._applyPropFog([], new Uint8Array(100)); // seen is all 0s (overland)
+
+    expect(mockPosArray[1]).toBe(0.3); // Cell 5 (revealed) -> kept origY
+    expect(mockPosArray[4]).toBe(-999); // Cell 12 (unrevealed) -> sunk to HIDE_Y
+  });
 });

@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { COMMAND, validateCommand, turnEngineMethods } from '../src/game/turn_engine.js';
 import { exploreMethods } from '../src/game/explore.js';
 import { combatMethods } from '../src/game/combat.js';
+import { pathfindingMethods } from '../src/game/pathfinding.js';
+import { reservationMethods } from '../src/game/reservation.js';
 
 if (typeof globalThis.document === 'undefined') {
   const dummyCtx = {
@@ -78,7 +80,7 @@ describe('Manual Mode & Action Economy', () => {
         }
       ],
       initiative: { active: true, order: [], idx: 0 },
-      D: { W: 20, H: 20, grid: new Uint8Array(400), rooms: [{ id: 0, cx: 5, cy: 5 }, { id: 1, cx: 10, cy: 10 }], roomId: new Int32Array(400) },
+      D: { W: 20, H: 20, grid: new Uint8Array(400).fill(1), rooms: [{ id: 0, cx: 5, cy: 5 }, { id: 1, cx: 10, cy: 10 }], roomId: new Int32Array(400) },
       roomAnchor: [100, 200],
       visitedRooms: [false, false],
       chests: [],
@@ -119,7 +121,16 @@ describe('Manual Mode & Action Economy', () => {
       roomTargetCell() { return 105; }
     };
 
-    Object.assign(game, turnEngineMethods, exploreMethods, combatMethods);
+    Object.assign(game, pathfindingMethods, turnEngineMethods, exploreMethods, combatMethods, reservationMethods);
+    /* Re-apply stubs that pathfindingMethods overwrote (pathfindingMethods is
+       mixed in only to provide the setEntityPath/clearEntityPath shims; the
+       real ones come from reservationMethods below). */
+    game.findPath = () => [105, 106];
+    game.stepAlong = () => false;
+    game.nearFloorCell = (c) => c;
+    game.cellOf = (x, z) => Math.floor(z) * 20 + Math.floor(x);
+    game.wx = (c) => c;
+    game.wz = (c) => c;
     game.playAbilityFx = () => {};
     // Hook stubs (real implementations come from game_hooks.js in the browser)
     game.fxLog = () => {};
@@ -217,24 +228,71 @@ describe('Manual Mode & Action Economy', () => {
     expect(hero.data.hp).toBeGreaterThan(10);
   });
 
-  it('enforces hero occupancy so heroes cannot stop on the same cell', () => {
-    const heroA = game.heroes[0];
+  it('melee attack out of reach with no movement fails (does not auto-walk)', () => {
+    const hero = game.heroes[0];
+    hero.actUsed = false;
+    hero.moveLeft = 0;
+    hero.data.weaponProfile = { name: 'Longsword', melee: true, dmg: [1, 8], ability: 'str', source: 'weapon', dmgType: 'slashing' };
+    // Goblin normally at (6,5); move it 4 tiles away so melee reach (1) misses.
+    const foe = game.monsters[0];
+    foe.x = 9; foe.z = 5;
+    const ok = game.manualPerformAttack(hero, foe);
+    expect(ok).toBe(false);
+    expect(hero.actUsed).toBe(false);
+  });
+
+  it('thrown attack hits a distant foe without spending movement', () => {
+    const hero = game.heroes[0];
+    hero.actUsed = false;
+    hero.moveLeft = 0;
+    hero.data.weaponProfile = { name: 'Handaxe', melee: true, thrown: true, range: 6, dmg: [1, 6], ability: 'str', source: 'weapon', dmgType: 'slashing' };
+    const foe = game.monsters[0];
+    foe.x = 9; foe.z = 5; // 4 tiles away — within thrown range (6), beyond melee (1)
+    let rolledWith = null;
+    game.heroAttackRoll = (h, f, alive, opts) => { rolledWith = opts; };
+    const ok = game.manualPerformAttack(hero, foe, 'thrown');
+    expect(ok).toBe(true);
+    expect(hero.actUsed).toBe(true);
+    expect(hero.moveLeft).toBe(0); // movement untouched
+    expect(rolledWith).not.toBeNull();
+    expect(rolledWith.profile.melee).toBe(false);
+    expect(rolledWith.profile.thrown).toBe(true);
+  });
+
+  it('thrown attack beyond range reports out of range instead of walking', () => {
+    const hero = game.heroes[0];
+    hero.actUsed = false;
+    hero.moveLeft = 6;
+    hero.data.weaponProfile = { name: 'Handaxe', melee: true, thrown: true, range: 6, dmg: [1, 6], ability: 'str', source: 'weapon', dmgType: 'slashing' };
+    const foe = game.monsters[0];
+    foe.x = 5; foe.z = 12; // 7 tiles away — outside 6-tile thrown range
+    game.heroAttackRoll = () => { throw new Error('should not roll'); };
+    const ok = game.manualPerformAttack(hero, foe, 'thrown');
+    expect(ok).toBe(false);
+    expect(hero.actUsed).toBe(false);
+    expect(hero.moveLeft).toBe(6); // didn't try to walk
+  });
+
+  it('prevents hero occupancy collisions via placeAtFreeCell (reservation system)', () => {
+    /* The old post-hoc enforceHeroUnoccupiedCell teleport was replaced by the
+       reservation system: placeAtFreeCell picks a FREE cell near the requested
+       position, so two heroes never land on the same tile in the first place. */
+    const heroA = game.heroes[0];           // already at (5,5) = cell 105
     const heroB = {
       data: { name: 'Kyra', hp: 20, maxHp: 20 },
       _side: 'hero',
-      x: 5.5, z: 5.5
+      x: 5, z: 5
     };
     game.heroes.push(heroB);
 
-    // Both heroes are at cell 105 (5,5)
+    // heroA occupies cell 105 already
     expect(game.cellOf(heroA.x, heroA.z)).toBe(105);
-    expect(game.cellOf(heroB.x, heroB.z)).toBe(105);
 
-    // Enforce occupancy when movement stops
-    game.enforceHeroUnoccupiedCell(heroA);
+    // Place heroB near the same spot — reservation must route it to a free cell.
+    game.placeAtFreeCell(heroB, 5, 5, { radius: 2 });
 
-    // heroA should have stepped to an adjacent unoccupied cell
-    expect(game.cellOf(heroA.x, heroA.z)).not.toBe(105);
+    // heroB must NOT have landed on heroA's cell.
+    expect(game.cellOf(heroB.x, heroB.z)).not.toBe(105);
   });
 
   it('activates AOE spell targeting mode with ground visual ring', () => {
@@ -250,5 +308,169 @@ describe('Manual Mode & Action Economy', () => {
     // Cancel targeting
     game.cancelSpellTargeting();
     expect(game.targetingState).toBeNull();
+  });
+
+  it('immediately casts self and party buffs without entering ground targeting', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    hero.data.slots = { 1: 2 };
+    hero.data.knownSpells = ['shield', 'bless'];
+
+    // Shield is self-targeted
+    const okShield = game.manualPerformSpell(hero, 'shield');
+    expect(okShield).toBe(true);
+    expect(game.targetingState).toBeFalsy();
+
+    // Reset action for next cast
+    hero.actUsed = false;
+
+    // Bless is party-targeted
+    const okBless = game.manualPerformSpell(hero, 'bless');
+    expect(okBless).toBe(true);
+    expect(game.targetingState).toBeFalsy();
+  });
+
+  /* Find Familiar (and the other party-wide buffs that take no target) had no
+     targetType, so manual mode sent them into "click a target" aiming mode —
+     with nothing to click out of combat, the run just sat there. */
+  it('casts targetless summons and party buffs outright instead of aiming them', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    hero.data.classKey = 'wizard';
+    hero.data.level = 9;
+    hero.data.slots = { 1: 2, 2: 2, 3: 2, 8: 1, 9: 1 };
+    hero.data.charges = hero.data.charges || {};
+    game.summons = game.summons || { spawn: () => ({ data: { name: 'Owl Familiar' } }) };
+    for (const key of ['findFamiliar', 'passWithoutTrace', 'crusadersMantle', 'mindBlank', 'foresight']) {
+      hero.actUsed = false;
+      hero.data.knownSpells = [key];
+      game.manualPerformSpell(hero, key);
+      expect(game.targetingState, `${key} entered targeting mode`).toBeFalsy();
+    }
+  });
+
+  it('allows casting Cure Wounds on wounded ally in manual mode even above 60% HP', () => {
+    const hero = game.heroes[0];
+    hero.data.hp = 25; // 25/30 = 83% HP (above AI 60% cutoff)
+    hero.data.slots = { 1: 2 };
+    hero.data.knownSpells = ['cureWounds'];
+    hero.actUsed = false;
+    game.controlMode = 'manual';
+
+    const ok = game.manualPerformSpell(hero, 'cureWounds', hero, null, 1);
+    expect(ok).toBe(true);
+    expect(hero.actUsed).toBe(true);
+    expect(hero.data.hp).toBeGreaterThan(25);
+  });
+
+  it('manualEndTurn cancels active targeting and pending moves cleanly', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    game.targetingState = { active: true, hero, spellKey: 'fireball' };
+    game.attackTargetingState = { active: true, hero };
+    game.pendingMoveState = { active: true, hero, goalCell: 105 };
+
+    game.manualEndTurn();
+    expect(game.targetingState).toBeNull();
+    expect(game.attackTargetingState).toBeNull();
+    expect(game.pendingMoveState).toBeNull();
+  });
+
+  it('Extra Attack allows attacking a second target after killing the first target', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    hero.data.features = ['extraAttack'];
+    hero.data.weaponProfile = { name: 'Longbow', melee: false, range: 12, dmg: [1, 8], ability: 'dex', source: 'weapon' };
+
+    const foe1 = game.monsters[0];
+    foe1.data.hp = 5;
+    const foe2 = {
+      data: { id: 'goblin_2', name: 'Goblin 2', hp: 12, maxHp: 12 },
+      _side: 'mon',
+      active: true,
+      x: 7, z: 5
+    };
+    game.monsters.push(foe2);
+
+    // Attack 1: kills foe1
+    game.heroPerformAttack = (_h, f) => { f.data.hp = 0; return 0.2; };
+    const ok1 = game.manualPerformAttack(hero, foe1);
+    expect(ok1).toBe(true);
+    expect(foe1.data.hp).toBe(0);
+    expect(hero.actUsed).toBe(false);
+    expect(hero.attacksLeft).toBe(1);
+    expect(hero.attackActionCommitted).toBe(true);
+
+    // Hero moves 10 ft (2 cells) between attacks
+    hero.moveLeft -= 2;
+    expect(hero.moveLeft).toBe(4);
+
+    // Attack 2: hits foe2 and consumes the remaining attack
+    game.heroPerformAttack = (_h, f) => { f.data.hp -= 6; return 0.2; };
+    const ok2 = game.manualPerformAttack(hero, foe2);
+    expect(ok2).toBe(true);
+    expect(foe2.data.hp).toBe(6);
+    expect(hero.actUsed).toBe(true);
+    expect(hero.attacksLeft).toBe(0);
+    expect(hero.attackActionCommitted).toBe(false);
+  });
+
+  it('single attack hero sets actUsed on first strike', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    hero.data.features = [];
+    const foe = game.monsters[0];
+    foe.data.hp = 12;
+
+    game.heroPerformAttack = (_h, f) => { f.data.hp -= 5; return 0.2; };
+    const ok = game.manualPerformAttack(hero, foe);
+    expect(ok).toBe(true);
+    expect(hero.actUsed).toBe(true);
+    expect(hero.attacksLeft).toBe(0);
+  });
+
+  it('disallows casting action spell when Attack action has extra attacks remaining', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    hero.data.features = ['extraAttack'];
+    hero.data.slots = { 3: 1 };
+    hero.data.knownSpells = ['fireball'];
+    const foe1 = game.monsters[0];
+    foe1.data.hp = 5;
+
+    // First attack kills foe1
+    game.heroPerformAttack = (_h, f) => { f.data.hp = 0; return 0.2; };
+    game.manualPerformAttack(hero, foe1);
+    expect(hero.attacksLeft).toBe(1);
+    expect(hero.attackActionCommitted).toBe(true);
+
+    // Try to cast an action spell (Fireball) -> rejected
+    const castOk = game.manualPerformSpell(hero, 'fireball');
+    expect(castOk).toBe(false);
+    expect(hero.actUsed).toBe(false);
+  });
+
+  it('re-arms attack targeting if hero has attacks remaining', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    game.state = 'crawl';
+    hero.data.features = ['extraAttack'];
+    const foe1 = game.monsters[0];
+    foe1.data.hp = 5;
+
+    game.startAttackTargeting(hero, 'thrown');
+    expect(game.attackTargetingState).not.toBeNull();
+    expect(game.attackTargetingState.active).toBe(true);
+
+    // Simulate clicking foe1 on map
+    game.heroPerformAttack = (_h, f) => { f.data.hp = 0; return 0.2; };
+    game.commandMove(6, 5);
+
+    expect(foe1.data.hp).toBe(0);
+    expect(hero.attacksLeft).toBe(1);
+    expect(hero.actUsed).toBe(false);
+    expect(game.attackTargetingState).not.toBeNull();
+    expect(game.attackTargetingState.active).toBe(true);
+    expect(game.attackTargetingState.profileOverride).toBe('thrown');
   });
 });

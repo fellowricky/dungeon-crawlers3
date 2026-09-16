@@ -1,0 +1,32 @@
+{
+  "cursor_arrow": {
+    "hotspot": [
+      2,
+      1
+    ],
+    "size": [
+      19,
+      30
+    ]
+  },
+  "cursor_hand": {
+    "hotspot": [
+      7,
+      1
+    ],
+    "size": [
+      23,
+      30
+    ]
+  },
+  "cursor_sword": {
+    "hotspot": [
+      2,
+      1
+    ],
+    "size": [
+      30,
+      29
+    ]
+  }
+}

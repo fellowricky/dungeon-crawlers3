@@ -64,4 +64,19 @@ describe('Skill challenges trigger condition', () => {
     checkRoomEntryChallenge(mockGame);
     expect(mockGame._storyChallengesFired?.has(0)).toBe(true);
   });
+
+  it('grants exactly 1 skill point per level-up', async () => {
+    const { makeHero } = await import('../src/game/srd.js');
+    const { applyLevelGrants, SKILL_POINTS_PER_LEVEL } = await import('../src/game/features.js');
+    expect(SKILL_POINTS_PER_LEVEL).toBe(1);
+
+    const hero = makeHero('Valeros', 'human', 'fighter', { str: 16, dex: 12, con: 14, int: 10, wis: 10, cha: 10 }, {});
+    expect(hero.pendingSkillRank).toBe(0);
+
+    applyLevelGrants(hero, 2, null, { autosOnly: false });
+    expect(hero.pendingSkillRank).toBe(1);
+
+    applyLevelGrants(hero, 3, null, { autosOnly: false });
+    expect(hero.pendingSkillRank).toBe(2);
+  });
 });

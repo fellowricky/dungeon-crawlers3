@@ -1,13 +1,13 @@
 {
   "baseBudget": 150,
   "difficultyFloor": 0.25,
-  "difficultySpan": 0,
+  "difficultySpan": 0.15,
   "maxSpawns": 10,
   "overspendSlack": 0,
   "typeMult": {
     "combat": 1,
-    "elite": 1.15,
-    "boss": 1.25
+    "elite": 1.25,
+    "boss": 1
   },
   "crAnchorLevels": [
     1,
@@ -45,109 +45,124 @@
     8,
     9,
     10,
-    10,
+    11,
     12,
-    10,
-    10,
-    10,
-    10,
-    10
+    13,
+    14,
+    15,
+    16,
+    17
   ],
   "crCostScale": 1,
   "crCostOverrides": {
     "1": 16,
-    "2": 21,
-    "3": 28,
-    "5": 34,
-    "8": 42,
-    "12": 50,
-    "17": 70,
-    "23": 85,
-    "30": 109,
+    "2": 36,
+    "3": 56,
+    "4": 88,
+    "5": 144,
+    "6": 184,
+    "7": 232,
+    "8": 312,
+    "9": 400,
+    "10": 472,
+    "11": 576,
+    "12": 672,
+    "13": 800,
+    "14": 920,
+    "15": 1040,
+    "16": 1200,
+    "17": 1440,
+    "18": 1600,
+    "19": 1760,
+    "20": 2000,
+    "21": 2640,
+    "23": 4000,
+    "30": 12400,
     "0.125": 6,
     "0.25": 8,
     "0.5": 12
   },
   "levelCurve": {
     "1": {
-      "budgetMult": 0.75,
-      "spawnCap": 10
+      "budgetMult": 0.6,
+      "spawnCap": 7
     },
     "2": {
       "budgetMult": 1,
-      "spawnCap": 10
+      "spawnCap": 7
     },
     "3": {
-      "budgetMult": 1.25,
-      "spawnCap": 10
+      "budgetMult": 1.5,
+      "spawnCap": 7
     },
     "4": {
-      "budgetMult": 1.5,
-      "spawnCap": 10
+      "budgetMult": 2,
+      "spawnCap": 7
     },
     "5": {
-      "budgetMult": 2.18,
-      "spawnCap": 10
+      "budgetMult": 4.4,
+      "spawnCap": 7
     },
     "6": {
-      "budgetMult": 2.51,
-      "spawnCap": 10
+      "budgetMult": 7,
+      "spawnCap": 7
     },
     "7": {
-      "budgetMult": 2.83,
-      "spawnCap": 10
+      "budgetMult": 12,
+      "spawnCap": 7
     },
     "8": {
-      "budgetMult": 3.15,
-      "spawnCap": 10
+      "budgetMult": 20,
+      "spawnCap": 7
     },
     "9": {
-      "budgetMult": 3.47,
-      "spawnCap": 10
+      "budgetMult": 26,
+      "spawnCap": 7
     },
     "10": {
-      "budgetMult": 3.79,
-      "spawnCap": 10
+      "budgetMult": 33,
+      "spawnCap": 7
     },
     "11": {
-      "budgetMult": 4.11,
-      "spawnCap": 10
+      "budgetMult": 45,
+      "spawnCap": 7
     },
     "12": {
-      "budgetMult": 4.43,
-      "spawnCap": 10
+      "budgetMult": 55,
+      "spawnCap": 7
     },
     "13": {
-      "budgetMult": 4.75,
-      "spawnCap": 10
+      "budgetMult": 63,
+      "spawnCap": 7
     },
     "14": {
-      "budgetMult": 5.07,
-      "spawnCap": 10
+      "budgetMult": 80,
+      "spawnCap": 7
     },
     "15": {
-      "budgetMult": 5.39,
-      "spawnCap": 10
+      "budgetMult": 90,
+      "spawnCap": 7
     },
     "16": {
-      "budgetMult": 5.72,
-      "spawnCap": 10
+      "budgetMult": 110,
+      "spawnCap": 8
     },
     "17": {
-      "budgetMult": 6.04,
-      "spawnCap": 10
+      "budgetMult": 130,
+      "spawnCap": 8
     },
     "18": {
-      "budgetMult": 6.36,
-      "spawnCap": 10
+      "budgetMult": 150,
+      "spawnCap": 8
     },
     "19": {
-      "budgetMult": 6.68,
-      "spawnCap": 10
+      "budgetMult": 170,
+      "spawnCap": 8
     },
     "20": {
-      "budgetMult": 7,
-      "spawnCap": 10
+      "budgetMult": 200,
+      "spawnCap": 8
     }
-  }
+  },
+  "hordeMaxSpawns": 18
 }

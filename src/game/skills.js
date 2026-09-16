@@ -18,8 +18,10 @@
  * Integrated into game.js — all data, logic, and UI lives here.
  */
 import { SKILLS, mod, d as die, roll as d20roll, spawnMonster, dungeonMonsterIds, makeHero, createWolfCompanion, recalc, grantXp } from './srd.js';
+
+import { iconHtml } from './icons.js';
 import { featSkillBonus } from './features.js';
-import { rollItem } from './items.js';
+import { rollItem, addToInventory } from './items.js';
 import { log, updateResources, updatePartyFrames } from './ui.js';
 import { partyShortRest } from './rest.js';
 import { applyEffect, clearEffectsByTag, EFFECTS, ROUND_SECONDS } from './conditions.js';
@@ -2191,7 +2193,7 @@ export function checkForChallenge(game) {
    Reward preview (shown on card fronts — no exact values revealed)
    ================================================================ */
 function rewardPreview(reward, tierKey) {
-  const icon = REWARD_ICONS[reward.kind] || '🎁';
+  const icon = iconHtml('reward', reward.kind, REWARD_ICONS[reward.kind] || '🎁');
   const label = REWARD_LABELS[reward.kind] || 'Reward';
   if (tierKey === 'risky') {
     return SCALABLE.has(reward.kind) ? `${icon} ${label} ×2 ⚡` : `${icon} ${label} + 💰 ⚡`;
@@ -2385,7 +2387,7 @@ function applyComputedReward(game, computed, challenge, hero) {
 
   switch (d.kind) {
     case 'item': {
-      for (const item of d.items) { game.inventory.push(item); trackLoot(game, item); }
+      for (const item of d.items) { addToInventory(game.inventory, item, game); trackLoot(game, item); }
       break;
     }
     case 'gold': {
@@ -2473,7 +2475,7 @@ function applyComputedReward(game, computed, challenge, hero) {
       break;
     }
     case 'summonAlly': {
-      if (sc && sc.name === 'Recruit the Guard') {
+      if (challenge && (challenge.name === 'Recruit the Guard' || challenge.key === 'recruitGuard' || d.subType === 'guard')) {
         spawnGuardAlly(game);
       } else {
         spawnBeastAlly(game);
@@ -3170,7 +3172,7 @@ function showChoosePhase(state) {
   const vigCanvas = document.getElementById('challenge-vignette');
   if (vigCanvas) {
     // Build party roster for the vignette: all alive heroes with their data
-    const alive = game.heroes.filter(h => h.data.hp > 0);
+    const alive = game.heroes.filter(h => h.data.hp > 0 && !h.companion);   // the party, not its pets
     const party = alive.map((h, i) => ({ hero: h.data, name: h.data.name, index: i }));
     if (party.length > 0) {
       _vignette = new ChallengeVignette(vigCanvas);

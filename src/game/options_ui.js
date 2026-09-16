@@ -13,7 +13,7 @@
  * Toggles write straight through to settings (persisted + applied immediately);
  * there is no OK/Cancel, matching how the volume sliders already behave.
  */
-import { allSettings, setSetting, resetSettings, applyLogClasses } from './settings.js';
+import { allSettings, setSetting, resetSettings, applyLogClasses, GRAPHICS_QUALITY_LEVELS } from './settings.js';
 import { getMusicVolume, getSfxVolume, getNarrationVolume,
          setMusicVolume, setSfxVolume, setNarrationVolume, playSfx } from './audio.js';
 
@@ -43,13 +43,78 @@ const OPTION_GROUPS = [
     rows: [
       { key: 'autoSkillChallenges', label: 'Auto-complete skill challenges',
         hint: 'Pick the approach with the best expected payoff instead of asking. The roll still plays out, and the narration is never cut short.' },
-      { key: 'autoLootChests', label: 'Auto-loot chests',
-        hint: 'Take the haul 3 seconds after the wheel stops, without waiting for a click.' },
+    ]
+  },
+  {
+    title: '⚔️ Combat',
+    note: 'Playback speed while a fight is active. Applies to movement, attacks and animations.',
+    rows: [
+      { key: 'initiativeReveal', label: 'Initiative roll-off',
+        hint: 'Show everyone’s d20 at the start of a fight before the first turn' },
+      { key: 'combatSpeed', type: 'range', min: 0.5, max: 1.5, step: 0.05,
+        label: 'Combat playback speed',
+        hint: '0.7 ≈ 30% slower; 1.0 is the original speed.' },
+    ]
+  },
+  {
+    title: '🖥️ Graphics & comfort',
+    note: 'Quality changes the light count at the next floor; everything else applies instantly.',
+    rows: [
+      { key: 'graphicsQuality', type: 'select', label: 'Quality',
+        options: [['low', 'Low — no post-processing, 512 shadow map, fewest torches'],
+                  ['medium', 'Medium — bloom on, 1024 shadow map, fewer torches'],
+                  ['high', 'High — the full look']],
+        hint: 'Low is for integrated graphics and long idle sessions. Torch count takes effect when the next floor is built.' },
+      { key: 'screenShake', label: 'Screen shake',
+        hint: 'Camera shake on heavy hits, crits and explosions.' },
+      { key: 'hitStop', label: 'Hit-stop',
+        hint: 'The brief freeze-frame that sells a landed blow.' },
+      { key: 'filmGrain', label: 'Film grain & tilt-shift',
+        hint: 'The grain and the soft top/bottom blur of the post-process look.' },
+      { key: 'uiScale', type: 'range', min: 0.8, max: 1.4, step: 0.05, format: 'x',
+        label: 'UI scale',
+        hint: 'Size of the HUD, party frames, combat log and menus.' },
+      { key: 'perfOverlay', label: 'Performance readout',
+        hint: 'Frame time, draw calls, lights and shader programs in the corner. F3 toggles it too.' },
+    ]
+  },
+  {
+    title: '🎥 Camera',
+    note: 'The camera hands control straight back for three seconds after you drag, orbit or scroll.',
+    rows: [
+      { key: 'cameraAutoFrame', label: 'Auto-frame the fight',
+        hint: 'Pull back far enough to show the enemies as well as the party. Never crops a hero to fit a monster.' },
+      { key: 'cameraActionZoom', label: 'Action punch-in zoom',
+        hint: 'Zoom in for tighter, dramatic shots during attacks, spells and critical hits, easing back out between turns.' },
+      { key: 'cameraAutoRotate', label: 'Turn to see past walls',
+        hint: 'When scenery sits between the camera and the party, swing a quarter turn around it.' },
+      { key: 'cameraActionRotate', label: 'Cinematic action angles',
+        hint: 'Turn to dynamic angles during combat to clearly view clashes from the side rather than stacked behind sprites.' },
     ]
   },
 ];
 
+const fmtRange = (row, v) => row.format === 'x' ? `${v.toFixed(2)}×` : `${Math.round(v * 100)}%`;
+
 function rowHTML(row, values) {
+  if (row.type === 'range') {
+    const val = values[row.key] != null ? values[row.key] : (row.min || 0);
+    return `<label class="opt-vol-row opt-range-row">
+      <span class="opt-vol-label">${row.label}</span>
+      <span class="opt-range-val" data-val-for="${row.key}">${fmtRange(row, val)}</span>
+      <input type="range" class="opt-range" data-setting="${row.key}" data-format="${row.format || ''}" min="${row.min}" max="${row.max}" step="${row.step}" value="${val}">
+    </label>
+    <div class="opt-row-hint">${row.hint}</div>`;
+  }
+  if (row.type === 'select') {
+    const cur = values[row.key];
+    const opts = row.options.map(([v, label]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${label}</option>`).join('');
+    return `<label class="opt-vol-row opt-select-row">
+      <span class="opt-vol-label">${row.label}</span>
+      <select class="opt-select" data-setting="${row.key}">${opts}</select>
+    </label>
+    <div class="opt-row-hint">${row.hint}</div>`;
+  }
   const on = !!values[row.key];
   return `<label class="opt-row">
     <input type="checkbox" class="opt-check" data-setting="${row.key}"${on ? ' checked' : ''}>
@@ -107,7 +172,7 @@ let _escBound = false;
  * Built here rather than declared in index.html on purpose: `.wm-frame` and
  * `#worldmapscreen` were unclosed in the markup, so a statically-declared
  * overlay got auto-nested inside the (usually display:none) world-map screen
- * and never appeared mid-delve. Owning the node in JS — the same way #topnav and
+ * and never appeared mid-delve. Owning the node in JS — the same way the HUD nav buttons and
  * #charscreen do — makes that class of bug impossible.
  */
 function overlayHost() {
@@ -130,6 +195,23 @@ export function openOptions() {
 
   ov.querySelectorAll('.opt-check').forEach(box => {
     box.addEventListener('change', () => setSetting(box.dataset.setting, box.checked));
+  });
+
+  ov.querySelectorAll('.opt-range').forEach(sl => {
+    sl.addEventListener('input', () => {
+      const v = parseFloat(sl.value);
+      setSetting(sl.dataset.setting, v);
+      const val = ov.querySelector(`[data-val-for="${sl.dataset.setting}"]`);
+      if (val) val.textContent = fmtRange({ format: sl.dataset.format }, v);
+    });
+  });
+
+  ov.querySelectorAll('.opt-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      if (sel.dataset.setting === 'graphicsQuality' && !GRAPHICS_QUALITY_LEVELS.includes(v)) return;
+      setSetting(sel.dataset.setting, v);
+    });
   });
 
   const VOL_SETTERS = { music: setMusicVolume, sfx: setSfxVolume, narr: setNarrationVolume };
@@ -178,7 +260,7 @@ export function closeOptions() {
  * the stored verbosity onto the log. Called once from game boot; safe to call
  * again (openers use onclick, so listeners are replaced rather than stacked).
  *
- * The topnav ⚙ button is wired by menus.js, which owns that bar and builds it
+ * The ⚙ button in #hud-top-right is wired by menus.js, which builds it
  * after this runs.
  */
 export function initOptionsMenu() {

@@ -168,6 +168,60 @@ export function playSfx(name, { volume = 1, throttleMs = 70 } = {}) {
   });
 }
 
+/* ── UI: stone taps, synthesised ─────────────────────────────────────
+   Buttons and tabs are cut stone now (ui_kit.css), so they click like it: a
+   short band-passed noise burst with a low knock underneath. Synthesised so
+   there is nothing to download and every control sounds like the same
+   material; goes through sfxGain like everything else. `hover` is the same
+   tap, much quieter and thinner. */
+let uiNoise = null;
+function noiseBuffer(c) {
+  if (uiNoise) return uiNoise;
+  const n = Math.floor(c.sampleRate * 0.12);
+  uiNoise = c.createBuffer(1, n, c.sampleRate);
+  const d = uiNoise.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return uiNoise;
+}
+export function playUiTap(kind = 'click') {
+  if (!unlocked || settings.sfx <= 0) return;
+  const c = ensureCtx();
+  if (!c) return;
+  const now = performance.now();
+  const key = 'ui:' + kind;
+  if (now - (lastPlay.get(key) || -1e9) < (kind === 'hover' ? 60 : 40)) return;
+  lastPlay.set(key, now);
+  const t = c.currentTime;
+  const hover = kind === 'hover';
+  const out = c.createGain();
+  out.gain.value = hover ? 0.08 : 0.32;
+  out.connect(sfxGain);
+  // the grit: filtered noise, very short
+  const src = c.createBufferSource();
+  src.buffer = noiseBuffer(c);
+  const bp = c.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = hover ? 2600 : 1400 + Math.random() * 300;
+  bp.Q.value = hover ? 2.2 : 1.1;
+  const env = c.createGain();
+  env.gain.setValueAtTime(1, t);
+  env.gain.exponentialRampToValueAtTime(0.001, t + (hover ? 0.035 : 0.075));
+  src.connect(bp); bp.connect(env); env.connect(out);
+  src.start(t); src.stop(t + 0.1);
+  // the knock: a pitched thump under a click, none under a hover
+  if (!hover) {
+    const o = c.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(190 + Math.random() * 30, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + 0.06);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.connect(g); g.connect(out);
+    o.start(t); o.stop(t + 0.08);
+  }
+}
+
 /* ── narration (voiced flavor text) ────────────────────────────────── */
 
 const NARR_DIR = SFX_DIR + 'Narration/';
@@ -351,6 +405,29 @@ export const getSfxVolume = () => settings.sfx;
 export const getMusicVolume = () => settings.music;
 export const getNarrationVolume = () => settings.narration;
 
+export function preloadCommonSFX() {
+  const c = ensureCtx();
+  if (!c) return Promise.resolve();
+  const promises = [];
+  for (const name of Object.keys(SOUNDS.slots || {})) {
+    const variants = resolveSfx(name);
+    if (!variants) continue;
+    for (const v of variants) {
+      const path = SFX_DIR + v;
+      if (!buffers.has(path)) {
+        const p = fetch(encodeURI(path))
+          .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+          .then(ab => c.decodeAudioData(ab))
+          .then(b => { buffers.set(path, b); return b; })
+          .catch(() => { buffers.delete(path); return null; });
+        buffers.set(path, p);
+        promises.push(p);
+      }
+    }
+  }
+  return Promise.all(promises);
+}
+
 /* ── init: autoplay unlock + volume UI ─────────────────────────────── */
 
 function unlock() {
@@ -359,6 +436,7 @@ function unlock() {
   const c = ensureCtx();
   if (c && c.state === 'suspended') c.resume();
   if (settings.music > 0) startMusic();
+  try { preloadCommonSFX(); } catch (e) {}
 }
 
 export function initAudio() {

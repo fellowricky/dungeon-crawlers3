@@ -1,0 +1,1782 @@
+{
+  "_comment": "Composite VFX animation definitions — authored in the VFX Animation Editor (/test-skills.html). Each animation has a travel phase (back/front layers flying caster→target) and an impact phase (back/front layers at the target). Layers are sheets, sprites, or procedural effects. consumed by src/game/vfx_animations.js.",
+  "cantripBindings": {
+    "wizard": "fireBolt",
+    "sorcerer": "chillTouch",
+    "cleric": "sacredFlame",
+    "druid": "produceFlame",
+    "warlock": "eldritchBlast"
+  },
+  "sheets": {
+    "cantrip_fire_bolt": {
+      "url": "fx/spells/cantrip_fire_bolt.png",
+      "cols": 19,
+      "rows": 1,
+      "frames": 19,
+      "fps": 30
+    },
+    "cantrip_chill_touch": {
+      "url": "fx/spells/cantrip_chill_touch.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "cantrip_sacred_flame": {
+      "url": "fx/spells/cantrip_sacred_flame.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "cantrip_produce_flame": {
+      "url": "fx/spells/cantrip_produce_flame.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "cantrip_eldritch_blast": {
+      "url": "fx/spells/cantrip_eldritch_blast.png",
+      "cols": 19,
+      "rows": 1,
+      "frames": 19,
+      "fps": 40
+    },
+    "spell_armsOfHadar": {
+      "url": "fx/spells/spell_armsOfHadar.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_bane": {
+      "url": "fx/spells/spell_bane.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_bless": {
+      "url": "fx/spells/spell_bless.png",
+      "cols": 36,
+      "rows": 1,
+      "frames": 36,
+      "fps": 30
+    },
+    "spell_chaosBolt": {
+      "url": "fx/spells/spell_chaosBolt.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_chromaticOrb": {
+      "url": "fx/spells/spell_chromaticOrb.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_cureWounds": {
+      "url": "fx/spells/spell_cureWounds.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_entangle": {
+      "url": "fx/spells/spell_entangle.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_findFamiliar": {
+      "url": "fx/spells/spell_findFamiliar.png",
+      "cols": 36,
+      "rows": 1,
+      "frames": 36,
+      "fps": 30
+    },
+    "spell_grease": {
+      "url": "fx/spells/spell_grease.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_guidingBolt": {
+      "url": "fx/spells/spell_guidingBolt.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "spell_healingWord": {
+      "url": "fx/spells/spell_healingWord.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "spell_hex": {
+      "url": "fx/spells/spell_hex.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_hideousLaughter": {
+      "url": "fx/spells/spell_hideousLaughter.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_huntersMark": {
+      "url": "fx/spells/spell_huntersMark.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_inflictWounds": {
+      "url": "fx/spells/spell_inflictWounds.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "spell_magicMissile": {
+      "url": "fx/spells/spell_magicMissile.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_protectionFromEvil": {
+      "url": "fx/spells/spell_protectionFromEvil.png",
+      "cols": 36,
+      "rows": 1,
+      "frames": 36,
+      "fps": 30
+    },
+    "spell_rayOfSickness": {
+      "url": "fx/spells/spell_rayOfSickness.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "spell_shield": {
+      "url": "fx/spells/spell_shield.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_shieldOfFaith": {
+      "url": "fx/spells/spell_shieldOfFaith.png",
+      "cols": 30,
+      "rows": 1,
+      "frames": 30,
+      "fps": 30
+    },
+    "spell_thunderousSmite": {
+      "url": "fx/spells/spell_thunderousSmite.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "spell_thunderwave": {
+      "url": "fx/spells/spell_thunderwave.png",
+      "cols": 25,
+      "rows": 1,
+      "frames": 25,
+      "fps": 30
+    },
+    "spell_web": {
+      "url": "fx/spells/spell_web.png",
+      "cols": 34,
+      "rows": 1,
+      "frames": 34,
+      "fps": 30
+    }
+  },
+  "anims": {
+    "fireBolt": {
+      "name": "Fire Bolt",
+      "travelSound": "cantripFireBolt",
+      "impactSound": "spellImpact",
+      "travel": {
+        "duration": 1,
+        "arc": 0.3,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ff7a30",
+          "scale": 1.5,
+          "dur": 0.6,
+          "opacity": 0.45,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "cantrip_fire_bolt",
+          "color": "#ffffff",
+          "scale": 1.1,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive",
+          "fps": 20
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "gigapack:stylized_explosion_001_small_yellow",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2,
+          "dur": 0.5,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "none",
+          "kind": "ring",
+          "color": "#ffd34a",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "chillTouch": {
+      "name": "Chill Touch",
+      "travelSound": "cantripChillTouch",
+      "impactSound": "spellFreeze",
+      "travel": {
+        "duration": 0.6,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#7fd8c8",
+          "scale": 1.5,
+          "dur": 0.6,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "cantrip_chill_touch",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.7,
+          "opacity": 0.9,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "cantrip_chill_touch",
+          "fps": 30,
+          "color": "#58c7c7",
+          "scale": 2,
+          "dur": 1,
+          "opacity": 0.95,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#a8ffe8",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "sacredFlame": {
+      "name": "Sacred Flame",
+      "travelSound": "cantripSacredFlame",
+      "impactSound": "spellImpact",
+      "travel": {
+        "duration": 0.6,
+        "arc": 1.15,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffd34a",
+          "scale": 1,
+          "dur": 0.6,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "gigapack:scifi_charge_up_001_large_yellow",
+          "color": "#ffffff",
+          "scale": 0.6,
+          "dur": 0.6,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "cantrip_sacred_flame",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.7,
+          "dur": 1,
+          "opacity": 0.95,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#ffe080",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "produceFlame": {
+      "name": "Produce Flame",
+      "travelSound": "cantripProduceFlame",
+      "impactSound": "spellImpact",
+      "travel": {
+        "duration": 0.6,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffa040",
+          "scale": 1.5,
+          "dur": 0.6,
+          "opacity": 0.45,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "gigapack:round_sparkle_burst_002_large_green",
+          "color": "#ffffff",
+          "scale": 1.4,
+          "dur": 0.6,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "cantrip_produce_flame",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.5,
+          "dur": 1,
+          "opacity": 0.95,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "burst",
+          "burstType": "fire",
+          "color": "#ffb060",
+          "count": 14,
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      }
+    },
+    "eldritchBlast": {
+      "name": "Eldritch Blast",
+      "travelSound": "cantripEldritchBlast",
+      "impactSound": "spellImpact",
+      "travel": {
+        "duration": 0.55,
+        "arc": 0.35,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#8a5cf6",
+          "scale": 1,
+          "dur": 0.55,
+          "opacity": 0.45,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "cantrip_eldritch_blast",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.65,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "gigapack:stylized_explosion_002_large_violet",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.7,
+          "opacity": 0.95,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "none",
+          "kind": "ring",
+          "color": "#c8a0ff",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "acidArrow": {
+      "name": "Acid Arrow",
+      "travelSound": "spellAcid",
+      "impactSound": "spellImpact",
+      "travel": {
+        "duration": 0.5,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#4cae4c",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.45,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "gigapack:spell_poison_001_small_green",
+          "color": "#ffffff",
+          "scale": 1.3,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "gigapack:burst_splatter_003_large_green",
+          "fps": 20,
+          "color": "#ffffff",
+          "scale": 1.6,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sprite",
+          "path": "dcss/effect/acid_venom.png",
+          "color": "#ffffff",
+          "scale": 1.4400000000000002,
+          "dur": 0.45,
+          "opacity": 0.95,
+          "blend": "additive"
+        }
+      }
+    },
+    "armsOfHadar": {
+      "name": "Arms of Hadar",
+      "travelSound": "spellArmsOfHadar",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#6a3080",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_armsOfHadar",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_armsOfHadar",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#6a3080",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "bane": {
+      "name": "Bane",
+      "travelSound": "spellBane",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#d0a0ff",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_bane",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_bane",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#d0a0ff",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "bless": {
+      "name": "Bless",
+      "travelSound": "spellBless",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffe08a",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_bless",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_bless",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1.2,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#ffe08a",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "chaosBolt": {
+      "name": "Chaos Bolt",
+      "travelSound": "spellChaosBolt",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.3,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#c0a0ff",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_chaosBolt",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_chaosBolt",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "burst",
+          "burstType": "magic",
+          "color": "#d0a0ff",
+          "count": 14,
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      }
+    },
+    "chromaticOrb": {
+      "name": "Chromatic Orb",
+      "travelSound": "spellChromaticOrb",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.2,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffc080",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_chromaticOrb",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_chromaticOrb",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "burst",
+          "burstType": "magic",
+          "color": "#ffe080",
+          "count": 14,
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      }
+    },
+    "cureWounds": {
+      "name": "Cure Wounds",
+      "travelSound": "spellCureWounds",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#6ae06a",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_cureWounds",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_cureWounds",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "burst",
+          "burstType": "heal",
+          "color": "#8cff8c",
+          "count": 12,
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      }
+    },
+    "entangle": {
+      "name": "Entangle",
+      "travelSound": "spellEntangle",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.2,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#4cae4c",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_entangle",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_entangle",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.4,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "vines",
+          "color": "#4cae4c",
+          "radius": 2,
+          "dur": 0.6,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "findFamiliar": {
+      "name": "Find Familiar",
+      "travelSound": "spellFindFamiliar",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.3,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#a0c080",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_findFamiliar",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_findFamiliar",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1.2,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#a0c080",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "grease": {
+      "name": "Grease",
+      "travelSound": "spellGrease",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.15,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#bfa060",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_grease",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_grease",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.4,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#bfa060",
+          "scale": 1.4,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "guidingBolt": {
+      "name": "Guiding Bolt",
+      "travelSound": "spellGuidingBolt",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.5,
+        "arc": 0.1,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffe08a",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_guidingBolt",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_guidingBolt",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#ffe08a",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "healingWord": {
+      "name": "Healing Word",
+      "travelSound": "spellHealingWord",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0.2,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#e8a8ff",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_healingWord",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_healingWord",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "burst",
+          "burstType": "heal",
+          "color": "#f0c0ff",
+          "count": 12,
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      }
+    },
+    "hex": {
+      "name": "Hex",
+      "travelSound": "spellHex",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#9b59b6",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_hex",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_hex",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#9b59b6",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "hideousLaughter": {
+      "name": "Tasha's Hideous Laughter",
+      "travelSound": "spellHideousLaughter",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.3,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#d0a0ff",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_hideousLaughter",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_hideousLaughter",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#d0a0ff",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "huntersMark": {
+      "name": "Hunter's Mark",
+      "travelSound": "spellHuntersMark",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#1abc9c",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_huntersMark",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_huntersMark",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#1abc9c",
+          "scale": 1.1,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "inflictWounds": {
+      "name": "Inflict Wounds",
+      "travelSound": "spellInflictWounds",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#c04060",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_inflictWounds",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_inflictWounds",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#c04060",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "magicMissile": {
+      "name": "Magic Missile",
+      "travelSound": "spellMagicMissile",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.15,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#8fd4e8",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_magicMissile",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_magicMissile",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#8fd4e8",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "protectionFromEvil": {
+      "name": "Protection from Evil",
+      "travelSound": "spellProtectionFromEvil",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffe08a",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_protectionFromEvil",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_protectionFromEvil",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1.2,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#ffe08a",
+          "scale": 1.3,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "rayOfSickness": {
+      "name": "Ray of Sickness",
+      "travelSound": "spellRayOfSickness",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.1,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#4cae4c",
+          "scale": 1.5,
+          "dur": 0.45,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_rayOfSickness",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_rayOfSickness",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "burst",
+          "burstType": "acid",
+          "color": "#6ae06a",
+          "count": 14,
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      }
+    },
+    "shield": {
+      "name": "Shield",
+      "travelSound": "spellShield",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.35,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#88aaff",
+          "scale": 1.5,
+          "dur": 0.35,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_shield",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.35,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_shield",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#88aaff",
+          "scale": 1.3,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "shieldOfFaith": {
+      "name": "Shield of Faith",
+      "travelSound": "spellShieldOfFaith",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.35,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#a0c0ff",
+          "scale": 1.5,
+          "dur": 0.35,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_shieldOfFaith",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.35,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_shieldOfFaith",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#a0c0ff",
+          "scale": 1.3,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "thunderousSmite": {
+      "name": "Thunderous Smite",
+      "travelSound": "spellThunderousSmite",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#7fd4ff",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_thunderousSmite",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_thunderousSmite",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#7fd4ff",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "thunderwave": {
+      "name": "Thunderwave",
+      "travelSound": "spellThunderwave",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#dfe4ee",
+          "scale": 1.5,
+          "dur": 0.4,
+          "opacity": 0.5,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_thunderwave",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 0.9,
+          "blend": "additive",
+          "fps": 30
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "spell_thunderwave",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.6,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#dfe4ee",
+          "scale": 1.6,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "web": {
+      "name": "Web",
+      "travelSound": "spellWeb",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.45,
+        "arc": 0.15,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#f5f0dc",
+          "scale": 1.4,
+          "dur": 0.45,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ffffff",
+          "scale": 0.6,
+          "dur": 0.45,
+          "opacity": 1,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": false,
+          "type": "sheet",
+          "sheet": "spell_web",
+          "fps": 30,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "procedural",
+          "kind": "ring",
+          "color": "#bfa060",
+          "scale": 1.2,
+          "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    }
+  }
+}

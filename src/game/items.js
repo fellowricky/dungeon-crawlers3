@@ -40,18 +40,22 @@
  */
 
 /* equipment slots, in display order */
+/* `icon` is the EMPTY-slot placeholder: a hollow bronze socket glyph, drawn to
+   match the game's pixel art rather than borrowing an OS emoji. Rings and kits
+   share one glyph each since both slots of a pair mean the same thing. */
 export const SLOTS = [
-  { key:'helm',   label:'Helm',    icon:'🪖' },
-  { key:'amulet', label:'Amulet',  icon:'📿' },
-  { key:'armor',  label:'Armor',   icon:'🧥' },
-  { key:'gloves', label:'Gloves',  icon:'🧤' },
-  { key:'weapon', label:'Weapon',  icon:'⚔️' },
-  { key:'offhand',label:'Off-hand',icon:'🛡️' },
-  { key:'ring1',  label:'Ring',    icon:'💍' },
-  { key:'ring2',  label:'Ring',    icon:'💍' },
-  { key:'boots',  label:'Boots',   icon:'🥾' },
-  { key:'kit1',   label:'Kit',     icon:'🎒' },
-  { key:'kit2',   label:'Kit',     icon:'🧰' }
+  { key:'helm',   label:'Helm',    icon:'ui/slots/slot_helm.png' },
+  { key:'amulet', label:'Amulet',  icon:'ui/slots/slot_amulet.png' },
+  { key:'armor',  label:'Armor',   icon:'ui/slots/slot_armor.png' },
+  { key:'gloves', label:'Gloves',  icon:'ui/slots/slot_gloves.png' },
+  { key:'weapon', label:'Weapon',  icon:'ui/slots/slot_weapon.png' },
+  { key:'offhand',label:'Off-hand',icon:'ui/slots/slot_offhand.png' },
+  { key:'ring1',  label:'Ring',    icon:'ui/slots/slot_ring.png' },
+  { key:'ring2',  label:'Ring',    icon:'ui/slots/slot_ring.png' },
+  { key:'boots',  label:'Boots',   icon:'ui/slots/slot_boots.png' },
+  { key:'trinket',label:'Trinket', icon:'ui/slots/slot_trinket.png' },
+  { key:'kit1',   label:'Kit',     icon:'ui/slots/slot_kit.png' },
+  { key:'kit2',   label:'Kit',     icon:'ui/slots/slot_kit.png' }
 ];
 export const SLOT_LABEL = Object.fromEntries(SLOTS.map(s=>[s.key,s.label]));
 /* which equip-slot(s) an item's `slot` field can occupy */
@@ -64,12 +68,85 @@ export function slotsFor(itemSlot){
 
 /* Bag category tabs derive from an item's logical `slot` field (not the equip
    key). Maps every value in BASES to one of the four bag tabs. */
+/** True for a one-use scroll or potion, as opposed to worn gear. */
+export function isConsumable(it){
+  return !!(it && (it.scroll || it.potion || it.spellKey || it.buffKey || it.potionPool || it.cures));
+}
+
+/* ─── Stacking ────────────────────────────────────────────────────────────
+   Dyes and consumables are interchangeable within a kind: two Crimson Dyes
+   are the same thing, and so are two fresh Scrolls of Fireball. They share
+   one bag cell and carry a `qty`. Gear never stacks — every piece has its
+   own affix rolls. A record with no `qty` is a single (legacy saves).
+   Scroll stacks key on the charges left, so a half-read scroll does not
+   merge back into the fresh ones when it is unequipped. */
+export function isStackable(it){
+  return !!(it && (it.slot === 'dye' || isConsumable(it)));
+}
+export function stackKey(it){
+  if(!isStackable(it)) return null;
+  if(it.slot === 'dye') return `dye|${it.rarity}|${it.dyeColor}`;
+  return `${it.slot}|${it.baseKey || it.name}|${it.charges | 0}`;
+}
+export function qtyOf(it){ return it ? Math.max(1, it.qty | 0) : 0; }
+
+/** Put `item` in the bag, merging it into an existing stack of the same kind.
+ *  Returns the record that now holds it (the stack, or `item` itself). Every
+ *  place loot enters the bag goes through here.
+ *
+ *  Healing potions are the exception: the party already shares one flask
+ *  pool (keys 1/2/3, the AI's potionTrigger), so a dropped Potion of Healing
+ *  tops that up instead of becoming a bag item — pass `game` and it does.
+ *  Without a game to hand it stays a bag record like anything else. */
+export function addToInventory(inv, item, game = null){
+  if(!inv || !item) return item;
+  if(item.potionPool && game && game.potions){
+    game.potions[item.potionPool] = (game.potions[item.potionPool] | 0) + qtyOf(item);
+    return item;
+  }
+  const key = stackKey(item);
+  if(key){
+    const host = inv.find(o => o !== item && stackKey(o) === key);
+    if(host){ host.qty = qtyOf(host) + qtyOf(item); return host; }
+    item.qty = qtyOf(item);
+  }
+  inv.push(item);
+  return item;
+}
+
+/** Take `n` units of `item` out of the bag. Returns what left: the record
+ *  itself when the whole stack went, otherwise a split-off copy with its own
+ *  id and `qty` n (the stack keeps the rest). Null when `item` is not in the
+ *  bag. */
+export function takeFromInventory(inv, item, n = 1){
+  if(!inv || !item) return null;
+  const idx = inv.indexOf(item);
+  if(idx < 0) return null;
+  const have = qtyOf(item);
+  if(!isStackable(item) || n >= have){ inv.splice(idx, 1); return item; }
+  item.qty = have - n;
+  return { ...item, id: 'i'+(_uid++), qty: n, locked: false };
+}
+
+/** Fold duplicate stackables into one record each — for saves written before
+ *  stacking existed, and for any list assembled by hand. Keeps order. */
+export function coalesceInventory(list){
+  const out = [];
+  for(const it of list || []) addToInventory(out, it);
+  return out;
+}
+
 export function itemCategory(it){
   if(!it) return 'other';
+  /* Scrolls and potions occupy the trinket SLOT, but they are stock to spend,
+     not gear to compare — they carry no stats and no power score, so listing
+     them beside amulets and rings left the accessory tab full of things the
+     PS sort and filter could say nothing about. They get their own tab. */
+  if(isConsumable(it)) return 'consumable';
   switch(it.slot){
     case 'weapon': return 'weapon';
     case 'helm': case 'armor': case 'gloves': case 'boots': case 'shield': return 'armor';
-    case 'amulet': case 'ring': return 'accessory';
+    case 'amulet': case 'ring': case 'trinket': return 'accessory';
     case 'dye': return 'other';
     default: return 'other'; /* kit + anything unforeseen */
   }
@@ -160,8 +237,9 @@ export function perkDescFor(id, ilvl){
 /** Theme-flavored perk weights for quest legendaries. */
 export const THEME_PERK_BIAS = ITEMS_DATA.themePerkBias;
 
-/* base item templates: primary bonus + slot + icon. `prof` on armor gates it
-   behind class armor training. */
+/* base item templates: primary bonus + slot + icon. `prof` on armor and helms
+   gates them behind class armor training — helms use the same ranks, so cloth
+   hats ('none') stay open to every class the way robes do. */
 export const BASES = ITEMS_DATA.bases;
 const BASE_SLOTS = Object.keys(BASES);
 /* Slots eligible for the default (uniform) random slot pick. Kits are excluded
@@ -170,6 +248,10 @@ const BASE_SLOTS = Object.keys(BASES);
 const BASE_SLOTS_NONKIT = BASE_SLOTS.filter(s => s !== 'kit');
 /* Share of random loot that rolls an adventuring-gear kit (~5-10% target). */
 const KIT_DROP_RATE = 0.07;
+/* Share of random loot that rolls a trinket (scrolls/potions). Kept a small
+   branch like kits so combat gear stays dominant and consumables feel like
+   finds rather than flooding the pool. */
+const TRINKET_DROP_RATE = 0.10;
 
 /** Look up a base template by slot + name. */
 export function getBase(slot, baseKey){
@@ -189,9 +271,23 @@ export function getBase(slot, baseKey){
  * USE most of it — otherwise an ilvl-20 roll would keep handing out Clubs, since
  * a cheap base is affordable at every level.
  */
-function pickAffordableBase(slot, ilvl, rarity, rng){
-  const list = BASES[slot];
+/* Weapons come in three kinds a player shops for separately: melee, ranged
+   (bows, crossbows, slings) and focus (wands — a caster's ranged weapon).
+   Works on a base or a rolled item. */
+export function weaponKindOf(b){
+  if(!b) return null;
+  if(b.focus) return 'focus';
+  if(b.melee === false) return 'ranged';
+  return 'melee';
+}
+
+function pickAffordableBase(slot, ilvl, rarity, rng, filter = null){
+  let list = BASES[slot];
   if(!list || !list.length) return null;
+  if(filter){
+    const sub = list.filter(filter);
+    if(sub.length) list = sub;
+  }
   const budget = itemBudget(slot, ilvl, rarity);
   const { baseMinShare } = getTuning().basePricing;
 
@@ -306,6 +402,13 @@ function rollRarity(tier, rng, luck = 1){
 export function recomputeItemBonuses(item){
   if(!item) return item;
   const base = getBase(item.slot, item.baseKey);
+  /* Scrolls & potion trinkets are plain records: their name, gold value and
+     charges are fixed at generation and must survive saves/migration, so they
+     skip the whole base+affix recompute path. */
+  if(item.scroll || item.potion || base?.spellKey || base?.potion){
+    item.bonuses = item.bonuses || {};
+    return item;
+  }
   const rarityKey = item.rarity || 'common';
   const R = RARITIES[rarityKey] || RARITIES.common;
   const ilvl = Math.max(0, item.ilvl|0);
@@ -614,11 +717,20 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng){
 export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   const t = Math.max(0, tier|0);
   const ilvl = Math.max(0, (opts.ilvl != null ? opts.ilvl : sourceIlvl(opts.source || 'chest', t, rng))|0);
-  // Kits are rare (~7%); the rest of random drops split evenly across combat gear.
-  const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit' : pick(BASE_SLOTS_NONKIT, rng));
+  // Kits are rare (~7%) and trinkets rarer still (~10%); the rest of random
+  // drops split evenly across combat gear.
+  const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit'
+    : rng() < TRINKET_DROP_RATE ? 'trinket'
+    : pick(BASE_SLOTS_NONKIT, rng));
 
   let rarityKey = opts.forceRarity || rollRarity(t, rng, opts.luck != null ? opts.luck : 1);
   if(rarityKey === 'legendary' && opts.noLegendary) rarityKey = 'epic';
+
+  /* Consumable trinket (scroll/potion): plain record, no affixes or budget —
+     its power is the spell/buff it carries, not stat points. */
+  if(slot === 'trinket'){
+    return rollTrinket(ilvl, rarityKey, rng);
+  }
 
   /* Adventuring-gear tool: no affixes, its whole budget buys skill ranks
      (see recomputeItemBonuses). */
@@ -627,7 +739,10 @@ export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
     return makeItemRecord('kit', base, rarityKey, ilvl, [], null, rng);
   }
 
-  const base = pickAffordableBase(slot, ilvl, rarityKey, rng);
+  /* `weaponKind` narrows a weapon roll to melee / ranged / focus — what the
+     shop's shelf guarantee and the forge's category buttons ask for. */
+  const kindFilter = (slot === 'weapon' && opts.weaponKind) ? (b => weaponKindOf(b) === opts.weaponKind) : null;
+  const base = pickAffordableBase(slot, ilvl, rarityKey, rng, kindFilter);
   if(!base) return null;
   const affixes = rollAffixes(slot, ilvl, rarityKey, base, rng);
   /* Only the top rarity carries a perk — that, not raw numbers, is what sets it
@@ -635,6 +750,84 @@ export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   const perk = rarityHasPerk(rarityKey) ? rollPerk(slot, opts.theme, rng) : null;
   if(perk && PERK_MAGS[perk.id]) perk.desc = perkDescFor(perk.id, ilvl);
   return makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng);
+}
+
+/**
+ * Roll a consumable trinket — a scroll or a potion held in the trinket slot.
+ *
+ * Scrolls gate to caster classes via `casterOnly:true` and cast the `spellKey`
+ * spell; potions are `casterOnly:false`, usable by anyone, and apply a self-buff
+ * via `buffKey`. Both are plain records: no affixes, no budget spending — their
+ * power IS the spell/buff, so `charges`, `name` and `value` are frozen at roll.
+ *
+ * The base's `rarity` is authoritative; generation prefers a base matching the
+ * rarity rolled by `rollRarity` (which scales with quest tier) so deep runs
+ * naturally surface the rare scrolls.
+ *
+ * Two more gates shape what drops:
+ *  - `minIlvl` on a base keeps it out of the pool until the run is deep enough
+ *    (a Potion of Foresight on floor 2 would trivialise the early game).
+ *  - The roster is drawn as three families — potions, thrown gear, scrolls —
+ *    with fixed shares, not one flat list. With sixteen scrolls to a couple
+ *    of potions a flat pick made potions a curiosity, and scrolls are dead
+ *    weight to a party with no caster; the shares hold whatever the roster
+ *    sizes happen to be.
+ */
+export const TRINKET_FAMILY_SHARE = { potion: 0.40, thrown: 0.25, scroll: 0.35 };
+export function trinketFamily(b){
+  if(b.thrown) return 'thrown';
+  if(b.spellKey) return 'scroll';
+  return 'potion';
+}
+export function trinketPool(ilvl, rarityKey){
+  const list = (BASES.trinket || []).filter(b => (b.minIlvl | 0) <= ilvl);
+  const pool = list.filter(b => b.rarity === rarityKey);
+  return pool.length ? pool : list;
+}
+function rollTrinket(ilvl, rarityKey, rng){
+  const list = BASES.trinket;
+  if(!list || !list.length) return null;
+  const lvl = Math.max(0, ilvl|0);
+  const eligible = trinketPool(lvl, rarityKey);
+  const fams = {};
+  for(const b of eligible) (fams[trinketFamily(b)] ||= []).push(b);
+  const present = Object.keys(fams);
+  let total = 0;
+  for(const f of present) total += TRINKET_FAMILY_SHARE[f] || 0;
+  let r = rng() * total, family = fams[present[0]];
+  for(const f of present){ r -= TRINKET_FAMILY_SHARE[f] || 0; if(r <= 0){ family = fams[f]; break; } }
+  const base = pick(family && family.length ? family : eligible, rng);
+  if(!base) return null;
+  const R = RARITIES[base.rarity] || RARITIES[rarityKey] || RARITIES.common;
+  return {
+    id: 'i'+(_uid++),
+    baseKey: base.name,
+    name: base.name,
+    slot: 'trinket',
+    icon: base.icon,
+    rarity: base.rarity,
+    color: R.color,
+    ilvl: lvl,
+    floor: lvl, // legacy field kept for saves/UI
+    charges: Math.max(1, base.charges | 0),
+    spellKey: base.spellKey || null,
+    buffKey: base.buffKey || null,
+    buffDuration: base.buffDuration || 60,
+    /* extra potion payloads: cures a list of conditions, grants temp HP, or
+       tops up the shared healing pool on pickup (see addToInventory) */
+    cures: base.cures || null,
+    tempHp: base.tempHp | 0,
+    potionPool: base.potionPool || null,
+    casterOnly: base.casterOnly !== false,
+    scroll: !!base.spellKey,
+    thrown: !!base.thrown,
+    potion: !!(base.buffKey || base.cures || base.potionPool),
+    value: base.value | 0,
+    affixes: [],
+    perk: null,
+    prof: 'none',
+    bonuses: {}
+  };
 }
 
 /** Pick a perk valid for a slot, optionally biased by quest theme. */
@@ -661,8 +854,8 @@ export function rollPerk(slot, theme=null, rng=Math.random){
  * Random loot can also roll one — see rollRarity — but only at lottery odds.
  */
 export function rollLegendary(ilvl, rng=Math.random, opts={}){
-  // Legendaries are combat perks — never roll a kit slot.
-  const slot = opts.forceSlot || pick(BASE_SLOTS_NONKIT, rng);
+  // Legendaries are combat perks — never roll a kit or trinket slot.
+  const slot = opts.forceSlot || pick(BASE_SLOTS_NONKIT.filter(s => s !== 'trinket'), rng);
   const lvl = Math.max(0, ilvl|0);
   const base = pickAffordableBase(slot, lvl, 'legendary', rng);
   const affixes = rollAffixes(slot, lvl, 'legendary', base, rng);
@@ -892,20 +1085,47 @@ export function bonusText(item, heroLevel=null){
   else if(item.acBase) parts.unshift(`+${item.acBase} AC`);
   /* Weapons show their D&D 5e damage die + type up front. */
   if(item.slot === 'weapon' && item.dmg){
-    const tags = [];
-    if(item.finesse) tags.push('finesse');
-    if(item.light) tags.push('light');
-    if(item.thrown) tags.push('thrown');
-    if(item.twoHanded) tags.push('two-handed');
-    if(item.heavy) tags.push('heavy');
-    if(item.reach) tags.push('reach');
-    if(item.versatile) tags.push('versatile');
-    if(item.loading) tags.push('loading');
-    if(item.focus) tags.push('focus');
+    const tags = weaponTags(item);
     const tag = tags.length ? ` (${tags.join(', ')})` : '';
     parts.unshift(`${item.dmg[0]}d${item.dmg[1]} ${item.dmgType || ''}${tag}`.trim());
   }
   return parts.join(' — ');
+}
+
+/** The 5e weapon property tags on an item, as a plain list.
+    Split out of bonusText so tooltips can lay the properties out on their own
+    line instead of running them into the damage die. */
+export function weaponTags(item){
+  if(!item) return [];
+  const tags = [];
+  if(item.finesse) tags.push('finesse');
+  if(item.light) tags.push('light');
+  if(item.thrown) tags.push('thrown');
+  if(item.twoHanded) tags.push('two-handed');
+  if(item.heavy) tags.push('heavy');
+  if(item.reach) tags.push('reach');
+  if(item.versatile) tags.push('versatile');
+  if(item.loading) tags.push('loading');
+  if(item.focus) tags.push('focus');
+  return tags;
+}
+
+/** What proficiency the item demands, phrased for a tooltip subtitle. */
+export function itemReqText(item){
+  if(!item) return '';
+  if(item.slot === 'weapon'){
+    const t = item.weaponType || 'simple';
+    return `${t.charAt(0).toUpperCase()}${t.slice(1)} weapon`;
+  }
+  if(item.slot === 'shield') return 'Shield';
+  if(item.slot === 'armor' || item.slot === 'helm'){
+    const p = item.prof || 'none';
+    const kind = item.slot === 'helm' ? 'helm' : 'armor';
+    if(p === 'none') return item.slot === 'helm' ? 'Cloth helm' : 'Clothing';
+    return `${p.charAt(0).toUpperCase()}${p.slice(1)} ${kind}`;
+  }
+  if(item.slot === 'kit') return 'Kit';
+  return item.slot ? item.slot.charAt(0).toUpperCase() + item.slot.slice(1) : '';
 }
 
 /** Perk line for tooltips / detail panels. */
@@ -948,6 +1168,113 @@ export function getBaseStatsText(slot, name) {
   return bonusText({ bonuses: {}, slot, dmg: base.dmg, dmgType: base.dmgType,
                      armorBase: base.armorBase, acBase: base.acBase, prof: base.prof });
 }
+
+/**
+ * Compare two items (newItem vs equippedItem) and return an array of stat deltas.
+ * Each delta object: { stat, diff, text, isPositive, isNegative }
+ */
+export function compareItemStats(newItem, equippedItem, heroLevel = null) {
+  if (!newItem) return [];
+  migrateItem(newItem);
+  if (equippedItem) migrateItem(equippedItem);
+
+  const diffs = [];
+  const bNew = newItem.bonuses || {};
+  const bOld = equippedItem?.bonuses || {};
+
+  // 1. Armor Class Comparison (Chassis + Bonus)
+  const acNew = (newItem.armorBase || 0) + (newItem.acBase || 0) + (bNew.ac || 0);
+  const acOld = equippedItem ? ((equippedItem.armorBase || 0) + (equippedItem.acBase || 0) + (bOld.ac || 0)) : 0;
+  if (acNew !== acOld) {
+    const diff = acNew - acOld;
+    diffs.push({
+      stat: 'AC',
+      diff,
+      text: `${diff > 0 ? '+' : ''}${diff} AC`,
+      isPositive: diff > 0,
+      isNegative: diff < 0
+    });
+  }
+
+  // 2. Weapon Damage Comparison
+  if (newItem.slot === 'weapon') {
+    const avgDmgNew = newItem.dmg ? (newItem.dmg[0] * (newItem.dmg[1] + 1) / 2) + (bNew.dmg || 0) : 0;
+    const avgDmgOld = (equippedItem && equippedItem.dmg)
+      ? (equippedItem.dmg[0] * (equippedItem.dmg[1] + 1) / 2) + (bOld.dmg || 0)
+      : 0;
+    if (avgDmgNew !== avgDmgOld) {
+      const diff = +(avgDmgNew - avgDmgOld).toFixed(1);
+      diffs.push({
+        stat: 'Damage',
+        diff,
+        text: `${diff > 0 ? '+' : ''}${diff} Avg Dmg`,
+        isPositive: diff > 0,
+        isNegative: diff < 0
+      });
+    }
+  }
+
+  // 3. Core Attributes & Combat Stats
+  const statKeys = [
+    { key: 'hp', label: 'Max HP' },
+    { key: 'atk', label: 'Atk' },
+    { key: 'dmg', label: 'Dmg' },
+    { key: 'str', label: 'STR' },
+    { key: 'dex', label: 'DEX' },
+    { key: 'con', label: 'CON' },
+    { key: 'int', label: 'INT' },
+    { key: 'wis', label: 'WIS' },
+    { key: 'cha', label: 'CHA' },
+    { key: 'crit', label: 'Crit' },
+    { key: 'heal', label: 'Heal' },
+    { key: 'speed', label: '% Speed', isPercent: true },
+    { key: 'move', label: 'ft Move' },
+  ];
+
+  for (const { key, label, isPercent } of statKeys) {
+    if (newItem.slot === 'weapon' && key === 'dmg') continue;
+
+    const valNew = bNew[key] || 0;
+    const valOld = bOld[key] || 0;
+    if (valNew !== valOld) {
+      const diff = isPercent ? +(valNew - valOld).toFixed(2) : (valNew - valOld);
+      const formattedDiff = isPercent
+        ? `${diff > 0 ? '+' : ''}${Math.round(diff * 100)}% Speed`
+        : `${diff > 0 ? '+' : ''}${diff} ${label}`;
+      diffs.push({
+        stat: label,
+        diff,
+        text: formattedDiff,
+        isPositive: diff > 0,
+        isNegative: diff < 0
+      });
+    }
+  }
+
+  // 4. Kit Skill Bonuses
+  const allSkills = new Set([
+    ...Object.keys(bNew.skills || {}),
+    ...Object.keys(bOld.skills || {})
+  ]);
+  for (const sk of allSkills) {
+    const valNew = bNew.skills?.[sk] || 0;
+    const valOld = bOld.skills?.[sk] || 0;
+    if (valNew !== valOld) {
+      const diff = valNew - valOld;
+      const skLabel = SKILL_LABEL[sk] || sk;
+      diffs.push({
+        stat: skLabel,
+        diff,
+        text: `${diff > 0 ? '+' : ''}${diff} ${skLabel}`,
+        isPositive: diff > 0,
+        isNegative: diff < 0
+      });
+    }
+  }
+
+  return diffs;
+}
+
 
 /* ─── Migration / attunement ──────────────────────────────────────────── */
 
@@ -1010,6 +1337,10 @@ export function migrateItem(it){
          bonuses at all, so their protection lives in `acBase` and is read
          directly by recalc — backfill it or an old shield grants nothing. */
       if (it.acBase === undefined && base.acBase) it.acBase = base.acBase;
+      /* Helms predating the light/medium/heavy tags carry no `prof`, which
+         canEquip reads as 'none' — i.e. wearable by anyone. Backfill it or a
+         save from before the gate keeps a great helm on a wizard. */
+      if (it.prof === undefined && base.prof) it.prof = base.prof;
       /* weapon-derived attack profile fields (5e): dice, melee/ranged, damage type, focus */
       if (it.slot === 'weapon') {
         if (it.dmg === undefined && base.dmg) it.dmg = base.dmg.slice();
@@ -1068,12 +1399,6 @@ export function migrateInventory(list){
   for(const it of list) migrateItem(it);
 }
 
-/* ATTUNEMENT IS GONE. Gear used to walk its ilvl up as the hero levelled, which
-   meant equipment quietly kept pace whether or not you found anything — so a
-   drop could never feel like a find. Every item's stats are now frozen at the
-   ilvl it was found at, and upgrades come only from loot. Kept as a no-op so
-   any straggling caller stays harmless. */
-export function attuneHeroGear(){ return false; }
 
 /** Collect equipped items that have a perk with a given combat hook. */
 export function equippedPerks(hero, hook=null){

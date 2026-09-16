@@ -120,7 +120,8 @@ function diceAvg(d) { return d ? d[0] * (d[1] + 1) / 2 : 0; }
  * free reference die, its armor class above unarmored, and its `prim` block.
  *
  * Two-handed weapons get a discount because they consume the off-hand slot;
- * heavy armor gets one because it caps the wearer's DEX bonus.
+ * body armor is priced from its authored tier rather than its AC, so the three
+ * weight classes can share unlock levels despite different AC numbers.
  */
 /**
  * Cost of a base's CHASSIS only — its damage dice and armor class, but NOT its
@@ -144,20 +145,50 @@ export function baseChassisCost(slot, base) {
     if (base.twoHanded) cost *= bp.twoHandedDiscount;
   }
 
-  /* Body armor sets an AC floor rather than adding a bonus. */
-  if (base.armorBase) {
-    const above = base.armorBase - bp.armorAcRef;
-    if (above > 0) {
-      const disc = bp.armorDexDiscount[base.prof || 'none'] ?? 1;
-      cost += above * T.costs.ac * disc;
-    }
-  }
+  /* Armor and helms are priced from their authored `tier`, NOT from their AC.
 
-  /* Chassis AC — a shield's or helm's own protection. This is what the item
-     physically IS (like a sword's damage die), not a magical bonus, so it lives
-     on the base rather than in `bonuses` and never appears as an affix. Base
-     items carry NO stat bonuses; every stat comes from affixes. */
-  if (base.acBase) cost += base.acBase * T.costs.ac;
+     Every other base derives its cost from what it does, but these cannot: the
+     weight classes are meant to share unlock levels while their AC numbers
+     differ (armor light 11 / medium 13 / heavy 14 all unlock together), and a
+     class's AC steps are not uniform — heavy climbs 14,16,17,18,20. No constant
+     per-class offset can line those rows up, so alignment has to be authored.
+     A base's `tier` says which rung it sits on; `tierIlvl[slot]` says which item
+     level that rung unlocks at.
+
+     The maths is slot-agnostic — cost and budget both carry `slotWeight`, so a
+     helm tier lands on its ilvl exactly as an armor tier does. Any slot listed
+     in `tierIlvl` gets this treatment; slots absent from it (shields) keep
+     pricing off `acBase` below.
+
+     The charge is the whole base-share of that level's budget, which is exactly
+     what makes the base land there: `baseAffordable` allows up to
+     `baseMaxShare` of the budget, so pricing at the floor of that share is the
+     largest cost still affordable at the target level and nowhere earlier.
+     Retune pacing via `tierIlvl`; move a base between rungs via its `tier` in
+     items.json. Both are self-consistent — there is no solver to run and no
+     narrow band to miss, which is the point of authoring it.
+
+     Note the deliberate consequence: a top-tier piece eats ~90% of its budget
+     at its unlock level, so it arrives nearly bare and only gains affixes as
+     the party outlevels it. */
+  const tiers = (bp.tierIlvl || {})[slot];
+  const tierPriced = tiers && tiers.length
+    && (base.tier != null || base.armorBase || base.acBase);
+  if (tierPriced) {
+    /* A protective base with no tier is a data error. Charge it the LAST rung
+       so the failure mode is "does not drop until late" rather than a cheap
+       chassis carrying a full affix budget. */
+    const idx = base.tier != null
+      ? Math.min(Math.max(base.tier - 1, 0), tiers.length - 1)
+      : tiers.length - 1;
+    cost += Math.floor(itemBudget(slot, tiers[idx], 'common') * bp.baseMaxShare);
+  } else if (base.acBase) {
+    /* Chassis AC — a shield's own protection. This is what the item physically
+       IS (like a sword's damage die), not a magical bonus, so it lives on the
+       base rather than in `bonuses` and never appears as an affix. Base items
+       carry NO stat bonuses; every stat comes from affixes. */
+    cost += base.acBase * T.costs.ac;
+  }
 
   return Math.round(cost);
 }

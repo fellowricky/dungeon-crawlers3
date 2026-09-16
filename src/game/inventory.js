@@ -6,10 +6,43 @@ import {
   recalc, canEquip, spendAbilityPoint, spendSkillPoint, spendSkillRank, pickSubclass, SUBCLASSES, roll
 } from './srd.js';
 import { resolveChoice } from './features.js';
-import { slotsFor, migrateItem, migrateInventory, itemCategory } from './items.js';
+import { slotsFor, migrateItem, migrateInventory, itemCategory, itemPoints,
+  addToInventory, takeFromInventory, coalesceInventory, qtyOf } from './items.js';
 import { drawBar, makeFloatText } from './entities.js';
 import { log, updatePartyFrames, updateResources } from './ui.js';
 import { SAVE_KEY } from './constants.js';
+import { saveSlotRaw, loadSlotRaw, getActiveSlot, setActiveSlot } from './save_slots.js';
+
+/* Seconds the periodic autosave stays quiet after localStorage refused a save. */
+const SAVE_QUOTA_BACKOFF_SEC = 60;
+
+/* A hero record is mutated in place by combat, and two of those writes are
+   runtime mirrors that must never reach the save:
+     data.conc     = { key, targets: [entities], zone }   (combat.js concentrate)
+     data._effects = { key: { source: entity, dotSrc: entity, ... } }
+   An entity carries .ent -> THREE meshes -> materials -> textures, and
+   JSON.stringify calls Object3D.toJSON on it, which serialises every sprite
+   sheet as a data URL. A caster holding Moonbeam turned a 150 KB save into
+   several megabytes — a half-second stringify every autosave, and then a
+   QuotaExceededError so nothing was written at all. The party frames read
+   data.conc.key and persisting effects (drained/corroded) survive a load, so
+   both fields are kept in name-only form rather than dropped. */
+const entityName = (x) => (x == null ? null : typeof x === 'string' ? x : (x.data?.name ?? x.name ?? null));
+
+export function heroSaveRecord(d) {
+  if (!d || typeof d !== 'object') return d;
+  const out = { ...d };
+  delete out._queuedAction;   // a manual-mode intent, meaningless after reload
+  out.conc = d.conc && d.conc.key ? { key: d.conc.key } : null;
+  if (d._effects && typeof d._effects === 'object') {
+    out._effects = {};
+    for (const k of Object.keys(d._effects)) {
+      const ef = d._effects[k];
+      out._effects[k] = { ...ef, source: entityName(ef.source), dotSrc: entityName(ef.dotSrc) };
+    }
+  }
+  return out;
+}
 import { serializeRunStats } from './run_stats.js';
 import { clearCombatEffects } from './conditions.js';
 import { _v } from './shared.js';
@@ -57,7 +90,7 @@ export const inventoryMethods = {
 
     /* two-handed weapon: auto-unequip offhand slot */
     if (item.slot === 'weapon' && item.twoHanded && hero.equipment.offhand) {
-      this.inventory.push(hero.equipment.offhand);
+      addToInventory(this.inventory, hero.equipment.offhand);
       delete hero.equipment.offhand;
     }
 
@@ -87,10 +120,11 @@ export const inventoryMethods = {
         : (opts.find(s => !hero.equipment[s]) || opts[0]);
     }
     const displaced = hero.equipment[slot] || null;
-    hero.equipment[slot] = item;
-    const idx = this.inventory.indexOf(item);
-    if (idx >= 0) this.inventory.splice(idx, 1);
-    if (displaced) this.inventory.push(displaced);
+    /* One unit leaves the bag: a stack of scrolls equips a single scroll and
+       keeps the rest. An item that was never in the bag equips as itself. */
+    const unit = takeFromInventory(this.inventory, item, 1) || item;
+    hero.equipment[slot] = unit;
+    if (displaced) addToInventory(this.inventory, displaced);
     recalc(hero);
     hero.hp = Math.min(hero.hp, hero.maxHp);
     this.afterGearChange(hero);
@@ -112,8 +146,7 @@ export const inventoryMethods = {
     /* magic weapons: recolor the crystal too, so the dye visibly lands */
     if (it.crystalColor) it.crystalColor = dyeItem.dyeColor;
 
-    const idx = this.inventory.indexOf(dyeItem);
-    if (idx >= 0) this.inventory.splice(idx, 1);
+    takeFromInventory(this.inventory, dyeItem, 1);
     log(`🎨 ${it.name} is dyed ${dyeItem.name.replace(/ Dye$/, '')}.`, 'treasure');
     this.afterGearChange(hero);
     return { ok: true };
@@ -123,7 +156,7 @@ export const inventoryMethods = {
     const it = hero.equipment[slot];
     if (!it) return;
     delete hero.equipment[slot];
-    this.inventory.push(it);
+    addToInventory(this.inventory, it);
     recalc(hero);
     hero.hp = Math.min(hero.hp, hero.maxHp);
     this.afterGearChange(hero);
@@ -161,25 +194,39 @@ export const inventoryMethods = {
     return { ok: true };
   },
 
-  sellItem(item) {
+  /** Sell `n` units of a bag item (one by default; `Infinity` for the whole
+   *  stack). Gear is always a single unit. */
+  sellItem(item, n = 1) {
     if (!item || item.locked) return;
-    const idx = this.inventory.indexOf(item);
-    if (idx < 0) return;
-    this.inventory.splice(idx, 1);
-    this.gold += item.value;
-    log(`💰 Sold ${item.name} for ${item.value}g.`, 'treasure');
+    const have = qtyOf(item);
+    const count = n === Infinity ? have : Math.max(1, Math.min(have, n | 0));
+    if (!takeFromInventory(this.inventory, item, count)) return;
+    const total = (item.value | 0) * count;
+    this.gold += total;
+    log(`💰 Sold ${count > 1 ? `${count}× ` : ''}${item.name} for ${total}g.`, 'treasure');
     updateResources(this);
   },
 
-  /** Sort inventory by rarity or name. */
+  /** Sort inventory by power score, rarity, or name.
+   *
+   *  PS is the honest measure of an item's strength — rarity only says how many
+   *  affix rolls it got, so a well-rolled rare routinely beats a badly-rolled
+   *  epic. Rarity ties are broken by PS and vice versa, so either ordering is
+   *  stable rather than falling back on an arbitrary name sort. */
   sortInventory(order) {
     const RANK = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
-    if (order === 'rarity-desc') {
-      this.inventory.sort((a, b) => (RANK[b.rarity] || 0) - (RANK[a.rarity] || 0) || a.name.localeCompare(b.name));
+    const rank = (it) => RANK[it.rarity] || 0;
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    if (order === 'ps-desc') {
+      this.inventory.sort((a, b) => itemPoints(b) - itemPoints(a) || rank(b) - rank(a) || byName(a, b));
+    } else if (order === 'ps-asc') {
+      this.inventory.sort((a, b) => itemPoints(a) - itemPoints(b) || rank(a) - rank(b) || byName(a, b));
+    } else if (order === 'rarity-desc') {
+      this.inventory.sort((a, b) => rank(b) - rank(a) || itemPoints(b) - itemPoints(a) || byName(a, b));
     } else if (order === 'rarity-asc') {
-      this.inventory.sort((a, b) => (RANK[a.rarity] || 0) - (RANK[b.rarity] || 0) || a.name.localeCompare(b.name));
+      this.inventory.sort((a, b) => rank(a) - rank(b) || itemPoints(a) - itemPoints(b) || byName(a, b));
     } else if (order === 'name') {
-      this.inventory.sort((a, b) => a.name.localeCompare(b.name));
+      this.inventory.sort(byName);
     }
     this.saveGame();
   },
@@ -187,10 +234,24 @@ export const inventoryMethods = {
   /** Sell every item of a given rarity. Returns the count sold.
    *  Locked items (it.locked === true) are protected and skipped.
    *  Legendaries require explicit confirmation (quest prizes).
-   *  `category` (optional) restricts the sale to the active bag tab. */
-  sellByRarity(rarity, category = null) {
+   *  `category` (optional) restricts the sale to the active bag tab.
+   *  `psRange` (optional) `{min, max}` restricts it to the bag's power-score
+   *  filter, so "hide the best gear, sell the rest" sells exactly what the grid
+   *  is showing. This MUST use the same predicate the grid does — if the button
+   *  counts one set and the sale takes another, it silently sells gear the
+   *  player deliberately filtered out of view. */
+  sellByRarity(rarity, category = null, psRange = null) {
+    const lo = psRange && psRange.min != null ? psRange.min : -Infinity;
+    const hi = psRange && psRange.max != null ? psRange.max : Infinity;
+    const inRange = (it) => {
+      if (lo === -Infinity && hi === Infinity) return true;
+      const ps = itemPoints(it) || 0;
+      return ps >= lo && ps <= hi;
+    };
     const pool = this.inventory.filter(it =>
-      !it.locked && it.rarity === rarity && (!category || itemCategory(it) === category));
+      !it.locked && it.rarity === rarity
+      && (!category || itemCategory(it) === category)
+      && inRange(it));
     if (rarity === 'legendary') {
       const n = pool.length;
       if (n === 0) return 0;
@@ -202,11 +263,33 @@ export const inventoryMethods = {
     const items = pool;
     if (items.length === 0) return 0;
     const soldIds = new Set(items);
-    let total = 0;
-    for (const it of items) total += it.value;
+    let total = 0, units = 0;
+    for (const it of items) { total += (it.value | 0) * qtyOf(it); units += qtyOf(it); }
     this.inventory = this.inventory.filter(it => !soldIds.has(it));
     this.gold += total;
-    log(`💰 Sold ${items.length} ${rarity} item(s) for ${total}g.`, 'treasure');
+    log(`💰 Sold ${units} ${rarity} item(s) for ${total}g.`, 'treasure');
+    updateResources(this);
+    this.saveGame();
+    return items.length;
+  },
+
+  /* Dump everything weaker than `threshold` power score - the mid-dungeon
+     "clear the junk" action. Locked items are spared, and so are legendaries:
+     they are quest rewards that dungeon drops cannot replace, so a one-click
+     bulk action must never be able to eat one, however low it scores. */
+  sellBelowPS(threshold, category = null) {
+    const items = this.inventory.filter(it =>
+      !it.locked
+      && it.rarity !== 'legendary'
+      && (!category || itemCategory(it) === category)
+      && (itemPoints(it) || 0) < threshold);
+    if (items.length === 0) return 0;
+    const soldIds = new Set(items);
+    let total = 0, units = 0;
+    for (const it of items) { total += (it.value | 0) * qtyOf(it); units += qtyOf(it); }
+    this.inventory = this.inventory.filter(it => !soldIds.has(it));
+    this.gold += total;
+    log(`💰 Sold ${units} item(s) under PS ${threshold} for ${total}g.`, 'treasure');
     updateResources(this);
     this.saveGame();
     return items.length;
@@ -258,7 +341,7 @@ export const inventoryMethods = {
     if (!res.ok) return false;
     const { choice, opt } = res;
     if (choice.pick === 'asiOrFeat') {
-      if (opt.kind === 'asi') log(`📈 ${hero.name} gains ${opt.amount} ability points to allot.`, 'level');
+      if (opt.kind === 'asi') log(`📈 ${hero.name} gains ${opt.amount} ability point${opt.amount === 1 ? '' : 's'} to allot.`, 'level');
       else log(`🏅 ${hero.name} takes the ${opt.label} feat!`, 'level');
     } else if (choice.pick === 'fightingStyle') {
       log(`⚔ ${hero.name} adopts the ${opt.label} fighting style.`, 'level');
@@ -273,16 +356,27 @@ export const inventoryMethods = {
     return true;
   },
 
-  saveGame() {
+  saveGame(targetSlotId) {
+    /* A save that no longer fits localStorage fails on EVERY autosave — and
+       serialising the whole game state just to throw it away is the half-
+       second hitch that made the failure visible. After a quota failure the
+       periodic autosave stands down for a while; explicit saves (floor
+       change, shop, quest) still try, since the player may have freed room. */
+    if (targetSlotId == null && this._saveQuotaFailedAt != null
+        && (this.elapsed || 0) - this._saveQuotaFailedAt < SAVE_QUOTA_BACKOFF_SEC) return;
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({
+      const slotId = targetSlotId != null ? targetSlotId : (this.activeSaveSlot || getActiveSlot());
+      this.activeSaveSlot = slotId;
+      saveSlotRaw(slotId, {
         /* h.temp = one-floor quest ally, h.companion = summoned companion —
            neither is persisted inside `heroes` (companions are saved in their
            own slot below so they survive load). */
-        heroes: this.heroes.filter(h => !h.temp && !h.companion).map(h => h.data),
-        companions: this.summons ? this.summons.serialize() : [],
+        heroes: this.heroes.filter(h => !h.temp && !h.companion).map(h => heroSaveRecord(h.data)),
+        companions: this.summons
+          ? this.summons.serialize().map(c => ({ ...c, data: heroSaveRecord(c.data) }))
+          : [],
         leaderIdx: this.leaderIdx || 0,
-        storedHeroes: this.storedHeroes || [],
+        storedHeroes: (this.storedHeroes || []).map(heroSaveRecord),
         townShopInventory: this.townShopInventory || [],
         townTavernHirePool: this.townTavernHirePool || [],
         inventory: this.inventory,
@@ -292,19 +386,36 @@ export const inventoryMethods = {
         questChains: this.questChains || { active: [], log: [] },
         legendaryPity: this.legendaryPity || 0,
         storyProgress: this.storyProgress || {},
+        controlMode: this.controlMode || 'auto',
         bestiary: this.bestiary || {},
         guildData: this.guild ? this.guild.serialize() : null,
         runStats: serializeRunStats(this)
-      }));
-    } catch (e) { /* storage full/blocked — play on without saves */ }
+      });
+      this._saveQuotaFailedAt = null;
+    } catch (e) {
+      /* storage full/blocked — play on, but say so once: a silent failure
+         here is lost progress the player only discovers on reload. */
+      if (e && e.quota) {
+        this._saveQuotaFailedAt = this.elapsed || 0;
+        if (!this._saveQuotaWarned) {
+          this._saveQuotaWarned = true;
+          log('⚠ Save failed — browser storage is full. Progress is NOT being saved (see console for what is using the space).', 'sys');
+        }
+      }
+    }
   },
 
-  loadSave() {
+  loadSave(targetSlotId) {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      if (!raw) return null;
-      const data = JSON.parse(raw);
-      if (data.inventory) migrateInventory(data.inventory);
+      const slotId = targetSlotId != null ? targetSlotId : (this.activeSaveSlot || getActiveSlot());
+      const data = loadSlotRaw(slotId);
+      if (!data) return null;
+      this.activeSaveSlot = slotId;
+      if (data.inventory) {
+        migrateInventory(data.inventory);
+        /* Saves from before stacking hold one record per dye and scroll. */
+        data.inventory = coalesceInventory(data.inventory);
+      }
       /* Armory contents are gear too — migrate them to the current item schema
          or stored legacy loot would come back out broken. */
       if (data.guildData && Array.isArray(data.guildData.storedItems)) {

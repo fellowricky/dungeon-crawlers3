@@ -1,30 +1,32 @@
-/* The two Automation options changed shape: neither one skips its presentation
- * any more, they only shorten (or lengthen) the wait. These lock the pacing
- * numbers down, since the behaviour is otherwise only visible by playing. */
+/* Chests open in the world (the lid on the model swings back) and pay out on
+ * a timer against that animation; there is no modal and nothing to click, so
+ * the old "Auto-loot chests" option has no job left. Skill challenges keep
+ * their presentation and only shorten the wait. These lock the pacing numbers
+ * down, since the behaviour is otherwise only visible by playing. */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setSetting, resetSettings, getSetting } from '../src/game/settings.js';
-import { autoTakeSeconds } from '../src/game/chest_wheel.js';
+import { setSetting, resetSettings, getSetting, SETTING_DEFAULTS } from '../src/game/settings.js';
 import { readFileSync } from 'fs';
 
 beforeEach(() => resetSettings());
 
-describe('auto-loot chests', () => {
-  it('defaults to the hands-off 30s idle countdown', () => {
-    expect(getSetting('autoLootChests')).toBe(false);
-    expect(autoTakeSeconds()).toBe(30);
+describe('chest loot', () => {
+  const src = readFileSync('src/game/chest_loot.js', 'utf8');
+
+  it('retired the auto-loot option along with the wheel', () => {
+    expect(SETTING_DEFAULTS).not.toHaveProperty('autoLootChests');
+    expect(getSetting('autoLootChests')).toBeUndefined();
+    expect(readFileSync('src/game/options_ui.js', 'utf8')).not.toMatch(/autoLootChests/);
   });
 
-  it('takes the loot 3s after the wheel stops when enabled', () => {
-    setSetting('autoLootChests', true);
-    expect(autoTakeSeconds()).toBe(3);
+  it("is addressed by the chest's world position so the lid can animate", () => {
+    expect(readFileSync('src/game/explore.js', 'utf8')).toMatch(/lootChest\(ch,\s*\{\s*x:\s*cx,\s*z:\s*cz\s*\}\)/);
+    expect(src).toMatch(/_g\.openChest\(at\.x,\s*at\.z\)/);
   });
 
-  /* The wheel must keep spinning either way — the setting is no longer allowed
-     to reach lootChest's showWheel argument. */
-  it('still shows the spin wheel when enabled', () => {
-    const src = readFileSync('src/game/explore.js', 'utf8');
-    expect(src).toMatch(/lootChest\(ch,\s*true\)/);
-    expect(src).not.toMatch(/autoLootChests/);
+  it('never pauses the run and reveals the haul while the lid is still moving', () => {
+    expect(src).not.toMatch(/setPaused/);
+    expect(src).toMatch(/const REVEAL_AT = 1\.5;/);
+    expect(src).toMatch(/chest\.looted = true;/);   // claimed before the timer, the proximity check runs every frame
   });
 });
 

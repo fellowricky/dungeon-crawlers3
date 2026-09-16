@@ -58,6 +58,44 @@ describe('turn_engine — speed → cells', () => {
     expect(RACES.elf.speedFt).toBe(30);
     expect(RACES.dragonborn.speedFt).toBe(30);
   });
+
+  it('cellsForSpeed derives hero budget directly from speedFt (30 ft -> 6 cells, 25 ft -> 5 cells)', () => {
+    const heroHuman = { data: { raceKey: 'human', speedFt: 30 } };
+    const heroDwarf = { data: { raceKey: 'dwarf', speedFt: 25 } };
+    expect(turnEngineMethods.cellsForSpeed(heroHuman)).toBe(6);
+    expect(turnEngineMethods.cellsForSpeed(heroDwarf)).toBe(5);
+  });
+
+  it('cellsForSpeed respects discrete 5ft (+1 tile) combat movement bonuses', () => {
+    // Human with +5 ft Move (e.g. Fleet-Foot rank 1 or Athlete feat) -> 35 ft -> 7 cells
+    const hero35 = { data: { raceKey: 'human', speedFt: 35 } };
+    expect(turnEngineMethods.cellsForSpeed(hero35)).toBe(7);
+
+    // Human with +10 ft Move (e.g. Mobile feat) -> 40 ft -> 8 cells
+    const hero40 = { data: { raceKey: 'human', speedFt: 40 } };
+    expect(turnEngineMethods.cellsForSpeed(hero40)).toBe(8);
+  });
+
+  it('cellsForSpeed does not mix continuous exploration speedMult into combat movement', () => {
+    // Exploration speedMult might be 1.5 (+50% explore speed), but combat cell budget stays 6 cells (30 ft)
+    const heroExploreFast = { data: { raceKey: 'human', speedFt: 30, speedMult: 1.5 } };
+    expect(turnEngineMethods.cellsForSpeed(heroExploreFast)).toBe(6);
+  });
+
+  it('cellsForSpeed applies tactical combat effect multipliers (Haste / Slow)', () => {
+    const hero = { data: { raceKey: 'human', speedFt: 30 }, effects: {} };
+    // Normal: 6 cells
+    expect(turnEngineMethods.cellsForSpeed(hero)).toBe(6);
+
+    // Hasted: speedMul 1.4 -> floor(6 * 1.4) = 8 cells
+    applyEffect(hero, 'hasted', { duration: 10 });
+    expect(turnEngineMethods.cellsForSpeed(hero)).toBe(8);
+
+    // Entangled / slowed: speedMul 0.5 -> floor(6 * 0.5) = 3 cells
+    const slowedHero = { data: { raceKey: 'human', speedFt: 30 }, effects: {} };
+    applyEffect(slowedHero, 'slowed', { duration: 10 });
+    expect(turnEngineMethods.cellsForSpeed(slowedHero)).toBe(3);
+  });
 });
 
 describe('turn_engine — PHB alternating diagonals', () => {

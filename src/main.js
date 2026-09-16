@@ -11,9 +11,13 @@ import {
 import {
   renderer, scene, cam, camTarget, updateCam, buildScene, liveUpdate, applyReveal,
   tick, lights, meshes, fx, standaloneRooms, setYawPitch, shakeCamera, isAnimating,
-  triggerHitStop, triggerSlowMo, finishAnim
+  triggerHitStop, triggerSlowMo, finishAnim, floorCellStart, floorCellCount
 } from './render/dungeon_scene.js';
 import { POST } from './render/dungeon_materials.js';
+import { initAssetPack } from './game/asset_pack.js';
+import { loadIconManifest } from './game/icons.js';
+import { showLoadingScreen, hideLoadingScreen } from './ui/loading_screen.js';
+import { initTestDungeon } from './game/test_dungeon.js';
 
 /* ---------------- DOM Elements ---------------- */
 const el = {
@@ -46,6 +50,7 @@ let forgeThreatMult = 1;
 /* Dungeon level of the floor being forged — drives the spawn budget's level
    curve. 1 (the standalone forge default) is the gentlest row. */
 let forgeLevel = 1;
+let forgeOpts = {};
 
 const OBJ_MESHES = {
   props: ['pillar','debrisA','debrisB','debrisC','chestBody','chestTrim','chestSeam','tent','bone',
@@ -93,7 +98,8 @@ function forge(animate = true){
     decorDensity: (+el.decor.value || 100) / 100,
     themeKey,
     threatMult: forgeThreatMult,
-    level: forgeLevel
+    level: forgeLevel,
+    hasRivalRoom: !!(forgeOpts && forgeOpts.hasRivalRoom)
   };
   const d = generateDungeon(seed, params);
   presentDungeon(d, animate);
@@ -140,6 +146,9 @@ function presentDungeon(d, animate){
   if (!animate || !el.tAnim.checked) finishAnim();
 
   game.onDungeon(d);
+  if (game.state === 'boot') {
+    hideLoadingScreen();
+  }
 }
 
 /* ---------------- Engine Glue Object ---------------- */
@@ -150,13 +159,20 @@ const ENGINE = {
   camTarget,
   updateCam,
   isAnimating: () => isAnimating(),
+  finishAnim: () => finishAnim(),
   getMeshes: () => meshes,
+  getFloorMap: () => ({ start: floorCellStart, count: floorCellCount }),
   getLights: () => lights,
   getStandalone: () => standaloneRooms,
   getParticles: () => fx.parts,
-  reforge(seed, roomCount, themeKey, animate=false, threatMult=1, level=1){
+  reforge(seed, roomCount, themeKey, animate=false, threatMult=1, level=1, opts = {}){
+    showLoadingScreen({
+      title: opts.title || 'FORGING LEVEL',
+      subtitle: opts.subtitle || 'Sculpting corridors and preparing encounters...'
+    });
     forgeThreatMult = threatMult;
     forgeLevel = level;
+    forgeOpts = opts || {};
     if(el.seed) el.seed.value = seed;
     if(el.rooms) el.rooms.value = Math.max(12, Math.min(80, roomCount));
     setThemeSel(themeKey);
@@ -166,6 +182,10 @@ const ENGINE = {
        the floor you're standing on, not snap back to the level-1 curve. */
   },
   reforgeOverland(seed, opts = {}){
+    showLoadingScreen({
+      title: opts.title || opts.name || 'TRAVELING OVERLAND',
+      subtitle: opts.subtitle || 'Mapping path and preparing wilderness...'
+    });
     forgeOverland(seed, opts);
   },
   triggerHitStop(frames = 3) {
@@ -180,12 +200,26 @@ const ENGINE = {
 };
 
 /* ---------------- UI Event Handlers ---------------- */
-if(el.seed) el.seed.addEventListener('change', () => forge(true));
-if(el.dice) el.dice.addEventListener('click', () => { el.seed.value = 1 + Math.floor(Math.random()*999999); forge(true); });
-if(el.forge) el.forge.addEventListener('click', () => forge(true));
+if(el.seed) el.seed.addEventListener('change', () => {
+  showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
+  forge(true);
+});
+if(el.dice) el.dice.addEventListener('click', () => {
+  showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
+  el.seed.value = 1 + Math.floor(Math.random()*999999);
+  forge(true);
+});
+if(el.forge) el.forge.addEventListener('click', () => {
+  showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
+  forge(true);
+});
 
 document.querySelectorAll('#chips .chip').forEach(ch => {
-  ch.addEventListener('click', () => { setThemeSel(ch.dataset.t); forge(true); });
+  ch.addEventListener('click', () => {
+    showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
+    setThemeSel(ch.dataset.t);
+    forge(true);
+  });
 });
 
 document.querySelectorAll('#objchips .chip').forEach(ch => {
@@ -224,6 +258,18 @@ window.addEventListener('resize', () => {
 });
 
 /* ---------------- Initialization ---------------- */
-game.init(ENGINE);
-forge(true);
-tick();
+window.game = game;
+window.ENGINE = ENGINE;
+
+showLoadingScreen({ title: 'LOADING DUNGEON FORGE', subtitle: 'Preparing assets & archives...' });
+/* The icon index tells the registry which generated PNGs exist, so a missing
+   one falls back to its old emoji instead of rendering a broken image. It is
+   loaded alongside the asset pack and never blocks boot: if the fetch fails,
+   every lookup stays optimistic and the UI still works. */
+Promise.all([initAssetPack(), loadIconManifest()]).finally(() => {
+  game.init(ENGINE);
+  initTestDungeon(game);
+  forge(true);
+  tick();
+  hideLoadingScreen();
+});

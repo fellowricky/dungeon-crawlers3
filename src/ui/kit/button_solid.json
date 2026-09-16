@@ -1,0 +1,29 @@
+{
+  "sheet": [
+    67,
+    57
+  ],
+  "slice": [
+    7,
+    8,
+    8,
+    8
+  ],
+  "thickness": [
+    6,
+    6,
+    7,
+    7
+  ],
+  "tile": [
+    51,
+    42
+  ],
+  "period_detected": [
+    null,
+    null
+  ],
+  "fill": "#788491",
+  "keep_fill": true,
+  "source": "button.png"
+}

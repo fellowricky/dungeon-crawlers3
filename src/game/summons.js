@@ -21,6 +21,7 @@
 import { makeHeroMesh, drawBar } from './entities.js';
 import { buildPartyFrames } from './ui.js';
 import { createWolfCompanion, createFamiliarCompanion } from './srd.js';
+import { groundY as groundYAt } from '../dungeon/elevation.js';
 
 /**
  * Registry of summonable companion types.
@@ -135,7 +136,17 @@ export function createSummonManager(game) {
   function spawn(summoner, kind) {
     const def = COMPANIONS[kind];
     if (!def || !summoner) return null;
-    if (def.slot === 'dedicated' && getActive(kind, summoner)) return null;
+
+    if (kind.includes('Familiar') || (def.kind && def.kind.includes('Familiar'))) {
+      const existingFam = game.heroes.find(h =>
+        h.companion && h.kind && h.kind.includes('Familiar') &&
+        h.summonerName === summoner.data.name &&
+        h.summonerClassKey === summoner.data.classKey
+      );
+      if (existingFam) dismiss(existingFam);
+    } else if (def.slot === 'dedicated' && getActive(kind, summoner)) {
+      return null;
+    }
 
     const lvl = summoner.data.level || (game.effectiveLevel || 1);
     const data = def.factory(lvl);
@@ -155,8 +166,14 @@ export function createSummonManager(game) {
       path: null, pathI: 0, cd: Math.random(), repathT: 0,
       target: null, walkPhase: Math.random() * 6
     };
+    /* Companions used to spawn directly on the summoner's tile and then rely
+       on the (now-removed) soft separation to shove them apart. Place on a
+       free neighbouring cell instead. */
+    if (typeof game.placeAtFreeCell === 'function') {
+      game.placeAtFreeCell(w, summoner.x, summoner.z, { radius: 2 });
+    }
     w.ent = makeHeroMesh(data);
-    w.ent.grp.position.set(w.x, 0, w.z);
+    w.ent.grp.position.set(w.x, groundYAt(game.D, w.x, w.z), w.z);
     game.gameGroup.add(w.ent.grp);
     drawBar(w.ent.bar, Math.max(0, data.hp / data.maxHp));
     game.heroes.push(w);
@@ -307,6 +324,15 @@ export function createSummonManager(game) {
       const lvl = entry.summonerLevel || summoner.data.level;
       const fresh = COMPANIONS[entry.kind].factory(lvl);
       if (fresh && fresh.visual) entry.data.visual = fresh.visual;
+      /* Same reasoning for flight, and the same trap: a saved companion keeps
+         its saved `data`, so an owl or imp summoned before the trait existed
+         would stay grounded for the rest of that run no matter how many times
+         it was reloaded. Flight is a property of what the creature IS, not of
+         the save — re-stamp it (and clear it) from the current factory. */
+      if (fresh) {
+        if (fresh.flying) entry.data.flying = true;
+        else delete entry.data.flying;
+      }
       game.heroes.push({
         data: entry.data,
         companion: true,

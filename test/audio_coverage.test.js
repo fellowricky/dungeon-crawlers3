@@ -104,6 +104,7 @@ describe('sounds.json shape', () => {
       'chestOpen', 'doorOpen', 'gateOpen', 'portcullis', 'lockUnlock',
       'spellBuff', 'spellImpact', 'spellFire',
       'skillRoll', 'skillSuccess', 'skillFail', 'skillCrit', 'skillFumble',
+      'lootRare', 'lootLegendary',
     ]);
     const reached = new Set([
       ...HARD_CODED,

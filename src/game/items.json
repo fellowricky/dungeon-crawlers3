@@ -1852,7 +1852,10 @@
         "prim": {},
         "visualHelm": "cloth/hood",
         "visualColor": "#7c6858",
-        "_edited": true
+        "_edited": true,
+        "acBase": 0,
+        "prof": "none",
+        "tier": 1
       },
       {
         "name": "Cap",
@@ -1895,7 +1898,10 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "acBase": 0,
+        "prof": "light",
+        "tier": 1
       },
       {
         "name": "Circlet",
@@ -1931,7 +1937,10 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "acBase": 0,
+        "prof": "none",
+        "tier": 1
       },
       {
         "name": "Wizard Hat",
@@ -1975,21 +1984,27 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "acBase": 0,
+        "prof": "none",
+        "tier": 1
       },
       {
         "name": "Tricorne Hat",
         "icon": "dcss/item/armor/headgear/elven_leather_helm.png",
         "prim": {},
         "visualHelm": "pirate/tricorne/basic",
-        "_edited": true
+        "_edited": true,
+        "acBase": 0,
+        "prof": "light",
+        "tier": 1
       },
       {
         "name": "Barbuta",
         "icon": "dcss/item/armor/headgear/helmet_3.png",
         "prim": {},
         "visualHelm": "helmet/barbuta",
-        "acBase": 1,
+        "acBase": 2,
         "affixAllow": [
           "ac",
           "hp",
@@ -2027,14 +2042,16 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "heavy",
+        "tier": 1
       },
       {
         "name": "Bascinet",
         "icon": "dcss/item/armor/headgear/helmet_1.png",
         "prim": {},
         "visualHelm": "helmet/bascinet",
-        "acBase": 1,
+        "acBase": 2,
         "_edited": true,
         "affixAllow": [
           "ac",
@@ -2072,7 +2089,9 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "prof": "heavy",
+        "tier": 1
       },
       {
         "name": "Kettle Helm",
@@ -2117,7 +2136,9 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "prof": "medium",
+        "tier": 2
       },
       {
         "name": "Horned Helm",
@@ -2162,14 +2183,16 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "heavy",
+        "tier": 1
       },
       {
         "name": "Spangenhelm",
         "icon": "dcss/item/armor/headgear/helmet_2_etched.png",
         "prim": {},
         "visualHelm": "helmet/spangenhelm",
-        "acBase": 2,
+        "acBase": 3,
         "_edited": true,
         "affixAllow": [
           "ac",
@@ -2207,7 +2230,9 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "prof": "medium",
+        "tier": 3
       },
       {
         "name": "Armet",
@@ -2252,7 +2277,9 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "heavy",
+        "tier": 2
       },
       {
         "name": "Close Helm",
@@ -2297,14 +2324,16 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "heavy",
+        "tier": 2
       },
       {
         "name": "Sugarloaf Helm",
         "icon": "dcss/item/armor/headgear/plumed_helmet.png",
         "prim": {},
         "visualHelm": "helmet/sugarloaf",
-        "acBase": 3,
+        "acBase": 4,
         "affixAllow": [
           "ac",
           "hp",
@@ -2340,7 +2369,9 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "heavy",
+        "tier": 3
       },
       {
         "name": "Great Helm",
@@ -2378,7 +2409,9 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "prof": "heavy",
+        "tier": 3
       },
       {
         "name": "Cloth Hood",
@@ -2423,7 +2456,10 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "acBase": 0,
+        "prof": "none",
+        "tier": 1
       },
       {
         "name": "Mail Coif",
@@ -2470,7 +2506,9 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "prof": "medium",
+        "tier": 1
       },
       {
         "name": "Nasal Helm",
@@ -2478,14 +2516,16 @@
         "prim": {},
         "visualHelm": "helmet/nasal",
         "acBase": 1,
-        "_edited": true
+        "_edited": true,
+        "prof": "medium",
+        "tier": 1
       },
       {
         "name": "Norman Helm",
         "icon": "dcss/item/armor/headgear/helmet_4.png",
         "prim": {},
         "visualHelm": "helmet/norman",
-        "acBase": 2,
+        "acBase": 3,
         "affixAllow": [
           "atk",
           "dmg",
@@ -2515,7 +2555,9 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "medium",
+        "tier": 3
       },
       {
         "name": "Morion",
@@ -2555,21 +2597,27 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "prof": "medium",
+        "tier": 2
       },
       {
         "name": "Legion Helm",
         "icon": "dcss/item/armor/headgear/helmet_4_visor.png",
         "prim": {},
         "visualHelm": "helmet/legion",
-        "acBase": 2
+        "acBase": 2,
+        "prof": "medium",
+        "tier": 2
       },
       {
         "name": "Plumed Helm",
         "icon": "dcss/item/armor/headgear/plumed_helmet.png",
         "prim": {},
         "visualHelm": "helmet/maximus",
-        "acBase": 2
+        "acBase": 2,
+        "prof": "medium",
+        "tier": 2
       },
       {
         "name": "Jester's Cap",
@@ -2605,7 +2653,10 @@
           "slot8",
           "slot9"
         ],
-        "_edited": true
+        "_edited": true,
+        "acBase": 0,
+        "prof": "light",
+        "tier": 1
       },
       {
         "name": "Feathered Hat",
@@ -2645,7 +2696,10 @@
           "slot7",
           "slot8",
           "slot9"
-        ]
+        ],
+        "acBase": 0,
+        "prof": "light",
+        "tier": 1
       }
     ],
     "armor": [
@@ -2696,12 +2750,13 @@
         "name": "Leather Armor",
         "icon": "dcss/item/armor/torso/leather_armor_1.png",
         "prim": {},
-        "armorBase": 11,
+        "armorBase": 14,
         "prof": "light",
         "visualTorso": "armour/leather",
         "visualLegs": "pants_leather",
         "visualBracers": "bracers",
-        "visualBelt": "belt_leather"
+        "visualBelt": "belt_leather",
+        "tier": 4
       },
       {
         "name": "Chain Shirt",
@@ -2711,31 +2766,34 @@
         "prof": "medium",
         "visualTorso": "chainmail",
         "visualLegs": "pants_charcoal",
-        "visualBelt": "belt_leather"
+        "visualBelt": "belt_leather",
+        "tier": 1
       },
       {
         "name": "Legion Armor",
         "icon": "dcss/item/armor/torso/leather_armor_2.png",
         "prim": {},
-        "armorBase": 14,
+        "armorBase": 15,
         "prof": "medium",
         "visualTorso": "armour/legion",
         "visualShoulders": "legion",
         "_edited": true,
         "visualColor": "#a32020",
         "visualLegs": "pants_tan",
-        "visualBelt": "belt_leather"
+        "visualBelt": "belt_leather",
+        "tier": 3
       },
       {
         "name": "Plate Armor",
         "icon": "dcss/item/armor/torso/plate_mail_2.png",
         "prim": {},
-        "armorBase": 18,
+        "armorBase": 20,
         "prof": "heavy",
         "visualTorso": "armour/plate",
         "visualLegs": "armour/plate",
         "_edited": true,
-        "visualBracers": "armour/plate"
+        "visualBracers": "armour/plate",
+        "tier": 5
       },
       {
         "name": "Sleeveless Tunic",
@@ -2758,45 +2816,49 @@
         "visualColor": "#5c4033",
         "visualLegs": "pants2",
         "visualBracers": "bracers",
-        "visualBelt": "belt_leather"
+        "visualBelt": "belt_leather",
+        "tier": 1
       },
       {
         "name": "Padded Armor",
         "icon": "dcss/item/armor/torso/ring_mail_2.png",
         "prim": {},
-        "armorBase": 11,
+        "armorBase": 13,
         "prof": "light",
         "visualTorso": "jacket/trench",
         "visualColor": "#3a3a3a",
         "_edited": true,
         "visualLegs": "pants_charcoal",
-        "visualBelt": "belt_double"
+        "visualBelt": "belt_double",
+        "tier": 3
       },
       {
         "name": "Studded Leather",
         "icon": "dcss/item/armor/torso/studded_leather_armor.png",
         "prim": {},
-        "armorBase": 12,
+        "armorBase": 15,
         "prof": "light",
         "visualTorso": "armour/leather",
         "visualColor": "#3e2723",
         "_edited": true,
         "visualLegs": "cuffed",
         "visualBracers": "bracers",
-        "visualBelt": "belt_double"
+        "visualBelt": "belt_double",
+        "tier": 5
       },
       {
         "name": "Hide Armor",
         "icon": "dcss/item/armor/torso/elven_leather_armor.png",
         "prim": {},
         "armorBase": 12,
-        "prof": "medium",
+        "prof": "light",
         "visualTorso": "clothes/vest",
         "visualColor": "#8d5524",
         "_edited": true,
         "visualLegs": "fur",
         "visualBracers": "bracers",
-        "visualBelt": "sash"
+        "visualBelt": "sash",
+        "tier": 2
       },
       {
         "name": "Scale Mail",
@@ -2807,30 +2869,33 @@
         "visualTorso": "chainmail",
         "visualLegs": "pants_charcoal",
         "visualShoulders": "bauldron",
-        "visualBelt": "belt_leather"
+        "visualBelt": "belt_leather",
+        "tier": 2
       },
       {
         "name": "Breastplate",
         "icon": "dcss/item/armor/torso/elven_scalemail.png",
         "prim": {},
-        "armorBase": 14,
+        "armorBase": 16,
         "prof": "medium",
         "visualTorso": "armour/plate",
         "_edited": true,
         "visualLegs": "pants_slate",
         "visualBracers": "armour/plate",
-        "visualBelt": "buckles"
+        "visualBelt": "buckles",
+        "tier": 4
       },
       {
         "name": "Half Plate",
         "icon": "dcss/item/armor/torso/plate_mail_1.png",
         "prim": {},
-        "armorBase": 15,
-        "prof": "medium",
+        "armorBase": 18,
+        "prof": "heavy",
         "visualTorso": "armour/plate",
         "visualLegs": "armour/plate",
         "visualBracers": "armour/plate",
-        "visualShoulders": "epaulets"
+        "visualShoulders": "epaulets",
+        "tier": 4
       },
       {
         "name": "Ring Mail",
@@ -2841,7 +2906,8 @@
         "visualTorso": "chainmail",
         "visualLegs": "pants_charcoal",
         "visualShoulders": "pauldrons",
-        "visualBelt": "belt_double"
+        "visualBelt": "belt_double",
+        "tier": 1
       },
       {
         "name": "Chain Mail",
@@ -2852,7 +2918,8 @@
         "visualTorso": "chainmail",
         "visualLegs": "pants_charcoal",
         "visualShoulders": "epaulets",
-        "visualBelt": "belt_double"
+        "visualBelt": "belt_double",
+        "tier": 2
       },
       {
         "name": "Splint Armor",
@@ -2863,20 +2930,22 @@
         "visualTorso": "armour/plate",
         "visualLegs": "armour/plate",
         "visualShoulders": "pauldrons",
-        "visualBracers": "armour/plate"
+        "visualBracers": "armour/plate",
+        "tier": 3
       },
       {
         "name": "Dragonscale Mail",
         "icon": "dcss/item/armor/torso/green_dragon_scale_mail.png",
         "prim": {},
-        "armorBase": 15,
+        "armorBase": 17,
         "prof": "medium",
         "visualTorso": "chainmail",
         "visualColor": "#2e7d32",
         "visualLegs": "pants_black",
         "visualShoulders": "pauldrons",
         "visualCape": "solid",
-        "visualBelt": "buckles"
+        "visualBelt": "buckles",
+        "tier": 5
       }
     ],
     "gloves": [
@@ -3696,6 +3765,553 @@
         "prim": {},
         "affixAllow": [],
         "_edited": true
+      }
+    ],
+    "trinket": [
+      {
+        "name": "Scroll of Magic Missile",
+        "icon": "dcss/item/scroll/scroll-brown.png",
+        "rarity": "common",
+        "charges": 3,
+        "spellKey": "magicMissile",
+        "casterOnly": true,
+        "value": 50,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Cure Wounds",
+        "icon": "dcss/item/scroll/scroll-brown.png",
+        "rarity": "common",
+        "charges": 3,
+        "spellKey": "cureWounds",
+        "casterOnly": true,
+        "value": 50,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Guiding Bolt",
+        "icon": "dcss/item/scroll/scroll-brown.png",
+        "rarity": "common",
+        "charges": 3,
+        "spellKey": "guidingBolt",
+        "casterOnly": true,
+        "value": 50,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Faerie Fire",
+        "icon": "dcss/item/scroll/scroll-brown.png",
+        "rarity": "common",
+        "charges": 3,
+        "spellKey": "faerieFire",
+        "casterOnly": true,
+        "value": 50,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Scorching Ray",
+        "icon": "dcss/item/scroll/scroll-green.png",
+        "rarity": "uncommon",
+        "charges": 3,
+        "spellKey": "scorchingRay",
+        "casterOnly": true,
+        "value": 150,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Shatter",
+        "icon": "dcss/item/scroll/scroll-green.png",
+        "rarity": "uncommon",
+        "charges": 3,
+        "spellKey": "shatter",
+        "casterOnly": true,
+        "value": 150,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Hold Person",
+        "icon": "dcss/item/scroll/scroll-green.png",
+        "rarity": "uncommon",
+        "charges": 2,
+        "spellKey": "holdPerson",
+        "casterOnly": true,
+        "value": 150,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Moonbeam",
+        "icon": "dcss/item/scroll/scroll-green.png",
+        "rarity": "uncommon",
+        "charges": 2,
+        "spellKey": "moonbeam",
+        "casterOnly": true,
+        "value": 150,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Fireball",
+        "icon": "dcss/item/scroll/scroll-blue.png",
+        "rarity": "rare",
+        "charges": 2,
+        "spellKey": "fireball",
+        "casterOnly": true,
+        "value": 300,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Lightning Bolt",
+        "icon": "dcss/item/scroll/scroll-blue.png",
+        "rarity": "rare",
+        "charges": 2,
+        "spellKey": "lightningBolt",
+        "casterOnly": true,
+        "value": 300,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Haste",
+        "icon": "dcss/item/scroll/scroll-blue.png",
+        "rarity": "rare",
+        "charges": 2,
+        "spellKey": "haste",
+        "casterOnly": true,
+        "value": 300,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Spirit Guardians",
+        "icon": "dcss/item/scroll/scroll-blue.png",
+        "rarity": "rare",
+        "charges": 2,
+        "spellKey": "spiritGuardians",
+        "casterOnly": true,
+        "value": 300,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Ice Storm",
+        "icon": "dcss/item/scroll/scroll-purple.png",
+        "rarity": "epic",
+        "charges": 2,
+        "spellKey": "iceStorm",
+        "casterOnly": true,
+        "value": 450,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Polymorph",
+        "icon": "dcss/item/scroll/scroll-purple.png",
+        "rarity": "epic",
+        "charges": 1,
+        "spellKey": "polymorph",
+        "casterOnly": true,
+        "value": 450,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Cone of Cold",
+        "icon": "dcss/item/scroll/scroll-purple.png",
+        "rarity": "epic",
+        "charges": 1,
+        "spellKey": "coneOfCold",
+        "casterOnly": true,
+        "value": 450,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Scroll of Hold Monster",
+        "icon": "dcss/item/scroll/scroll-purple.png",
+        "rarity": "epic",
+        "charges": 1,
+        "spellKey": "holdMonster",
+        "casterOnly": true,
+        "value": 450,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Hill Giant Strength",
+        "icon": "dcss/item/potion/potion_golden.png",
+        "rarity": "rare",
+        "charges": 1,
+        "buffKey": "giantStrength",
+        "buffDuration": 60,
+        "casterOnly": false,
+        "value": 250,
+        "prim": {},
+        "affixAllow": [],
+        "minIlvl": 7
+      },
+      {
+        "name": "Potion of Invisibility",
+        "icon": "dcss/item/potion/potion_sky_blue.png",
+        "rarity": "uncommon",
+        "charges": 1,
+        "buffKey": "invisible",
+        "buffDuration": 60,
+        "casterOnly": false,
+        "value": 120,
+        "prim": {},
+        "affixAllow": [],
+        "minIlvl": 3
+      },
+      {
+        "name": "Potion of Inspiration",
+        "icon": "dcss/item/potion/pink.png",
+        "rarity": "common",
+        "charges": 1,
+        "buffKey": "inspired",
+        "buffDuration": 60,
+        "casterOnly": false,
+        "value": 35,
+        "minIlvl": 0,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Swiftness",
+        "icon": "dcss/item/potion/cyan.png",
+        "rarity": "common",
+        "charges": 1,
+        "buffKey": "remarkableAthlete",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 40,
+        "minIlvl": 0,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Oil of Sharpness",
+        "icon": "dcss/item/potion/silver.png",
+        "rarity": "common",
+        "charges": 1,
+        "buffKey": "magicWeapon",
+        "buffDuration": 60,
+        "casterOnly": false,
+        "value": 45,
+        "minIlvl": 2,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Shielding",
+        "icon": "dcss/item/potion/brilliant_blue.png",
+        "rarity": "common",
+        "charges": 1,
+        "buffKey": "shieldOfFaith",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 40,
+        "minIlvl": 2,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Barkskin",
+        "icon": "dcss/item/potion/brown.png",
+        "rarity": "uncommon",
+        "charges": 1,
+        "buffKey": "barkskin",
+        "buffDuration": 60,
+        "casterOnly": false,
+        "value": 110,
+        "minIlvl": 4,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Growth",
+        "icon": "dcss/item/potion/orange.png",
+        "rarity": "uncommon",
+        "charges": 1,
+        "buffKey": "enlarged",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 130,
+        "minIlvl": 5,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Phasing",
+        "icon": "dcss/item/potion/cloudy.png",
+        "rarity": "uncommon",
+        "charges": 1,
+        "buffKey": "phaseStep",
+        "buffDuration": 30,
+        "casterOnly": false,
+        "value": 120,
+        "minIlvl": 6,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Invulnerability",
+        "icon": "dcss/item/potion/dark.png",
+        "rarity": "rare",
+        "charges": 1,
+        "buffKey": "bearTotem",
+        "buffDuration": 30,
+        "casterOnly": false,
+        "value": 240,
+        "minIlvl": 8,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Speed",
+        "icon": "dcss/item/potion/effervescent.png",
+        "rarity": "rare",
+        "charges": 1,
+        "buffKey": "hasted",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 260,
+        "minIlvl": 9,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Death Ward",
+        "icon": "dcss/item/potion/white.png",
+        "rarity": "rare",
+        "charges": 1,
+        "buffKey": "deathWarded",
+        "buffDuration": 90,
+        "casterOnly": false,
+        "value": 220,
+        "minIlvl": 10,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Elixir of Battle",
+        "icon": "dcss/item/potion/ruby.png",
+        "rarity": "rare",
+        "charges": 1,
+        "buffKey": "sacredWeapon",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 260,
+        "minIlvl": 10,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Fury",
+        "icon": "dcss/item/potion/purple_red.png",
+        "rarity": "epic",
+        "charges": 1,
+        "buffKey": "raging",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 420,
+        "minIlvl": 12,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Foresight",
+        "icon": "dcss/item/potion/golden.png",
+        "rarity": "epic",
+        "charges": 1,
+        "buffKey": "foresight",
+        "buffDuration": 45,
+        "casterOnly": false,
+        "value": 450,
+        "minIlvl": 14,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Healing",
+        "icon": "dcss/item/potion/ruby.png",
+        "rarity": "common",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 50,
+        "minIlvl": 0,
+        "potionPool": "heal",
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Greater Healing",
+        "icon": "dcss/item/potion/magenta.png",
+        "rarity": "uncommon",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 150,
+        "minIlvl": 4,
+        "potionPool": "greater",
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Superior Healing",
+        "icon": "dcss/item/potion/purple_red.png",
+        "rarity": "rare",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 400,
+        "minIlvl": 8,
+        "potionPool": "superior",
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Resistance",
+        "icon": "dcss/item/potion/emerald.png",
+        "rarity": "uncommon",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 120,
+        "minIlvl": 3,
+        "buffKey": "resistant",
+        "buffDuration": 60,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Heroism",
+        "icon": "dcss/item/potion/yellow.png",
+        "rarity": "rare",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 240,
+        "minIlvl": 7,
+        "buffKey": "heroism",
+        "buffDuration": 60,
+        "tempHp": 10,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Elixir of Health",
+        "icon": "dcss/item/potion/clear.png",
+        "rarity": "rare",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 200,
+        "minIlvl": 6,
+        "cures": [
+          "blinded",
+          "deafened",
+          "paralyzed",
+          "poisoned",
+          "stunned",
+          "drained",
+          "corroded"
+        ],
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Potion of Fire Breath",
+        "icon": "dcss/item/potion/orange.png",
+        "rarity": "uncommon",
+        "charges": 3,
+        "casterOnly": false,
+        "value": 160,
+        "minIlvl": 5,
+        "spellKey": "fireBreath",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Vial of Acid",
+        "icon": "dcss/item/misc/misc_phial.png",
+        "rarity": "common",
+        "charges": 2,
+        "casterOnly": false,
+        "value": 25,
+        "minIlvl": 0,
+        "spellKey": "acidVial",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Alchemist's Fire",
+        "icon": "dcss/item/misc/misc_bottle.png",
+        "rarity": "common",
+        "charges": 2,
+        "casterOnly": false,
+        "value": 50,
+        "minIlvl": 1,
+        "spellKey": "alchemistsFire",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Flask of Holy Water",
+        "icon": "dcss/item/misc/misc_phial_inert.png",
+        "rarity": "common",
+        "charges": 2,
+        "casterOnly": false,
+        "value": 25,
+        "minIlvl": 1,
+        "spellKey": "holyWater",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Bolas",
+        "icon": "dcss/effect/net_trap.png",
+        "rarity": "common",
+        "charges": 2,
+        "casterOnly": false,
+        "value": 30,
+        "minIlvl": 2,
+        "spellKey": "bolas",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Choking Dust",
+        "icon": "dcss/item/potion/murky.png",
+        "rarity": "uncommon",
+        "charges": 2,
+        "casterOnly": false,
+        "value": 140,
+        "minIlvl": 5,
+        "spellKey": "chokingDust",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
+      },
+      {
+        "name": "Bead of Force",
+        "icon": "dcss/item/misc/misc_orb.png",
+        "rarity": "rare",
+        "charges": 1,
+        "casterOnly": false,
+        "value": 320,
+        "minIlvl": 9,
+        "spellKey": "beadOfForce",
+        "thrown": true,
+        "prim": {},
+        "affixAllow": []
       }
     ]
   },

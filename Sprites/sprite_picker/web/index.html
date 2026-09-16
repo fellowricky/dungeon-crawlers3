@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprite Picker — dnd_enemies</title>
+<style>
+  :root{
+    --bg:#14151a; --panel:#1c1e26; --panel2:#23262f; --line:#31353f;
+    --fg:#e6e8ef; --dim:#9aa0b0; --accent:#7cd992; --accent2:#5b8cff;
+    --flag:#ff8a5b; --cell:#2a2e38;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font:14px/1.45 "Segoe UI",system-ui,sans-serif;
+    display:flex; overflow:hidden;
+  }
+
+  /* ---------------- sidebar ---------------- */
+  #side{
+    width:270px; flex:0 0 270px; background:var(--panel);
+    border-right:1px solid var(--line); display:flex; flex-direction:column;
+  }
+  #side header{padding:12px 12px 8px; border-bottom:1px solid var(--line)}
+  #side h1{margin:0 0 8px; font-size:15px; letter-spacing:.02em}
+  #search{
+    width:100%; padding:7px 9px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--fg); font-size:13px;
+  }
+  #filters{display:flex; gap:4px; margin-top:8px; flex-wrap:wrap}
+  .chip{
+    padding:4px 9px; border-radius:99px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--dim); cursor:pointer; font-size:12px;
+  }
+  .chip.on{background:var(--accent2); border-color:var(--accent2); color:#0d1020; font-weight:600}
+  #list{flex:1; overflow-y:auto; padding:6px 0}
+  .row{
+    display:flex; align-items:center; gap:8px; padding:5px 12px; cursor:pointer;
+    border-left:3px solid transparent; white-space:nowrap;
+  }
+  .row:hover{background:var(--panel2)}
+  .row.active{background:var(--panel2); border-left-color:var(--accent2)}
+  .dot{width:8px;height:8px;border-radius:99px;background:#454a57;flex:0 0 8px}
+  .row.picked .dot{background:var(--accent)}
+  .row.flagged .dot{background:var(--flag)}
+  .row .nm{overflow:hidden; text-overflow:ellipsis; flex:1}
+  .row .pick{color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums}
+  #side footer{
+    padding:10px 12px; border-top:1px solid var(--line); font-size:12px; color:var(--dim);
+  }
+  #bar{height:6px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:6px 0 8px}
+  #barfill{height:100%;background:var(--accent);width:0%}
+  button{
+    background:var(--panel2); color:var(--fg); border:1px solid var(--line);
+    padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;
+  }
+  button:hover{border-color:var(--accent2)}
+  button.primary{background:var(--accent2); border-color:var(--accent2); color:#0d1020; font-weight:600}
+
+  /* ---------------- main ---------------- */
+  #main{flex:1; display:flex; flex-direction:column; min-width:0}
+  #top{
+    display:flex; align-items:center; gap:14px; padding:12px 18px;
+    border-bottom:1px solid var(--line); background:var(--panel);
+  }
+  #title{font-size:19px; font-weight:600; letter-spacing:.01em}
+  #sub{color:var(--dim); font-size:12px}
+  .spacer{flex:1}
+  .toggles{display:flex; align-items:center; gap:10px; font-size:12px; color:var(--dim)}
+  .toggles label{display:flex; align-items:center; gap:5px; cursor:pointer}
+
+  #grid{
+    flex:1; overflow-y:auto; padding:18px;
+    display:grid; gap:14px;
+    grid-template-columns:repeat(auto-fill,minmax(var(--tile,200px),1fr));
+    align-content:start;
+  }
+  .card{
+    background:var(--panel); border:2px solid var(--line); border-radius:10px;
+    padding:8px; cursor:pointer; position:relative; transition:border-color .08s;
+  }
+  .card:hover{border-color:var(--accent2)}
+  .card.sel{border-color:var(--accent); box-shadow:0 0 0 3px rgba(124,217,146,.18)}
+  .card .imgwrap{
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    border-radius:6px; overflow:hidden;
+  }
+  .card img{
+    width:100%; height:100%; object-fit:contain;
+    image-rendering:pixelated; image-rendering:crisp-edges;
+  }
+  .card .cap{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:6px; font-size:11px; color:var(--dim);
+  }
+  .card .key{
+    background:var(--panel2); border:1px solid var(--line); border-radius:4px;
+    padding:0 5px; font-family:ui-monospace,Consolas,monospace;
+  }
+  .card.sel .key{background:var(--accent); color:#0d1020; border-color:var(--accent)}
+
+  /* background modes for judging outlines / transparency */
+  .bg-check .imgwrap{
+    background:
+      conic-gradient(#3a3f4b 0 25%, #2a2e38 0 50%, #3a3f4b 0 75%, #2a2e38 0) 0 0/16px 16px;
+  }
+  .bg-dark .imgwrap{background:#14151a}
+  .bg-light .imgwrap{background:#e8e8e8}
+  .bg-mag .imgwrap{background:#ff00ff}
+
+  #empty{padding:40px; color:var(--dim)}
+  #toast{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+    padding:9px 16px; font-size:13px; opacity:0; pointer-events:none;
+    transition:opacity .2s; z-index:20;
+  }
+  #toast.show{opacity:1}
+  #help{
+    position:fixed; inset:0; background:rgba(8,9,12,.82); display:none;
+    align-items:center; justify-content:center; z-index:30;
+  }
+  #help.show{display:flex}
+  #helpbox{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:22px 26px; max-width:520px;
+  }
+  #helpbox h2{margin:0 0 12px; font-size:16px}
+  #helpbox table{border-collapse:collapse; font-size:13px}
+  #helpbox td{padding:3px 14px 3px 0; vertical-align:top}
+  kbd{
+    background:var(--panel2); border:1px solid var(--line); border-bottom-width:2px;
+    border-radius:4px; padding:1px 6px; font-family:ui-monospace,Consolas,monospace;
+    font-size:12px;
+  }
+</style>
+</head>
+<body>
+
+<aside id="side">
+  <header>
+    <h1>Sprite Picker</h1>
+    <input id="search" type="text" placeholder="Search creature…  (/)" autocomplete="off">
+    <div id="filters">
+      <span class="chip on" data-filter="all">All</span>
+      <span class="chip" data-filter="todo">To do</span>
+      <span class="chip" data-filter="picked">Picked</span>
+      <span class="chip" data-filter="flagged">Redo</span>
+    </div>
+  </header>
+  <div id="list"></div>
+  <footer>
+    <div id="counts">–</div>
+    <div id="bar"><div id="barfill"></div></div>
+    <div style="display:flex;gap:6px">
+      <button id="exportBtn" class="primary" style="flex:1">Export picks</button>
+      <button id="helpBtn" title="Keyboard shortcuts">?</button>
+    </div>
+  </footer>
+</aside>
+
+<main id="main">
+  <div id="top">
+    <div>
+      <div id="title">—</div>
+      <div id="sub"></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="toggles">
+      <label><input type="checkbox" id="rawChk"> Raw 512 <kbd>R</kbd></label>
+      <label><input type="checkbox" id="autoChk" checked> Auto-advance</label>
+      <label>BG
+        <select id="bgSel" style="background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:3px">
+          <option value="bg-check">checker</option>
+          <option value="bg-dark">dark</option>
+          <option value="bg-light">light</option>
+          <option value="bg-mag">magenta</option>
+        </select>
+      </label>
+      <label>Size
+        <input type="range" id="zoom" min="120" max="420" step="20" value="200" style="width:90px">
+      </label>
+      <button id="flagBtn" title="Mark for regeneration (X)">Flag redo</button>
+      <button id="clearBtn" title="Clear pick (C)">Clear</button>
+    </div>
+  </div>
+  <div id="grid"></div>
+</main>
+
+<div id="toast"></div>
+<div id="help"><div id="helpbox">
+  <h2>Keyboard</h2>
+  <table>
+    <tr><td><kbd>1</kbd>…<kbd>9</kbd> <kbd>0</kbd></td><td>Pick that variant (0 = 10th)</td></tr>
+    <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Previous / next creature in the list</td></tr>
+    <tr><td><kbd>Space</kbd> / <kbd>Enter</kbd></td><td>Jump to next creature with no pick</td></tr>
+    <tr><td><kbd>C</kbd></td><td>Clear this creature's pick</td></tr>
+    <tr><td><kbd>X</kbd></td><td>Flag for regeneration (none are good)</td></tr>
+    <tr><td><kbd>R</kbd></td><td>Toggle raw 512px view</td></tr>
+    <tr><td><kbd>+</kbd> <kbd>-</kbd></td><td>Tile size</td></tr>
+    <tr><td><kbd>/</kbd></td><td>Focus search</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Close this / leave search</td></tr>
+  </table>
+  <p style="color:var(--dim);font-size:12px;margin:14px 0 0">
+    Picks save instantly to <code>selections.json</code>. “Export picks” copies each
+    winner to <code>selected/&lt;creature&gt;.png</code>.
+  </p>
+</div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let DATA = { creatures: [], picks: {}, flags: {}, notes: {} };
+let idx = 0;              // index into VIEW
+let VIEW = [];            // filtered creature list
+let filter = 'all', query = '', showRaw = false;
+
+// ---------------------------------------------------------------- load ----
+async function load(){
+  const r = await fetch('/api/manifest');
+  DATA = await r.json();
+  applyFilter(true);
+  renderCounts();
+}
+
+function status(c){
+  if (DATA.picks[c.name]) return 'picked';
+  if (DATA.flags[c.name]) return 'flagged';
+  return 'todo';
+}
+
+function applyFilter(keepName){
+  const current = VIEW[idx] && VIEW[idx].name;
+  VIEW = DATA.creatures.filter(c => {
+    if (query && !c.name.toLowerCase().includes(query)) return false;
+    if (filter === 'all') return true;
+    return status(c) === filter;
+  });
+  if (keepName && current){
+    const i = VIEW.findIndex(c => c.name === current);
+    idx = i >= 0 ? i : 0;
+  }
+  if (idx >= VIEW.length) idx = Math.max(0, VIEW.length - 1);
+  renderList();
+  renderGrid();
+}
+
+// ---------------------------------------------------------------- list ----
+function renderList(){
+  const list = $('#list');
+  list.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  VIEW.forEach((c, i) => {
+    const st = status(c);
+    const row = document.createElement('div');
+    row.className = 'row ' + st + (i === idx ? ' active' : '');
+    const pick = DATA.picks[c.name];
+    const n = pick ? (pick.match(/_(\d+)\.png$/) || [,'?'])[1] : (st === 'flagged' ? 'redo' : '');
+    row.innerHTML = `<span class="dot"></span><span class="nm"></span><span class="pick">${n}</span>`;
+    row.querySelector('.nm').textContent = c.name.replace(/_/g, ' ');
+    row.onclick = () => { idx = i; renderList(); renderGrid(); };
+    frag.appendChild(row);
+  });
+  list.appendChild(frag);
+  const active = list.querySelector('.row.active');
+  if (active) active.scrollIntoView({block:'nearest'});
+}
+
+function renderCounts(){
+  const total = DATA.creatures.length;
+  const picked = DATA.creatures.filter(c => DATA.picks[c.name]).length;
+  const flagged = DATA.creatures.filter(c => DATA.flags[c.name]).length;
+  $('#counts').textContent = `${picked} / ${total} picked` + (flagged ? ` · ${flagged} redo` : '');
+  $('#barfill').style.width = total ? (picked / total * 100).toFixed(1) + '%' : '0%';
+}
+
+// ---------------------------------------------------------------- grid ----
+function renderGrid(){
+  const grid = $('#grid');
+  const c = VIEW[idx];
+  if (!c){
+    $('#title').textContent = 'Nothing matches';
+    $('#sub').textContent = '';
+    grid.innerHTML = '<div id="empty">No creatures in this filter.</div>';
+    return;
+  }
+  const pick = DATA.picks[c.name];
+  const pos = DATA.creatures.findIndex(x => x.name === c.name) + 1;
+  $('#title').textContent = c.name.replace(/_/g, ' ');
+  $('#sub').innerHTML = `${c.variants.length} variants · #${pos} of ${DATA.creatures.length}`
+    + (pick ? ` · <span style="color:var(--accent)">picked ${pick}</span>` : '')
+    + (DATA.flags[c.name] ? ` · <span style="color:var(--flag)">flagged for redo</span>` : '');
+  $('#flagBtn').textContent = DATA.flags[c.name] ? 'Unflag' : 'Flag redo';
+
+  grid.className = $('#bgSel').value;
+  grid.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  c.variants.forEach((v, i) => {
+    const card = document.createElement('div');
+    card.className = 'card' + (pick === v.file ? ' sel' : '');
+    const src = showRaw && v.raw
+      ? `/img/${encodeURIComponent(c.name)}/raw/${encodeURIComponent(v.raw)}`
+      : `/img/${encodeURIComponent(c.name)}/final_64/${encodeURIComponent(v.file)}`;
+    const key = i < 9 ? String(i + 1) : (i === 9 ? '0' : '');
+    card.innerHTML = `<div class="imgwrap"><img loading="lazy" alt="${v.file}" src="${src}"></div>
+      <div class="cap"><span>${showRaw && v.raw ? 'raw 512' : '64px'} · ${String(v.n).padStart(2,'0')}</span>
+      ${key ? `<span class="key">${key}</span>` : ''}</div>`;
+    card.onclick = () => pickVariant(v.file);
+    frag.appendChild(card);
+  });
+  grid.appendChild(frag);
+}
+
+// -------------------------------------------------------------- actions ----
+async function post(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
+                             body: JSON.stringify(body)});
+  return r.json();
+}
+
+async function pickVariant(file){
+  const c = VIEW[idx]; if (!c) return;
+  const same = DATA.picks[c.name] === file;
+  DATA.picks[c.name] = same ? undefined : file;
+  if (same) delete DATA.picks[c.name]; else delete DATA.flags[c.name];
+  renderCounts(); renderGrid(); renderList();
+  await post('/api/pick', {creature: c.name, file: same ? null : file});
+  if (!same && $('#autoChk').checked) nextUnpicked();
+}
+
+async function toggleFlag(){
+  const c = VIEW[idx]; if (!c) return;
+  const on = !DATA.flags[c.name];
+  if (on){ DATA.flags[c.name] = true; delete DATA.picks[c.name]; }
+  else delete DATA.flags[c.name];
+  renderCounts(); renderGrid(); renderList();
+  await post('/api/flag', {creature: c.name, flagged: on});
+  if (on && $('#autoChk').checked) nextUnpicked();
+}
+
+async function clearPick(){
+  const c = VIEW[idx]; if (!c) return;
+  delete DATA.picks[c.name]; delete DATA.flags[c.name];
+  renderCounts(); renderGrid(); renderList();
+  await post('/api/pick', {creature: c.name, file: null});
+  await post('/api/flag', {creature: c.name, flagged: false});
+}
+
+function go(delta){
+  if (!VIEW.length) return;
+  idx = Math.min(VIEW.length - 1, Math.max(0, idx + delta));
+  renderList(); renderGrid();
+}
+
+function nextUnpicked(){
+  for (let step = 1; step <= VIEW.length; step++){
+    const i = (idx + step) % VIEW.length;
+    const c = VIEW[i];
+    if (!DATA.picks[c.name] && !DATA.flags[c.name]){
+      idx = i; renderList(); renderGrid(); return;
+    }
+  }
+  toast('Every creature in this filter is decided 🎉');
+}
+
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+// ------------------------------------------------------------- controls ----
+$('#search').oninput = e => { query = e.target.value.trim().toLowerCase(); idx = 0; applyFilter(false); };
+$('#filters').onclick = e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === chip));
+  filter = chip.dataset.filter; idx = 0; applyFilter(false);
+};
+$('#rawChk').onchange = e => { showRaw = e.target.checked; renderGrid(); };
+$('#bgSel').onchange = () => { $('#grid').className = $('#bgSel').value; };
+$('#zoom').oninput = e => document.documentElement.style.setProperty('--tile', e.target.value + 'px');
+$('#flagBtn').onclick = toggleFlag;
+$('#clearBtn').onclick = clearPick;
+$('#helpBtn').onclick = () => $('#help').classList.toggle('show');
+$('#help').onclick = () => $('#help').classList.remove('show');
+$('#exportBtn').onclick = async () => {
+  const btn = $('#exportBtn'); btn.disabled = true; btn.textContent = 'Exporting…';
+  const r = await post('/api/export', {include_raw: false});
+  btn.disabled = false; btn.textContent = 'Export picks';
+  toast(`Copied ${r.copied} sprites → selected\\` + (r.missing.length ? ` (${r.missing.length} missing)` : ''));
+};
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT'){
+    if (e.key === 'Escape') e.target.blur();
+    return;
+  }
+  const c = VIEW[idx];
+  if (e.key === '/'){ e.preventDefault(); $('#search').focus(); return; }
+  if (e.key === 'Escape'){ $('#help').classList.remove('show'); return; }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown'){ e.preventDefault(); go(1); return; }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp'){ e.preventDefault(); go(-1); return; }
+  if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); nextUnpicked(); return; }
+  if (e.key.toLowerCase() === 'r'){ $('#rawChk').checked = showRaw = !showRaw; renderGrid(); return; }
+  if (e.key.toLowerCase() === 'x'){ toggleFlag(); return; }
+  if (e.key.toLowerCase() === 'c'){ clearPick(); return; }
+  if (e.key === '+' || e.key === '='){ $('#zoom').stepUp(); $('#zoom').oninput({target:$('#zoom')}); return; }
+  if (e.key === '-'){ $('#zoom').stepDown(); $('#zoom').oninput({target:$('#zoom')}); return; }
+  if (e.key === '?'){ $('#help').classList.toggle('show'); return; }
+  if (/^[0-9]$/.test(e.key) && c){
+    const i = e.key === '0' ? 9 : parseInt(e.key, 10) - 1;
+    if (c.variants[i]) pickVariant(c.variants[i].file);
+  }
+});
+
+document.documentElement.style.setProperty('--tile', '200px');
+load();
+</script>
+</body>
+</html>

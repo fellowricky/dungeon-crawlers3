@@ -20,9 +20,11 @@
  * alongside the other domain mixins and uses pathfinding (cellOf/wx/wz),
  * initiative (isCurrentActor), and conditions (getEffectMods).
  */
-import { FLOOR, CHOKEPOINT_COST, COMBAT_MOVE_BOOST, HERO_ATTACK_CD, MONSTER_ATTACK_CD } from './constants.js';
+import { FLOOR, POOL, CHOKEPOINT_COST, COMBAT_MOVE_BOOST, HERO_ATTACK_CD, MONSTER_ATTACK_CD } from './constants.js';
+import { canFly } from './pathfinding.js';
 import { RACES } from './srd.js';
 import { getEffectMods, applyEffect, hasEffect, ROUND_SECONDS } from './conditions.js';
+import { Motion } from './motion_debug.js';
 
 /* ── Tunables ──────────────────────────────────────────────────────── */
 export const FT_PER_CELL = 5;             // 1 grid cell = 5 ft (D&D 5e)
@@ -110,6 +112,61 @@ export function pathMoveCost(path, W, startDiag = 0) {
   return { cost, diagCount: diag };
 }
 
+/* ---------------- follow-up strikes ----------------
+   Extra Attack, Multiattack, Flurry, off-hand, Action Surge: one action, several
+   swings, each with its own animation and deferred impact.
+
+   The animation and the impact both advance on the COMBAT clock — game.js
+   scales dt by the Options combat-speed slider (default 0.7) and hit-stop
+   freezes it on every hit — so a follow-up strike has to be scheduled on that
+   same clock. Scheduled in real time (setTimeout) it drifts: at 0.7 the LPC
+   'shoot' cycle takes 1.43 real seconds but the next shot used to restart it
+   at 1.25, so the archer re-drew before the first arrow had left and every
+   later shot was further off. Melee only looked right because 'slash' is
+   short enough that the two clocks happened to agree.
+
+   `fxImpactDelay` is that clock (ticked from Game.update with the scaled dt,
+   and it holds the turn engine while a strike is pending); the headless
+   game fires it immediately, which is also what the tests want. */
+
+/** Shortest gap between consecutive swings, whatever the animation length. */
+export const MIN_STRIKE_INTERVAL = 0.36;
+
+/** Combat-seconds from one strike's start to the next: let the first animation
+    finish (its impact delay is the whole cycle for LPC heroes, 2/3 of it for
+    frame-sliced sheets) and breathe for a beat before the next wind-up. */
+export function strikeInterval(firstStrikeDelaySec) {
+  const d = Number.isFinite(firstStrikeDelaySec) ? firstStrikeDelaySec : 0;
+  return Math.max(MIN_STRIKE_INTERVAL, d + 0.25);
+}
+
+/** Impact delay of an actor's attack animation, 0 when it has none. */
+export function attackAnimDelay(actor) {
+  const anim = actor && actor.ent && actor.ent.anim;
+  return anim && typeof anim.attackImpactDelay === 'function' ? (anim.attackImpactDelay() || 0) : 0;
+}
+
+/**
+ * Queue `fn` `delaySec` of combat time from now as one of `actor`'s pending
+ * attacks (the turn engine waits for `_pendingAttacks` to drain). Falls back
+ * to real-time scheduling, then to firing inline, for game objects without
+ * the hooks.
+ */
+export function scheduleFollowUpStrike(game, actor, delaySec, fn) {
+  actor._pendingAttacks = (actor._pendingAttacks || 0) + 1;
+  const fire = () => {
+    actor._pendingAttacks = Math.max(0, (actor._pendingAttacks || 0) - 1);
+    /* A strike firing is progress: the initiative deadlock breaker measures
+       time since the turn last did something, and a full volley is longer
+       than its 4 s ceiling. */
+    if (typeof game.markTurnProgress === 'function') game.markTurnProgress();
+    fn();
+  };
+  if (typeof game.fxImpactDelay === 'function') game.fxImpactDelay(delaySec, fire);
+  else if (typeof game.fxSchedule === 'function') game.fxSchedule(Math.round(delaySec * 1000), fire);
+  else fire();
+}
+
 /**
  * Cells threatened by an entity of the given `reach` centred on `center`.
  * Threatened squares are every FLOOR cell within Chebyshev distance `reach`
@@ -176,6 +233,9 @@ export function reachableCellsGrid(grid, W, H, start, budget, opts = {}) {
   if (start < 0 || grid[start] !== FLOOR || budget <= 0) return out;
   const choke = opts.chokepoint || null;
   const solid = opts.solidProps || null;
+  /* opts.flies: liquid is walkable ground to a flyer, same rule as
+     pathfinding's isGroundFor. Omitted, everything stays ground-only. */
+  const flies = !!opts.flies;
 
   /* State = cell*2 + parity(=diagCount mod 2). dist over states. */
   const N = W * H;
@@ -212,7 +272,7 @@ export function reachableCellsGrid(grid, W, H, start, budget, opts = {}) {
   dist[start * 2] = 0;
   push(start * 2, 0);
 
-  const isWalkable = (n) => grid[n] === FLOOR && (!solid || !solid[n]);
+  const isWalkable = (n) => (grid[n] === FLOOR || (flies && grid[n] === POOL)) && (!solid || !solid[n]);
 
   while (hN > 0) {
     const s = pop();
@@ -234,6 +294,7 @@ export function reachableCellsGrid(grid, W, H, start, budget, opts = {}) {
         if (!isWalkable(cell + dy * W)) return;   /* (cx, cy+dy) */
       }
       let base = choke && choke[n] ? CHOKEPOINT_COST : 1;
+      if (opts.isDifficultTerrain && opts.isDifficultTerrain(n)) base *= 2;
       const step = stepCost(dx, dy, diagCount, base);
       const nd = dc + step.cost;
       if (nd > budget) return;
@@ -289,11 +350,10 @@ export function validateCommand(cmd, budgets) {
 export const turnEngineMethods = {
   /**
    * Movement budget in cells for one entity this turn.
-   *   Heroes: floor(race.speedFt / 5) × speedMult × effect-speedMul
+   *   Heroes: floor(speedFt / 5) × effect-speedMul (5 ft = 1 grid tile)
    *   Monsters: data.speedCells (default 6) × effect-speedMul
-   * `speedMult` (gear/skills) and the effect multiplier (haste/slow) both
-   * extend or shrink the allowance, matching the live continuous-speed
-   * model so movement feels consistent before/after Phase 1.
+   * The effect multiplier (haste/slow) extends or shrinks the allowance.
+   * Gear and feats add discrete 5 ft Move increments directly to speedFt.
    */
   cellsForSpeed(e) {
     if (!e || !e.data) return DEFAULT_MONSTER_CELLS;
@@ -301,8 +361,8 @@ export const turnEngineMethods = {
     const effMul = (getEffectMods(e).speedMul != null) ? getEffectMods(e).speedMul : 1;
     if (d.raceKey != null) {
       const race = RACES[d.raceKey];
-      const ft = (race && race.speedFt) || DEFAULT_SPEED_FT;
-      return applySpeedMult(ftToCells(ft), (d.speedMult != null ? d.speedMult : 1) * effMul);
+      const ft = (d.speedFt != null) ? d.speedFt : ((race && race.speedFt) || DEFAULT_SPEED_FT);
+      return applySpeedMult(ftToCells(ft), effMul);
     }
     return applySpeedMult(monsterCells(d), effMul);
   },
@@ -343,10 +403,19 @@ export const turnEngineMethods = {
    */
   reachableCells(e) {
     if (!e || !this.D) return new Map();
-    const { W, H, grid, chokepoint } = this.D;
+    const { W, H, grid, chokepoint, solidProps } = this.D;
     const start = this.cellOf(e.x, e.z);
     const budget = e.moveLeft != null ? e.moveLeft : this.cellsForSpeed(e);
-    return reachableCellsGrid(grid, W, H, start, budget, { chokepoint });
+    /* solidProps has to come along: this Map is both the move-range overlay the
+       player clicks and the set the AI picks destinations from, so leaving it
+       out offered tiles standing inside coffins and pillars — findPath then
+       refused the route and the move died on the spot. */
+    return reachableCellsGrid(grid, W, H, start, budget, {
+      chokepoint,
+      solidProps,
+      flies: canFly(e),
+      isDifficultTerrain: (c) => (typeof this.isDifficultTerrain === 'function' ? this.isDifficultTerrain(c, e) : false)
+    });
   },
 
   /**
@@ -369,6 +438,8 @@ export const turnEngineMethods = {
     e.reactionUsed = false;
     e.diagCount = 0;
     e.disengageActive = false;
+    e.attacksLeft = null;
+    e.attackActionCommitted = false;
   },
 
   /**
@@ -392,12 +463,48 @@ export const turnEngineMethods = {
    */
   snapToTileCenter(e, dt = 0.016, smooth = true) {
     if (!e || !this.D) return;
-    const c = this.cellOf ? this.cellOf(e.x, e.z) : -1;
-    if (c < 0) return;
     const W = this.D.W;
-    const cx = c % W, cz = Math.floor(c / W);
-    const targetX = (typeof this.wx === 'function') ? this.wx(cx) : (cx + 0.5);
-    const targetZ = (typeof this.wz === 'function') ? this.wz(cz) : (cz + 0.5);
+    const centerOf = (cell) => {
+      const cx = cell % W, cz = Math.floor(cell / W);
+      const tx = (typeof this.wx === 'function') ? this.wx(cx) : (cx + 0.5);
+      const tz = (typeof this.wz === 'function') ? this.wz(cz) : (cz + 0.5);
+      return [tx, tz];
+    };
+    let c = this.cellOf ? this.cellOf(e.x, e.z) : -1;
+    if (c < 0) return;
+
+    /* Hysteresis: stay loyal to the cell we last SETTLED on. Do not use the
+       path destination reservation — that cell is often ten tiles away, so
+       it never wins the 0.62 test and cellOf at the Voronoi edge (dCenter
+       ≈ 0.5) flips every frame, which is the shaman snap fight. */
+    if (e._settledCell >= 0) {
+      const [sx, sz] = centerOf(e._settledCell);
+      if (Math.hypot(e.x - sx, e.z - sz) <= 0.55) c = e._settledCell;
+    }
+
+    /* Only WE step aside, and only if a settled body is closer to this
+       centre than we are (they own the square). A passer walking through
+       must not shove the occupant, and the occupant must not sidestep just
+       because someone overlapped them for a frame. */
+    const [cx0, cz0] = centerOf(c);
+    const myD = Math.hypot(e.x - cx0, e.z - cz0);
+    const closerSettled = (b) => {
+      if (!b || b === e || !b.data || b.data.hp <= 0 || b.active === false) return false;
+      if (typeof this._entityInTransit === 'function' && this._entityInTransit(b)) return false;
+      if (this.cellOf(b.x, b.z) !== c) return false;
+      return Math.hypot(b.x - cx0, b.z - cz0) < myD - 0.02;
+    };
+    let otherOwns = false;
+    if (Array.isArray(this.heroes)) for (const h of this.heroes) if (closerSettled(h)) { otherOwns = true; break; }
+    if (!otherOwns && Array.isArray(this.monsters)) {
+      for (const m of this.monsters) if (closerSettled(m)) { otherOwns = true; break; }
+    }
+    if (otherOwns && typeof this.getUnoccupiedCellNear === 'function') {
+      const free = this.getUnoccupiedCellNear(c, e, 2);
+      if (free >= 0 && free !== c) c = free;
+    }
+
+    const [targetX, targetZ] = centerOf(c);
 
     if (smooth && dt > 0) {
       const d = Math.hypot(targetX - e.x, targetZ - e.z);
@@ -412,6 +519,8 @@ export const turnEngineMethods = {
       e.x = targetX;
       e.z = targetZ;
     }
+    e._settledCell = c;
+    Motion.after(this, e, 'snapToTileCenter');
   },
 
   moveStep(e, speed, dt) {
@@ -453,25 +562,63 @@ export const turnEngineMethods = {
         /* Leaving a hostile's reach draws an opportunity attack (5e) unless
            this actor took the Disengage action. Resolved per cell crossed. */
         this.resolveOpportunityAttacks(e, from, to);
-        if (e.data && e.data.hp <= 0) { e.path = null; e.pathI = 0; e.moving = false; return false; }
-        const s = stepCost(dx, dy, e.diagCount | 0);
+        if (e.data && e.data.hp <= 0) {
+          if (typeof this.clearEntityPath === 'function') this.clearEntityPath(e);
+          else { e.path = null; e.pathI = 0; }
+          e.moving = false; return false;
+        }
+
+        // Process step hazards (Entangle, Spike Growth, Web, Grease, etc.)
+        if (typeof this.processStepZones === 'function') {
+          this.processStepZones(e, from, to);
+          if (e.data && e.data.hp <= 0) {
+            if (typeof this.clearEntityPath === 'function') this.clearEntityPath(e);
+            else { e.path = null; e.pathI = 0; }
+            e.moving = false; return false;
+          }
+          if (hasEffect(e, 'restrained') || (e.moveLeft || 0) <= 0) {
+            break;
+          }
+        }
+
+        const isDiff = typeof this.isDifficultTerrain === 'function' && this.isDifficultTerrain(to, e);
+        const baseCost = isDiff ? 2 : 1;
+        const s = stepCost(dx, dy, e.diagCount | 0, baseCost);
         e.moveLeft -= s.cost;
         e.diagCount = s.diagCount;
         if (e.moveLeft <= 0) {
           e.moveLeft = 0;
-          e.path = null;
-          e.pathI = 0;
+          if (typeof this.clearEntityPath === 'function') this.clearEntityPath(e);
+          else { e.path = null; e.pathI = 0; }
           if (this.snapToTileCenter) this.snapToTileCenter(e, dt, true);
           break;
         }
       }
     }
 
-    if (!moved || (tactical && (e.moveLeft || 0) <= 0) || (e.path && e.pathI >= e.path.length)) {
+    /* Settle only when the walk is actually over — arrived at the last node,
+       or the movement budget is spent. A cleared path (blocked waypoint,
+       abort) is NOT "arrived": the actor still has moveLeft and will pick a
+       new square next think. Snapping in that hole is the shaman log
+       (`stepAlong → snapToTileCenter` with pathLeft 0, then a fresh 10-node
+       path walking the other way). */
+    const arrived = e.path && e.pathI >= e.path.length;
+    const budgetDone = tactical && (e.moveLeft || 0) <= 0;
+    if (arrived || budgetDone) {
       if (tactical || this.controlMode === 'manual') {
         if (this.snapToTileCenter) this.snapToTileCenter(e, dt, true);
       }
-      if (this.enforceUnoccupiedCell) this.enforceUnoccupiedCell(e);
+      /* Reservation now makes a same-cell landing structurally impossible.
+         If we ever get here with a genuine overlap it's a reservation leak —
+         log it once per entity so it surfaces during testing instead of
+         silently teleporting bodies around. */
+      if (this._reservedCells && e.data && e.data.hp > 0 && typeof this.cellOf === 'function' && typeof this.isCellOccupiedAny === 'function') {
+        const c = this.cellOf(e.x, e.z);
+        if (c >= 0 && this.isCellOccupiedAny(c, e) && !e._overlapLogged) {
+          e._overlapLogged = true;
+          console.warn('[reservation] overlap detected on move completion — possible reservation leak', e.data && e.data.name, c);
+        }
+      }
       if (e._pendingAttackTarget) {
         const foe = e._pendingAttackTarget;
         e._pendingAttackTarget = null;
@@ -483,55 +630,6 @@ export const turnEngineMethods = {
 
     e.moving = moved;
     return moved;
-  },
-
-  enforceUnoccupiedCell(e) {
-    if (!e || !this.D) return;
-    const curCell = this.cellOf ? this.cellOf(e.x, e.z) : -1;
-    if (curCell < 0) return;
-    const heroes = this.heroes || [];
-    const monsters = (this.monsters || []).filter(m => m.active && m.data && m.data.hp > 0);
-    const all = [...heroes.filter(h => h.data && h.data.hp > 0), ...monsters];
-    const occupier = all.find(c => c !== e && this.cellOf(c.x, c.z) === curCell);
-    if (!occupier) {
-      return;
-    }
-
-    /* Helper: check if a target cell is unblocked by walls, solid props, closed doors, and living entities */
-    const isCellValidAndFree = (nc) => {
-      if (nc < 0 || !this.D || !this.D.grid) return false;
-      if (this.D.grid[nc] === 2) return false; // WALL
-      if (this.D.solidProps && this.D.solidProps[nc]) return false;
-      if (typeof this.isCellDoorClosed === 'function' && this.isCellDoorClosed(nc)) return false;
-      return !all.some(c => this.cellOf(c.x, c.z) === nc);
-    };
-
-    /* Displace to the nearest free, unblocked floor cell up to 3 tiles away */
-    const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
-    const cx = curCell % W, cz = Math.floor(curCell / W);
-
-    for (let r = 1; r <= 3; r++) {
-      for (let dz = -r; dz <= r; dz++) {
-        for (let dx = -r; dx <= r; dx++) {
-          if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
-          const nx = cx + dx, nz = cz + dz;
-          if (nx < 0 || nx >= W || nz < 0 || nz >= H) continue;
-          const nc = nz * W + nx;
-          if (isCellValidAndFree(nc)) {
-            e.x = typeof this.wx === 'function' ? this.wx(nx) : nx + 0.5;
-            e.z = typeof this.wz === 'function' ? this.wz(nz) : nz + 0.5;
-            e.path = null;
-            e.pathI = 0;
-            e.moving = false;
-            return;
-          }
-        }
-      }
-    }
-  },
-
-  enforceHeroUnoccupiedCell(e) {
-    this.enforceUnoccupiedCell(e);
   },
 
   /**
@@ -567,11 +665,15 @@ export const turnEngineMethods = {
       case COMMAND.DODGE:
       case COMMAND.DISENGAGE:
         e.actUsed = true;
+        e.attacksLeft = 0;
+        e.attackActionCommitted = false;
         if (cmd.type === COMMAND.DODGE) e.dodgeActive = true;
         if (cmd.type === COMMAND.DISENGAGE) e.disengageActive = true;
         break;
       case COMMAND.DASH:
         e.actUsed = true;
+        e.attacksLeft = 0;
+        e.attackActionCommitted = false;
         e.moveLeft += this.cellsForSpeed(e);   /* 5e Dash: grant another move's worth */
         break;
       case COMMAND.BONUS:

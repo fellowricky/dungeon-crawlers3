@@ -1,0 +1,28 @@
+{
+  "sheet": [
+    143,
+    18
+  ],
+  "slice": [
+    7,
+    9,
+    6,
+    6
+  ],
+  "thickness": [
+    6,
+    5,
+    5,
+    5
+  ],
+  "tile": [
+    128,
+    5
+  ],
+  "period_detected": [
+    null,
+    5
+  ],
+  "fill": "#2d3643",
+  "source": "frame_menu.png"
+}

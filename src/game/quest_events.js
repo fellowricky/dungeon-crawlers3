@@ -7,9 +7,11 @@
  * puzzleState, gems) is rebuilt per floor in resolveFloorPhase/placeGems.
  */
 import * as THREE from 'three';
+
+import { iconHtml } from './icons.js';
 import { log, showBanner, buildPartyFrames, updatePartyFrames, updateResources, layoutRightRail } from './ui.js';
 import { makeHero, recalc, grantXp } from './srd.js';
-import { rollItem } from './items.js';
+import { rollItem, addToInventory } from './items.js';
 import { generateSequelQuest, DUNGEON_THEMES } from './quests.js';
 import { fireChallenge } from './skills.js';
 import { queueNarration } from './audio.js';
@@ -74,14 +76,18 @@ export function initQuestEvents(game) {
     style.id = 'quest-events-css';
     style.textContent = `
       .logline.story{ color:#e8d5a0; font-style:italic; }
+      /* top is a pre-JS fallback — layoutRightRail() writes the real one inline */
       #questtracker{
-        position:fixed; right:12px; top:52px; z-index:20; width:196px;
+        position:fixed; right:12px; top:60px; z-index:20; width:218px;
         background:rgba(10,12,18,0.78); border:1px solid rgba(232,194,90,0.25);
         border-radius:8px; padding:8px 10px; backdrop-filter:blur(3px);
         font-size:14px; line-height:1.5; color:#d8d2c0;
+        overflow-y:auto; scrollbar-width:thin; box-sizing:border-box;
       }
+      /* during combat the initiative tracker takes this slot */
+      #questtracker.combat-hidden{ display:none !important; }
       @media (max-width:640px){
-        #questtracker{ right:12px; top:48px; width:150px; }
+        #questtracker{ right:12px; top:56px; width:172px; }
       }
       .qt-title{ font-weight:700; color:#e8c25a; font-size:16px; }
       .qt-chain{ display:inline-block; margin-right:6px; padding:0 5px; border:1px solid #e8a83f;
@@ -135,6 +141,17 @@ export function normalizeQuest(q) {
   return q;
 }
 
+/* Whether a floor should spawn from an AUTHORED story cast (planStoryFloorCast)
+   rather than the generator's priced budget slots. Only story missions
+   (q.story) or floors with an explicit per-floor `monsters` list qualify.
+   Generic quests also carry a `monsterRoster` (decorateQuest sets one for every
+   quest), but they must NOT take this path — it ignores the room threat budget
+   and the level's CR ceiling, which is how generic rooms used to come in with a
+   lane-locked curated cast instead of their budget-drawn spawns. */
+export function shouldUseStoryCast(q, sPlan) {
+  return !!(sPlan && sPlan.monsters) || !!(q && q.story);
+}
+
 /* ================================================================
    Per-floor phase state
    ================================================================ */
@@ -174,7 +191,7 @@ export function offerFloorChoice(game, phase, done) {
     buttons = cands.map((cand, i) => {
       const p = personaOf(cand);
       return {
-        icon: KIND_ICON[cand.kind] || '★', label: p.name, sub: p.blurb, primary: i === 0,
+        icon: iconHtml('qkind', cand.kind, KIND_ICON[cand.kind] || '★'), label: p.name, sub: p.blurb, primary: i === 0,
         apply() { phase.choice = 'accept'; phase.data.allyVariant = cand; }
       };
     });
@@ -328,6 +345,10 @@ export function dismissAlly(game) {
   const idx = game.heroes.findIndex(h => h.temp);
   if (idx < 0) return;
   const [ally] = game.heroes.splice(idx, 1);
+  /* Return any gear the player equipped on the ally from the party stash. */
+  if (ally.data && ally.data.equipment) {
+    for (const it of Object.values(ally.data.equipment)) addToInventory(game.inventory, it);
+  }
   if (ally.ent && ally.ent.grp && ally.ent.grp.parent) ally.ent.grp.parent.remove(ally.ent.grp);
   if (ally.persona) storyLog(ally.persona.farewell);
   if (game.floorPhase && game.floorPhase.type === 'ally') game.floorPhase.resolved = true;
@@ -358,7 +379,7 @@ export function grantSideObjectiveReward(game, so) {
   if (typeof game.notifyLootFeedback === 'function') {
     game.notifyLootFeedback({ gold: so.rewardGold });
   }
-  const real = game.heroes.filter(h => !h.temp);
+  const real = game.heroes.filter(h => !h.temp && !h.companion);   // pets don't take a share of the XP
   const each = Math.max(1, Math.round(so.rewardXp / Math.max(1, real.length)));
   const before = real.map(h => h.data.level);
   for (const h of real) grantXp(h.data, each, log);
@@ -517,7 +538,7 @@ function fireWardRound(game, ps) {
         if (ps.fails === 0) {
           storyLog(PUZZLE_TEXT.solvedFlawless);
           const it = rollItem(game.activeQuest ? game.activeQuest.level : (game.dungeonLevel || 1), Math.random, null, { source: 'boss' });
-          game.inventory.push(it);
+          addToInventory(game.inventory, it, game);
           trackLoot(game, it);
           log(`  ↳ 💎 ${it.name} pried from the seal's wreckage!`, 'treasure');
         } else {
@@ -572,7 +593,7 @@ export function onFloorCleared(game) {
     /* Opt-in gauntlet gamble: strongly boosted odds (still level-capped, so no
        epics before floor 12). */
     const it = rollItem(gLvl, Math.random, null, { source: 'hoard', luck: 6 });
-    game.inventory.push(it);
+    addToInventory(game.inventory, it, game);
     trackLoot(game, it);
     if (typeof game.notifyLootFeedback === 'function') {
       game.notifyLootFeedback({ gold, item: it });

@@ -95,4 +95,67 @@ describe('Combat Entity-Aware Pathfinding & Occupancy', () => {
     expect(detourPath.includes(12)).toBe(false);
     expect(detourPath.includes(17)).toBe(true); // routed via open cell 17 at (x=2, y=3)
   });
+
+  it('approachCellNear never returns the target cell and stays in ring-1', () => {
+    const game = setupGame();
+    const foeCell = game.cellOf(2.5, 2.5); // occupied by Goblin1
+
+    const goal = game.approachCellNear(foeCell, game.heroes[0]);
+    expect(goal).not.toBe(foeCell);
+    const W = 5;
+    const gx = foeCell % W, gz = Math.floor(foeCell / W);
+    const nx = goal % W, nz = Math.floor(goal / W);
+    // Chebyshev distance must be exactly 1 (adjacent ring), never 2+.
+    expect(Math.max(Math.abs(nx - gx), Math.abs(nz - gz))).toBe(1);
+  });
+
+  it('approachCellNear prefers an unoccupied adjacent floor cell', () => {
+    const game = setupGame();
+    const freeCell = game.cellOf(1.5, 1.5); // empty floor
+    // Only the hero occupies (1,1); pass the hero as mover so its own cell is excluded.
+    const goal = game.approachCellNear(freeCell, game.heroes[0]);
+    expect(goal).not.toBe(freeCell);
+    expect(game.isCellOccupiedAny(goal, game.heroes[0])).toBe(false);
+  });
+
+  it('approachCellNear returns a floor neighbour even when ring-1 is fully packed', () => {
+    /* New behaviour: when ring-1 is fully packed, approachCellNear expands
+       outward to ring-2/ring-3 before giving up. The old code returned an
+       OCCUPIED ring-1 cell as a "fallback", which was the structural cause
+       of two sprites stacking on one square. The grid is fully open floor so
+       a ring-2 cell is actually reachable once ring-1 is packed. */
+    const W = 5, H = 5;
+    const grid = new Uint8Array(W * H).fill(FLOOR);
+    const center = 12; // (2,2) in a 5x5
+    const blockers = [
+      // 8 ring-1 neighbours of (2,2), all occupied
+      { active: true, x: 1.5, z: 1.5, data: { hp: 1 } },
+      { active: true, x: 2.5, z: 1.5, data: { hp: 1 } },
+      { active: true, x: 3.5, z: 1.5, data: { hp: 1 } },
+      { active: true, x: 1.5, z: 2.5, data: { hp: 1 } },
+      { active: true, x: 3.5, z: 2.5, data: { hp: 1 } },
+      { active: true, x: 1.5, z: 3.5, data: { hp: 1 } },
+      { active: true, x: 2.5, z: 3.5, data: { hp: 1 } },
+      { active: true, x: 3.5, z: 3.5, data: { hp: 1 } }
+    ];
+    const game = Object.assign({}, pathfindingMethods, {
+      D: { W, H, grid },
+      cellOf: (x, z) => Math.floor(z) * W + Math.floor(x),
+      wx: (x) => x + 0.5,
+      wz: (z) => z + 0.5,
+      heroes: [],
+      monsters: blockers
+    });
+
+    /* With ring-1 fully packed, the goal must come from ring-2 (Chebyshev
+       distance 2), never the target cell and never an occupied tile. */
+    const goal = game.approachCellNear(center, { data: {} });
+    expect(goal).not.toBe(center);
+    expect(game.isCellOccupiedAny(goal, { data: {} })).toBe(false);
+    const cx = center % W, cz = Math.floor(center / W);
+    const gx = goal % W, gz = Math.floor(goal / W);
+    const cheb = Math.max(Math.abs(gx - cx), Math.abs(gz - cz));
+    expect(cheb).toBeGreaterThanOrEqual(1);
+    expect(cheb).toBeLessThanOrEqual(3);
+  });
 });

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import fs from 'fs';
+import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,6 +11,55 @@ function saveMonstersPlugin() {
   return {
     name: 'save-monsters-plugin',
     configureServer(server) {
+      /* Guild compound layout editing: the preview writes per-LEVEL position
+         and scale nudges straight into the art manifest, so tuning a building's
+         placement survives a reload instead of living in one browser tab.
+         Merged rather than replaced — a partial edit must not wipe levels that
+         were not touched this session. */
+      server.middlewares.use('/api/save-guild-transforms', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
+        let body = '';
+        req.on('data', c => { body += c; });
+        req.on('end', () => {
+          try {
+            const patch = JSON.parse(body);
+            const mPath = path.resolve(__dirname, 'public/art/guild/manifest.json');
+            const manifest = JSON.parse(fs.readFileSync(mPath, 'utf8'));
+            let count = 0;
+
+            /* Per-LEVEL art offsets live on the tier entries. */
+            for (const [id, levels] of Object.entries(patch.transforms || {})) {
+              const entry = manifest[id];
+              if (!entry || !Array.isArray(entry.tiers)) continue;
+              for (const [lvl, t] of Object.entries(levels)) {
+                const i = Math.max(1, Math.min(entry.tiers.length, parseInt(lvl, 10))) - 1;
+                const tier = entry.tiers[i];
+                if (!tier || typeof tier !== 'object') continue;
+                tier.dx = t.dx; tier.dz = t.dz; tier.scale = t.scale;
+                count++;
+              }
+            }
+
+            /* The click volume is per BUILDING and deliberately NOT per level —
+               it describes the plot, so it must not move when a level's art is
+               nudged. Stored on the building entry, not the tier. */
+            for (const [id, hb] of Object.entries(patch.hitboxes || {})) {
+              if (!manifest[id]) continue;
+              manifest[id].hitbox = hb;
+              count++;
+            }
+            fs.writeFileSync(mPath, JSON.stringify(manifest, null, 2), 'utf8');
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, count }));
+          } catch (err) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        });
+      });
+
       server.middlewares.use('/api/save-monsters', (req, res) => {
         if (req.method === 'POST') {
           let body = '';
@@ -189,6 +239,56 @@ function saveMonstersPlugin() {
           res.end('Method Not Allowed');
         }
       });
+      /* Bestiary "Special Rooms" tab — curated monster lists for tactical room
+         styles (Infestation, Nest, Ritual, etc.) by dungeon theme and level. */
+      server.middlewares.use('/api/save-tactical-rooms', (req, res) => {
+        if (req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              const targetPath = path.resolve(__dirname, 'src/game/tactical_rooms.json');
+              fs.writeFileSync(targetPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, message: 'Saved tactical_rooms.json successfully' }));
+            } catch (err) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          });
+        } else {
+          res.statusCode = 405;
+          res.end('Method Not Allowed');
+        }
+      });
+      /* Bestiary "Spawn Budget" tab — per-room spawn threat budget, cost curves,
+         and level curve. */
+      server.middlewares.use('/api/save-spawn-budget', (req, res) => {
+        if (req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              const targetPath = path.resolve(__dirname, 'src/game/spawn_budget.json');
+              fs.writeFileSync(targetPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, message: 'Saved spawn_budget.json successfully' }));
+            } catch (err) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          });
+        } else {
+          res.statusCode = 405;
+          res.end('Method Not Allowed');
+        }
+      });
       /* Sound editor "Save to project" — writes the slot/ability registry that
          audio.js imports, so an audio pass survives a page reload. */
       server.middlewares.use('/api/save-sounds', (req, res) => {
@@ -214,6 +314,34 @@ function saveMonstersPlugin() {
           res.end('Method Not Allowed');
         }
       });
+
+      /* VFX animation editor "Save to project" — writes the composite animation
+         registry (vfx_animations.json) that vfx_animations.js imports, so an
+         effect pass survives a page reload and plays in-game immediately. */
+      server.middlewares.use('/api/save-vfx-anims', (req, res) => {
+        if (req.method === 'POST') {
+          let body = '';
+          req.on('data', chunk => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              const targetPath = path.resolve(__dirname, 'src/game/vfx_animations.json');
+              fs.writeFileSync(targetPath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, message: 'Saved vfx_animations.json successfully' }));
+            } catch (err) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          });
+        } else {
+          res.statusCode = 405;
+          res.end('Method Not Allowed');
+        }
+      });
+
       /* Audio library for the sound editor's file picker. Walks public/sounds
          so the picker browses what is actually on disk — that's also how the
          editor spots orphaned files no slot references. */
@@ -264,6 +392,34 @@ function saveMonstersPlugin() {
           res.statusCode = 200;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ success: true, icons: out }));
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: err.message }));
+        }
+      });
+      /* Sprite-sheet library for the bestiary's sprite fields & animated-sprite
+         atlas picker. Walks the custom uploads (public/sprites) plus the DCSS
+         monster art so paths are filled from a visual picker, not typed. */
+      server.middlewares.use('/api/list-sprite-sheets', (req, res) => {
+        try {
+          const roots = ['public/sprites', 'public/dcss/monster'];
+          const out = [];
+          const walk = (abs, rel) => {
+            if (!fs.existsSync(abs)) return;
+            for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+              const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+              if (entry.isDirectory()) walk(path.join(abs, entry.name), childRel);
+              else if (/\.(png|gif|webp)$/i.test(entry.name)) out.push(childRel);
+            }
+          };
+          for (const root of roots) {
+            walk(path.resolve(__dirname, root), root.replace(/^public\//, ''));
+          }
+          out.sort();
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, files: out }));
         } catch (err) {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
@@ -420,6 +576,158 @@ function saveMonstersPlugin() {
         } catch (err) { sendJson(res, 500, { success: false, error: err.message }); }
       });
 
+      /* ---- trailer rig: direct-to-video encode ----
+         Frames are piped straight into ffmpeg's stdin and never touch disk as
+         images. A 42s 1080p tour is ~5.6 GB as PNG frames and a few tens of MB
+         as H.264, so this is the default path; the PNG dump below is kept for
+         when individual stills are actually wanted. */
+      const encoders = new Map();
+
+      /* Is NVENC usable? Present in `-encoders` does not mean it will actually
+         run (driver, permissions, a busy card), so probe it once for real and
+         cache the answer. Costs a few hundred ms on the first render.
+         The probe frame must clear NVENC's minimum dimensions — 64x64 is
+         rejected outright with "Frame Dimension less than the minimum
+         supported value", which reads exactly like "no GPU encoder". */
+      let _nvenc = null;
+      const nvencAvailable = () => {
+        if (_nvenc !== null) return Promise.resolve(_nvenc);
+        return new Promise(resolve => {
+          let done = false;
+          const finish = ok => { if (!done) { done = true; _nvenc = ok; resolve(ok); } };
+          try {
+            const probe = spawn('ffmpeg', ['-hide_banner', '-f', 'lavfi',
+              '-i', 'nullsrc=s=256x256:d=0.1', '-c:v', 'h264_nvenc', '-f', 'null', '-'],
+              { stdio: 'ignore' });
+            probe.on('close', code => finish(code === 0));
+            probe.on('error', () => finish(false));
+            setTimeout(() => { try { probe.kill(); } catch {} finish(false); }, 8000);
+          } catch { finish(false); }
+        });
+      };
+
+      server.middlewares.use('/api/trailer-encode', async (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
+        const url = new URL(req.url, 'http://localhost');
+        const action = url.pathname.replace(/^\//, '') || '';
+        const shot = url.searchParams.get('shot') || 'shot';
+        if (!/^[\w-]+$/.test(shot)) return sendJson(res, 400, { success: false, error: 'bad shot name' });
+
+        if (action === 'start') {
+          const fps = Number(url.searchParams.get('fps')) || 30;
+          const crf = Number(url.searchParams.get('crf')) || 18;
+          const vflip = url.searchParams.get('vflip') === '1';
+          const outW = Number(url.searchParams.get('w')) || 0;
+          const outH = Number(url.searchParams.get('h')) || 0;
+          const hw = url.searchParams.get('hw') !== '0' && await nvencAvailable();
+          const dir = path.resolve(__dirname, 'trailer_out');
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          const out = path.join(dir, `${shot}.mp4`);
+
+          const old = encoders.get(shot);
+          if (old) { try { old.proc.kill(); } catch {} encoders.delete(shot); }
+
+          let proc;
+          try {
+            const codec = hw
+              /* NVENC: the encode moves off the CPU entirely, which matters
+                 because the browser needs every core it can get to produce
+                 frames in the first place. -cq with -b:v 0 is NVENC's
+                 constant-quality mode, the analogue of x264's -crf. */
+              ? ['-c:v', 'h264_nvenc', '-preset', 'p5', '-tune', 'hq',
+                 '-rc', 'vbr', '-cq', String(crf), '-b:v', '0']
+              : ['-c:v', 'libx264', '-preset', 'medium', '-crf', String(crf)];
+            proc = spawn('ffmpeg', [
+              '-y', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-',
+              /* One filter chain: right the GL-order frame, then downscale a
+                 supersampled render to delivery size with lanczos. */
+              ...((() => {
+                const vf = [];
+                if (vflip) vf.push('vflip');
+                if (outW && outH) vf.push(`scale=${outW}:${outH}:flags=lanczos`);
+                return vf.length ? ['-vf', vf.join(',')] : [];
+              })()),
+              ...codec,
+              '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out
+            ], { stdio: ['pipe', 'ignore', 'pipe'] });
+          } catch (err) {
+            return sendJson(res, 500, { success: false, error: `ffmpeg not runnable: ${err.message}` });
+          }
+
+          const rec = { proc, out, frames: 0, stderr: '', failed: null, hw };
+          proc.stderr.on('data', c => { rec.stderr = (rec.stderr + c).slice(-4000); });
+          proc.on('error', err => { rec.failed = err.message; });
+          proc.stdin.on('error', () => { /* reported via the exit code on finish */ });
+          encoders.set(shot, rec);
+          return sendJson(res, 200, { success: true, out: `trailer_out/${shot}.mp4`,
+                                      encoder: hw ? 'h264_nvenc (GPU)' : 'libx264 (CPU)' });
+        }
+
+        const rec = encoders.get(shot);
+        if (!rec) return sendJson(res, 400, { success: false, error: 'no encode in progress' });
+
+        if (action === 'frame') {
+          const chunks = [];
+          req.on('data', c => chunks.push(c));
+          req.on('end', () => {
+            if (rec.failed) return sendJson(res, 500, { success: false, error: rec.failed });
+            const buf = Buffer.concat(chunks);
+            rec.frames++;
+            /* Respond only once ffmpeg has taken the bytes, so a slow encoder
+               applies backpressure to the browser instead of ballooning here. */
+            const ok = rec.proc.stdin.write(buf);
+            if (ok) sendJson(res, 200, { success: true, frames: rec.frames });
+            else rec.proc.stdin.once('drain', () => sendJson(res, 200, { success: true, frames: rec.frames }));
+          });
+          return;
+        }
+
+        if (action === 'finish') {
+          rec.proc.stdin.end();
+          rec.proc.on('close', code => {
+            encoders.delete(shot);
+            const size = fs.existsSync(rec.out) ? fs.statSync(rec.out).size : 0;
+            if (code === 0) {
+              sendJson(res, 200, { success: true, out: `trailer_out/${shot}.mp4`,
+                                   frames: rec.frames, bytes: size,
+                                   encoder: rec.hw ? 'h264_nvenc (GPU)' : 'libx264 (CPU)' });
+            } else {
+              sendJson(res, 500, { success: false, error: `ffmpeg exited ${code}`,
+                                   detail: rec.stderr.slice(-400) });
+            }
+          });
+          return;
+        }
+
+        return sendJson(res, 404, { success: false, error: `unknown action "${action}"` });
+      });
+
+      /* ---- trailer rig (trailer.html) ---- */
+      /* Numbered PNG frames straight to disk. The rig renders offline on a
+         fixed timestep, so frames arrive as fast as the machine manages and
+         wall clock never touches the output; ffmpeg reassembles them at the
+         shot's real fps. */
+      server.middlewares.use('/api/trailer-frame', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
+        try {
+          const url = new URL(req.url, 'http://localhost');
+          const shot = url.searchParams.get('shot') || 'shot';
+          const name = url.searchParams.get('name') || '';
+          if (!/^[\w-]+$/.test(shot)) throw new Error('bad shot name');
+          if (!/^[\w-]+\.png$/.test(name)) throw new Error('bad frame name');
+          const dir = path.resolve(__dirname, 'trailer_out', shot);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          const chunks = [];
+          req.on('data', c => chunks.push(c));
+          req.on('end', () => {
+            try {
+              fs.writeFileSync(path.join(dir, name), Buffer.concat(chunks));
+              sendJson(res, 200, { success: true });
+            } catch (err) { sendJson(res, 500, { success: false, error: err.message }); }
+          });
+        } catch (err) { sendJson(res, 500, { success: false, error: err.message }); }
+      });
+
       server.middlewares.use('/api/save-items', (req, res) => {
         if (req.method === 'POST') {
           let body = '';
@@ -450,8 +758,50 @@ function saveMonstersPlugin() {
 // Single-page Vite app. `base: './'` makes the production build path-relative, so
 // the contents of `dist/` can be dropped onto any static host (Netlify, GitHub
 // Pages, itch.io, a plain folder) and just work — no server config required.
+/* Icon forge review tool: the picker POSTs the chosen variant (or a regenerate
+   flag) per icon. Kept server-side rather than in localStorage on purpose --
+   the bestiary editor's saved-state shadowing has bitten us before, and these
+   picks drive an overnight generation run. Merged, never replaced, so a partial
+   review session does not wipe earlier decisions. */
+function iconPicksPlugin() {
+  return {
+    name: 'icon-picks-plugin',
+    configureServer(server) {
+      const picksPath = path.resolve(__dirname, 'tools/icon_forge/picks.json');
+      const read = () => {
+        try { return JSON.parse(fs.readFileSync(picksPath, 'utf8')); }
+        catch { return {}; }
+      };
+      server.middlewares.use('/api/icon-picks', (req, res) => {
+        if (req.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify(read()));
+        }
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
+        let body = '';
+        req.on('data', c => { body += c; });
+        req.on('end', () => {
+          try {
+            const patch = JSON.parse(body);
+            const picks = read();
+            for (const [id, v] of Object.entries(patch)) {
+              if (v === null) delete picks[id]; else picks[id] = v;
+            }
+            fs.writeFileSync(picksPath, JSON.stringify(picks, null, 1));
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ ok: true, count: Object.keys(picks).length }));
+          } catch (e) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ ok: false, error: String(e.message) }));
+          }
+        });
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [saveMonstersPlugin()],
+  plugins: [saveMonstersPlugin(), iconPicksPlugin()],
   base: './',
   // Honor the PORT env var so preview harnesses with auto-assigned ports work.
   server: process.env.PORT ? { port: Number(process.env.PORT), strictPort: true } : {},
@@ -467,5 +817,6 @@ export default defineConfig({
   },
   test: {
     include: ['test/**/*.test.js'],
+    testTimeout: 15000,
   },
 });

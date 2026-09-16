@@ -21,7 +21,9 @@ and respect the license policy in the "Adding New Assets" section.
 ### Dungeon Crawl Stone Soup (DCSS) — tiles & effects
 - **Paths:** `public/dcss/`, `Sprites/Dungeon Crawl Stone Soup Full/`,
   `public/art/tiles/` (floor/wall atlases baked from DCSS dungeon tiles by
-  `tools/build_tile_atlas.py`)
+  `tools/build_tile_atlas.py`), `public/art/ground/` (the `dirt_*` grass/dirt
+  fringe set, autotiled for the guild compound terrain by
+  `src/render/guild_ground.js`)
 - **Source:** https://github.com/crawl/crawl
 - **License:** CC0 1.0 Universal
   - Verified in `Sprites/Dungeon Crawl Stone Soup Full/LICENSE.txt`
@@ -115,6 +117,22 @@ step) or replace them with CC0 equivalents. This is the exact case the
 - **Path:** `public/sounds/Narration/` (1463 files)
 - **License:** generated for this project; not third-party. Record the TTS
   engine and its commercial-use terms here if the game is ever released.
+
+---
+
+## 3D Models — CC-BY 4.0 (attribution required, commercial OK)
+
+### Grave Yard Set by talmore
+- **Source:** https://sketchfab.com/3d-models/grave-yard-set-e7aab6a1bd1f489383e8749afd879c3e
+- **Author:** talmore (Sketchfab)
+- **License:** CC-BY 4.0 (Creative Commons Attribution 4.0 International)
+- **Use:** Gravestones, crypt sarcophagi, tombstones, and cemetery dressings for the Grim Crypts theme and crypt room archetypes.
+
+### Stylized Coffin by Krystian Zem (@Banketo)
+- **Source:** https://sketchfab.com/3d-models/stylized-coffin-b3e390806701493e9ea97aa981ee1368
+- **Author:** Krystian Zem (@Banketo on Sketchfab)
+- **License:** CC-BY 4.0 (Creative Commons Attribution 4.0 International)
+- **Use:** Stylized gothic undead sarcophagus / coffin prop for the Grim theme.
 
 ---
 

@@ -67,3 +67,24 @@ describe('dungeon roster is authoritative for spawns', () => {
     expect(dungeonMonsterIds('verdant')).toContain('dryad');
   });
 });
+
+describe('bosses no longer carry an isBoss tag', () => {
+  it('no monster in the bestiary has an isBoss flag', () => {
+    /* Boss fights are curated (finalBossId / boss_encounters.json), so the
+       data flag was only ever leaking "boss" monsters into regular room
+       spawns. Pinned: the roster must stay free of it. */
+    expect(MONSTERS_ALL.filter(m => m.isBoss)).toHaveLength(0);
+  });
+
+  it.each(THEMES)('themed regular spawns never return a boss', (theme) => {
+    const roster = dungeonMonsterIds(theme);
+    expect(roster.length).toBeGreaterThan(0);
+    for (let level = 1; level <= 10; level++) {
+      const questInfo = { dungeonLevel: level, questFloor: 1, floors: 2 };
+      for (let i = 0; i < 12; i++) {
+        const spec = spawnMonster(crForDungeonLevel(level), level, Math.random, roster, questInfo);
+        expect(spec.isBoss, `${spec.id} spawned as a boss`).toBeFalsy();
+      }
+    }
+  });
+});

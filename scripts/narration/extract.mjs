@@ -59,7 +59,6 @@ function evalArray(src, marker) {
     else if (c === ']') { depth--; if (depth === 0) { end = i; break; } }
   }
   if (end < 0) throw new Error(`Unbalanced brackets while scanning ${marker}`);
-  // eslint-disable-next-line no-eval
   return eval('(' + src.slice(open, end + 1) + ')');
 }
 

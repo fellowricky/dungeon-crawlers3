@@ -63,7 +63,7 @@
       "spawnCap": 8
     },
     "10": {
-      "budgetMult": 1.0,
+      "budgetMult": 1,
       "spawnCap": 9
     },
     "11": {
@@ -106,5 +106,6 @@
       "budgetMult": 1.9,
       "spawnCap": 10
     }
-  }
+  },
+  "hordeMaxSpawns": 18
 }

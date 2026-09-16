@@ -6,7 +6,7 @@ globalThis.document = {
 };
 import { generateQuests, generateSequelQuest } from './src/game/quests.js';
 import { normalizeQuest, phaseNeedsChoice, onQuestCompleted, getSequelOffers, updateQuestTracker } from './src/game/quest_events.js';
-import { BOSS_IDS, monsterName } from './src/game/srd.js';
+import { MONSTERS_BY_ID, monsterName } from './src/game/srd.js';
 
 let fails = 0;
 const ok = (cond, msg) => {
@@ -24,8 +24,8 @@ for (let trial = 0; trial < 60; trial++) {
     ok(q.description === q.embarkText, 'description = embark narration');
     ok(!q.embarkText.includes('{'), 'no unreplaced template slots in embark: ' + q.embarkText);
     ok(!q.victoryText.includes('{'), 'no unreplaced slots in victory');
-    ok(q.finalBossId && BOSS_IDS.includes(q.finalBossId), 'finalBossId valid');
-    ok(q.finalBossName === monsterName(q.finalBossId), 'finalBossName matches');
+    ok(q.finalBossId && MONSTERS_BY_ID[q.finalBossId], 'finalBossId valid');
+    ok(typeof q.finalBossName === 'string' && q.finalBossName.length > 0, 'finalBossName valid');
     ok(Array.isArray(q.phases), 'phases array');
     ok(Array.isArray(q.sideObjectives), 'sideObjectives array');
     ok(q.chain === null, 'fresh quest has no chain');

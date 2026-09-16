@@ -22,8 +22,14 @@ import { FLOOR, WALL } from '../src/game/constants.js';
 function entStub() {
   return {
     bar: {},
-    grp: { rotation: { y: 0, z: 0, x: 0 }, visible: true, position: { set() {} } },
+    /* grp mimics just enough of a THREE.Group for the sprite-swap path
+       (swapHeroSprite → wild shape) to run without a renderer. */
+    grp: {
+      rotation: { y: 0, z: 0, x: 0 }, visible: true, position: { set() {} },
+      add() {}, remove() {}, children: [],
+    },
     anim: { mesh: { position: { y: 0 } }, play() {}, update() {}, setState() {}, _dying: false, _deathDone: false },
+    sprite: { material: { map: null }, scale: { set() {} }, position: { set() {} } },
   };
 }
 
@@ -148,6 +154,16 @@ export class HeadlessGame {
   fxLog(msg) { this.eventLog.push({ t: this.elapsed, type: 'log', msg }); }
   fxText() {}
   fxProjectile(_from, _to, _kind, _color, onHit) { if (onHit) onHit(); }
+  /* Deferred melee impact. Like fxProjectile the callback carries the damage
+     resolution, so it MUST fire synchronously or the sim drops every melee hit. */
+  fxImpactDelay(_delaySec, cb) { if (cb) cb(); }
+  fxDelay(_delaySec, cb) { if (cb) cb(); }
+  tickPendingImpacts() {}
+  clearPendingImpacts() {}
+  /* Composite (multi-stage) VFX. Like fxProjectile, the impact callback carries
+     the damage resolution, so it MUST fire synchronously or the sim silently
+     drops every cantrip hit. */
+  fxCompositeAnimation(_anim, _from, _to, opts = {}) { if (opts.onImpact) opts.onImpact(); }
   fxBeam() {}
   fxSprite() {}
   fxSheetEffect() {}
@@ -178,7 +194,19 @@ export class HeadlessGame {
   fxCantripSfx() { return 'cantrip'; }
   fxAbilitySfx() { return 'ability'; }
   fxHasActiveFX() { return false; }
+  /* Turn pacing is presentation only: with nothing on screen to read, the sim
+     never waits. Keeping these stubbed is what preserves identical outcomes and
+     full-speed batch runs. See src/game/fx_clock.js. */
+  fxTurnReady() { return true; }
+  fxResetPacing() {}
+  /* The combat-start roll-off is pure ceremony; declining it here keeps the sim
+     rolling initiative and swinging in the same frame, as it always has. */
+  fxBeginInitiativeReveal() { return false; }
+  fxTickInitiativeReveal() { return false; }
+  fxRevealActive() { return false; }
+  fxCancelInitiativeReveal() {}
   fxOnKill() {}
+  fxSwapHeroSprite() {}
   fxSchedule(_ms, fn) { fn(); }
 
   /* ═════════════════════════════════════════════════════════════════════
@@ -272,6 +300,11 @@ export class HeadlessGame {
       if (foe) this.heroCombat(h, foe, alive, dt);
       else if (this.combat) this.combatCatchup(h, alive, dt);
     }
+
+    /* Occupancy + grid upkeep — mirrors the same calls in game.js update(). */
+    if (this.reapReservations) this.reapReservations();
+    if (this.snapStationaryToTiles) this.snapStationaryToTiles(alive, dt);
+    if (this.resolveRestingOverlaps) this.resolveRestingOverlaps();
 
     /* Monster status ticking (burn DoTs, regen, etc.) */
     if (this.updateMonsterStatus) this.updateMonsterStatus();

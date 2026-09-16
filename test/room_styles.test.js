@@ -1,8 +1,11 @@
-import { describe, it, expect } from 'vitest';
-import { generateDungeon, ROOM_STYLES, TYPE, SPAWN_BUDGET } from '../src/dungeon/dungeon_generator.js';
-import { spawnMonster } from '../src/game/srd.js';
+import { describe, it, expect, vi } from 'vitest';
+import { generateDungeon, ROOM_STYLES, TYPE, SPAWN_BUDGET, roomSpawnBudget } from '../src/dungeon/dungeon_generator.js';
+import { spawnMonster, MONSTERS_ALL } from '../src/game/srd.js';
+import { crToCost } from '../src/game/constants.js';
 
-describe('Room Encounter Styles & Monster Spawning', () => {
+/* Statistical spawn simulations over many seeds: 5–25 s each in isolation,
+   longer under the full suite's worker contention. Not a hang. */
+describe('Room Encounter Styles & Monster Spawning', { timeout: 90000 }, () => {
   it('defines 10 distinct room styles with titles and subtitles', () => {
     const keys = Object.keys(ROOM_STYLES);
     expect(keys.length).toBeGreaterThanOrEqual(10);
@@ -51,26 +54,55 @@ describe('Room Encounter Styles & Monster Spawning', () => {
     expect(foundSpecialRoom).toBe(true);
   });
 
-  it('scales Swarm Room monster counts dynamically with budget without hard caps', () => {
-    let foundSwarmSpawns = [];
-    for (let seed = 1; seed < 100; seed++) {
+  it('fills Swarm Rooms to the spawn cap with a single unified CR', () => {
+    let foundSwarmRooms = [];
+    for (let seed = 1; seed < 60; seed++) {
       /* level 14 sits on the open end of the spawn-budget level curve; the
          early rows deliberately cap room size (see the level-1 test below). */
       const d = generateDungeon({ seed, roomCount: 50, threatMult: 2.0, level: 14, theme: 'ancient' });
       for (const r of d.rooms) {
         if (r.roomStyle === 'swarm') {
           const roomSpawns = d.spawns.filter(sp => sp.roomId === r.id);
-          foundSwarmSpawns.push(roomSpawns.length);
+          foundSwarmRooms.push({ r, roomSpawns });
         }
       }
     }
-    expect(foundSwarmSpawns.length).toBeGreaterThan(0);
-    const maxSwarm = Math.max(...foundSwarmSpawns);
-    expect(maxSwarm).toBeGreaterThan(8);
+    expect(foundSwarmRooms.length).toBeGreaterThan(0);
+    for (const { r, roomSpawns } of foundSwarmRooms) {
+      /* A full-strength swarm fills the room up to the horde spawn cap… */
+      expect(roomSpawns.length).toBe(SPAWN_BUDGET.hordeMaxSpawns ?? 18);
+      /* …and every body is the SAME CR — that single shared targetCR is what
+         lets the game's room-species lock field one creature (ten grey rats). */
+      const crs = new Set(roomSpawns.map(sp => sp.targetCR));
+      expect(crs.size).toBe(1);
+      /* The species CR is the dearest rung a full roomful can afford, so the
+         horde still sits near its purse at depth. */
+      const budget = roomSpawnBudget(r.type, r.difficulty, 2.0, 14);
+      expect(roomSpawns.length * crToCost(roomSpawns[0].targetCR)).toBeLessThanOrEqual(budget);
+    }
     /* 100 seeds x 50 rooms lands right on vitest's 5s default, so this test
        passed alone and timed out under full-suite load. It is slow, not
        flaky — give it room rather than shrinking the sample. */
   }, 30000);
+
+  it('fields budget-bound swarm hordes on floors too weak to fill the room', () => {
+    for (let seed = 1; seed < 60; seed++) {
+      const d = generateDungeon({ seed, roomCount: 50, level: 1, theme: 'ancient' });
+      for (const r of d.rooms) {
+        if (r.roomStyle !== 'swarm') continue;
+        const roomSpawns = d.spawns.filter(sp => sp.roomId === r.id);
+        /* A level-1 purse cannot buy a full roomful of even the cheapest
+           creature (10 x 6 > 28), so the swarm fields as many as it can pay
+           for, all at the single cheapest CR, and never overspends. */
+        const budget = roomSpawnBudget(r.type, r.difficulty, 1, 1);
+        const spend = roomSpawns.reduce((a, sp) => a + crToCost(sp.targetCR), 0);
+        expect(roomSpawns.length).toBeLessThan(SPAWN_BUDGET.maxSpawns);
+        expect(new Set(roomSpawns.map(sp => sp.targetCR)).size).toBe(1);
+        expect(spend).toBeLessThanOrEqual(budget);
+        expect(spend).toBeGreaterThan(budget * 0.5);
+      }
+    }
+  });
 
   /* Room difficulty only ranks rooms within a floor, so before the level curve
      existed a level-1 dungeon's back rooms were as packed as a level-20 one's —
@@ -110,11 +142,13 @@ describe('Room Encounter Styles & Monster Spawning', () => {
      is the SHALLOW rooms that move, climbing toward that cap as level rises.
      So the ramp is widest in the mid levels and necessarily flattens at 20,
      where shallow rooms have already reached the ceiling. Measured over 200
-     seeds the far/near ratio runs 1.04 (lv1), 1.36 (lv8), 1.15 (lv14),
-     1.01 (lv20). At the original 40 seeds level 20 straddled 1.0 and the
-     assertion flipped on sampling noise, so this samples enough to be stable
-     and asserts the real invariant: the ramp never inverts, and it is
-     pronounced where there is headroom for it. */
+     seeds the far/near count ratio runs 1.04 (lv1), 1.36 (lv8), 1.15 (lv14),
+     1.01 (lv20). Room composition now varies on purpose (buyRoomSpawns draws
+     a level's target CR across its ladder — half as likely per rung down — so
+     a room sometimes trades bodies for CR), which broadens the count
+     distribution and flattens the count-ramp to ~1.16 at level 8. The
+     load-bearing invariants are that the ramp never INVERTS and that deep
+     rooms still SPEND more of the (larger) budget, which is asserted below. */
   it('spends more of the budget on deeper rooms, so room size ramps with depth', () => {
     const savedFloor = SPAWN_BUDGET.difficultyFloor;
     const savedSpan = SPAWN_BUDGET.difficultySpan;
@@ -122,15 +156,19 @@ describe('Room Encounter Styles & Monster Spawning', () => {
     SPAWN_BUDGET.difficultySpan = 0.65;
     try {
       for (const level of [1, 8, 20]) {
-        const near = [], far = [];
+        const near = [], far = [], nearSpend = [], farSpend = [];
         for (let seed = 1; seed < 200; seed++) {
           const d = generateDungeon({ seed, roomCount: 24, level, theme: 'ancient' });
           const per = {};
-          for (const s of d.spawns) per[s.roomId] = (per[s.roomId] || 0) + 1;
+          const spend = {};
+          for (const s of d.spawns) {
+            per[s.roomId] = (per[s.roomId] || 0) + 1;
+            spend[s.roomId] = (spend[s.roomId] || 0) + crToCost(s.targetCR ?? 0);
+          }
           for (const r of d.rooms) {
             if (per[r.id] === undefined || r.type !== TYPE.COMBAT) continue;
-            if (r.difficulty < 0.4) near.push(per[r.id]);
-            else if (r.difficulty > 0.75) far.push(per[r.id]);
+            if (r.difficulty < 0.4) { near.push(per[r.id]); nearSpend.push(spend[r.id]); }
+            else if (r.difficulty > 0.75) { far.push(per[r.id]); farSpend.push(spend[r.id]); }
           }
         }
         const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
@@ -138,9 +176,13 @@ describe('Room Encounter Styles & Monster Spawning', () => {
         expect(far.length, `level ${level}: sampled deep rooms`).toBeGreaterThan(10);
         // The ramp must never invert, at any level.
         expect(avg(far), `level ${level}: deep vs shallow room size`).toBeGreaterThanOrEqual(avg(near));
-        // Where shallow rooms are below the cap, the ramp must be real.
+        // Deep rooms carry a larger purse and must spend it: the budget ramp is
+        // the load-bearing invariant (variety broadens the body count, not the purse).
+        expect(avg(farSpend), `level ${level}: deep rooms under-spend vs shallow`)
+          .toBeGreaterThan(avg(nearSpend));
+        // Where shallow rooms are below the cap, the body-count ramp must be real.
         if (level === 8) {
-          expect(avg(far) / avg(near), `level ${level}: ramp strength`).toBeGreaterThan(1.2);
+          expect(avg(far) / avg(near), `level ${level}: ramp strength`).toBeGreaterThanOrEqual(1.0);
         }
       }
     } finally {
@@ -172,20 +214,29 @@ describe('Room Encounter Styles & Monster Spawning', () => {
       for (const s of d.spawns) perRoom[s.roomId] = (perRoom[s.roomId] || 0) + 1;
       for (const r of d.rooms) {
         if (!r.roomStyle) continue;
+        const isHorde = r.roomStyle === 'swarm' || r.roomStyle === 'nest';
+        const expectedCap = isHorde ? (SPAWN_BUDGET.hordeMaxSpawns ?? 18) : SPAWN_BUDGET.levelCurve[1].spawnCap;
         expect(perRoom[r.id] || 0, `seed ${seed}: ${r.roomStyle} room`)
-          .toBeLessThanOrEqual(SPAWN_BUDGET.levelCurve[1].spawnCap);
+          .toBeLessThanOrEqual(expectedCap);
       }
     }
   });
 
   it('filters monster candidates by role and adjusts minion/miniboss stats in spawnMonster', () => {
-    const rng = Math.random;
-    const minion = spawnMonster(1, 5, rng, null, null, 'minion');
-    const miniboss = spawnMonster(3, 5, rng, null, null, 'miniboss');
+    /* Compare role-adjusted stats on the SAME species so the multiplier is the
+       only difference — two independent rolls could otherwise invert on HP. */
+    const species = MONSTERS_ALL.find((m) => m.cr === 2);
+    expect(species).toBeDefined();
+    const spy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const minion = spawnMonster(2, 5, Math.random, [species.id], null, 'minion');
+    const miniboss = spawnMonster(2, 5, Math.random, [species.id], null, 'miniboss');
+    const plain = spawnMonster(2, 5, Math.random, [species.id], null, null);
+    spy.mockRestore();
 
     expect(minion).toBeDefined();
     expect(miniboss).toBeDefined();
     expect(minion.hp).toBeGreaterThan(0);
-    expect(miniboss.hp).toBeGreaterThan(minion.hp);
+    expect(minion.hp).toBeLessThan(plain.hp);        // minion hp ×0.65
+    expect(miniboss.hp).toBeGreaterThan(plain.hp);   // miniboss hp ×1.35
   });
 });

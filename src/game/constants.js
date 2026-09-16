@@ -9,10 +9,20 @@ export const POOL = 3;
 
 export const THEME_ORDER = ['ancient', 'verdant', 'frost', 'grim', 'molten'];
 export const SAVE_KEY = 'dungeon-crawlers-save-v1';
+export const SAVE_SLOT_PREFIX = 'dungeon-crawlers-save-slot-';
+export const ACTIVE_SLOT_KEY = 'dc_active_save_slot';
+export const MAX_SAVE_SLOTS = 5;
 
 export const HERO_SPEED = 1.5;         // ~30% slower than the previous 2.15
 export const MONSTER_SPEED_MULT = 0.5; // global monster speed scale (matches hero slowdown)
 export const AGGRO_RANGE = 12;         // was 8.5 — LOS gate (walls/closed doors) now bounds aggro, so range can be generous
+/* The leash for a monster JOINING a fight that is already under way. AGGRO_RANGE
+   can be generous because a closed door blocks line of sight — but doors open
+   during combat now (the cure for the fight-across-a-shut-gate soft-lock), and
+   the instant one does, 12 units of aggro reach through the empty doorway into
+   the next room. This is the range that applies once the swords are already
+   out; see tryActivateMonster. */
+export const COMBAT_JOIN_RANGE = 5;
 /* Tactical combat (Phase 1): movement is locked to the current initiative
    actor and budgeted by moveLeft (cells). COMBAT_MOVE_BOOST multiplies the
    continuous walk speed ONLY during a tactical spotlight so a 6-cell move
@@ -32,7 +42,32 @@ export const HERO_THINK_INTERVAL = 0.3;
 export const MONSTER_ATTACK_CD = 2.6 * COMBAT_ACTION_SLOWDOWN;
 export const XP_SHARE = parseFloat(globalThis.localStorage?.getItem('dc_xp_share') || '0.15');         // each living hero gets xp * this
 export const REVEAL_RADIUS = 6.5;
-export const COHESION_MAX = 4.6;      // leader waits if any ally is farther than this
+/* How far the party can SEE, as opposed to how far it counts as having been.
+   Deliberately longer than REVEAL_RADIUS — you can see across a room you have
+   not walked; at 6.5 the field of view barely cleared a doorway and the reveal
+   past an opened door read as nothing happening. Matched to AGGRO_RANGE so
+   sight is symmetric: the range at which a monster can spot the party is the
+   range at which the party can spot it. */
+export const SIGHT_RADIUS = 12;
+/* Superseded by COHESION_HOLD_DIST below, which is what the leader actually
+   waits on. Kept only so an old saved tuning file does not fail to import. */
+export const COHESION_MAX = 4.6;
+/* Party cohesion band. The leader hard-stops once someone strays past HOLD,
+   and resumes once the party is back inside RESUME; between the two it keeps
+   whatever it was doing (hysteresis, so it cannot flap frame to frame).
+   RESUME sits just under HOLD rather than far below it: formation depth is
+   only ~2.5 tiles (FORMATION_SPACING/WIDTH), so requiring a much tighter
+   regroup made the leader sit still long after the party had closed up —
+   measured over 20 dungeon runs, 54 of 95 leader freezes were still holding
+   at a stray distance already back inside HOLD. */
+/* How much closer a different monster must be before the exploring party
+   switches which one it is walking toward. Without a margin, two roughly
+   equidistant monsters trade places as "nearest" every frame and the party
+   oscillates between them instead of reaching either. */
+export const ROOM_TARGET_SWITCH_MARGIN = 1.5;
+export const COHESION_HOLD_DIST = 6.0;
+export const COHESION_RESUME_DIST = 5.0;
+export const COHESION_SLOW_DIST = 4.2;
 export const COMBAT_SPEED = 0.72;     // fraction of move speed used for combat repositioning
 export const BESTIARY_UNLOCK = 10;    // kills of a monster before its compendium entry unlocks
 
@@ -43,6 +78,15 @@ export const FORMATION_WIDTH = 1.0;    // tiles to side for follower wedge sprea
 // --- Chokepoint ---
 export const CHOKEPOINT_COST = 3;        // Dijkstra penalty weight for chokepoint cells
 export const HAZARD_COST = 6;            // Dijkstra penalty weight for AoE-covered cells
+// Squeezing through a teammate's square: legal in 5e (you just can't stop
+// there), but preferably avoided. Hard-blocking allies instead sent heroes on
+// long detours around their own party rather than queueing behind them.
+export const ALLY_PASS_COST = 2;
+/* Dijkstra penalty per LEVEL scrambled without a staircase, in combat. Not a
+   prohibition: refusing the climb outright is what let a party get walled in
+   behind a two-level face with a monster parked on the only steps. Priced at
+   four so a stair within a few tiles always wins and a long detour does not. */
+export const CLIMB_COST = 4;
 
 // --- Collision radii (world tiles; cell centres are 1.0 apart) ---
 // A floor cell spans +/-0.5 around its centre, so any radius < 0.5 keeps the
@@ -78,6 +122,16 @@ export const KITE_THREAT_RANGE = 2.2;    // a melee hero within this spooks the 
 export const KITE_RETREAT_DIST = 2.5;    // world tiles to back away toward
 export const KITE_COMMIT_SEC = 0.6;      // min time committed to a kite before reconsidering
 
+// --- Tactical-action gating (Dash / Dodge / Disengage) ---
+// These "fallback" actions spend the whole Action, so the AIs only take them
+// when they actually pay off. A creature below TACTICAL_BLOODIED_FRAC HP is
+// considered bloodied (retreats / breaks contact); a creature is "under
+// pressure" (Dodge-worthy) when bloodied below TACTICAL_DODGE_BLOODIED_FRAC
+// or pinned by TACTICAL_DODGE_PIN_THREATS adjacent hostiles.
+export const TACTICAL_BLOODIED_FRAC = 0.35;      // retreat / break-contact threshold
+export const TACTICAL_DODGE_BLOODIED_FRAC = 0.4; // pressure threshold for Dodge
+export const TACTICAL_DODGE_PIN_THREATS = 2;     // adjacent hostiles that count as pressure
+
 // --- Monster AI: flanking ---
 export const FLANK_OFFSET = 1.5;         // tiles past the target a flanker aims for
 
@@ -98,6 +152,22 @@ export const DMG_TYPES = [
   'acid', 'cold', 'fire', 'lightning', 'thunder',
   'force', 'necrotic', 'poison', 'psychic', 'radiant',
 ];
+
+export const DAMAGE_TYPE_ICONS = {
+  fire: '🔥',
+  cold: '❄️',
+  lightning: '⚡',
+  thunder: '🌩️',
+  acid: '🧪',
+  poison: '☠️',
+  necrotic: '💀',
+  radiant: '✨',
+  force: '💫',
+  psychic: '👁️',
+  slashing: '🗡️',
+  piercing: '🏹',
+  bludgeoning: '🔨'
+};
 
 // --- CR-based Monster Stat Scaling Table ---
 // Percentage levers per CR rating for AC, HP, to-hit (atk), and ability stats.

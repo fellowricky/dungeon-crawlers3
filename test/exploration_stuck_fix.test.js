@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { exploreMethods } from '../src/game/explore.js';
+import { reservationMethods } from '../src/game/reservation.js';
 
 if (typeof globalThis.document === 'undefined') {
   globalThis.innerWidth = 1920;
@@ -93,6 +94,9 @@ describe('Exploration AI Room Search & Pathing Fix', () => {
       x: 10.0, z: 10.0,
       moving: true,
       data: { speedMult: 1 },
+      path: [10, 50],
+      pathGoal: 50,
+      pathI: 0,
       _posHistory: [
         { x: 10.00, z: 10.00 },
         { x: 10.05, z: 10.02 },
@@ -122,7 +126,7 @@ describe('Exploration AI Room Search & Pathing Fix', () => {
       D: { W: 20, grid: new Int32Array(400).fill(1) }
     };
 
-    Object.assign(game, exploreMethods);
+    Object.assign(game, exploreMethods, reservationMethods);
 
     // Run exploreAI step when leader is oscillating in place
     game.exploreAI([leader], leader, 0.5);

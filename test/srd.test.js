@@ -80,6 +80,24 @@ describe('SRD 5.1 Adaptation', () => {
     expect(hero.maxHp).toBe(36);
   });
 
+  it('should scale speedFt with combat movement bonuses (+5 ft increments) while keeping speedMult independent', () => {
+    const rogue = makeHero('Shadow', 'human', 'rogue', { str: 10, dex: 15, con: 12, int: 10, wis: 10, cha: 10 }, {});
+    expect(rogue.speedFt).toBe(30);
+    expect(rogue.speedMult).toBe(1.0);
+
+    // Invest 1 rank in Fleet-Foot (+5 ft)
+    rogue.skills = { fleetfoot: 1 };
+    recalc(rogue);
+    expect(rogue.speedFt).toBe(35);
+    expect(rogue.speedMult).toBe(1.0);
+
+    // Add Mobile feat (+10 ft)
+    rogue.feats = ['mobile'];
+    recalc(rogue);
+    expect(rogue.speedFt).toBe(45);
+    expect(rogue.speedMult).toBe(1.0);
+  });
+
   it('should handle XP progression and trigger level-ups', () => {
     const hero = makeHero(' Aldric', 'human', 'fighter', {
       str: 15, dex: 13, con: 14, int: 8, wis: 10, cha: 12
@@ -122,6 +140,22 @@ describe('SRD 5.1 Adaptation', () => {
     expect(canEquip(fighter, martialWeapon)).toBe(true);
     expect(canEquip(wizard, martialWeapon)).toBe(false);
     expect(canEquip(wizard, simpleWeapon)).toBe(true);
+  });
+
+  it('trinket scrolls are caster-only, potions usable by anyone', () => {
+    const fighter = makeHero('Aldric', 'human', 'fighter', {
+      str: 15, dex: 13, con: 14, int: 8, wis: 10, cha: 12
+    }, {});
+    const wizard = makeHero('Sariel', 'elf', 'wizard', {
+      str: 8, dex: 15, con: 12, int: 15, wis: 13, cha: 10
+    }, {});
+    const scroll = { slot: 'trinket', name: 'Scroll of Fireball', casterOnly: true };
+    const potion = { slot: 'trinket', name: 'Potion of Hill Giant Strength', casterOnly: false };
+
+    expect(canEquip(wizard, scroll)).toBe(true);
+    expect(canEquip(fighter, scroll)).toBe(false);
+    expect(canEquip(fighter, potion)).toBe(true);
+    expect(canEquip(wizard, potion)).toBe(true);
   });
 
   it('should spawn monsters with scaling attributes based on CR and level', () => {
@@ -173,14 +207,14 @@ describe('Weapon-driven attack profiles', () => {
     expect(atk.dmg).toEqual([1, 1]);
     expect(atk.ability).toBe('str');
 
-    // Monk with no weapon → martial arts unarmed (1d6 + dex)
+    // Monk with no weapon → martial arts unarmed (1d4 + dex at level 1)
     const monk = makeHero('Toby', 'human', 'monk',
       { str:10, dex:16, con:14, int:10, wis:14, cha:10 }, {});
     delete monk.equipment.weapon;
     recalc(monk);
     const monkAtk = pickAttackProfile(monk);
     expect(monkAtk.source).toBe('unarmed');
-    expect(monkAtk.dmg).toEqual([1, 6]);
+    expect(monkAtk.dmg).toEqual([1, 4]);
     expect(monkAtk.ability).toBe('dex');
   });
 
@@ -378,8 +412,26 @@ describe('Wolf Companion Creation & Scaling', () => {
     expect(wolf1.level).toBe(1);
     expect(wolf1.maxHp).toBeGreaterThan(0);
     expect(wolf1.ac).toBeGreaterThanOrEqual(13);
-    expect(wolf1.visual.spriteSheet).toBe('sprites/wolf.png');
-    expect(wolf1.visual.singleImage).toBe(true);
+    /* The companion now uses frame-sliced idle/attack sheets rather than the
+       old static 64x64 sprites/wolf.png. WolfSprite checks visual.animations
+       first and it takes precedence over both the single-image and wolfsheet1
+       atlas modes (sprite_animator.js:551), so singleImage must be absent —
+       leaving it set would send the sprite back down the static path. */
+    expect(wolf1.visual.singleImage).toBeFalsy();
+    expect(wolf1.visual.flipX).toBe(true);
+    for (const kind of ['idle', 'attack', 'walk']) {
+      const a = wolf1.visual.animations[kind];
+      expect(a, kind).toBeTruthy();
+      expect(a.cols).toBe(19);
+      expect(a.rows).toBe(1);
+      expect(a.frameWidth).toBe(a.frameHeight);
+      expect(a.sprite).toMatch(/^sprites\/WarWolf\/(Idle|Attack|Walk)\/.+\.png$/);
+    }
+    expect(wolf1.visual.animations.idle.loop).toBe(true);
+    expect(wolf1.visual.animations.attack.loop).toBe(false);
+    /* walk must loop, and game.js keys "does this sprite walk?" off the
+       presence of this entry (game.js: `!sliced || !!sliced.walk`). */
+    expect(wolf1.visual.animations.walk.loop).toBe(true);
     expect(wolf1.weaponProfile.name).toBe('Bite');
     expect(wolf1.weaponProfile.dmgType).toBe('piercing');
 
@@ -396,22 +448,23 @@ describe('Proficiency Bonus Feature Charge Scaling', () => {
     const lvl5Hero = { level: 5 };
     const lvl9Hero = { level: 9 };
 
-    expect(chargeMax('secondWind', lvl1Hero)).toBe(2);
-    expect(chargeMax('secondWind', lvl5Hero)).toBe(3);
-    expect(chargeMax('secondWind', lvl9Hero)).toBe(4);
-
+    /* Rage and Flurry scale with proficiency (the game's pacing for Rage;
+       Flurry is paid in ki). Second Wind and Action Surge are SRD once-per-
+       short-rest features: Second Wind is tracked by `secondWindUsed`, not a
+       pool, and an unlisted key defaults to a single charge. */
     expect(chargeMax('rage', lvl1Hero)).toBe(2);
     expect(chargeMax('rage', lvl5Hero)).toBe(3);
     expect(chargeMax('rage', lvl9Hero)).toBe(4);
-
-    expect(chargeMax('actionSurgeClass', lvl1Hero)).toBe(2);
     expect(chargeMax('flurryOfBlows', lvl5Hero)).toBe(3);
+
+    expect(chargeMax('secondWind', lvl9Hero)).toBe(1);
+    expect(chargeMax('actionSurgeClass', lvl1Hero)).toBe(1);
   });
 
-  it('refills Rage and long rest abilities when resting at a shrine', () => {
-    const hero = { level: 1, charges: { rage: 0, secondWind: 0 } };
+  it('refills Rage and Second Wind when resting at a shrine', () => {
+    const hero = { level: 1, charges: { rage: 0 }, secondWindUsed: true };
     applyShortRestToHero(hero, { reason: 'shrine', fullHeal: true });
     expect(chargesLeft(hero, 'rage')).toBe(2);
-    expect(chargesLeft(hero, 'secondWind')).toBe(2);
+    expect(hero.secondWindUsed).toBe(false);
   });
 });

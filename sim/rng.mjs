@@ -33,3 +33,21 @@ export function installSeededRandom(seed) {
 export function restoreRandom() {
   if (_originalRandom) { Math.random = _originalRandom; _originalRandom = null; }
 }
+
+/**
+ * Run `fn` with Math.random swapped to an independent stream, then restore.
+ *
+ * Content generation (parties, levelling, gear, monster picks) MUST NOT share
+ * a stream with combat. Combat consumes a variable number of random draws, so
+ * any change to the AI shifts the stream and every subsequent party and
+ * encounter comes out different — which makes two runs at "the same seed"
+ * incomparable, and silently turns A/B measurements into noise.
+ *
+ * Isolating generation means the same seed always produces the same parties
+ * fighting the same monsters, whatever the AI does in between.
+ */
+export function withStream(rng, fn) {
+  const saved = Math.random;
+  Math.random = rng;
+  try { return fn(); } finally { Math.random = saved; }
+}

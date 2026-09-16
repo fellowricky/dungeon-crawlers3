@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateDungeon, generateOverland, FLOOR, WALL } from '../src/dungeon/dungeon_generator.js';
+import { generateDungeon, generateOverland, FLOOR, WALL, POOL } from '../src/dungeon/dungeon_generator.js';
 import { pathfindingMethods, buildWallAdj, buildChokepoints } from '../src/game/pathfinding.js';
 import { exploreMethods } from '../src/game/explore.js';
 
@@ -73,10 +73,46 @@ describe('Doorway Pathing & Map Widening', () => {
     expect(ent.x).toBeLessThanOrEqual(2.5);
   });
 
+  it('walks a 1-wide corridor flanked by liquid without stalling (wallRepel centring regression)', () => {
+    /* A single walkable tile between a doorway and a liquid pit is a 1-wide
+       corridor. The old wallRepel corridor-centring pulled toward the current
+       cell centre on BOTH axes whenever either axis was walled, so the
+       cross-axis component fought forward motion and stalled the entity
+       mid-cell. It must still walk the whole corridor to the far end. */
+    const W = 10, H = 10;
+    const grid = new Uint8Array(W * H).fill(WALL);
+    for (let y = 3; y <= 8; y++) grid[y * W + 6] = FLOOR; // 1-wide vertical corridor
+    for (let y = 4; y <= 7; y++) grid[y * W + 7] = POOL;   // pit flanking one side
+
+    const game = Object.assign({}, pathfindingMethods, {
+      D: { W, H, grid, wallAdj: null, chokepoint: null, solidProps: null },
+      heroes: [], monsters: [], _reservedCells: null, activeAoEZones: [],
+      isCombatActive: () => false, isCellDoorClosed: () => false, isCellReserved: () => false,
+      cellOf(x, z) {
+        const cx = Math.round(x + W / 2 - 0.5), cy = Math.round(z + H / 2 - 0.5);
+        return (cx < 0 || cy < 0 || cx >= W || cy >= H) ? -1 : cy * W + cx;
+      },
+      wx: (x) => x - W / 2 + 0.5,
+      wz: (z) => z - H / 2 + 0.5
+    });
+
+    const e = { x: game.wx(6), z: game.wz(8), data: { hp: 10 } };
+    const path = game.findPath(game.cellOf(e.x, e.z), game.cellOf(game.wx(6), game.wz(3)));
+    expect(path).not.toBeNull();
+    game.setEntityPath(e, path);
+
+    let t = 0;
+    while (t < 12 && e.pathI < path.length) {
+      e.moving = game.stepAlong(e, 1.5, 0.016);
+      t += 0.016;
+    }
+    expect(e.pathI).toBe(path.length); // reached the far end instead of stalling
+  });
+
   it('staggers follower doorway queueing targets single-file', () => {
     const leader = { x: 10.5, z: 10.5, path: [100, 99, 98, 97], pathI: 3, data: { speedMult: 1 } };
     const alive = [leader, { x: 8.5, z: 8.5, data: { speedMult: 1 } }, { x: 8.0, z: 8.0, data: { speedMult: 1 } }];
-    const game = Object.assign({}, exploreMethods, {
+    const game = Object.assign({}, exploreMethods, pathfindingMethods, {
       D: { W: 20, H: 20, grid: new Uint8Array(400).fill(FLOOR), chokepoint: new Uint8Array(400), rooms: [], roomId: new Int16Array(400).fill(-1) },
       cellOf: (x, z) => Math.floor(z) * 20 + Math.floor(x),
       nearFloorCell: (c) => c,

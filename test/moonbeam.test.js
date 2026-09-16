@@ -104,7 +104,7 @@ describe('D&D 5e Compliant Moonbeam Spell', () => {
     expect(zone.isMoving).toBe(false);
     expect(zone.x).toBe(8);
     expect(zone.z).toBe(8);
-    expect(setPos).toHaveBeenCalledWith(8, 0.33, 8);
+    expect(setPos).toHaveBeenCalledWith(8, 0, 8);
     expect(hero.actUsed).toBe(true);
     expect(mockGame.resolveMoonbeamDamage).toHaveBeenCalledWith(zone, foe);
   });

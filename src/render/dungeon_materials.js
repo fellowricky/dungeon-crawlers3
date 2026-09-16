@@ -481,6 +481,30 @@ function makeRegimentalBannerTex(){
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
+function makeSwampGrassTex(){
+  const [cv, g] = makeCanvas(128, 256);
+  // Root to tip gradient: deep peat brown-green at roots -> rich olive marsh green -> weathered reed tips
+  const grad = g.createLinearGradient(0, 256, 0, 0);
+  grad.addColorStop(0.0, '#1c2414');
+  grad.addColorStop(0.20, '#2b381b');
+  grad.addColorStop(0.55, '#445628');
+  grad.addColorStop(0.85, '#5e7235');
+  grad.addColorStop(1.0, '#788842');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 256);
+
+  // Subtle reed vertical blade veins
+  for (let x = 3; x < 128; x += 5) {
+    g.strokeStyle = (x % 10 === 0) ? 'rgba(18, 26, 12, 0.45)' : 'rgba(130, 150, 75, 0.22)';
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x, 256);
+    g.stroke();
+  }
+  return srgbTex(cv);
+}
+
 export const TEX = {
   stone: makeStoneTex(), crack: makeCrackTex(), rune: makeRuneTex(), swirl: makeSwirlTex(),
   shaft: makeShaftTex(), glow: makeGlowTex(), blot: makeBlotTex(), wood: makeWoodTex(),
@@ -488,7 +512,7 @@ export const TEX = {
   goldSeal: makeGoldSealTex(), necroCircle: makeNecroCircleTex(), sporeCircle: makeSporeCircleTex(),
   campRing: makeCampRingTex(), regimentalBanner: makeRegimentalBannerTex(),
   metal: makeMetalTex(), ceramic: makeCeramicTex(), bone: makeBoneTex(), ice: makeIceTex(),
-  web: makeWebTex()
+  web: makeWebTex(), swampGrass: makeSwampGrassTex()
 };
 
 /* ---------------- Material Kit ---------------- */
@@ -502,6 +526,8 @@ matMagicCircle.toneMapped = false;
 export const matTapestry = new THREE.MeshLambertMaterial({map:TEX.tapestry, side:THREE.DoubleSide});
 export const matSconce = new THREE.MeshStandardMaterial({map:TEX.metal, roughness:0.3, metalness:0.8});
 export const matGoldInlay = new THREE.MeshStandardMaterial({map:TEX.goldSeal, roughness:0.25, metalness:0.85});
+export const matGoldBullion = new THREE.MeshStandardMaterial({map:TEX.goldSeal, color:0xffd24d, roughness:0.22, metalness:0.90});
+export const matSwampGrass = new THREE.MeshStandardMaterial({map:TEX.swampGrass, roughness:0.92, metalness:0.0, side:THREE.DoubleSide});
 export const matNecroCircle = new THREE.MeshBasicMaterial({map:TEX.necroCircle, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
 matNecroCircle.toneMapped = false;
 export const matSporeCircle = new THREE.MeshBasicMaterial({map:TEX.sporeCircle, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
@@ -514,18 +540,100 @@ export const matGlacialIce = new THREE.MeshStandardMaterial({map:TEX.ice, roughn
 
 const FLAGTEX = makeAtlasTex(0), MASONTEX = makeAtlasTex(1);
 export function atlasPatch(mat){
-  mat.onBeforeCompile = sh=>{
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uLuminanceBumpScale = {
+      get value() { return (mat.bumpScale != null ? mat.bumpScale * 2.5 : 1.8); }
+    };
+    sh.uniforms.uLuminanceBumpStep = {
+      get value() { return (mat.userData?.bumpStep != null ? mat.userData.bumpStep : 1.5); }
+    };
+
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec2 aUvO;')
       .replace('#include <uv_vertex>', `#include <uv_vertex>
 #ifdef USE_MAP
-  vMapUv = vMapUv*0.5 + aUvO;
+  vMapUv = vMapUv * 0.5 + aUvO;
 #endif
 #ifdef USE_BUMPMAP
-  vBumpMapUv = vBumpMapUv*0.5 + aUvO;
+  vBumpMapUv = vBumpMapUv * 0.5 + aUvO;
+#endif`);
+
+    const lumChunk = `
+#ifdef USE_MAP
+uniform float uLuminanceBumpScale;
+uniform float uLuminanceBumpStep;
+
+mat3 getTileTangentFrame(vec3 eye_pos, vec3 surf_norm, vec2 uv) {
+  vec3 q0 = dFdx(eye_pos.xyz);
+  vec3 q1 = dFdy(eye_pos.xyz);
+  vec2 st0 = dFdx(uv.st);
+  vec2 st1 = dFdy(uv.st);
+  vec3 N = surf_norm;
+  vec3 q1perp = cross(q1, N);
+  vec3 q0perp = cross(N, q0);
+  vec3 T = q1perp * st0.x + q0perp * st1.x;
+  vec3 B = q1perp * st0.y + q0perp * st1.y;
+  float det = max(dot(T, T), dot(B, B));
+  float scale = (det == 0.0) ? 0.0 : inversesqrt(det);
+  return mat3(T * scale, B * scale, N);
+}
+
+float getAtlasLuminance(vec2 uv) {
+  vec4 col = texture2D(map, uv);
+  return dot(col.rgb, vec3(0.299, 0.587, 0.114));
+}
+
+vec3 getLuminanceNormal(vec2 uv, vec3 eye_pos, vec3 surf_norm, float bScale, float bStep) {
+  vec2 texSize = vec2(textureSize(map, 0));
+  vec2 d = bStep / texSize;
+
+  float tl = getAtlasLuminance(uv + vec2(-d.x,  d.y));
+  float tc = getAtlasLuminance(uv + vec2( 0.0,  d.y));
+  float tr = getAtlasLuminance(uv + vec2( d.x,  d.y));
+  float ml = getAtlasLuminance(uv + vec2(-d.x,  0.0));
+  float mr = getAtlasLuminance(uv + vec2( d.x,  0.0));
+  float bl = getAtlasLuminance(uv + vec2(-d.x, -d.y));
+  float bc = getAtlasLuminance(uv + vec2( 0.0, -d.y));
+  float br = getAtlasLuminance(uv + vec2( d.x, -d.y));
+
+  float dX = ((tr + 2.0 * mr + br) - (tl + 2.0 * ml + bl)) * 0.25;
+  float dY = ((tl + 2.0 * tc + tr) - (bl + 2.0 * bc + br)) * 0.25;
+
+  vec3 tNorm = normalize(vec3(-dX * bScale, -dY * bScale, 1.0));
+  mat3 tbn = getTileTangentFrame(eye_pos, surf_norm, uv);
+  return normalize(tbn * tNorm);
+}
+#endif
+`;
+
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <bumpmap_pars_fragment>', '#include <bumpmap_pars_fragment>\n' + lumChunk)
+      .replace('#include <normal_fragment_maps>', `
+#ifdef USE_NORMALMAP_OBJECTSPACE
+	normal = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+	#ifdef FLIP_SIDED
+		normal = - normal;
+	#endif
+	#ifdef DOUBLE_SIDED
+		normal = normal * faceDirection;
+	#endif
+	normal = normalize( normalMatrix * normal );
+#elif defined( USE_NORMALMAP_TANGENTSPACE )
+	vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+	#if defined( USE_PACKED_NORMALMAP )
+		mapN = vec3( mapN.xy, sqrt( saturate( 1.0 - dot( mapN.xy, mapN.xy ) ) ) );
+	#endif
+	mapN.xy *= normalScale;
+	normal = normalize( tbn * mapN );
+#elif defined( USE_MAP )
+	if (uLuminanceBumpScale > 0.001) {
+		normal = getLuminanceNormal(vMapUv, -vViewPosition, normal, uLuminanceBumpScale, uLuminanceBumpStep);
+	}
+#elif defined( USE_BUMPMAP )
+	normal = perturbNormalArb( - vViewPosition, normal, dHdxy_fwd(), faceDirection );
 #endif`);
   };
-  mat.customProgramCacheKey = ()=>'atlas';
+  mat.customProgramCacheKey = () => 'atlas_lum_bump_tbn';
   return mat;
 }
 
@@ -535,21 +643,21 @@ export function atlasPatch(mat){
    instanced `aUvO` quadrant picking and the per-cell theme tint are unchanged;
    only the map/bumpMap swap. Themes with no entry keep the procedural look. */
 const PIXEL_TILES = {
-  ancient: { floor:'./art/tiles/ancient_floor.png', floorBump:0.45,
-             wall:'./art/tiles/ancient_wall.png',   wallBump:0.45,
-             cap:'./art/tiles/ancient_cap.png' },
-  molten:  { floor:'./art/tiles/molten_floor.png',  floorBump:0.45,
-             wall:'./art/tiles/molten_wall.png',    wallBump:0.45,
-             cap:'./art/tiles/molten_cap.png' },
-  frost:   { floor:'./art/tiles/frost_floor.png',   floorBump:0.45,
-             wall:'./art/tiles/frost_wall.png',     wallBump:0.45,
-             cap:'./art/tiles/frost_cap.png' },
-  grim:    { floor:'./art/tiles/grim_floor.png',    floorBump:0.45,
-             wall:'./art/tiles/grim_wall.png',      wallBump:0.45,
-             cap:'./art/tiles/grim_cap.png' },
-  verdant: { floor:'./art/tiles/verdant_floor.png', floorBump:0.45,
-             wall:'./art/tiles/verdant_wall.png',   wallBump:0.45,
-             cap:'./art/tiles/verdant_cap.png' }
+  ancient: { floor:'./art/tiles/ancient_floor.png', floorBump:0.975,
+             wall:'./art/tiles/ancient_wall.png',   wallBump:0.75,
+             cap:'./art/tiles/ancient_cap.png',    capBump:0.65 },
+  molten:  { floor:'./art/tiles/molten_floor.png',  floorBump:0.975,
+             wall:'./art/tiles/molten_wall.png',    wallBump:0.75,
+             cap:'./art/tiles/molten_cap.png',     capBump:0.65 },
+  frost:   { floor:'./art/tiles/frost_floor.png',   floorBump:0.975,
+             wall:'./art/tiles/frost_wall.png',     wallBump:0.75,
+             cap:'./art/tiles/frost_cap.png',      capBump:0.65 },
+  grim:    { floor:'./art/tiles/grim_floor.png',    floorBump:0.975,
+             wall:'./art/tiles/grim_wall.png',      wallBump:0.75,
+             cap:'./art/tiles/grim_cap.png',       capBump:0.65 },
+  verdant: { floor:'./art/tiles/verdant_floor.png', floorBump:0.975,
+             wall:'./art/tiles/verdant_wall.png',   wallBump:0.75,
+             cap:'./art/tiles/verdant_cap.png',    capBump:0.65 }
 };
 const _pixelTexCache = {};
 function pixelTex(url, isBump){
@@ -578,16 +686,16 @@ export function applyTileTheme(themeKey){
   if(P.floor){
     matFloor.map = pixelTex(P.floor);
     matFloor.bumpMap = pixelTex(P.floor.replace('.png','_bump.png'), true);
-    matFloor.bumpScale = P.floorBump ?? 0.45;
+    matFloor.bumpScale = P.floorBump ?? 0.975;
   } else {
     matFloor.map = FLAGTEX.map;
     matFloor.bumpMap = FLAGTEX.bump;
-    matFloor.bumpScale = 0.9;
+    matFloor.bumpScale = 1.35;
   }
   if(P.wall){
     matWall.map = pixelTex(P.wall);
     matWall.bumpMap = pixelTex(P.wall.replace('.png','_bump.png'), true);
-    matWall.bumpScale = P.wallBump ?? 0.45;
+    matWall.bumpScale = P.wallBump ?? 0.75;
   } else {
     matWall.map = MASONTEX.map;
     matWall.bumpMap = MASONTEX.bump;
@@ -601,7 +709,7 @@ export function applyTileTheme(themeKey){
   if(P.cap){
     matWallCap.map = pixelTex(P.cap);
     matWallCap.bumpMap = pixelTex(P.cap.replace('.png','_bump.png'), true);
-    matWallCap.bumpScale = P.capBump ?? 0.45;
+    matWallCap.bumpScale = P.capBump ?? 0.65;
   } else {
     matWallCap.map = MASONTEX.map;
     matWallCap.bumpMap = MASONTEX.bump;
@@ -613,14 +721,14 @@ export function applyTileTheme(themeKey){
       if(!o || !o.map) continue;
       mat.map = o.map;
       if(o.bump) mat.bumpMap = o.bump;
-      if(o.bumpScale != null) mat.bumpScale = o.bumpScale;
+      if(o.bumpScale != null) mat.bumpScale = (slot === 'floor' ? o.bumpScale * 1.5 : o.bumpScale);
     }
   }
 }
 
-export const matFloor = atlasPatch(new THREE.MeshStandardMaterial({map:FLAGTEX.map, bumpMap:FLAGTEX.bump, bumpScale:0.9, roughness:0.93, metalness:0.02}));
-export const matWall  = atlasPatch(new THREE.MeshStandardMaterial({map:MASONTEX.map, bumpMap:MASONTEX.bump, bumpScale:0.8, roughness:0.94, metalness:0.02, polygonOffset:true, polygonOffsetFactor:2, polygonOffsetUnits:5000}));
-export const matWallCap = atlasPatch(new THREE.MeshStandardMaterial({map:MASONTEX.map, bumpMap:MASONTEX.bump, bumpScale:0.8, roughness:0.94, metalness:0.02}));
+export const matFloor = atlasPatch(new THREE.MeshStandardMaterial({map:FLAGTEX.map, bumpMap:FLAGTEX.bump, bumpScale:1.35, roughness:0.84, metalness:0.02}));
+export const matWall  = atlasPatch(new THREE.MeshStandardMaterial({map:MASONTEX.map, bumpMap:MASONTEX.bump, bumpScale:0.8, roughness:0.86, metalness:0.02, polygonOffset:true, polygonOffsetFactor:2, polygonOffsetUnits:5000}));
+export const matWallCap = atlasPatch(new THREE.MeshStandardMaterial({map:MASONTEX.map, bumpMap:MASONTEX.bump, bumpScale:0.8, roughness:0.86, metalness:0.02}));
 export const matTrim  = new THREE.MeshStandardMaterial({roughness:0.38, metalness:0.75, polygonOffset:true, polygonOffsetFactor:2, polygonOffsetUnits:5000});
 export const matGlow  = new THREE.MeshBasicMaterial({color:0xffffff});
 matGlow.toneMapped = false;
@@ -677,12 +785,32 @@ export const liquidMat = new THREE.ShaderMaterial({
     void main(){
       vec3 col;
       if(uMode < 0.5){
-        float n = fbm(vP*0.55 + vec2(uTime*0.045, uTime*0.021));
-        float crust = smoothstep(0.40, 0.62, n);
-        float veins = smoothstep(0.06, 0.0, abs(n-0.5));
-        col = mix(uColB*1.6, uColA, crust);
-        col += vec3(1.0,0.72,0.32) * veins * 0.9;
-        col += uColB * 0.22 * (0.5 + 0.5*sin(uTime*1.7 + n*22.0));
+        vec2 uv = vP * 0.55;
+        float flowTime = uTime * 0.05;
+        vec2 distortion = vec2(
+          fbm(uv + vec2(flowTime, flowTime * 0.5)),
+          fbm(uv - vec2(flowTime * 0.7, flowTime * 0.4))
+        );
+        vec2 p = uv + distortion * 0.35;
+        float n = fbm(p + vec2(flowTime * 0.4, flowTime * 0.25));
+        float crust = smoothstep(0.38, 0.64, n);
+        float veins = smoothstep(0.08, 0.0, abs(n - 0.5));
+
+        // Magma bubble burst / barrage hotspots that pop on the lava surface
+        vec2 bUv = vP * 1.5;
+        float bTime = uTime * 1.4;
+        vec2 bCell = floor(bUv);
+        float bRnd = h21(bCell);
+        vec2 bFrac = fract(bUv) - 0.5;
+        float bDist = length(bFrac);
+        float bPhase = fract(bTime * (0.35 + 0.45 * bRnd) + bRnd);
+        float bRadius = 0.16 + 0.22 * sin(bPhase * 3.14159);
+        float bubbleGlow = smoothstep(bRadius, 0.0, bDist) * smoothstep(0.0, 0.25, bPhase) * smoothstep(1.0, 0.65, bPhase);
+
+        col = mix(uColB * 1.85, uColA * 0.75, crust);
+        col += vec3(1.0, 0.75, 0.30) * veins * 1.2;
+        col += vec3(1.0, 0.96, 0.65) * bubbleGlow * 1.8;
+        col += uColB * 0.35 * (0.5 + 0.5 * sin(uTime * 2.2 + n * 22.0));
       } else if(uMode < 1.5){
         float n = fbm(vP*0.8);
         float cr = smoothstep(0.47, 0.5, abs(fract(n*6.0)-0.5));
@@ -717,66 +845,202 @@ export const liquidMat = new THREE.ShaderMaterial({
 
 /* ambient particle field: dust / embers / snow / wisps / spores (GPU) */
 export const partMat = new THREE.ShaderMaterial({
-  transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
-  uniforms:{ uTime:{value:0}, uRamp:{value:1}, uZoom:{value:2}, uKind:{value:0},
+  transparent:true, depthWrite:false, depthTest:true, blending:THREE.AdditiveBlending,
+  uniforms:{ uTime:{value:0}, uRamp:{value:1}, uZoom:{value:10}, uKind:{value:0},
              uColor:{value:new THREE.Color(0xffffff)} },
   vertexShader:`
+    precision highp float;
     attribute float aSeed;
     uniform float uTime, uRamp, uZoom, uKind;
+    uniform vec3 uColor;
     varying float vA;
+    varying float vKind;
+    varying vec3 vColor;
     float h(float n){ return fract(sin(n*127.1)*43758.5453); }
     void main(){
       vec3 p = position;
-      float s = aSeed, t, w;
+      float s = aSeed, t, sz;
+      vKind = uKind;
+      vColor = uColor;
       if(uKind < 0.5){            /* dust motes in light shafts */
-        w = 0.05 + 0.05*h(s+3.1);
+        sz = 1.5 + 1.5*h(s+3.1);
         p.x += sin(uTime*0.10 + s*17.0)*0.25;
         p.z += cos(uTime*0.08 + s*23.0)*0.25;
         p.y += 0.25*sin(uTime*0.13 + s*31.0);
-        vA = 0.10 + 0.08*sin(uTime*0.5 + s*40.0);
-      } else if(uKind < 1.5){     /* embers rising off lava + flames */
-        w = 0.045 + 0.05*h(s+3.1);
-        t = fract(uTime*(0.10 + 0.08*h(s)) + s);
-        p.y += t*(1.1 + 0.9*h(s+5.0));
-        p.x += sin(t*9.0 + s*50.0)*0.10;
-        p.z += cos(t*8.0 + s*60.0)*0.10;
-        vA = smoothstep(0.0,0.05,t)*(1.0-t)*(0.55 + 0.45*sin(uTime*10.0 + s*90.0));
-      } else if(uKind < 2.5){     /* snowfall */
-        w = 0.04 + 0.045*h(s+3.1);
-        t = fract(uTime*(0.035 + 0.02*h(s)) + s);
-        p.y += (1.0-t)*3.2;
-        p.x += sin(uTime*0.5 + s*30.0)*0.3;
-        p.z += cos(uTime*0.42 + s*36.0)*0.3;
-        vA = 0.5*smoothstep(0.0,0.05,t)*smoothstep(1.0,0.95,t);
+        vA = 0.20 + 0.10*sin(uTime*0.5 + s*40.0);
+      } else if(uKind < 1.5){     /* erupting ember & magma spark barrage rising off lava + flames */
+        float pSeed = h(s+3.1);
+        sz = 2.4 + 3.2 * pSeed;
+        if(pSeed > 0.82) sz += 2.4; /* popping larger cinder */
+        float speed = 0.18 + 0.18 * h(s+7.4);
+        t = fract(uTime * speed + s);
+        float arcX = (h(s+12.0) - 0.5) * 1.5;
+        float arcZ = (h(s+19.0) - 0.5) * 1.5;
+        p.y += pow(t, 0.72) * (1.9 + 1.5 * h(s+5.0));
+        p.x += arcX * t + sin(t * 11.0 + s * 50.0) * 0.18;
+        p.z += arcZ * t + cos(t * 10.0 + s * 60.0) * 0.18;
+        float sparkBurst = smoothstep(0.0, 0.08, t) * (1.0 - t * 0.85);
+        float pulse = 0.75 + 0.35 * sin(uTime * 14.0 + s * 90.0);
+        vA = sparkBurst * pulse;
+      } else if(uKind < 2.5){     /* snowfall / blizzard flurry */
+        float flakeSeed = h(s+3.1);
+        sz = 2.2 + 2.6 * flakeSeed;
+        if(flakeSeed > 0.82) sz += 1.8; /* occasional larger snowflake (5.5-6.5px) */
+        float fallSpd = mix(0.24, 0.14, flakeSeed) + 0.03 * h(s+7.2);
+        t = fract(uTime * fallSpd + s);
+        p.y += (1.0 - t) * 6.5 - 0.2;
+        float windGust = sin(uTime * 0.5 + p.y * 0.35) * 0.5;
+        p.x += -t * 2.2 + sin(uTime * 0.85 + s * 28.0) * 0.35 + windGust;
+        p.z += -t * 1.2 + cos(uTime * 0.75 + s * 34.0) * 0.35 + windGust * 0.5;
+        vA = (0.70 + 0.25 * flakeSeed) * smoothstep(0.0, 0.06, t) * smoothstep(1.0, 0.88, t);
       } else if(uKind < 3.5){     /* wisps hovering over graves/candles */
-        w = 0.09 + 0.07*h(s+3.1);
+        sz = 4.0 + 3.0*h(s+3.1);
         p.x += sin(uTime*0.25 + s*44.0)*0.35;
         p.z += cos(uTime*0.21 + s*52.0)*0.35;
-        p.y += 0.35 + 0.25*sin(uTime*0.4 + s*20.0);
-        vA = 0.16 + 0.14*sin(uTime*1.3 + s*70.0);
-      } else {                    /* spores drifting off moss/roots */
-        w = 0.035 + 0.04*h(s+3.1);
+        p.y += 0.40 + 0.30*sin(uTime*0.4 + s*20.0);
+        vA = 0.35 + 0.20*sin(uTime*1.3 + s*70.0);
+      } else if(uKind < 4.5){     /* spores drifting off moss/roots */
+        sz = 2.0 + 2.0*h(s+3.1);
         t = fract(uTime*0.03*(0.6 + h(s)) + s);
-        p.y += t*1.3 + 0.08;
+        p.y += t*1.4 + 0.08;
         p.x += sin(uTime*0.35 + s*25.0)*0.3;
         p.z += cos(uTime*0.3 + s*29.0)*0.3;
-        vA = 0.35*smoothstep(0.0,0.08,t)*(1.0-t);
+        vA = 0.55*smoothstep(0.0,0.08,t)*(1.0-t);
+      } else if(uKind < 5.5){     /* rain streaks */
+        sz = 3.5 + 2.5*h(s+3.1);
+        t = fract(uTime*(0.60 + 0.20*h(s)) + s);
+        p.y += (1.0-t)*7.0 - 0.3;
+        p.x += -t*2.8 + sin(uTime*0.4 + s*22.0)*0.1;
+        p.z += -t*1.8 + cos(uTime*0.35 + s*28.0)*0.1;
+        vA = 0.65 * smoothstep(0.0, 0.05, t) * smoothstep(1.0, 0.92, t);
+      } else if(uKind < 6.5){     /* volcanic ashfall / cinders */
+        sz = 2.0 + 2.5*h(s+3.1);
+        t = fract(uTime*(0.08 + 0.04*h(s)) + s);
+        p.y += (1.0-t)*5.0;
+        p.x += sin(uTime*0.45 + s*35.0)*0.45 + (t-0.5)*1.8;
+        p.z += cos(uTime*0.4 + s*42.0)*0.45 + (t-0.5)*1.2;
+        vA = 0.65 * smoothstep(0.0, 0.06, t) * smoothstep(1.0, 0.92, t);
+      } else {                    /* default ambient fallback */
+        sz = 2.0 + 2.0*h(s+3.1);
+        p.x += sin(uTime*0.2 + s*17.0)*0.2;
+        p.z += cos(uTime*0.2 + s*23.0)*0.2;
+        p.y += 0.2*sin(uTime*0.25 + s*31.0);
+        vA = 0.25;
       }
       vA *= uRamp;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-      gl_PointSize = max(w * uZoom, 1.2);
+      gl_PointSize = clamp(sz * (uZoom * 0.1), 1.5, 9.0);
     }`,
   fragmentShader:`
-    precision mediump float;
-    uniform vec3 uColor;
+    precision highp float;
     varying float vA;
+    varying float vKind;
+    varying vec3 vColor;
     void main(){
-      float d = length(gl_PointCoord - 0.5);
-      float a = smoothstep(0.5, 0.12, d) * vA;
-      gl_FragColor = vec4(uColor * (1.0 + 0.8*smoothstep(0.3, 0.0, d)), a);
+      vec2 uv = gl_PointCoord - 0.5;
+      float d;
+      if(vKind > 4.5 && vKind < 5.5){
+        uv.x += uv.y * 0.40;
+        d = length(vec2(uv.x * 4.0, uv.y * 0.8));
+      } else {
+        d = length(uv);
+      }
+      if(d > 0.5) discard;
+      float a;
+      vec3 col = vColor;
+      if(vKind < 1.5){
+        a = smoothstep(0.5, 0.05, d) * vA;
+        col = mix(vec3(1.0, 0.96, 0.72), vColor * 1.4, smoothstep(0.0, 0.42, d));
+      } else if(vKind > 1.5 && vKind < 2.5){
+        a = smoothstep(0.5, 0.10, d) * vA;
+        col = mix(vec3(0.88, 0.94, 1.0), vColor, 0.15);
+      } else if(vKind > 5.5 && vKind < 6.5){
+        a = smoothstep(0.5, 0.12, d) * vA;
+      } else {
+        a = smoothstep(0.5, 0.0, d) * vA;
+      }
+      if(a < 0.01) discard;
+      gl_FragColor = vec4(col, a);
     }`
 });
 partMat.toneMapped = false;
+
+/* rolling ground fog / low-lying mist layer shader */
+export const fogPlaneMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.NormalBlending,
+  uniforms: {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(0xdde4db) },
+    uDensity: { value: 0.24 },
+    uSpeed: { value: 0.035 },
+    uScale: { value: 0.12 }
+  },
+  vertexShader: `
+    varying vec2 vWorldPos;
+    varying vec2 vUv;
+    void main(){
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorldPos = wp.xz;
+      vUv = uv;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: `
+    precision highp float;
+    varying vec2 vWorldPos;
+    varying vec2 vUv;
+    uniform float uTime, uDensity, uSpeed, uScale;
+    uniform vec3 uColor;
+
+    float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+    float vnoise(vec2 p){
+      vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+      float a=h21(i), b=h21(i+vec2(1,0)), c=h21(i+vec2(0,1)), d=h21(i+vec2(1,1));
+      return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
+    }
+    float fbm(vec2 p){
+      float v=0.0, a=0.5;
+      for(int i=0;i<4;i++){ v+=a*vnoise(p); p=p*2.03+11.7; a*=0.5; }
+      return v;
+    }
+
+    void main(){
+      vec2 wp = vWorldPos * uScale;
+      // Multi-layer wind drift: sweeping diagonal highland breeze + micro swirls
+      vec2 drift1 = vec2(uTime * uSpeed * 1.6, uTime * uSpeed * 0.95);
+      vec2 drift2 = vec2(-uTime * uSpeed * 0.6, uTime * uSpeed * 1.3) + vec2(17.3, 42.1);
+      vec2 drift3 = vec2(uTime * uSpeed * 0.35, -uTime * uSpeed * 0.45) + vec2(83.7, 29.4);
+      
+      // Domain warping for organic wisps and drifting fingers of fog
+      float q1 = fbm(wp * 0.85 + drift1);
+      float q2 = fbm(wp * 0.85 + drift2);
+      vec2 warped = wp + vec2(q1, q2) * 1.8;
+
+      float n1 = fbm(warped + drift1 * 0.5);
+      float n2 = fbm(warped * 1.6 - drift2 * 0.7);
+      float n3 = fbm(warped * 2.8 + drift3);
+
+      float rawVal = n1 * 0.55 + n2 * 0.32 + n3 * 0.13;
+
+      // High-contrast threshold: wide clear areas (rawVal < 0.48 are 100% transparent),
+      // rolling mist banks form above 0.48 with wispy feathering up to 0.72.
+      float patchMask = smoothstep(0.48, 0.72, rawVal);
+
+      // Subtle edge wisps within the fog patches
+      float wisps = 0.85 + 0.15 * sin(uTime * 0.4 + n2 * 8.0);
+
+      // Edge fade against the outer perimeter of the plane so it blends smoothly into scene fog
+      float edgeX = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
+      float edgeY = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
+      float edgeFade = edgeX * edgeY;
+
+      float alpha = patchMask * uDensity * wisps * edgeFade;
+      if (alpha < 0.003) discard;
+      gl_FragColor = vec4(uColor, alpha);
+    }
+  `
+});
+fogPlaneMat.toneMapped = false;
 
 /* ---------------- Post-Processing Pipeline Setup ---------------- */
 export const POST = (()=>{
@@ -803,8 +1067,8 @@ export const POST = (()=>{
     }`, depthTest:false, depthWrite:false });
   const fin = new THREE.ShaderMaterial({ uniforms:{
       tS:{value:null}, tB:{value:null}, uRes:{value:new THREE.Vector2(1,1)},
-      uTime:{value:0}, uBloom:{value:0.9}, uTilt:{value:1.0} }, vertexShader:V, fragmentShader:`
-    varying vec2 vUv; uniform sampler2D tS, tB; uniform vec2 uRes; uniform float uTime, uBloom, uTilt;
+      uTime:{value:0}, uBloom:{value:0.9}, uTilt:{value:1.0}, uGrain:{value:1.0} }, vertexShader:V, fragmentShader:`
+    varying vec2 vUv; uniform sampler2D tS, tB; uniform vec2 uRes; uniform float uTime, uBloom, uTilt, uGrain;
     void main(){
       vec2 px = 1.0 / uRes;
       vec3 col = texture2D(tS, vUv).rgb;
@@ -825,7 +1089,7 @@ export const POST = (()=>{
       float vg = smoothstep(1.35, 0.5, length(vUv - 0.5) * 1.55);
       col *= mix(0.85, 1.02, vg);
       float gr = fract(sin(dot(gl_FragCoord.xy + mod(uTime,10.0)*37.0, vec2(12.9898,78.233))) * 43758.5453);
-      col += (gr - 0.5) * 0.012;
+      col += (gr - 0.5) * 0.012 * uGrain;
       col = pow(max(col, 0.0), vec3(0.4545));
       gl_FragColor = vec4(col, 1.0);
     }`, depthTest:false, depthWrite:false });

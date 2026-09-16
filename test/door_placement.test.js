@@ -80,4 +80,32 @@ describe('Door placement invariants', () => {
     // the remainder are runs clamped by the map boundary.
     expect(s.unsealed.length / s.arches).toBeLessThan(0.01);
   });
+
+  it('spawns room monsters with a buffer away from doorways', () => {
+    for (const themeKey of DUNGEON_THEMES) {
+      for (const seed of SEEDS) {
+        const d = generateDungeon(seed, { themeKey, roomCount: 16 });
+        if (!d || !d.spawns || !d.doorway) continue;
+
+        const { W, H, doorway, spawns } = d;
+        const doorwayCoords = [];
+        for (let y = 0; y < H; y++) {
+          for (let x = 0; x < W; x++) {
+            if (doorway[y * W + x]) doorwayCoords.push({ x, y });
+          }
+        }
+        if (!doorwayCoords.length) continue;
+
+        for (const sp of spawns) {
+          let minDist = 999;
+          for (const dw of doorwayCoords) {
+            const dist = Math.hypot(sp.x - dw.x, sp.y - dw.y);
+            if (dist < minDist) minDist = dist;
+          }
+          // Spawns must never be directly on a doorway tile (dist > 0)
+          expect(minDist).toBeGreaterThan(0.99);
+        }
+      }
+    }
+  });
 });

@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sprite Sheet Viewer</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    background: #1a1a1a; color: #ddd; font-family: system-ui, sans-serif;
+  }
+  #dropzone {
+    border: 2px dashed #555; border-radius: 8px; padding: 40px;
+    text-align: center; color: #888; cursor: pointer; max-width: 480px;
+  }
+  #dropzone.drag { border-color: #6cf; color: #6cf; }
+  #stage {
+    background:
+      linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    image-rendering: pixelated;
+    display: none;
+  }
+  #controls { display: none; flex-direction: column; gap: 10px; width: 420px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row label { width: 110px; font-size: 13px; color: #aaa; }
+  .row input[type=number] { width: 70px; }
+  .row input[type=range] { flex: 1; }
+  button { background: #333; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 6px 14px; cursor: pointer; }
+  button:hover { background: #444; }
+  #info { font-size: 12px; color: #888; }
+  #scaleval, #fpsval { color: #ddd; width: 32px; text-align: right; }
+</style>
+</head>
+<body>
+
+<div id="dropzone">Drag &amp; drop a sprite sheet PNG here<br>(or click to browse)<br><input type="file" id="fileInput" accept="image/png" style="display:none"></div>
+<canvas id="stage"></canvas>
+
+<div id="controls">
+  <div class="row">
+    <label for="frameW">Frame width</label>
+    <input type="number" id="frameW" value="64" min="1">
+    <label for="frameH" style="width:auto;margin-left:8px">height</label>
+    <input type="number" id="frameH" value="64" min="1">
+  </div>
+  <div class="row">
+    <label for="fps">FPS</label>
+    <input type="range" id="fps" min="1" max="48" value="16">
+    <span id="fpsval">16</span>
+  </div>
+  <div class="row">
+    <label for="scale">Scale</label>
+    <input type="range" id="scale" min="1" max="12" value="6">
+    <span id="scaleval">6x</span>
+  </div>
+  <div class="row">
+    <button id="playBtn">Pause</button>
+    <button id="loadAnother">Load another</button>
+  </div>
+  <div id="info"></div>
+</div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const stage = document.getElementById('stage');
+const ctx = stage.getContext('2d');
+const controls = document.getElementById('controls');
+const frameWInput = document.getElementById('frameW');
+const frameHInput = document.getElementById('frameH');
+const fpsInput = document.getElementById('fps');
+const fpsval = document.getElementById('fpsval');
+const scaleInput = document.getElementById('scale');
+const scaleval = document.getElementById('scaleval');
+const playBtn = document.getElementById('playBtn');
+const info = document.getElementById('info');
+
+let img = null;
+let frameCount = 1;
+let currentFrame = 0;
+let playing = true;
+let lastTime = 0;
+let acc = 0;
+
+function loadFile(file) {
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    img = image;
+    dropzone.style.display = 'none';
+    stage.style.display = 'block';
+    controls.style.display = 'flex';
+    // Guess frame width from height (sheets here are always a single row,
+    // square frames), fall back to whatever's already in the box.
+    const guessedFrameW = image.height;
+    frameWInput.value = guessedFrameW;
+    frameHInput.value = image.height;
+    recompute();
+    currentFrame = 0;
+    playing = true;
+    playBtn.textContent = 'Pause';
+    requestAnimationFrame(tick);
+  };
+  image.src = url;
+}
+
+function recompute() {
+  const fw = parseInt(frameWInput.value) || 1;
+  const fh = parseInt(frameHInput.value) || 1;
+  frameCount = Math.max(1, Math.round(img.width / fw));
+  const scale = parseInt(scaleInput.value);
+  stage.width = fw * scale;
+  stage.height = fh * scale;
+  info.textContent = `${img.width}x${img.height} sheet -> ${frameCount} frames @ ${fw}x${fh}`;
+  draw();
+}
+
+function draw() {
+  if (!img) return;
+  const fw = parseInt(frameWInput.value) || 1;
+  const fh = parseInt(frameHInput.value) || 1;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, stage.width, stage.height);
+  ctx.drawImage(img, currentFrame * fw, 0, fw, fh, 0, 0, stage.width, stage.height);
+}
+
+function tick(t) {
+  if (!lastTime) lastTime = t;
+  const dt = t - lastTime;
+  lastTime = t;
+  if (playing) {
+    acc += dt;
+    const fps = parseInt(fpsInput.value);
+    const frameDur = 1000 / fps;
+    while (acc >= frameDur) {
+      acc -= frameDur;
+      currentFrame = (currentFrame + 1) % frameCount;
+    }
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+
+['dragenter', 'dragover'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(evt =>
+  dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('drag'); }));
+dropzone.addEventListener('drop', e => {
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+});
+
+frameWInput.addEventListener('input', recompute);
+frameHInput.addEventListener('input', recompute);
+scaleInput.addEventListener('input', () => { scaleval.textContent = scaleInput.value + 'x'; recompute(); });
+fpsInput.addEventListener('input', () => { fpsval.textContent = fpsInput.value; });
+playBtn.addEventListener('click', () => {
+  playing = !playing;
+  playBtn.textContent = playing ? 'Pause' : 'Play';
+});
+document.getElementById('loadAnother').addEventListener('click', () => {
+  stage.style.display = 'none';
+  controls.style.display = 'none';
+  dropzone.style.display = 'block';
+  img = null;
+});
+</script>
+
+</body>
+</html>

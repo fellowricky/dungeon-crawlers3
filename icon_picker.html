@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Icon Forge — review</title>
+<style>
+:root{
+  --bg:#0d1013; --panel:#151a20; --panel2:#1b222a; --line:#2a333f;
+  --brass:#b99d63; --brass-dim:#7d6a45; --text:#d0d4d8; --dim:#7a8594;
+  --good:#58b76e; --bad:#c8563e;
+  --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.5 system-ui,sans-serif}
+header{position:sticky;top:0;z-index:10;background:var(--panel);border-bottom:1px solid var(--line);
+  padding:10px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+h1{font-size:14px;margin:0;letter-spacing:.1em;text-transform:uppercase;color:var(--brass)}
+.stat{font:12px var(--mono);color:var(--dim)}
+.stat b{color:var(--text)}
+button,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);
+  padding:5px 11px;border-radius:3px;font-size:12px;cursor:pointer}
+button:hover{border-color:var(--brass-dim)}
+button.on{background:var(--brass);color:#12100a;border-color:var(--brass);font-weight:600}
+#save{margin-left:auto}
+.saved{color:var(--good);font:12px var(--mono)}
+
+.row{display:grid;grid-template-columns:180px 84px repeat(4,1fr);gap:12px;
+  padding:14px 16px;border-bottom:1px solid var(--line);align-items:start}
+.row.done{background:rgba(88,183,110,.04)}
+.row.regen{background:rgba(200,86,62,.06)}
+.meta .name{font-weight:600}
+.meta .key{font:11px var(--mono);color:var(--dim);word-break:break-all}
+.meta .cat{display:inline-block;margin-top:4px;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--brass-dim);border:1px solid var(--line);padding:1px 5px;border-radius:2px}
+.meta .fresh{display:inline-block;margin-top:4px;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:#12100a;background:var(--brass);padding:1px 6px;border-radius:2px}
+.row.fresh-row{background:rgba(185,157,99,.05)}
+.current{text-align:center}
+.current .emoji{font-size:34px;line-height:1.2}
+.current .lab{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+
+.variant{border:2px solid transparent;border-radius:4px;padding:6px;cursor:pointer;
+  background:var(--panel);transition:border-color .1s}
+.variant:hover{border-color:var(--brass-dim)}
+.variant.sel{border-color:var(--brass);background:#1d2530}
+.variant img.art{width:100%;display:block;image-rendering:pixelated;border-radius:2px;background:#fff}
+.sizes{display:flex;gap:8px;align-items:flex-end;justify-content:center;margin-top:7px;
+  padding-top:7px;border-top:1px solid var(--line)}
+.sizes figure{margin:0;text-align:center}
+.sizes canvas{image-rendering:pixelated;display:block;background:#12161a;
+  border:1px solid var(--brass-dim);border-radius:2px}
+.sizes figcaption{font:9px var(--mono);color:var(--dim);margin-top:2px}
+.acts{grid-column:1/-1;display:flex;gap:8px;padding-top:4px;align-items:flex-start}
+.note{flex:1;min-width:0}
+.note textarea{width:100%;min-height:34px;resize:vertical;background:var(--panel);
+  color:var(--text);border:1px solid var(--line);border-radius:3px;padding:6px 8px;
+  font:12px var(--mono);line-height:1.45}
+.note textarea:focus{outline:none;border-color:var(--brass-dim)}
+.note textarea.has{border-color:var(--brass-dim);background:#171d24}
+.note .hint{font-size:10px;color:var(--dim);margin-top:3px}
+.note .warn{color:var(--bad)}
+.note .edited{color:var(--brass)}
+.note .tail{margin-top:4px}
+.note .tail summary{font-size:10px;color:var(--dim);cursor:pointer}
+.note .tail div{font:10px var(--mono);color:var(--dim);line-height:1.5;
+  padding:6px 8px;margin-top:4px;background:var(--panel);border:1px solid var(--line);border-radius:3px}
+.empty{padding:40px;text-align:center;color:var(--dim)}
+</style></head><body>
+
+<header>
+  <h1>Icon Forge</h1>
+  <span class="stat">chosen <b id="nDone">0</b> / <b id="nTotal">0</b>
+    &nbsp;·&nbsp; undecided <b id="nTodo">0</b>
+    &nbsp;·&nbsp; awaiting regen <b id="nRegen">0</b></span>
+  <select id="fCat"><option value="">all categories</option></select>
+  <button id="fTodo">show undecided only</button>
+  <span id="saveState" class="saved"></span>
+  <button id="save">Save picks</button>
+</header>
+<div id="list"></div>
+
+<script type="module">
+const $ = s => document.querySelector(s);
+const listEl = $('#list');
+
+const [manifest, index, picks] = await Promise.all([
+  fetch('/tools/icon_forge/icons.json').then(r => r.json()),
+  fetch('/tools/icon_forge/raw/index.json').then(r => r.json()),
+  fetch('/api/icon-picks').then(r => r.json()).catch(() => ({})),
+]);
+
+// Only show icons that actually have generated variants on disk.
+const byId = new Map(manifest.map(i => [i.id, i]));
+const rows = Object.keys(index).filter(id => byId.has(id))
+  .map(id => ({ ...byId.get(id), files: index[id] }))
+  .sort((a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label));
+
+/* `touched` is the set of ids changed in THIS page session. Saves send only
+   those. Sending every row instead lets a tab that has been open a while
+   overwrite decisions made on disk since it loaded -- which is how a batch of
+   already-cleared regen flags came back from the dead. The server merges, so
+   anything not sent is left exactly as it is. */
+const state = { picks: { ...picks }, cat: '', todoOnly: false, dirty: false,
+                touched: new Set() };
+const touch = id => { state.touched.add(id); state.dirty = true; };
+
+for (const c of [...new Set(rows.map(r => r.category))].sort())
+  $('#fCat').insertAdjacentHTML('beforeend', '<option value="' + c + '">' + c + '</option>');
+
+/* The honest preview. Judging a 512px render is exactly how a glyph that is a
+   speck at 20px slips through, so every variant is also drawn at the sizes it
+   will really be used at -- cropped to its ink bbox first, matching what
+   crop_fill.py does downstream, so what you approve is what you get. */
+function drawTrueSize(img, canvas, size) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) return;
+  const off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  const octx = off.getContext('2d', { willReadFrequently: true });
+  octx.drawImage(img, 0, 0);
+  const d = octx.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = 0, y1 = 0, found = false;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    // distance from white; matches the >18 ink threshold used in post
+    if (255 - Math.min(d[i], d[i + 1], d[i + 2]) > 18) {
+      found = true;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (!found) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
+  const side = Math.max(x1 - x0, y1 - y0) + 1;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const ctx = canvas.getContext('2d');
+  canvas.width = size; canvas.height = size;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, size, size);
+  ctx.drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, size, size);
+}
+
+/* The recipe runs at CFG 1.0, which makes the negative prompt inert -- and a
+   negation inside the positive prompt is worse than useless, because the token
+   is still there ("not a skull" reliably yields skulls). The field therefore has
+   to describe what the icon SHOULD be. Flag phrasings that will not survive. */
+const NEGATIONS = /\b(no|not|non|never|avoid|without|remove|instead of|don'?t|doesn'?t|shouldn'?t|less|stop)\b/i;
+
+/* The box is prefilled with the exact prompt that produced these variants, so a
+   regeneration is a direct edit rather than a note someone has to interpret.
+   Only the description and palette are editable -- the style tail is identical
+   on every icon and is shown read-only rather than retyped 349 times. */
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const CORE_RE = /THE ICON: (.*?)\. Palette: ([^.]*)\./s;
+function coreOf(prompt) {
+  const m = prompt.match(CORE_RE);
+  return m ? m[1].trim() + '\nPalette: ' + m[2].trim() : '';
+}
+function tailOf(prompt) {
+  const m = prompt.match(CORE_RE);
+  return m ? prompt.slice(m.index + m[0].length).trim() : '';
+}
+function noteHint(note, original) {
+  if (note && NEGATIONS.test(note))
+    return '<div class="hint warn">Reads as a negation — at CFG 1.0 that will not take. ' +
+      'Say what it SHOULD be instead.</div>';
+  if (note && note.trim() !== original.trim())
+    return '<div class="hint edited">Edited — this exact text will be used on regeneration.</div>';
+  return '<div class="hint">The prompt that produced these. Edit it to steer a regeneration.</div>';
+}
+
+function render() {
+  // Undecided means no variant chosen and not awaiting a regeneration. A row
+  // carrying only an edited prompt, or one that has just come back from a
+  // regeneration, still needs a decision and must show up here.
+  const undecided = r => {
+    const p = state.picks[r.id];
+    return !(p && (p.file || p.regen));
+  };
+  const visible = rows.filter(r =>
+    (!state.cat || r.category === state.cat) &&
+    (!state.todoOnly || undecided(r)));
+  $('#nTotal').textContent = rows.length;
+  $('#nDone').textContent = Object.values(state.picks).filter(p => p && p.file).length;
+  $('#nRegen').textContent = Object.values(state.picks).filter(p => p && p.regen).length;
+  $('#nTodo').textContent = rows.filter(undecided).length;
+
+  if (!visible.length) { listEl.innerHTML = '<div class="empty">Nothing to show.</div>'; return; }
+
+  listEl.innerHTML = visible.map(r => {
+    const p = state.picks[r.id] || {};
+    const cls = p.regen ? 'regen' : (p.file ? 'done' : (p.regenerated ? 'fresh-row' : ''));
+    const vars = r.files.map((f, i) =>
+      '<div class="variant ' + (p.file === f ? 'sel' : '') + '" data-id="' + r.id + '" data-file="' + f + '">' +
+        '<img class="art" src="/tools/icon_forge/raw/' + f + '" alt="variant ' + (i + 1) + '">' +
+        '<div class="sizes">' +
+          '<figure><canvas data-size="32"></canvas><figcaption>32</figcaption></figure>' +
+          '<figure><canvas data-size="20"></canvas><figcaption>20</figcaption></figure>' +
+        '</div>' +
+      '</div>').join('');
+    return '<div class="row ' + cls + '" data-row="' + r.id + '">' +
+      '<div class="meta">' +
+        '<div class="name">' + r.label + '</div>' +
+        '<div class="key">' + r.key + '</div>' +
+        '<div class="cat">' + r.category + '</div>' +
+        (p.regenerated ? '<div class="fresh">regenerated</div>' : '') +
+      '</div>' +
+      '<div class="current">' +
+        '<div class="emoji">' + (r.current || '—') + '</div>' +
+        '<div class="lab">in game</div>' +
+      '</div>' +
+      vars +
+      '<div class="acts">' +
+        '<button class="regen ' + (p.regen ? 'on' : '') + '" data-id="' + r.id + '">' +
+          (p.regen ? '✕ marked for regen' : 'Regenerate this one') + '</button>' +
+        '<button class="clear" data-id="' + r.id + '">Clear</button>' +
+        '<div class="note">' +
+          '<textarea data-id="' + r.id + '" rows="3" class="' +
+            (p.note && p.note.trim() !== coreOf(r.prompt).trim() ? 'has' : '') + '">' +
+            esc(p.note || coreOf(r.prompt)) + '</textarea>' +
+          noteHint(p.note, coreOf(r.prompt)) +
+          '<details class="tail"><summary>style tail (fixed on every icon)</summary>' +
+            '<div>' + esc(tailOf(r.prompt)) + '</div></details>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  for (const v of listEl.querySelectorAll('.variant')) {
+    const img = v.querySelector('img');
+    const paint = () => v.querySelectorAll('canvas')
+      .forEach(c => drawTrueSize(img, c, +c.dataset.size));
+    if (img.complete) paint(); else img.addEventListener('load', paint);
+  }
+}
+
+/* Provenance survives every other action: an edited prompt and the record that
+   an icon was regenerated must not be destroyed by picking a variant or toggling
+   the regen flag. Only Clear discards them. */
+const keepable = p => ({
+  ...(p.note ? { note: p.note } : {}),
+  ...(p.regenerated ? { regenerated: true } : {}),
+});
+listEl.addEventListener('input', e => {
+  const t = e.target.closest('textarea[data-id]');
+  if (!t) return;
+  const row = rows.find(r => r.id === t.dataset.id);
+  const original = coreOf(row.prompt);
+  const cur = state.picks[t.dataset.id] || {};
+  const note = t.value.trim();
+  // Only an actual edit is stored; leaving the prefill untouched is not a note.
+  if (note && note !== original.trim()) cur.note = note; else delete cur.note;
+  state.picks[t.dataset.id] = cur;
+  touch(t.dataset.id);
+  // Update in place -- a re-render here would blur the field mid-sentence.
+  t.classList.toggle('has', !!cur.note);
+  const hint = t.parentElement.querySelector('.hint');
+  if (hint) hint.outerHTML = noteHint(cur.note, original);
+});
+
+listEl.addEventListener('click', e => {
+  const v = e.target.closest('.variant');
+  if (v) {
+    const cur = state.picks[v.dataset.id] || {};
+    state.picks[v.dataset.id] = { ...keepable(cur), file: v.dataset.file };
+    touch(v.dataset.id);
+    return render();
+  }
+  const rb = e.target.closest('button.regen');
+  if (rb) {
+    const cur = state.picks[rb.dataset.id] || {};
+    const keep = keepable(cur);
+    state.picks[rb.dataset.id] = cur.regen ? keep : { ...keep, regen: true };
+    touch(rb.dataset.id);
+    return render();
+  }
+  const cb = e.target.closest('button.clear');
+  if (cb) {
+    delete state.picks[cb.dataset.id];
+    touch(cb.dataset.id);
+    return render();
+  }
+});
+
+$('#fCat').addEventListener('change', e => { state.cat = e.target.value; render(); });
+$('#fTodo').addEventListener('click', e => {
+  state.todoOnly = !state.todoOnly;
+  e.target.classList.toggle('on', state.todoOnly);
+  render();
+});
+$('#save').addEventListener('click', async () => {
+  const payload = {};
+  for (const id of state.touched) {
+    const p = state.picks[id];
+    payload[id] = (p && (p.file || p.regen || p.note || p.regenerated)) ? p : null;
+  }
+  if (!Object.keys(payload).length) {
+    $('#saveState').textContent = 'nothing changed';
+    setTimeout(() => { $('#saveState').textContent = ''; }, 2000);
+    return;
+  }
+  const res = await fetch('/api/icon-picks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).then(r => r.json());
+  $('#saveState').textContent = res.ok
+    ? 'saved ' + Object.keys(payload).length + ' change(s)' : 'save failed';
+  if (res.ok) state.touched.clear();
+  state.dirty = false;
+  setTimeout(() => { $('#saveState').textContent = ''; }, 2500);
+});
+addEventListener('beforeunload', e => { if (state.dirty) e.preventDefault(); });
+
+render();
+</script>
+</body></html>

@@ -121,7 +121,7 @@ function storyHTML(quest) {
 }
 
 function rewardsHTML(game, quest, summary) {
-  const real = game.heroes.filter(h => !h.temp);
+  const real = game.heroes.filter(h => !h.temp && !h.companion);
   const xpEach = Math.max(1, Math.round((quest.rewardXp || 0) / Math.max(1, real.length)));
   let html = '';
   if (quest.rewardGold) html += `<div class="rs-line">🪙 +${fmtNum(quest.rewardGold)} gold</div>`;

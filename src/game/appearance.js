@@ -306,7 +306,7 @@ export function recolorPixels(d, tintHex, matchLightness = false) {
 
 /** Layers recoloured as part of the character rather than as dyed equipment. */
 const CHARACTER_LAYERS = new Set([
-  'body', 'head', 'ears', 'horns', 'eyes',
+  'body', 'head', 'ears', 'horns', 'horns_behind', 'eyes',
   'hairBehind', 'hairMid', 'hair', 'facialHair',
   'hairExtBehind', 'hairExtMid', 'hairExt'
 ]);
@@ -377,8 +377,8 @@ const RACE_DEFAULTS = {
   halfling:   { head:'',           skinColor:'#f6d0b4', hairColor:'#6b451f', ears:'none',  horns:'none',      facialHair:'none',         eyeColor:'#7a4a20', spriteScaleX:0.82, spriteScaleY:0.82 },
   gnome:      { head:'',           skinColor:'#f6d0b4', hairColor:'#5fc04a', ears:'elven', horns:'none',      facialHair:'none',         eyeColor:'#5aa83a', spriteScaleX:0.88, spriteScaleY:0.88 },
   halforc:    { head:'orc/male',   skinColor:'#8fae7a', hairColor:'#241a12', ears:'none',  horns:'none',      facialHair:'none',         eyeColor:'#a83030', spriteScaleX:1.00, spriteScaleY:1.00 },
-  dragonborn: { head:'lizard/male',skinColor:'#5f9a45', hairColor:'#0d0a08', ears:'dragon',horns:'curl',      facialHair:'none',         eyeColor:'#d8b03a', spriteScaleX:1.00, spriteScaleY:1.00 },
-  tiefling:   { head:'',           skinColor:'#c0182b', hairColor:'#241a12', ears:'elven', horns:'backwards', facialHair:'none',         eyeColor:'#d8b03a', spriteScaleX:1.00, spriteScaleY:1.00 }
+  dragonborn: { head:'lizard/male',skinColor:'#5f9a45', hairColor:'#d2a44e', ears:'dragon',horns:'curled',    facialHair:'none',         eyeColor:'#d8b03a', spriteScaleX:1.00, spriteScaleY:1.00, hornTint:'hair' },
+  tiefling:   { head:'',           skinColor:'#c0182b', hairColor:'#241a12', ears:'elven', horns:'backwards', facialHair:'none',         eyeColor:'#d8b03a', spriteScaleX:1.00, spriteScaleY:1.00, hornTint:'skin' }
 };
 export const getRaceDefaults = raceKey => ({ ...(RACE_DEFAULTS[raceKey] || RACE_DEFAULTS.human) });
 
@@ -408,6 +408,10 @@ function nearest(hex, palette){
 /** Snap a saved hero's colours onto the current palettes. Mutates `visual`. */
 export function migrateVisualColors(visual, raceKey){
   if (!visual) return;
+  /* Saves predating per-race horn tinting carry no `hornTint`; the horn style
+     alone can't identify the race (a dragonborn may wear backswept horns), so
+     take it from the race the hero actually is. */
+  if (!visual.hornTint) visual.hornTint = getRaceDefaults(raceKey).hornTint || 'hair';
   visual.skinColor = nearest(visual.skinColor, skinColorsFor(raceKey));
   visual.hairColor = nearest(visual.hairColor, HAIR_COLORS);
   visual.eyeColor  = nearest(visual.eyeColor, EYE_COLORS);
@@ -505,6 +509,8 @@ export const LAYER_ORDER = [
   'shield_behind',
   'weapon_crystal_behind',
   'weapon_behind',
+  /* the backswept horns' rear half (upstream zPos 7) passes behind the skull */
+  'horns_behind',
   /* long hair falls behind the shoulders — these sheets sit under the body */
   'hairBehind',
   'hairExtBehind',
@@ -554,6 +560,24 @@ const GENDERED_HATS = new Set([
   'helmet/flattop', 'helmet/sugarloaf_simple'
 ]);
 
+/* The `horns` slot doubles as the generic head-appendage slot: it also carries
+   the LPC fins, which live under head/fins/ rather than head/horns/. Old saves
+   store `curl` for what upstream ships as `curled`, so that alias stays. */
+/* Only the backswept sheet ships a rear half; the rest are foreground-only.
+   Upstream has no bg art for climb or hurt (the horns are out of frame in
+   both), so those two are transparent stand-ins to keep the loader quiet. */
+const HORN_BACK_PATHS = {
+  backwards: 'horns/backwards/bg'
+};
+
+const HORN_PATHS = {
+  backwards:  'horns/backwards',
+  curl:       'horns/curled',
+  curled:     'horns/curled',
+  fin:        'fins/fin',
+  fin_short:  'fins/fin_short'
+};
+
 /* Resolve every layer's asset directory for a hero's visual + equipment.
    Values are directories under public/lpc/; append `/${action}.png`. */
 export function buildLayerPaths(visual, equipment = {}) {
@@ -598,7 +622,8 @@ export function buildLayerPaths(visual, equipment = {}) {
       eyes: (isMonster || customHead) ? null : `eyes/human/adult/default`,
       ears: (!isMonster && visual.ears && visual.ears !== 'none'
              && (!customHead || visual.ears === 'dragon')) ? `head/ears/${visual.ears}/adult` : null,
-      horns: (!isMonster && visual.horns && visual.horns !== 'none') ? `head/horns/${visual.horns}` : null,
+      horns: (!isMonster && visual.horns && visual.horns !== 'none' && HORN_PATHS[visual.horns]) ? `head/${HORN_PATHS[visual.horns]}` : null,
+      horns_behind: (!isMonster && visual.horns && HORN_BACK_PATHS[visual.horns]) ? `head/${HORN_BACK_PATHS[visual.horns]}` : null,
       legs: (isMonster || l === 'none') ? null : `legs/${l}/${l === 'armour/plate' ? 'male' : clothG}`,
       torso: (isMonster || t === 'none' || !t) ? null : `torso/${t}/${clothG}`,
       sleeves: (isMonster || !tsleeve) ? null : `torso/${tsleeve}/${clothG}`,
@@ -633,7 +658,16 @@ function tintSlotFor(layer) {
 
 /** Pick the tint colour for a layer (null = draw untinted). */
 export function layerTint(layer, visual, equipment = {}) {
-  if (layer === 'body' || layer === 'head' || layer === 'ears' || layer === 'horns') return visual.skinColor || null;
+  if (layer === 'body' || layer === 'head' || layer === 'ears') return visual.skinColor || null;
+  /* Which swatch drives the keratin is per-race (`hornTint`). A dragonborn's
+     horns follow the hair colour — matching the skin buried their curled horns
+     in their own scalp, and since a beast head draws no hair layer the hair
+     swatch would otherwise do nothing at all for them. A tiefling's horns are
+     an outgrowth of the same red hide and stay on the skin swatch.
+     No colour set = draw the sheet's native keratin. */
+  if (layer === 'horns' || layer === 'horns_behind') {
+    return (visual.hornTint === 'skin' ? visual.skinColor : visual.hairColor) || null;
+  }
   if (HAIR_LAYERS.includes(layer) || HAIR_EXT_LAYERS.includes(layer)) return hairLayerTint(layer, visual);
   if (layer === 'eyes') return visual.eyeColor || null;
   if (layer === 'weapon_crystal' || layer === 'weapon_crystal_behind') {

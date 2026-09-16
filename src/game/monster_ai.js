@@ -12,12 +12,15 @@
 import { SPELLS } from './spells.js';
 import { roll, d as die, d20Roll } from './srd.js';
 import { hasFeature } from './features.js';
-import { AGGRO_RANGE, MONSTER_ATTACK_CD, MONSTER_SPEED_MULT,
+import { AGGRO_RANGE, COMBAT_JOIN_RANGE, MONSTER_ATTACK_CD, MONSTER_SPEED_MULT,
   THREAT_WEIGHT, THREAT_DIST_WEIGHT, THREAT_JITTER, THREAT_HALFLIFE_SEC, TARGET_SWITCH_MARGIN,
   KITE_THREAT_RANGE, KITE_RETREAT_DIST, KITE_COMMIT_SEC,
-  FLANK_OFFSET, PACK_TAGS, PACK_IDS, PACK_FOCUS_BONUS, TIGHT_R } from './constants.js';
-import { hasEffect, getEffectMods, tickEffects as _tickEffects, applyEffect, rollSave, rollSaveDetail } from './conditions.js';
-import { provokesOA } from './turn_engine.js';
+  TACTICAL_BLOODIED_FRAC, TACTICAL_DODGE_BLOODIED_FRAC, TACTICAL_DODGE_PIN_THREATS,
+  FLANK_OFFSET, PACK_TAGS, PACK_IDS, PACK_FOCUS_BONUS, FLOOR } from './constants.js';
+import { hasEffect, getEffectMods, tickEffects as _tickEffects, applyEffect, clearEffect, rollSave, rollSaveDetail } from './conditions.js';
+import { provokesOA, strikeInterval, attackAnimDelay, scheduleFollowUpStrike } from './turn_engine.js';
+import { groundY as groundYAt, easeBodyY } from '../dungeon/elevation.js';
+import { Motion } from './motion_debug.js';
 
 /** Spells accessible to specific boss monsters (by id).  Keys are spell ids
  *  from the SPELLS registry; bosses cast them on alternating attack cycles. */
@@ -47,6 +50,31 @@ const MONSTER_ABILITY_EVERY = 3;
 
 /** Seconds between aura pulses (stench, fetid cloud, gibbering…). */
 const AURA_PULSE_EVERY = 4;
+
+/** Maps an ability definition or spell element to a procedural pixel VFX preset */
+export function getPixelVfxTypeForAbility(ab) {
+  if (!ab) return 'shockwave';
+  const key = (ab.key || '').toLowerCase();
+  const label = (ab.label || ab.name || '').toLowerCase();
+  const elem = (ab.elem || ab.damageType || '').toLowerCase();
+
+  if (key === 'gibbering' || label.includes('gibbering') || elem === 'psychic') {
+    return 'gibbering';
+  }
+  if (key === 'stench' || key === 'fetid_cloud' || label.includes('stench') || label.includes('fetid') || elem === 'poison' || elem === 'acid') {
+    return 'stench';
+  }
+  if (elem === 'fire' || key.includes('fire') || label.includes('fire') || label.includes('flame') || label.includes('burn')) {
+    return 'fire';
+  }
+  if (elem === 'cold' || elem === 'frost' || label.includes('frost') || label.includes('cold') || label.includes('ice') || label.includes('blizzard')) {
+    return 'frost';
+  }
+  if (elem === 'radiant' || elem === 'holy' || label.includes('holy') || label.includes('radiant') || label.includes('sanctuary') || label.includes('bless')) {
+    return 'holy';
+  }
+  return 'shockwave';
+}
 
 /* Boss-side spell resolution. The hero spell registry (spells.js) only knows
  * how to damage MONSTERS, so bosses can't reuse it — this table drives a
@@ -85,6 +113,45 @@ export const MONSTER_MELEE_RANGE = 1.5;
 
 /** Seconds between chase repaths while pursuing a hero. */
 export const MONSTER_REPATH_CD = 0.7;
+
+/* ── Monster combat style (role) ──────────────────────────────────────
+   A lightweight identity used to decide when the Action-spending fallbacks
+   (Dash / Dodge / Disengage) are worth taking, so monsters stop spamming
+   them. Derived from existing data — no data migration — but any monster can
+   override it with `m.data.tactics`
+   ('ranged' | 'skirmisher' | 'brute' | 'tank' | 'berserker' | 'standard'). */
+export function monsterCombatStyle(m) {
+  const d = (m && m.data) || {};
+  if (d.tactics) return d.tactics;
+  if (d.ranged) return 'ranged';
+  if (d.bloodFrenzy) return 'berserker';
+  if (d.martialAdvantage) return 'brute';
+  const spd = d.speed || 0;
+  const hp = d.maxHp || d.hp || 0;
+  if (spd <= 2.8 && hp >= 30) return 'tank';       // slow + sturdy → hold the line
+  if (spd >= 4.2 && hp <= 45) return 'skirmisher'; // fast + fragile → dart in and out
+  return 'standard';
+}
+
+/** How hurt a monster is (0 = full HP … 1 = dead). */
+export function monsterHurtFrac(m) {
+  const d = (m && m.data) || {};
+  const maxHp = d.maxHp || d.hp || 1;
+  return maxHp > 0 ? Math.max(0, Math.min(1, 1 - d.hp / maxHp)) : 1;
+}
+
+/** Whether this monster spends its Action on Disengage, given the situation.
+   Berserkers never break contact; ranged/skirmishers bail out of melee;
+   everything else only retreats once bloodied. Callers still decide whether a
+   break is physically needed (pinned in melee / stepping through a threatened
+   square). */
+export function shouldDisengage(m, { pinned = false, bloodiedFrac = TACTICAL_BLOODIED_FRAC } = {}) {
+  const style = monsterCombatStyle(m);
+  if (style === 'berserker') return false;
+  if (monsterHurtFrac(m) >= bloodiedFrac) return true;
+  if (pinned && (style === 'ranged' || style === 'skirmisher')) return true;
+  return false;
+}
 
 export const monsterAiMethods = {
   /**
@@ -151,7 +218,9 @@ export const monsterAiMethods = {
             const r = ab.aoe || ab.radius || 2.0;
             const targets = alive.filter(h => Math.hypot(h.x - m.x, h.z - m.z) <= r);
             if (targets.length > 0) {
-              this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || 0x88aa66, 0.5);
+              const vfxType = getPixelVfxTypeForAbility(ab);
+              const defColor = vfxType === 'gibbering' ? 0xd946ef : (vfxType === 'stench' ? 0x84cc16 : (vfxType === 'fire' ? 0xf97316 : (vfxType === 'frost' ? 0x38bdf8 : (vfxType === 'holy' ? 0xfacc15 : 0x88aa66))));
+              this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || defColor, 0.65, { type: vfxType });
               for (const h of targets) {
                 this._resolveAbilityOnHero(m, h, ab, ab.label || 'an aura');
               }
@@ -165,19 +234,89 @@ export const monsterAiMethods = {
 
       this.runMonsterBehavior(m, tgt, dt);
 
-      /* Same-side overlap enforcement: if this monster stopped on a cell
-         occupied by another monster, displace it. Only checks monster-monster
-         overlaps (not monster-hero), and only when not actively moving, to
-         avoid disrupting ongoing path traversal. */
-      if (!m.moving && !m.walk) {
+      /* Same-side overlap watchdog: with cell reservation this should never
+         happen, but if it does (a reservation leak), log once and let the
+         next pathing pass sort it out rather than teleporting the body. */
+      if (!m.moving && !m.walk && !m._overlapLogged) {
         const mc = this.cellOf(m.x, m.z);
         if (mc >= 0) {
           const overlap = this.monsters.find(o => o !== m && o.active && o.data.hp > 0 &&
             this.cellOf(o.x, o.z) === mc);
-          if (overlap && this.enforceUnoccupiedCell) this.enforceUnoccupiedCell(m);
+          if (overlap) {
+            m._overlapLogged = true;
+            console.warn('[reservation] monster-monster overlap — possible leak', m.data && m.data.name, mc);
+          }
         }
       }
     }
+  },
+
+  /**
+   * Rooms the party can actually walk to without opening a door.
+   *
+   * A monster sealed behind a shut door cannot be fought and cannot fight back,
+   * so it has no business dragging the party into initiative — but line of sight
+   * alone did not guarantee that. `hasLOS` samples cells along a straight line,
+   * and a sight line that clips the corner of a doorway can miss the door cell
+   * entirely, waking a room the party has no way into. Once one such monster
+   * woke, `activateRoomMonsters` recruited the whole sealed room with it.
+   *
+   * This answers the question properly: flood-fill the floor from the living
+   * party, treating a closed door as a wall, and collect the rooms reached.
+   *
+   * One BFS, cached against door state and party position, instead of a path
+   * query per monster per frame. `_unlockedDoors` only ever grows — doors never
+   * re-lock — so a monster can never become sealed AFTER it woke, which is what
+   * makes gating activation alone sufficient.
+   */
+  _partyReachableRooms(alive) {
+    const D = this.D;
+    if (!D || !D.grid || !D.roomId || !alive || !alive.length) return null;
+
+    let key = (this._unlockedDoors ? this._unlockedDoors.size : -1) + '|';
+    for (const h of alive) key += this.cellOf(h.x, h.z) + ',';
+    if (this._reachRoomCache && this._reachRoomCache.key === key) {
+      return this._reachRoomCache.rooms;
+    }
+
+    const W = D.W, H = D.H, total = W * H;
+    const rooms = new Set();
+    const seen = new Uint8Array(total);
+    const q = [];
+    for (const h of alive) {
+      const c = this.cellOf(h.x, h.z);
+      if (c >= 0 && c < total && !seen[c]) { seen[c] = 1; q.push(c); }
+    }
+
+    const doorCheck = typeof this.isCellDoorClosed === 'function';
+    for (let i = 0; i < q.length; i++) {
+      const c = q[i];
+      const rid = D.roomId[c];
+      if (rid >= 0) rooms.add(rid);
+      const x = c % W, y = (c / W) | 0;
+      for (let d = 0; d < 4; d++) {
+        const nx = x + (d === 0 ? 1 : d === 1 ? -1 : 0);
+        const ny = y + (d === 2 ? 1 : d === 3 ? -1 : 0);
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const n = ny * W + nx;
+        if (seen[n] || D.grid[n] !== FLOOR) continue;
+        /* A shut door is a wall for this purpose — stop, and do not mark it
+           seen, so it still gets reached once it opens. */
+        if (doorCheck && this.isCellDoorClosed(n)) continue;
+        seen[n] = 1; q.push(n);
+      }
+    }
+
+    this._reachRoomCache = { key, rooms };
+    return rooms;
+  },
+
+  /** True if `m` sits in a room the party cannot currently walk to. */
+  _sealedFromParty(m, alive) {
+    if (!m || m.roomId == null || m.roomId < 0) return false;
+    const rooms = this._partyReachableRooms(alive);
+    if (!rooms) return false;          // no map data — never block on ignorance
+    return !rooms.has(m.roomId);
   },
 
   activateRoomMonsters(roomId) {
@@ -201,15 +340,41 @@ export const monsterAiMethods = {
     const known = this.visitedRooms[m.roomId] || this.revealed[this.cellOf(m.x, m.z)];
     if (!known) return false;
 
+    /* Sealed behind a shut door: nobody can reach anybody, so there is no fight
+       to start. Checked before LOS because LOS can slip past a doorway corner
+       and is what let a locked room open combat. */
+    if (this._sealedFromParty(m, alive)) return false;
+
+    /* Mid-fight, a doorway guarantees nothing any more.
+       Two separately-correct fixes compose into a bug here. One widened
+       AGGRO_RANGE to 12 because "the LOS gate (walls/closed doors) now bounds
+       aggro". The other let doors keep opening during combat, to cure the
+       fight-across-a-shut-gate soft-lock (test/combat_door_lock.test.js). But
+       a hero in melee drifts within 2.2 of a gate, updateDoors unlocks it
+       0.6s later, the LOS gate that justified the wide range evaporates, and
+       aggro reaches straight through the empty doorway — where
+       activateRoomMonsters then wakes the ENTIRE next room, including
+       monsters past 12 units who were never seen at all. Repeat at the next
+       gate and a two-room fight becomes a four-room one.
+
+       So once a fight is already running, joining it is on a short leash and
+       is strictly individual. A room still wakes as a unit when the party
+       walks in on it (out of combat, below) — that is the intended feel — and
+       anything actually shot still wakes through damageMonster. What no
+       longer happens is a whole room being recruited because a door happened
+       to open in someone else's fight. */
+    const inFight = typeof this.isCombatActive === 'function' && this.isCombatActive();
+    const range = inFight ? COMBAT_JOIN_RANGE : AGGRO_RANGE;
+
     for (const h of alive) {
-      if (Math.hypot(h.x - m.x, h.z - m.z) < AGGRO_RANGE &&
+      if (Math.hypot(h.x - m.x, h.z - m.z) < range &&
           this.hasLOS(h.x, h.z, m.x, m.z)) {
         m.active = true;
         m.ent.grp.visible = true;
         if (m._spellCycle === undefined) {
           m._spellCycle = Math.floor(Math.random() * 2) + 1;
         }
-        this.activateRoomMonsters(m.roomId);
+        if (!inFight || m.isRival) this.activateRoomMonsters(m.roomId);
         return true;
       }
     }
@@ -347,24 +512,22 @@ export const monsterAiMethods = {
       ? this.isCellOccupiedAny(goal, m)
       : this.isCellOccupiedByAlly(goal, m);
     if (!isOcc) return goal;
-    if (typeof this.getUnoccupiedCellNear === 'function') {
-      return this.getUnoccupiedCellNear(goal, m, 3);
+    if (typeof this.approachCellNear === 'function') {
+      /* ring-1 only — never the target's own cell, never 2+ tiles out. */
+      return this.approachCellNear(goal, m);
     }
     const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
     const gx = goal % W, gz = Math.floor(goal / W);
     const solid = this.D.solidProps;
-    for (let r = 1; r <= 2; r++) {
-      for (let dz = -r; dz <= r; dz++) {
-        for (let dx = -r; dx <= r; dx++) {
-          if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
-          const nx = gx + dx, nz = gz + dz;
-          if (nx < 0 || nx >= W || nz < 0 || nz >= H) continue;
-          const nc = nz * W + nx;
-          if (this.D.grid[nc] !== 1) continue; // not floor
-          if (solid && solid[nc]) continue;
-          if (this.isCellOccupiedByAlly(nc, m)) continue;
-          return nc;
-        }
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dz === 0) continue; // never the target cell itself
+        const nx = gx + dx, nz = gz + dz;
+        if (nx < 0 || nx >= W || nz < 0 || nz >= H) continue;
+        const nc = nz * W + nx;
+        if (this.D.grid[nc] !== 1) continue; // not floor
+        if (solid && solid[nc]) continue;
+        return nc;
       }
     }
     return goal; // fallback: no free cell found
@@ -396,8 +559,46 @@ export const monsterAiMethods = {
    */
   runMonsterBehavior(m, tgt, dt) {
     const dist = m._targetDist ?? Math.hypot(tgt.x - m.x, tgt.z - m.z);
-    /* Initiative gate: off-turn monsters cannot act or move on other creatures' turns. */
-    if (this.initiative && this.initiative.active && !this.isCurrentActor(m)) return;
+    /* Track target movement every frame (all monsters), not just on the
+       monster's own turn — a target only moves while IT is the actor, so a
+       kiting signal must accumulate across turns to be any use. */
+    this.monsterTrackFlee(m, dist, dt);
+    /* Initiative gate: nothing acts outside its own turn.
+
+       Stated POSITIVELY — a monster acts only when it IS the current actor.
+       The old negative form (`active && !isCurrentActor`) left a hole on the
+       one frame a monster wakes: updateInitiative runs BEFORE updateMonsters
+       and reads `_initParticipants`, which only counts monsters already
+       `active`. So on the frame tryActivateMonster flips that flag, no roll
+       has happened yet, `initiative.active` is still false, the gate passes,
+       and the monster takes a free action before anyone rolls initiative.
+       Melee hid it by spending that frame pathing toward the party; a ranged
+       monster just shot, which is why only ranged ones appeared to cheat.
+       Initiative rolls on the very next frame, so holding here costs a frame. */
+    if (!this.isCurrentActor(m)) return;
+
+    /* Incapacitated (asleep, stunned, paralysed, petrified, held): no action,
+       no reaction, no movement — the turn is simply skipped.
+
+       This has to sit HERE, at the one choke point, because the downstream
+       paths only checked it piecemeal. monsterChase, monsterKite, monsterAttack
+       and monsterTacticalAction each tested `incapacitated`, but the two paths
+       reached FIRST from this function did not: tryMonsterCycleAbility just
+       below, and the m.data.ranged branch after it. So a slept archer kept
+       shooting and a slept caster kept casting — only its feet and its melee
+       swing stopped, which is why Sleep looked like it did nothing to them.
+
+       actUsed lets updateInitiative retire the turn on its normal paced-advance
+       path instead of burning the 2.5s stuck-ceiling watchdog (and logging a
+       spurious "Turn stuck" warning) once per sleeper per round. */
+    if (getEffectMods(m).incapacitated) {
+      m.walk = false;
+      m.moving = false;
+      m.actUsed = true;
+      if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+      return;
+    }
+
     m._kiteT = (m._kiteT || 0) - dt;
 
     /* Ability casters (bosses + any monster with cycle abilities): every Nth attack
@@ -433,13 +634,22 @@ export const monsterAiMethods = {
   },
 
   /**
-   * Dash / Dodge decision for a monster whose turn it is.
+   * Dash / Dodge / Disengage decision for a monster whose turn it is.
    *
-   * Fires when the monster cannot reach and attack a target using normal movement
-   * alone (dist > reach + normalMove) or when movement budget is spent.
+   * Fires when the monster cannot reach and attack a target using normal
+   * movement alone, or when its movement budget is spent. Each branch spends
+   * the whole Action, so it only fires when the action genuinely pays off:
+   *   • Disengage — pinned in melee and either bloodied or a squishy kiter.
+   *   • Dash      — only when a double-move lands the monster in strike range
+   *                 (and it is sprinting in or chasing a fleeing target). A
+   *                 Dash at a stationary foe that walking would also reach is
+   *                 just a wasted turn, and a Dash that still can't close the
+   *                 gap is worse than useless.
+   *   • Dodge     — only under real pressure (bloodied or outnumbered) and
+   *                 not for bulky styles that should hold the line.
    *
-   * Returns true when an action was taken and the caller should stand down for
-   * this frame.
+   * Returns true when the frame was handled and the caller should stand down
+   * for this frame.
    */
   monsterTacticalAction(m, tgt, dist, dt) {
     if (!this.initiative || !this.initiative.active || !this.isCurrentActor(m)) return false;
@@ -453,18 +663,16 @@ export const monsterAiMethods = {
     const hasFullMove = (m.moveLeft == null || m.moveLeft >= speedCells * 0.85) && (!m.path || m.pathI >= m.path.length);
 
     /* A) DISENGAGE CHECK: ONLY at turn start (hasn't moved yet) if monster started in melee threat
-       AND is severely bloodied (<35% HP) or a squishy ranged caster. */
+       AND the monster would rather not eat the hit — bloodied, or a squishy ranged/skirmisher. */
     const threatDist = Math.hypot(tgt.x - m.x, tgt.z - m.z);
     if (hasFullMove && threatDist <= MONSTER_MELEE_RANGE + 0.3 && !m.disengageActive) {
       const pinnedBy = this.heroes.filter(h => h.data.hp > 0 &&
         Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3).length;
-      const bloodied = m.data.hp <= m.data.maxHp * 0.35;
-      const squishyRanged = m.data.ranged && pinnedBy > 0;
-      if (pinnedBy > 0 && (bloodied || squishyRanged) && this.takeCommonAction(m, 'disengage')) {
+      if (pinnedBy > 0 && shouldDisengage(m, { pinned: true }) && this.takeCommonAction(m, 'disengage')) {
         const threats = this.heroes.filter(h => h.data.hp > 0 && Math.hypot(h.x - m.x, h.z - m.z) <= 3.5);
         const fleePath = this.findFleePath(m, threats, m.moveLeft || speedCells, { avoidClosedDoors: true });
         if (fleePath) {
-          m.path = fleePath; m.pathI = 0; m.repathT = MONSTER_REPATH_CD; m._stuckT = 0;
+          this.setEntityPath(m, fleePath); m.repathT = MONSTER_REPATH_CD; m._stuckT = 0;
           const mods = getEffectMods(m);
           let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
           m.walk = this.moveStep(m, spd, dt || 0.016);
@@ -476,29 +684,89 @@ export const monsterAiMethods = {
       }
     }
 
-    /* B) DASH CHECK: ONLY at turn start when target is beyond normal move + reach.
-       If target IS reachable within normal movement, Dash is strictly forbidden! */
-    const needsDash = hasFullMove && dist > (reach + speedCells);
-
-    if (needsDash) {
-      const route = this.findPath(this.cellOf(m.x, m.z), this.cellOf(tgt.x, tgt.z), { avoidClosedDoors: true });
-      if (route && this.takeCommonAction(m, 'dash')) {
-        m.path = route; m.pathI = 0; m.repathT = MONSTER_REPATH_CD; m._stuckT = 0;
-        const mods = getEffectMods(m);
-        let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
-        m.walk = this.moveStep(m, spd, dt || 0.016);
-        m.moving = m.walk;
-        return true;
+    /* B) DASH CHECK: ONLY at turn start, and ONLY when a double-move genuinely
+       lands the monster in strike range. Spending the Action to Dash at a
+       stationary target is pointless — walking reaches it just as fast — so
+       Dash is reserved for closing the gap in one go, or chasing a fleeing
+       foe. If the target is farther than a double move, Dash cannot help this
+       turn: walk instead and keep the Action. */
+    if (hasFullMove) {
+      let goal = this.cellOf(tgt.x, tgt.z);
+      if (typeof this.approachCellNear === 'function') goal = this.approachCellNear(goal, m);
+      const route = this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m });
+      if (route) {
+        const travel = Math.max(0, route.length - 1);
+        const closesNow = travel > speedCells && travel <= 2 * speedCells;
+        const style = monsterCombatStyle(m);
+        const worthIt = closesNow &&
+          (this.monsterTargetFleeing(m) || style === 'skirmisher' || style === 'berserker');
+        if (worthIt && this.takeCommonAction(m, 'dash')) {
+          this.setEntityPath(m, route); m.repathT = MONSTER_REPATH_CD; m._stuckT = 0;
+          const mods = getEffectMods(m);
+          let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
+          m.walk = this.moveStep(m, spd, dt || 0.016);
+          m.moving = m.walk;
+          return true;
+        }
       }
     }
 
-    /* C) DODGE CHECK: out of movement budget and no route available */
-    if ((m.moveLeft || 0) <= 0 && (!m.path || m.pathI >= m.path.length) && this.takeCommonAction(m, 'dodge')) {
+    /* C) DODGE CHECK: out of movement budget and no route available. Only
+       spend the Action bracing when there is real pressure (bloodied or
+       pinned by several hostiles) and the monster isn't built to tank or
+       berserk — otherwise just hold ground. Either way, exhaust the frame so
+       the stuck-recovery nudge never jitters the sprite on a spent budget. */
+    if ((m.moveLeft || 0) <= 0 && (!m.path || m.pathI >= m.path.length)) {
+      const style = monsterCombatStyle(m);
+      const canBrace = style !== 'brute' && style !== 'tank' && style !== 'berserker';
+      if (canBrace && this.monsterUnderPressure(m) && this.takeCommonAction(m, 'dodge')) {
+        m.walk = false; m.moving = false;
+        m.path = null; m.pathI = 0; m._stuckT = 0;
+        return true;
+      }
+      /* no action spent — just hold ground */
       m.walk = false; m.moving = false;
       m.path = null; m.pathI = 0; m._stuckT = 0;
       return true;
     }
     return false;
+  },
+
+  /** Is `m` under enough pressure to justify bracing with the Dodge action?
+      Bloodied, or pinned by several hostiles at once. */
+  monsterUnderPressure(m) {
+    if (monsterHurtFrac(m) >= TACTICAL_DODGE_BLOODIED_FRAC) return true;
+    let adjacent = 0;
+    for (const h of this.heroes) {
+      if (!h || !h.data || h.data.hp <= 0) continue;
+      if (Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3) adjacent++;
+      if (adjacent >= TACTICAL_DODGE_PIN_THREATS) return true;
+    }
+    return false;
+  },
+
+  /** Track whether the target is actively moving away, so Dash is only ever
+      spent to pursue (a stationary foe never justifies burning the Action).
+      Smooth per-frame deltas are tiny, so distances accumulate over a ~0.5s
+      window; two windows of the target backing away (>0.5 units each) counts
+      as a kiting target. */
+  monsterTrackFlee(m, dist, dt) {
+    const prev = m._tgtLastDist;
+    m._tgtLastDist = dist;
+    if (prev == null) return;
+    const delta = dist - prev;
+    m._fleeWinT = (m._fleeWinT || 0) + (dt || 0.016);
+    m._fleeWinDist = (m._fleeWinDist || 0) + delta;
+    if (m._fleeWinT >= 0.5) {
+      m._fleeStrike = m._fleeWinDist > 0.5 ? (m._fleeStrike || 0) + 1 : 0;
+      m._fleeWinT = 0;
+      m._fleeWinDist = 0;
+    }
+  },
+
+  /** True once the target has been consistently backing away over the last ~1s. */
+  monsterTargetFleeing(m) {
+    return (m._fleeStrike || 0) >= 2;
   },
 
   /**
@@ -511,18 +779,18 @@ export const monsterAiMethods = {
     if (hasEffect(m, 'charmed') || getEffectMods(m).incapacitated) { m.walk = false; return; }
     if (m._kiteT <= 0) m._kiteT = KITE_COMMIT_SEC;
 
-    /* Disengage before a costly retreat if bloodied or pinned */
+    /* Disengage before a costly retreat if bloodied or double-pinned */
     if (this.initiative && this.initiative.active && this.isCurrentActor(m)
         && !m.actUsed && !m.disengageActive
         && Math.hypot(threat.x - m.x, threat.z - m.z) <= MONSTER_MELEE_RANGE + 0.3) {
       const pinnedBy = this.heroes.filter(h => h.data.hp > 0 &&
         Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3).length;
-      const bloodied = m.data.hp <= m.data.maxHp * 0.5;
+      const bloodied = monsterHurtFrac(m) >= 0.5;
       if ((bloodied || pinnedBy > 1) && this.takeCommonAction(m, 'disengage')) {
         const threats = this.heroes.filter(h => h.data.hp > 0 && Math.hypot(h.x - m.x, h.z - m.z) <= 3.5);
         const fleePath = this.findFleePath(m, threats, m.moveLeft || this.cellsForSpeed(m), { avoidClosedDoors: true });
         if (fleePath) {
-          m.path = fleePath; m.pathI = 0; m.repathT = MONSTER_REPATH_CD;
+          this.setEntityPath(m, fleePath); m.repathT = MONSTER_REPATH_CD;
         }
       }
     }
@@ -543,11 +811,8 @@ export const monsterAiMethods = {
     /* cornered (or blocked by walls/closed doors): give up on moving and just shoot */
     if (goal < 0 && !m.path) { this.monsterRanged(m, tgt, dt); return; }
 
-    m.repathT -= dt;
-    if (m.repathT <= 0 || !m.path || m.pathI >= m.path.length) {
-      m.path = this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true });
-      m.pathI = 0;
-      m.repathT = MONSTER_REPATH_CD;
+    if (!this.hasLivePath(m)) {
+      this.setEntityPath(m, this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m }));
     }
     const mods = getEffectMods(m);
     let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
@@ -556,7 +821,7 @@ export const monsterAiMethods = {
     m.moving = m.walk;
 
     /* face the target so shots/anims look right while backing away */
-    m.ent.grp.rotation.y = Math.atan2(tgt.x - m.x, tgt.z - m.z);
+    this.faceTowards(m, tgt.x, tgt.z, dt);
 
     /* fire if there's a clean shot at the target and action is free */
     if (!m.actUsed
@@ -573,17 +838,29 @@ export const monsterAiMethods = {
     m.walk = false;
     m.moving = false;
     m.path = null;
-    m.ent.grp.rotation.y = Math.atan2(tgt.x - m.x, tgt.z - m.z);
+    this.faceTowards(m, tgt.x, tgt.z, dt);
     if (!m.actUsed) {
       m.actUsed = true;
       this._countSwing(m);
       this.monsterRangedAttack(m, tgt);
       /* Multiattack for ranged variants — manticore tail-spike volley,
-         deep-elf-master-archer double-shot, etc. Same loop as melee. */
-      const extra = Math.max(0, (m.data.attacksPerTurn || 1) - 1);
-      for (let i = 0; i < extra && tgt.data.hp > 0; i++) {
-        this.monsterRangedAttack(m, tgt);
-      }
+         deep-elf-master-archer double-shot, etc. Same stagger as melee: all
+         fired in one tick, every shot left on the same frame of one draw. */
+      this._scheduleMultiattack(m, tgt, () => this.monsterRangedAttack(m, tgt));
+    }
+  },
+
+  /* Extra swings of a Multiattack (`attacksPerTurn: N`), spaced by the attack
+     animation on the combat clock so each one replays the sheet. Extra
+     attacks only fire while both still stand, matching hero Extra Attack. */
+  _scheduleMultiattack(m, tgt, swing) {
+    const extra = Math.max(0, (m.data.attacksPerTurn || 1) - 1);
+    if (extra <= 0) return;
+    const interval = strikeInterval(attackAnimDelay(m));
+    for (let i = 0; i < extra; i++) {
+      scheduleFollowUpStrike(this, m, (i + 1) * interval, () => {
+        if (tgt && tgt.data && tgt.data.hp > 0 && m && m.data && m.data.hp > 0 && m.active) swing();
+      });
     }
   },
 
@@ -601,16 +878,30 @@ export const monsterAiMethods = {
         if (Math.hypot(o.x - h.x, o.z - h.z) < MONSTER_MELEE_RANGE + 0.5) { adv += 1; break; }
       }
     }
+    /* Blood Frenzy (SRD sharks / sahuagin): advantage vs a target not at full HP */
+    if (m.data.bloodFrenzy && h.data && h.data.maxHp && h.data.hp < h.data.maxHp) adv += 1;
     return adv;
+  },
+
+  /** Invisible monsters become visible the moment they attack (5e). */
+  revealInvisible(m) {
+    clearEffect(m, 'invisible');
+    this.fxLog(`👁 ${m.data.name} drops its invisibility to attack!`, 'sys');
+    this.fxSprite('dcss/effect/cloud_magic_trail_1.png', this._v3(m.x, 1.0, m.z), 1.4, 0.5);
   },
 
   /** Fire a ranged projectile at a hero. */
   monsterRangedAttack(m, h) {
+    /* Invisible monsters are revealed the moment they attack (5e) */
+    if (hasEffect(m, 'invisible')) this.revealInvisible(m);
+    /* Animated-atlas monsters play their one-shot attack sheet when firing
+       (forced, for the same Multiattack reason as monsterAttack). */
+    if (m.ent && m.ent.anim && m.ent.anim.play) m.ent.anim.play('attack', true);
     const adv = this.monsterAttackAdv(m, h);
     const d20 = d20Roll(adv);
     const atkMods = getEffectMods(m);
-    let atkBonus = m.data.atk + (atkMods.atkBonus || 0);
-    if (atkMods.blessDice) atkBonus += d(4);
+    let atkBonus = (m.data.atk != null ? m.data.atk : 4) + (atkMods.atkBonus || 0);
+    if (atkMods.blessDice) atkBonus += die(4);
     const total = d20 + atkBonus;
     let crit = d20 === 20;
     if (crit) this.triggerHitStop(2);
@@ -618,38 +909,137 @@ export const monsterAiMethods = {
     const from = this._v3(m.x, 0.55, m.z);
     const to = this._v3(h.x, 0.4, h.z);
 
-    this.fxPlaySfx('bowAttack', { volume: 0.5 });
-    if (!crit && total < ac) {
-      /* spawn a visible projectile that "misses" */
-      this.fxProjectile(from, to, 'arrow', 0x999999, () => {
-        this.fxText('miss', this._v3(h.x, 1.1, h.z), '#9aa');
-        this.fxPlaySfx('bowBlock', { volume: 0.45 });
+    /* Not every ranged attacker draws a bow. `cantripClass` names one of the
+       hero cantrip classes (CANTRIP_FX in combat.js) and routes the whole
+       delivery through fxCantripDelivery — the SAME code and the same tables the
+       heroes use — so a cultist casting Chill Touch looks and sounds exactly
+       like a sorcerer casting it. Anything without it still shoots an arrow. */
+    const cantripClass = m.data.cantripClass || null;
+    const hitSfx = cantripClass ? 'spellImpact' : 'bowHit';
+    const missSfx = cantripClass ? 'spellImpact' : 'bowBlock';
+
+    const deliver = (color, onImpact) => {
+      if (cantripClass) {
+        this.fxCantripDelivery(from, to, cantripClass, {
+          dmgType: m.data.rangedDmgType || 'magic', follow: h, onImpact
+        });
+      } else {
+        this.fxPlaySfx('bowAttack', { volume: 0.5 });
+        this.fxProjectile(from, to, 'arrow', color, onImpact);
+      }
+    };
+
+    /* The projectile must LEAVE at the release pose, not on frame 0. Sheets are
+       authored windup -> release -> recover, so firing immediately shows the
+       arrow already in flight while the archer is still drawing. Melee already
+       does this; ranged did not. 0 for un-animated monsters keeps their timing. */
+    const impactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
+      ? m.ent.anim.attackImpactDelay() : 0;
+    const onRelease = (fn) => this.fxImpactDelay(impactIn, fn);
+
+    if (cantripClass) {
+      /* Cantrips ignore AC and target a saving throw:
+         - wizard: DEX Save (Fire Bolt)
+         - warlock: CHA Save (Eldritch Blast)
+         - sorcerer: CON Save (Chill Touch)
+         - druid: WIS Save (Produce Flame)
+         - cleric: DEX Save (Sacred Flame) */
+      const MONSTER_CANTRIP_SAVES = {
+        wizard: 'dex',
+        warlock: 'cha',
+        sorcerer: 'con',
+        druid: 'wis',
+        cleric: 'dex',
+        artificer: 'dex'
+      };
+      const saveAb = MONSTER_CANTRIP_SAVES[cantripClass] || 'dex';
+      const prof = Math.max(2, Math.floor(((m.data.cr || 1)) / 4) + 2);
+      const dc = m.data.spellDC || (8 + Math.max(prof, atkBonus));
+      const saveRes = rollSaveDetail(h, saveAb, dc, { magic: true });
+
+      if (saveRes.saved) {
+        onRelease(() => {
+          deliver(0x999999, () => {
+            this.fxText('Saved!', this._v3(h.x, 1.1, h.z), '#6ae0ff');
+            if (this.triggerDodge) this.triggerDodge(h, m);
+            this.fxPlaySfx(missSfx, { volume: 0.45 });
+            this.fxLog(`🛡 ${h.data.name} succeeds on ${saveAb.toUpperCase()} save (${saveRes.total} vs DC ${dc}) vs ${m.data.name}'s cantrip!`, 'miss');
+          });
+        });
+        return;
+      }
+
+      const dmgArr = Array.isArray(m.data.dmg) ? m.data.dmg : [1, 8, 2];
+      let dmg = roll(dmgArr[0], dmgArr[1], dmgArr[2] || 0);
+      const color = m.data.rangedColor || m.data.color || 0xff8a5a;
+      onRelease(() => {
+        deliver(color, () => {
+          if (h.data.hp <= 0) return;
+          this.fxPlaySfx(hitSfx, { volume: 0.6 });
+          const mit = {};
+          const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
+          this.fxHitFlash(h.ent);
+          if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, '#ff9a7a');
+          else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), '#ff9a7a');
+          this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
+          if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, m, dealt);
+          if (dealt > 0) this.applyOnHitAbilities(m, h);
+          this.fxLog(`${m.data.name}'s cantrip strikes ${h.data.name} for ${dealt} (${saveAb.toUpperCase()} save failed: ${saveRes.total} vs DC ${dc})`, 'roll', { cat: 'hitmiss' });
+          this.refreshHud();
+          if (h.data.hp <= 0) {
+            if (h.companion && this.killCompanion) {
+              this.killCompanion(h, m);
+            } else {
+              h.data.hp = 0; h.data.downs++;
+              this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
+            }
+            if (m?.data?.abilities) this.applyOnKillAbilities(m, h);
+          }
+        });
       });
       return;
     }
 
-    let dice = m.data.dmg[0]; if (crit) dice *= 2;
-    let dmg = roll(dice, m.data.dmg[1], m.data.dmg[2] || 0);
-    const color = m.data.color || 0xff8a5a;
-    this.fxProjectile(from, to, 'arrow', color, () => {
+    if (!crit && total < ac) {
+      /* spawn a visible projectile that "misses" */
+      onRelease(() => {
+        deliver(0x999999, () => {
+          if (this.showMiss) this.showMiss(h, m);
+          else this.fxText('miss', this._v3(h.x, 1.1, h.z), '#9aa');
+          this.fxPlaySfx(missSfx, { volume: 0.45 });
+        });
+      });
+      return;
+    }
+
+    const dmgArr = Array.isArray(m.data.dmg) ? m.data.dmg : [1, 8, 2];
+    let dice = dmgArr[0]; if (crit) dice *= 2;
+    let dmg = roll(dice, dmgArr[1], dmgArr[2] || 0);
+    const color = m.data.rangedColor || m.data.color || 0xff8a5a;
+    onRelease(() => {
+      deliver(color, () => {
       if (h.data.hp <= 0) return;
-      this.fxPlaySfx('bowHit', { volume: 0.6 });
+      this.fxPlaySfx(hitSfx, { volume: 0.6 });
       const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg) : (h.data.hp -= dmg, dmg);
       this.fxHitFlash(h.ent);
       this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
       this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
-      this.fxSlash({ x: h.x, z: h.z }, crit ? 0xff5040 : 0xff9a7a, 0.7);
       if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, m, dealt);
       if (dealt > 0) this.applyOnHitAbilities(m, h);
       this.fxLog(`${m.data.name} shoots ${h.data.name} for ${dealt}${crit ? ' (crit!)' : ''}`, crit ? 'down' : 'roll',
         { cat: 'hitmiss' });
       this.refreshHud();
       if (h.data.hp <= 0) {
-        h.data.hp = 0; h.data.downs++;
-        this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
+        if (h.companion && this.killCompanion) {
+          this.killCompanion(h, m);
+        } else {
+          h.data.hp = 0; h.data.downs++;
+          this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
+        }
         /* onKill riders on the shooter (gnoll-hunter Rampage, etc.). */
         if (m?.data?.abilities) this.applyOnKillAbilities(m, h);
       }
+      });
     });
   },
 
@@ -658,31 +1048,25 @@ export const monsterAiMethods = {
    *  heroes have no statblock resistance yet, so it is not currently reduced. */
   hurtHero(h, dmg, src, colorHex = 0xff5040, dmgType = null) {
     if (h.data.hp <= 0) return 0;
-    const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg) : (h.data.hp -= dmg, dmg);
+    const mit = {};
+    const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
     this.fxHitFlash(h.ent);
-    this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), '#ff7a5a');
+    if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, '#ff7a5a');
+    else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), '#ff7a5a');
     this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
-    this.fxSlash({ x: h.x, z: h.z }, colorHex, 0.8);
     if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, src, dealt);
     if (h.data.hp <= 0) {
-      h.data.hp = 0; h.data.downs++;
-      this.triggerShake(0.7, 0.35);
-      this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
+      if (h.companion && this.killCompanion) {
+        this.killCompanion(h, src);
+      } else {
+        h.data.hp = 0; h.data.downs++;
+        this.triggerShake(0.7, 0.35);
+        this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
+      }
       /* onKill riders on the killer (gnoll Rampage, vampire lifesteal…). */
       if (src?.data?.abilities) this.applyOnKillAbilities(src, h);
     }
     return dealt;
-  },
-
-  /** onKill riders: fire abilities when this monster downs a hero. */
-  applyOnKillAbilities(m, h) {
-    const abs = m.data?.abilities;
-    if (!abs || !h) return;
-    for (const ab of abs) {
-      if (ab.trigger !== 'onKill') continue;
-      this._resolveAbilityOnHero(m, h, ab, ab.label || 'onKill ability');
-    }
-    this.refreshHud();
   },
 
   /** Boss pool / data-driven cycle ability, if the cadence is due.
@@ -700,19 +1084,35 @@ export const monsterAiMethods = {
     }
     const abs = m.data.abilities;
     if (!abs) return false;
-    const cyc = abs.filter(a => a.trigger === 'cycle');
+    /* `maxUses` caps an ability for the monster's whole life — a shaman with one
+       Entangle prepared should cast it once and then fall back to its cantrip,
+       not loop it every few swings. Counts live on the instance, so they reset
+       naturally when the creature is spawned again. */
+    const spent = m._abUses || (m._abUses = {});
+    /* Band-limited abilities. `range` is the reach in 5 ft cells (the caller's
+       own gate is a flat 8, so anything up to that works); `minRange` keeps an
+       ability that exists to CLOSE distance — the Hook-Hauler reeling someone
+       in — from being wasted on a hero already standing next to it. */
+    const dist = Math.hypot(tgt.x - m.x, tgt.z - m.z);
+    const cyc = abs.filter(a => a.trigger === 'cycle' &&
+      !(a.maxUses != null && (spent[a.key] || 0) >= a.maxUses) &&
+      !(a.range != null && dist > a.range) &&
+      !(a.minRange != null && dist < a.minRange));
     if (!cyc.length) return false;
     const ab = cyc[Math.floor(Math.random() * cyc.length)];
     if ((m._spellCycle || 0) < (ab.every || MONSTER_ABILITY_EVERY)) return false;
     m._spellCycle = 0;
+    if (ab.maxUses != null) spent[ab.key] = (spent[ab.key] || 0) + 1;
     this.monsterUseAbility(m, tgt, ab);
     return true;
   },
 
   /** Count a real attack toward the monster's ability cadence. */
   _countSwing(m) {
-    if ((m.isBoss && BOSS_SPELLS[m.data.id]) ||
-        (m.data.abilities && m.data.abilities.some(a => a.trigger === 'cycle'))) {
+    const spent = m._abUses || {};
+    const hasLive = m.data.abilities && m.data.abilities.some(a =>
+      a.trigger === 'cycle' && !(a.maxUses != null && (spent[a.key] || 0) >= a.maxUses));
+    if ((m.isBoss && BOSS_SPELLS[m.data.id]) || hasLive) {
       m._spellCycle = (m._spellCycle || 0) + 1;
     }
   },
@@ -730,6 +1130,66 @@ export const monsterAiMethods = {
     this._castAbilityFx(m, tgt, ab, ab.label || 'an ability', ab.spell || ab.key);
   },
 
+  /** OA-free reposition (blink-dog Teleport, phase-spider Ethereal Jaunt, ghost
+   *  Etherealness…). Picks an unoccupied floor cell within `fx.blink.range` cells,
+   *  preferring one closer to the target so blinkers lunge toward prey, then snaps
+   *  the monster there with a teleport visual. Never provokes opportunity attacks
+   *  because the monster is not moving through threatened squares. */
+  monsterBlink(m, tgt, fx, key) {
+    const range = (fx.blink && fx.blink.range) || 3;
+    const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
+    const fcx = m.x, fcz = m.z;
+    const fromCell = this.cellOf(fcx, fcz);
+    const gx = fromCell % W, gz = Math.floor(fromCell / W);
+    const tCell = this.cellOf(tgt.x, tgt.z);
+
+    const cands = [];
+    for (let dz = -range; dz <= range; dz++) {
+      for (let dx = -range; dx <= range; dx++) {
+        if (dx === 0 && dz === 0) continue;
+        const nx = gx + dx, nz = gz + dz;
+        if (nx < 0 || nx >= W || nz < 0 || nz >= H) continue;
+        const c = nz * W + nx;
+        if (this.D.grid[c] !== 1) continue;             // not floor
+        if (this.D.solidProps && this.D.solidProps[c]) continue;
+        if (this.isCellOccupiedByAlly(c, m)) continue;  // no stacking on allies
+        if (c === tCell) continue;                      // never the target's own cell
+        let blocked = false;
+        for (const h of this.heroes) {
+          if (h.data.hp <= 0) continue;
+          if (Math.hypot(this.wx(nx) - h.x, this.wz(nz) - h.z) < 0.9) { blocked = true; break; }
+        }
+        if (blocked) continue;
+        cands.push(c);
+      }
+    }
+    if (!cands.length) {
+      this.fxLog(`${m.data.name} fails to find a clear spot to blink to.`, 'roll');
+      return;
+    }
+
+    /* Prefer a spot nearer the target so blinkers close distance (weighted by
+       a small random jitter so the choice isn't perfectly deterministic). */
+    cands.sort((a, b) => {
+      const ax = a % W, az = Math.floor(a / W), bx = b % W, bz = Math.floor(b / W);
+      const da = Math.hypot(this.wx(ax) - tgt.x, this.wz(az) - tgt.z);
+      const db = Math.hypot(this.wx(bx) - tgt.x, this.wz(bz) - tgt.z);
+      return (da - db) + (Math.random() - 0.5);
+    });
+    const pick = cands[0];
+    const px = pick % W, pz = Math.floor(pick / W);
+    m.x = this.wx(px);
+    m.z = this.wz(pz);
+    m.path = null; m.pathI = 0;
+    m.walk = false; m.moving = false;
+
+    this.fxPlaySfx(this.fxAbilitySfx(key, fx), { volume: 0.6 });
+    this.fxLog(`✨ ${m.data.name} teleports!`, 'crit');
+    this.fxSprite(`dcss/effect/${fx.sprite || 'cloud_tloc_energy'}.png`,
+      this._v3(m.x, 1.0, m.z), 1.6, 0.6);
+    this.fxTelegraph({ x: m.x, z: m.z }, 1.0, fx.color || 0x8fd4e8, 0.5);
+  },
+
   /** Shared use-an-ability action: telegraph, then resolve vs the party.
    *  `fx` is a BOSS_SPELL_FX entry or a monsters.json `abilities` entry —
    *  same shape: { label, color, sprite, aoe?, dice?, dmgType?, save?, effect?, heal? }
@@ -740,21 +1200,53 @@ export const monsterAiMethods = {
     m.moving = false;
     m.path = null;
     m.actUsed = true;
-    m.ent.grp.rotation.y = Math.atan2(tgt.x - m.x, tgt.z - m.z);
+    /* No dt in scope here (this runs from the action phase, not the movement
+       phase) — snap the facing with the default step instead. */
+    this.faceTowards(m, tgt.x, tgt.z);
 
     this.fxPlaySfx(this.fxAbilitySfx(key, fx), { volume: m.isBoss ? 0.75 : 0.6 });
     this.fxLog(`✨ ${m.data.name} uses ${label}!`, 'crit');
     if (m.isBoss) this.triggerShake(0.9, 0.4);
     this.triggerLunge(m, tgt);
+    /* Animated-atlas monsters play their attack sheet on any ability lunge. */
+    if (m.ent && m.ent.anim && m.ent.anim.play) m.ent.anim.play('attack');
     this.fxText(label, this._v3(m.x, 1.5, m.z), '#e8c25a');
     if (!fx) return;   // unknown spell → flourish only, no effect
 
+    /* Blink / teleport (blink-dog Teleport, phase-spider Ethereal Jaunt…):
+       OA-free reposition, no damage by itself. */
+    if (fx.blink) {
+      this.monsterBlink(m, tgt, fx, key);
+      return;
+    }
+
+    /* Self-buff (Invisibility, etc.): `buff` applies an effect to the monster
+       itself. No duration → persists until the monster attacks (or combat ends),
+       which is exactly how 5e invisibility behaves. */
+    if (fx.buff) {
+      const effKey = typeof fx.buff === 'string' ? fx.buff : fx.buff.key;
+      const dur = (typeof fx.buff === 'object' && fx.buff.dur) || null;
+      const opts = { elapsed: this.fxNow };
+      if (dur != null) opts.duration = dur;
+      applyEffect(m, effKey, opts);
+      this.fxText(effKey, this._v3(m.x, 1.5, m.z), '#e8c25a');
+      this.fxLog(`✨ ${m.data.name} uses ${label}!`, 'crit');
+      if (fx.sprite) this.fxSprite(`dcss/effect/${fx.sprite}.png`, this._v3(m.x, 1.2, m.z), 1.5, 0.7);
+      return;
+    }
+
+    /* Using an offensive ability drops invisibility (5e: "until it attacks") */
+    if (hasEffect(m, 'invisible') && (fx.dice || fx.effect || fx.aoe)) this.revealInvisible(m);
+
     const sprite = fx.sprite ? `dcss/effect/${fx.sprite}.png` : null;
 
-    /* Support spell: heal the caster and any wounded minions nearby. */
+    /* Support spell: heal the caster and any wounded allies nearby. */
     if (fx.heal) {
-      const allies = [m, ...this.monsters.filter(o =>
-        o !== m && !o.dead && o.data.hp > 0 && Math.hypot(o.x - m.x, o.z - m.z) < 3.5)];
+      const allies = fx.selfOnly
+        ? [m]
+        : (m.data?.isRival
+          ? [m, ...this.monsters.filter(o => o !== m && !o.dead && o.data?.isRival && o.data.hp > 0 && Math.hypot(o.x - m.x, o.z - m.z) < 6.0)]
+          : [m, ...this.monsters.filter(o => o !== m && !o.dead && o.data.hp > 0 && Math.hypot(o.x - m.x, o.z - m.z) < 3.5)]);
       for (const o of allies) {
         const amt = roll(fx.heal[0], fx.heal[1], fx.heal[2]);
         o.data.hp = Math.min(o.data.maxHp, o.data.hp + amt);
@@ -762,6 +1254,7 @@ export const monsterAiMethods = {
         this.fxText('+' + amt, this._v3(o.x, 1.2, o.z), '#6ae06a');
         if (sprite) this.fxSprite(sprite, this._v3(o.x, 0.5, o.z), 1.2, 0.4);
       }
+      this.fxLog(`💚 ${m.data.name} uses ${label}!`, 'heal');
       return;
     }
 
@@ -777,8 +1270,17 @@ export const monsterAiMethods = {
       this.fxTelegraph({ x: tgt.x, z: tgt.z }, 1.2, fx.color || 0xe04040, 0.6);
     }
 
-    for (const h of targets) this._resolveAbilityOnHero(m, h, fx, label, { aoe: !!fx.aoe });
-    this.refreshHud();
+    /* Same wind-up rule as a melee swing: the ability is decided now, but its
+       damage and conditions land when the attack animation reaches its contact
+       pose (and after the telegraph has had time to read). Deferred here at the
+       call site rather than inside _resolveAbilityOnHero, which is also used by
+       onHit riders, auras and death bursts that must stay immediate. */
+    const abilityImpactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
+      ? m.ent.anim.attackImpactDelay() : 0;
+    this.fxImpactDelay(abilityImpactIn, () => {
+      for (const h of targets) this._resolveAbilityOnHero(m, h, fx, label, { aoe: !!fx.aoe });
+      this.refreshHud();
+    });
   },
 
   /** Resolve one ability instance against one hero: save → damage → condition.
@@ -798,6 +1300,19 @@ export const monsterAiMethods = {
     const saved = saveRes ? saveRes.saved : false;
     this.fxRichAbilityVFX(m, h, fx, label, opts);
 
+    /* `beam` draws a physical line between caster and target — a thrown hook
+       and chain, as opposed to the radiating burst fxRichAbilityVFX gives every
+       ability. Passing the victim's sprite group as followTo lets the beam
+       track them, so a chain visibly shortens as the pull below reels them in. */
+    if (fx.beam && typeof this.fxBeam === 'function') {
+      this.fxBeam(this._v3(m.x, 0.7, m.z), this._v3(h.x, 0.7, h.z), {
+        type: fx.beam,
+        color: fx.beamColor || fx.color || 0x8a8172,
+        duration: fx.beamDur || 0.55,
+        followTo: (h.ent && h.ent.grp) || null
+      });
+    }
+
     if (fx.save && saveRes) {
       const rollStr = `${saveRes.d20} + ${saveRes.mod} = ${saveRes.total}`;
       if (saved) {
@@ -809,8 +1324,11 @@ export const monsterAiMethods = {
       }
     }
 
+    /* Declared out here because the `heal:true` lifesteal rider below needs the
+       damage this ability actually dealt. */
+    let dmg = 0;
     if (fx.dice) {
-      let dmg = roll(fx.dice[0], fx.dice[1], fx.dice[2] || 0);
+      dmg = roll(fx.dice[0], fx.dice[1], fx.dice[2] || 0);
       if (saved) dmg = fx.save && fx.save.half ? Math.floor(dmg / 2) : 0;
       if (dmg > 0) {
         this.fxLog(`${m.data.name}'s ${label} hits ${h.data.name} for ${dmg}${saved ? ' (saved for half)' : ''}`, 'down');
@@ -820,6 +1338,25 @@ export const monsterAiMethods = {
       }
     } else if (saved) {
       this.fxText('save!', this._v3(h.x, 1.1, h.z), '#9aa');
+    }
+
+    /* Lifesteal riders (stirge Blood Drain, succubus Draining Kiss…): `heal:true`
+       heals for the damage dealt, `heal:[n,d,f]` rolls a set amount, `heal:5` is flat. */
+    if (fx.heal && m.data && m.data.hp > 0) {
+      let amt = 0;
+      if (fx.heal === true) amt = dmg;
+      else if (Array.isArray(fx.heal)) amt = roll(fx.heal[0], fx.heal[1], fx.heal[2] || 0);
+      else if (typeof fx.heal === 'number') amt = fx.heal;
+      if (amt > 0) {
+        const before = m.data.hp;
+        m.data.hp = Math.min(m.data.maxHp, m.data.hp + amt);
+        const gained = m.data.hp - before;
+        if (gained > 0) {
+          this.fxText('+' + gained, this._v3(m.x, 1.4, m.z), '#6ae06a');
+          this.fxDrawBar(m.ent.bar, Math.max(0, m.data.hp / m.data.maxHp), '#6ae06a');
+          this.fxLog(`🩸 ${m.data.name} drains ${gained} HP from ${h.data.name}.`, 'heal');
+        }
+      }
     }
 
     if (fx.effect && !saved) {
@@ -843,6 +1380,29 @@ export const monsterAiMethods = {
         }
         this.fxText(fx.effect.key, this._v3(h.x, 1.35, h.z), '#d0a0ff');
         this.fxLog(`✨ ${h.data.name} is now ${fx.effect.key}!`, 'crit');
+      }
+    }
+
+    /* Forced movement. `pull` reels the hero toward the monster, `push` shoves
+       them away; the value is whole 5 ft cells. pushEntity walks it a tile at a
+       time and stops at the first wall, solid prop, closed door, or occupied /
+       reserved cell, so a chain can never drag someone through geometry or
+       stack them on top of another body. It also leaves a knock-glide on the
+       sprite, which is what the 'chain' beam tracks while it reels in.
+
+       Resolved LAST so the hero is still standing where they were hit while the
+       damage numbers and the save readout land on them. */
+    const shift = fx.pull || fx.push;
+    if (shift && !saved && h.data.hp > 0 && typeof this.pushEntity === 'function') {
+      const dir = fx.pull ? -1 : 1;
+      const moved = this.pushEntity(h, m.x, m.z, shift, dir);
+      if (moved > 0) {
+        if (this.clearPendingMove) this.clearPendingMove();
+        this.fxLog(`⛓ ${h.data.name} is ${fx.pull ? 'hauled' : 'shoved'} ${moved * 5} ft!`, 'down');
+      } else {
+        /* Wedged against something — the hook still bit, it just could not
+           take up any slack. Say so rather than silently doing nothing. */
+        this.fxLog(`⛓ The chain goes taut — ${h.data.name} does not budge.`, 'roll');
       }
     }
   },
@@ -891,7 +1451,9 @@ export const monsterAiMethods = {
             const key = `${mId}_${ab.key || ab.label}_r${round}`;
             if (!actor._auraProcessed[key]) {
               actor._auraProcessed[key] = true;
-              this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || 0x88aa66, 0.5);
+              const vfxType = getPixelVfxTypeForAbility(ab);
+              const defColor = vfxType === 'gibbering' ? 0xd946ef : (vfxType === 'stench' ? 0x84cc16 : (vfxType === 'fire' ? 0xf97316 : (vfxType === 'frost' ? 0x38bdf8 : (vfxType === 'holy' ? 0xfacc15 : 0x88aa66))));
+              this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || defColor, 0.6, { type: vfxType });
               this._resolveAbilityOnHero(m, actor, ab, ab.label || 'an aura');
               if (this.heroes) this.refreshHud();
             }
@@ -903,7 +1465,9 @@ export const monsterAiMethods = {
       for (const ab of actor.data.abilities) {
         if (ab.trigger !== 'aura') continue;
         const r = ab.aoe || ab.radius || 2.0;
-        this.fxTelegraph({ x: actor.x, z: actor.z }, r, ab.color || 0x88aa66, 0.5);
+        const vfxType = getPixelVfxTypeForAbility(ab);
+        const defColor = vfxType === 'gibbering' ? 0xd946ef : (vfxType === 'stench' ? 0x84cc16 : (vfxType === 'fire' ? 0xf97316 : (vfxType === 'frost' ? 0x38bdf8 : (vfxType === 'holy' ? 0xfacc15 : 0x88aa66))));
+        this.fxTelegraph({ x: actor.x, z: actor.z }, r, ab.color || defColor, 0.6, { type: vfxType });
         if (ab.fxOnly) continue;
         if (!this.heroes) continue;
         const targets = this.heroes.filter(h => h.data && h.data.hp > 0 && Math.hypot(h.x - actor.x, h.z - actor.z) <= r);
@@ -931,7 +1495,8 @@ export const monsterAiMethods = {
       const r = ab.aoe || 2.0;
       const targets = this.heroes.filter(h => h.data.hp > 0 && Math.hypot(h.x - m.x, h.z - m.z) <= r);
       this.fxLog(`💥 ${m.data.name}'s ${ab.label || 'death burst'}!`, 'crit');
-      this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || 0xff7a30, 0.7);
+      const vfxType = getPixelVfxTypeForAbility(ab) === 'shockwave' ? 'fire' : getPixelVfxTypeForAbility(ab);
+      this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || 0xff7a30, 0.7, { type: vfxType });
       for (const h of targets) this._resolveAbilityOnHero(m, h, ab, ab.label || 'death burst', { aoe: true });
       this.refreshHud();
     }
@@ -952,7 +1517,8 @@ export const monsterAiMethods = {
       if (ab.aoe) {
         const r = ab.aoe;
         const targets = this.heroes.filter(h => h.data.hp > 0 && Math.hypot(h.x - m.x, h.z - m.z) <= r);
-        this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || 0xff7a30, 0.5);
+        const vfxType = getPixelVfxTypeForAbility(ab);
+        this.fxTelegraph({ x: m.x, z: m.z }, r, ab.color || 0xff7a30, 0.5, { type: vfxType });
         for (const h of targets) this._resolveAbilityOnHero(m, h, ab, ab.label || 'retaliation');
       } else {
         this._resolveAbilityOnHero(m, attacker, ab, ab.label || 'retaliation');
@@ -1063,15 +1629,11 @@ export const monsterAiMethods = {
     const mods = getEffectMods(m);
     if (mods.incapacitated) { m.walk = false; return; }
 
-    /* Combat-room leash: give up the chase if the target has retreated
-       well beyond the room where the fight started.  Prevents long
-       pursuit across the map without any physics force — the monster
-       simply holds its ground.  Same fuzzy-AI pattern as the existing
-       inHome check in monsterKite(). */
-    if (!this.initiative?.active && this.beyondCombatLeash(tgt.x, tgt.z)) { m.walk = false; return; }
 
-    m.repathT -= dt;
-    if (m.repathT <= 0 || !m.path || m.pathI >= m.path.length) {
+    /* Combat commits to a square: pick a destination once, walk it, then
+       pick again. Mid-walk repath reset pathI to 0 and stepAlong snapped
+       the body back onto its own tile centre every tick. */
+    if (!this.hasLivePath(m)) {
       let goal = this.cellOf(tgt.x, tgt.z);
       /* flank: aim for the far side of the target if allies are already
          clustered on it, so melee wraps around instead of stacking */
@@ -1079,9 +1641,7 @@ export const monsterAiMethods = {
       if (flank >= 0) goal = flank;
       /* Avoid pathing directly onto a cell already occupied by another monster */
       goal = this.nearUnoccupiedGoal(m, goal);
-      m.path = this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m });
-      m.pathI = 0;
-      m.repathT = MONSTER_REPATH_CD;
+      this.setEntityPath(m, this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m }));
     }
     let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
     if (m.slowUntil && this.elapsed < m.slowUntil) spd *= 0.5;  // legacy compat
@@ -1101,7 +1661,13 @@ export const monsterAiMethods = {
       const nextCell = m.path[m.pathI];
       const provokers = provokesOA(this.oaHostiles(m), fromCell, nextCell);
       if (provokers.length > 0) {
-        if (!m.actUsed && this.takeCommonAction(m, 'disengage')) {
+        /* Only spend the Action breaking contact when the monster would rather
+           not eat the hit — a bloodied retreat or a squishy kiter. Healthy
+           bruisers take the opportunity attack like the wall they are. */
+        const pinnedBy = this.heroes.filter(h => h.data && h.data.hp > 0 &&
+          Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3).length;
+        if (shouldDisengage(m, { pinned: pinnedBy > 0 })
+            && !m.actUsed && this.takeCommonAction(m, 'disengage')) {
           this.fxLog(`💨 ${m.data.name} Disengages to avoid opportunity attacks.`, 'sys');
         } else if (Math.hypot(tgt.x - m.x, tgt.z - m.z) <= MONSTER_MELEE_RANGE) {
           m.path = null;
@@ -1115,6 +1681,7 @@ export const monsterAiMethods = {
 
     const moved = this.moveStep(m, spd, dt);
     m.walk = moved;
+    m.moving = moved;
 
     /* Monster stuck-recovery. Heroes get multi-stage handleStuck; monsters had
        nothing, so a body wedged against a doorway frame (stepAlong reports no
@@ -1125,28 +1692,15 @@ export const monsterAiMethods = {
        is expected, so only recover once genuinely stuck for ~0.6 s.
        Guarded by canMove so an OFF-TURN monster (held still by moveStep) is
        never mistaken for stuck and nudged/repathed off its square. */
-    if (!moved && this.canMove(m)) {
+    if (!moved && this.canMove(m) && m.path && m.pathI < m.path.length) {
       m._stuckT = (m._stuckT || 0) + dt;
       if (m._stuckT > 0.6) {
-        const toX = tgt.x - m.x, toZ = tgt.z - m.z, tl = Math.hypot(toX, toZ) || 1;
-        const px = -toZ / tl, pz = toX / tl;   /* perpendicular to approach */
-        const nudge = 0.4;
-        let nudged = false;
-        if (!this.blocked(m.x + px * nudge, m.z + pz * nudge, TIGHT_R)) {
-          m.x += px * nudge; m.z += pz * nudge; nudged = true;
-        } else if (!this.blocked(m.x - px * nudge, m.z - pz * nudge, TIGHT_R)) {
-          m.x -= px * nudge; m.z -= pz * nudge; nudged = true;
-        }
-        if (!nudged) {
-          /* Fallback longitudinal nudge for 1-wide doorways where sides are walls */
-          const lx = toX / tl, lz = toZ / tl;
-          if (!this.blocked(m.x + lx * nudge, m.z + lz * nudge, TIGHT_R)) {
-            m.x += lx * nudge; m.z += lz * nudge;
-          } else if (!this.blocked(m.x - lx * nudge, m.z - lz * nudge, TIGHT_R)) {
-            m.x -= lx * nudge; m.z -= lz * nudge;
-          }
-        }
-        m.path = null; m.pathI = 0; m.repathT = 0; m._stuckT = 0;
+        /* Drop the blocked route so the next think repaths. Do NOT nudge the
+           sprite 0.4 off-centre — that offset is the empty-room tile-edge
+           jitter (snap then pulls it back). */
+        if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+        else { m.path = null; m.pathI = 0; }
+        m.repathT = 0; m._stuckT = 0;
       }
     } else {
       m._stuckT = 0;
@@ -1157,19 +1711,14 @@ export const monsterAiMethods = {
     m.walk = false;
     m.moving = false;
     m.path = null;
-    m.ent.grp.rotation.y = Math.atan2(tgt.x - m.x, tgt.z - m.z);
+    this.faceTowards(m, tgt.x, tgt.z, dt);
     if (!m.actUsed) {
       m.actUsed = true;
       /* Count this swing toward the ability cast cadence (see tryMonsterCycleAbility). */
       this._countSwing(m);
       this.monsterAttack(m, tgt);
-      /* Multiattack (5e): `attacksPerTurn: N` strikes N times per cd window.
-         Extra attacks only fire while the target lives, matching the hero
-         Extra Attack pattern at combat.js. Default 1 = no multiattack. */
-      const extra = Math.max(0, (m.data.attacksPerTurn || 1) - 1);
-      for (let i = 0; i < extra && tgt.data.hp > 0; i++) {
-        this.monsterAttack(m, tgt);
-      }
+      /* Multiattack (5e): `attacksPerTurn: N` strikes N times per cd window. */
+      this._scheduleMultiattack(m, tgt, () => this.monsterAttack(m, tgt));
     }
   },
 
@@ -1181,66 +1730,109 @@ export const monsterAiMethods = {
       return;
     }
     if (getEffectMods(m).incapacitated) return;
+    /* Invisible monsters are revealed the moment they attack (5e) */
+    if (hasEffect(m, 'invisible')) this.revealInvisible(m);
     const dmgDealtMul = getEffectMods(m).dmgDealtMul;
     this.triggerLunge(m, h);
+    /* Animated-atlas monsters (bestiary editor) play their one-shot attack
+       sheet. Forced: a Multiattack follow-up may land a frame before the
+       previous swing's sheet has settled back to idle, and play() would
+       otherwise no-op and leave the impact delay pointing into thin air. */
+    if (m.ent && m.ent.anim && m.ent.anim.play) m.ent.anim.play('attack', true);
     const adv = this.monsterAttackAdv(m, h);
     const d20 = d20Roll(adv);
     const atkMods = getEffectMods(m);
-    let atkBonus = m.data.atk + (atkMods.atkBonus || 0);
-    if (atkMods.blessDice) atkBonus += d(4);
+    let atkBonus = (m.data.atk != null ? m.data.atk : 4) + (atkMods.atkBonus || 0);
+    if (atkMods.blessDice) atkBonus += die(4);
     const total = d20 + atkBonus;
     let crit = d20 === 20;
     /* defender auto-crit on melee (paralyzed/unconscious) */
     if (getEffectMods(h).autoCritMelee) crit = true;
     if (crit) this.triggerHitStop(2);
     const ac = this.heroAC(h);
+    /* The outcome is decided now, but the CONSEQUENCES wait for the swing to
+       reach its contact pose - otherwise the damage number and hit spark appear
+       while the creature is still winding up. 0 for un-animated monsters, which
+       keeps their timing exactly as before. */
+    const impactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
+      ? m.ent.anim.attackImpactDelay() : 0;
+    const onImpact = (fn) => this.fxImpactDelay(impactIn, fn);
+
     this.fxPlaySfx('swordAttack', { volume: 0.5 });
     if (!crit && total < ac) {
-      this.fxText('miss', this._v3(h.x, 1.1, h.z), '#9aa');
-      this.fxPlaySfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.5 });
-      this.fxLog(`${m.data.name} → ${h.data.name}: miss`, 'miss',
-        { detail: `(${total} vs AC ${ac}${adv > 0 ? ', adv' : adv < 0 ? ', dis' : ''})` });
+      onImpact(() => {
+        if (this.showMiss) this.showMiss(h, m);
+        else this.fxText('miss', this._v3(h.x, 1.1, h.z), '#9aa');
+        this.fxPlaySfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.5 });
+        this.fxLog(`${m.data.name} → ${h.data.name}: miss`, 'miss',
+          { detail: `(${total} vs AC ${ac}${adv > 0 ? ', adv' : adv < 0 ? ', dis' : ''})` });
+      });
       return;
     }
 
-    let dice = m.data.dmg[0]; if (crit) dice *= 2;
+    const dmgArr = Array.isArray(m.data.dmg) ? m.data.dmg : [1, 8, 2];
+    let dice = dmgArr[0]; if (crit) dice *= 2;
     const statKey = m.data.ranged ? 'dex' : 'str';
     const statVal = m.data.effStats?.[statKey] ?? m.data.statblock?.stats?.[statKey] ?? 10;
     const statMod = Math.floor((statVal - 10) / 2);
-    const dmgBonus = Math.max(m.data.dmg[2] || 0, statMod);
-    let dmg = roll(dice, m.data.dmg[1], dmgBonus);
+    const dmgBonus = Math.max(dmgArr[2] || 0, statMod);
+    let dmg = roll(dice, dmgArr[1], dmgBonus);
     dmg = Math.round(dmg * dmgDealtMul);
+    /* Swarms deal half damage once bloodied (SRD "…or half if the swarm has
+       half of its hit points or fewer"). */
+    if (m.data.swarm && m.data.maxHp && m.data.hp <= m.data.maxHp / 2) dmg = Math.max(1, Math.floor(dmg / 2));
+    /* Martial Advantage (SRD hobgoblin): +2d6 when an ally is adjacent to the target */
+    if (m.data.martialAdvantage) {
+      for (const o of this.monsters) {
+        if (o === m || o.dead || o.data.hp <= 0 || !o.active) continue;
+        if (Math.hypot(o.x - h.x, o.z - h.z) < MONSTER_MELEE_RANGE + 0.5) { dmg += die(6) + die(6); break; }
+      }
+    }
     if (dmg >= 15) this.triggerShake(0.4, 0.2);
     if (m.cutWordsUntil && this.fxNow < m.cutWordsUntil) dmg = Math.max(1, dmg - 2);
 
-    /* explicit cat: a crit uses the 'down' style, which is otherwise reserved
-       for hero-drops and never suppressed. */
-    this.fxLog(`${m.data.name} hits ${h.data.name} for ${dmg}${crit ? ' (crit!)' : ''}`, crit ? 'down' : 'roll',
-      { cat: 'hitmiss' });
-    this.fxPlaySfx('swordHit', { volume: 0.6 });
-    if (crit) {
-      this.triggerHitStop(4);
-      this.triggerShake(0.5, 0.25);
-    } else {
-      this.triggerHitStop(1);
-    }
-    this.fxMeleeHitVFX({ x: h.x, z: h.z }, { x: m.x, z: m.z }, crit, 'slashing', 0.9);
-    const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg) : (h.data.hp -= dmg, dmg);
-    this.fxHitFlash(h.ent);
-    this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
-    this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
-    /* legendary defensive perks (thorns / riposte) */
-    if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, m, dealt);
-    /* onHit ability riders (poison bite, paralysis claws, life drain…) */
-    if (dealt > 0) this.applyOnHitAbilities(m, h);
-    this.refreshHud();
-    if (h.data.hp <= 0) {
-      h.data.hp = 0; h.data.downs++;
-      this.triggerShake(0.7, 0.35);
-      this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
-      /* onKill riders (gnoll Rampage, vampire lifesteal…). */
-      if (m?.data?.abilities) this.applyOnKillAbilities(m, h);
-    }
+    onImpact(() => {
+      /* The target may already be down by the time the blow lands - another
+         attacker can resolve during the wind-up. Same guard fxProjectile uses. */
+      if (h.data.hp <= 0) return;
+      this.fxPlaySfx('swordHit', { volume: 0.6 });
+      if (crit) {
+        this.triggerHitStop(4);
+        this.triggerShake(0.5, 0.25);
+      } else {
+        this.triggerHitStop(1);
+      }
+      this.fxMeleeHitVFX({ x: h.x, z: h.z }, { x: m.x, z: m.z }, crit, 'slashing', 0.9);
+      const mit = {};
+      const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
+      this.fxHitFlash(h.ent);
+      /* Logged HERE, after mitigation, so the line agrees with the number over
+         the hero's head. Printed before the roll was applied, it reported the
+         raw damage while temp HP, Uncanny Dodge or Heavy Armor Master had
+         already eaten some or all of it — "hits for 7" above a floating 0. */
+      const soak = this.describeMitigation ? this.describeMitigation(mit, dmg, dealt) : '';
+      this.fxLog(`${m.data.name} hits ${h.data.name} for ${dealt}${crit ? ' (crit!)' : ''}${soak}`,
+        crit ? 'down' : 'roll', { cat: 'hitmiss' });
+      if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, crit ? '#ff5040' : '#ff9a7a');
+      else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
+      this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
+      /* legendary defensive perks (thorns / riposte) */
+      if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, m, dealt);
+      /* onHit ability riders (poison bite, paralysis claws, life drain…) */
+      if (dealt > 0) this.applyOnHitAbilities(m, h);
+      this.refreshHud();
+      if (h.data.hp <= 0) {
+        if (h.companion && this.killCompanion) {
+          this.killCompanion(h, m);
+        } else {
+          h.data.hp = 0; h.data.downs++;
+          this.triggerShake(0.7, 0.35);
+          this.fxLog(`💀 ${h.data.name} goes down!`, 'down');
+        }
+        /* onKill riders (gnoll Rampage, vampire lifesteal…). */
+        if (m?.data?.abilities) this.applyOnKillAbilities(m, h);
+      }
+    });
   },
 
   /**
@@ -1249,9 +1841,104 @@ export const monsterAiMethods = {
    */
   updateMonsterVisuals(dt, elapsed, cosC, sinC) {
     for (const m of this.monsters) {
-      if (m.data.hp <= 0) continue;
+      if (m.data.hp <= 0) {
+        if (m._deathAnim && m.ent && m.ent.anim && m.ent.anim.mesh) {
+          const a = m._deathAnim;
+          const mesh = m.ent.anim.mesh;
+          const mat = mesh.material;
+
+          /* Death hold: let the killing blow finish reading before the body
+             starts to go. updateMonsters skips dead monsters entirely, so the
+             flash has to be ticked from here or it would freeze on frame one.
+             Nothing below this runs during the hold — the dissolve resets the
+             colour and the scale every frame, which would eat the flash. */
+          if (a.holdT > 0) {
+            a.holdT -= dt;
+            this.fxUpdateFlash(m.ent, dt);
+            if (a.holdT > 0) continue;
+            /* Hold over: hand the sprite to the dissolve in a known state. */
+            if (mat) {
+              mat.rotation = 0;
+              if (mat.color) mat.color.setRGB(1, 1, 1);
+            }
+            mesh.position.x = m.ent._shudderHome || mesh.position.x;
+            mesh.scale.set(a.baseScaleX, a.baseScaleY, 1.0);
+            m.ent.flashT = 0;
+          }
+
+          a.t += dt;
+          const k = Math.min(1.0, a.t / a.dur);
+          /* Ease-out: the head goes first, then the rest of the body. */
+          const dissolve = 1 - Math.pow(1 - k, 1.55);
+
+          if (!a.started) {
+            a.started = true;
+            if (typeof this.fxBeginEvaporate === 'function') this.fxBeginEvaporate(mesh);
+          }
+          const bounds = (typeof this.fxSetEvaporate === 'function')
+            ? this.fxSetEvaporate(mesh, dissolve, a.t)
+            : null;
+
+          /* Specks rise from the current dissolve edge (top of what's left). */
+          if (typeof this.fxEvaporatePixels === 'function') {
+            const rate = 110 + dissolve * 50;
+            a.pixAcc = (a.pixAcc || 0) + dt * rate;
+            const n = Math.min(32, Math.floor(a.pixAcc));
+            if (n > 0) {
+              a.pixAcc -= n;
+              const grpS = (m.ent.grp && m.ent.grp.scale && m.ent.grp.scale.x) || 1;
+              const gy = (m.ent?.grp?.position?.y || 0) + (mesh?.position?.y || 0);
+              const totalH = (a.baseScaleY || 1) * grpS;
+              const h = Math.max(0.04, gy + (1.0 - dissolve) * totalH);
+              const width = (a.baseScaleX || 1) * grpS * 1.15;
+              const mx = m.ent?.grp?.position?.x ?? m.x;
+              const mz = m.ent?.grp?.position?.z ?? m.z;
+              this.fxEvaporatePixels({ x: mx, y: h, z: mz }, n, null, mesh, dissolve, width);
+            }
+          }
+
+          if (mat) {
+            mat.rotation = 0;
+            if (mat.color && (mat.color.r !== 1 || mat.color.g !== 1 || mat.color.b !== 1)) {
+              mat.color.setRGB(1, 1, 1);
+            }
+            mat.opacity = k > 0.94 ? Math.max(0, 1 - (k - 0.94) / 0.06) : 1;
+          }
+          mesh.scale.set(a.baseScaleX, a.baseScaleY, 1.0);
+
+          if (k >= 1.0) {
+            if (m.ent.grp) m.ent.grp.visible = false;
+            if (mat) {
+              mat.opacity = 1.0;
+              mat.rotation = 0;
+            }
+            mesh.scale.set(a.baseScaleX, a.baseScaleY, 1.0);
+            m._deathAnim = null;
+          }
+        } else if (m.ent?.grp) {
+          m.ent.grp.visible = false;
+        }
+        continue;
+      }
       const [ox, oz] = this.lungeOffset(m, dt);
-      m.ent.grp.position.set(m.x + ox, 0, m.z + oz);
+      const gp = m.ent.grp.position;
+      gp.set(m.x + ox,
+             easeBodyY(gp.y, groundYAt(this.D, m.x + ox, m.z + oz), dt),
+             m.z + oz);
+      Motion.visual(this, m, m.x + ox, m.z + oz, (m.lungeT > 0) ? 'lunge' : ((m.knockT > 0) ? 'knockback' : 'sprite'));
+
+      /* Visual scale: enlarged status effect increases sprite size by 50% */
+      if (m.ent && m.ent.grp) {
+        const isEnlarged = hasEffect(m, 'enlarged') || hasEffect(m.data, 'enlarged');
+        const targetScale = isEnlarged ? 1.5 : 1.0;
+        const currentScale = m.ent.grp.scale.x || 1.0;
+        if (Math.abs(currentScale - targetScale) > 0.005) {
+          const newScale = currentScale + (targetScale - currentScale) * Math.min(1.0, dt * 8.0);
+          m.ent.grp.scale.set(newScale, newScale, newScale);
+        } else if (currentScale !== targetScale) {
+          m.ent.grp.scale.set(targetScale, targetScale, targetScale);
+        }
+      }
 
       const angle = m.ent.grp.rotation.y;
       const mdx = Math.sin(angle), mdz = Math.cos(angle);
@@ -1268,7 +1955,9 @@ export const monsterAiMethods = {
         if (m.walk) {
           m.ent.anim.mesh.position.y = Math.abs(Math.sin(elapsed * 9)) * 0.08;
         } else {
-          m.ent.anim.time = 0;
+          /* Animated sprites run their own clock (idle loop) — only static
+             billboards freeze time when standing still. */
+          if (!m.ent.anim.animated) m.ent.anim.time = 0;
           m.ent.anim.mesh.position.y = 0;
         }
       }

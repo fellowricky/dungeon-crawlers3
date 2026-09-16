@@ -5,7 +5,7 @@
  * Includes live expanded In-Game Room Combat Arena preview with generated walls & scatter terrain.
  */
 
-import { MONSTERS_RAW, MONSTERS_ALL, applyCRScalingToMonster, fmtMod, getThemeForMonster, MONSTER_THEMES, DUNGEON_MONSTER_MAP, BOSS_ENCOUNTERS_RAW, getCuratedBossEncounters } from './game/srd.js';
+import { MONSTERS_RAW, MONSTERS_ALL, applyCRScalingToMonster, fmtMod, getThemeForMonster, MONSTER_THEMES, DUNGEON_MONSTER_MAP, BOSS_ENCOUNTERS_RAW, getCuratedBossEncounters, TACTICAL_ROOMS_RAW, getCuratedTacticalRooms, PLAYABLE_RACES } from './game/srd.js';
 import { STORY_MISSIONS_BASE } from './game/story.js';
 import {
   storyLanes, storyPoolIds, storySpawnCost, defaultStoryBudget, planStoryFloorCast
@@ -17,11 +17,13 @@ import {
 } from './game/constants.js';
 import CR_SCALING_FACTORY from './game/cr_scaling.default.json' with { type: 'json' };
 import {
-  SPAWN_BUDGET, spawnLevelRow, makeRng, THEMES,
+  SPAWN_BUDGET, getSpawnBudget, spawnLevelRow, makeRng, THEMES,
   buyRoomSpawns, roomSpawnBudget, roomSpawnCap
 } from './dungeon/dungeon_generator.js';
 import SPAWN_BUDGET_FACTORY from './game/spawn_budget.default.json' with { type: 'json' };
-import { getDefaultColorBalance, applyColorBalanceToPixel } from './game/color_balance.js';
+import { getDefaultColorBalance, applyColorBalanceToPixel, loadBalancedCanvas } from './game/color_balance.js';
+import { getRaceDefaults } from './game/appearance.js';
+import { drawHeroPortrait } from './game/sprite_animator.js';
 
 /* Ensure crCostOverrides is present and mutable on the live budget object.
    JSON module imports may not let us add brand-new top-level keys later. */
@@ -69,23 +71,91 @@ let userEdits = {}; // { [monsterId]: { scale, colorBalance, color, sprite, name
 
 let currentZoom = 6; // Default 6x zoom (tripled size)
 let bgMode = 'checkerboard'; // 'checkerboard', 'dark', 'light'
-let heroReference = 'human.png'; // 'none', 'human.png', 'dwarf.png', 'elf.png', 'halfling.png'
 let autoFitZoom = false; // Auto zoom out if monster scale clips container
 let testSpriteOverride = null; // Custom uploaded sprite file URL
 let showCRScaled = true; // Scale monster stats in statblock display according to CR table
 
 // Hero Scale Comparison Reference & Ground Alignment State
 let showHeroRef = true;
-let heroRefSprite = 'human.png';
+let heroRefRace = 'human';
 let snapToGround = true;
 let currentYOffset = 0;
 
-const HERO_SCALES = {
-  'human.png': 1.0,
-  'dwarf.png': 0.85,
-  'elf.png': 1.0,
-  'halfling.png': 0.65
+/* ---------------- Hero scale reference ----------------
+   The figure standing next to the monster is the real in-game hero: the same
+   LPC layer stack HeroSprite composes, drawn front-facing by drawHeroPortrait,
+   and sized by the race's own spriteScaleX/Y out of appearance.js. Reading the
+   scales from there rather than a copy here means a race rebalance shows up in
+   this tool without a second edit.
+
+   The two figures have to be sized off one shared rule. A monster is drawn at
+   `imgPx * zoom * mon.scale`, and in game its billboard is
+   (imgPx / 32) * 1.125 * mon.scale world units — so the canvas shows
+   (32 / 1.125) px per world unit per zoom step. A hero billboard is
+   1.125 * spriteScale world units whatever its frame size, which comes out at
+   32 * spriteScale * zoom px: the 64px LPC frame draws at half its native
+   pixels. A 1.0x hero therefore occupies exactly the 32px the old DCSS
+   reference did, so existing monster scales stay calibrated. */
+const HERO_FRAME_PX = 64;
+const HERO_FRAME_TO_PX = 32 / HERO_FRAME_PX;
+
+/* One composed portrait per race, built lazily. drawHeroPortrait resolves once
+   every layer has been drawn; until then the canvas is blank, so the first
+   draw for a race repaints when it settles. */
+const heroRefCanvases = {};
+function getHeroRefCanvas(raceKey, onReady) {
+  const cached = heroRefCanvases[raceKey];
+  if (cached) return cached;
+
+  const defs = getRaceDefaults(raceKey);
+  const canvas = document.createElement('canvas');
+  canvas.width = HERO_FRAME_PX;
+  canvas.height = HERO_FRAME_PX;
+  canvas._ready = false;
+  heroRefCanvases[raceKey] = canvas;
+
+  drawHeroPortrait(canvas, {
+    visual: {
+      gender: 'male',
+      head: defs.head || '',
+      skinColor: defs.skinColor,
+      hair: 'plain/adult',
+      hairColor: defs.hairColor,
+      hairExtension: 'none',
+      facialHair: defs.facialHair,
+      eyeColor: defs.eyeColor,
+      ears: defs.ears,
+      horns: defs.horns
+    },
+    /* A plain shirt so the reference reads as an adventurer rather than a
+       body sheet; legs and feet fall back to pants/shoes on their own. */
+    equipment: { armor: { visualTorso: 'clothes/longsleeve/longsleeve', visualColor: '#6f7d92' } }
+  }).then(() => {
+    canvas._ready = true;
+    if (onReady) onReady();
+  });
+
+  return canvas;
+}
+
+const heroRaceLabel = key => {
+  const entry = PLAYABLE_RACES.find(([k]) => k === key);
+  return entry ? entry[1].label : key;
 };
+
+/* The picker is built from the game's own playable-race list, so a race added
+   there shows up here without touching this file. */
+function populateHeroRefSelect() {
+  const sel = document.getElementById('hero-ref-select');
+  if (!sel) return;
+  sel.innerHTML = PLAYABLE_RACES.map(([key, race]) => {
+    const d = getRaceDefaults(key);
+    const sx = d.spriteScaleX || 1.0, sy = d.spriteScaleY || 1.0;
+    const scale = sx === sy ? `${sy.toFixed(2)}x` : `${sx.toFixed(2)}×${sy.toFixed(2)}`;
+    return `<option value="${key}">${race.label} (${scale})</option>`;
+  }).join('');
+  sel.value = heroRefRace;
+}
 
 /* ---------------- Spawnable Dungeon Types ----------------
    The dungeon list is derived live from the generator's THEMES table, so new
@@ -161,6 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupBossEncountersTab();
   setupStoryQuestsTab();
   setupDungeonRostersTab();
+  setupTacticalRoomsTab();
   setupKeyboardNavigation();
   renderDungeonGrid();
   applyFilters();
@@ -187,6 +258,18 @@ function loadData() {
   try {
     const savedEdits = localStorage.getItem(EDITS_KEY);
     if (savedEdits) userEdits = JSON.parse(savedEdits);
+    /* Drop the retired `isBoss` flag out of saved edits on load, so browsers
+       carrying it from an older session stop resurrecting it into the editor
+       (and into every subsequent save). Rewrite the stored copy only when
+       something was actually removed. */
+    let purged = 0;
+    for (const id of Object.keys(userEdits)) {
+      if (userEdits[id] && 'isBoss' in userEdits[id]) { delete userEdits[id].isBoss; purged++; }
+    }
+    if (purged) {
+      localStorage.setItem(EDITS_KEY, JSON.stringify(userEdits));
+      console.info(`bestiary: cleared retired isBoss flag from ${purged} saved edit(s)`);
+    }
   } catch (e) {
     console.warn("Failed to load monster edits from localStorage", e);
     userEdits = {};
@@ -309,7 +392,7 @@ function setupUIEventListeners() {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.bg-btn').forEach(b => b.classList.remove('active'));
       e.target.classList.add('active');
-      currentBg = e.target.dataset.bg;
+      const currentBg = e.target.dataset.bg;
       const viewport = document.getElementById('sprite-viewport');
       if (viewport) {
         viewport.className = 'sprite-viewport bg-' + currentBg;
@@ -323,8 +406,9 @@ function setupUIEventListeners() {
     updateSpriteDisplay();
   });
 
+  populateHeroRefSelect();
   document.getElementById('hero-ref-select')?.addEventListener('change', (e) => {
-    heroRefSprite = e.target.value;
+    heroRefRace = e.target.value;
     updateSpriteDisplay();
   });
 
@@ -385,9 +469,7 @@ function setupUIEventListeners() {
   document.getElementById('arena-open-newtab-btn')?.addEventListener('click', () => {
     const monster = getCurrentMonster();
     if (monster) {
-      const activeSpritePath = testSpriteOverride || monster.sprite;
-      const url = `test-skills.html?monster=${encodeURIComponent(monster.id)}&name=${encodeURIComponent(monster.name)}&scale=${monster.scale || 1.0}&sprite=${encodeURIComponent(activeSpritePath)}`;
-      window.open(url, '_blank');
+      window.open(buildTestSkillsUrl(monster), '_blank');
     }
   });
 
@@ -431,9 +513,7 @@ function setupUIEventListeners() {
   document.getElementById('arena-full-vfx-btn')?.addEventListener('click', () => {
     const m = getCurrentMonster();
     if (m) {
-      const activeSpritePath = testSpriteOverride || m.sprite;
-      const url = `test-skills.html?monster=${encodeURIComponent(m.id)}&name=${encodeURIComponent(m.name)}&scale=${m.scale || 1.0}&sprite=${encodeURIComponent(activeSpritePath)}`;
-      window.open(url, '_blank');
+      window.open(buildTestSkillsUrl(m), '_blank');
     } else {
       window.open('test-skills.html', '_blank');
     }
@@ -455,6 +535,51 @@ function setupUIEventListeners() {
     const val = Math.max(0.1, Math.min(4.0, parseFloat(e.target.value) || 1.0));
     if (scaleSlider) scaleSlider.value = val;
     applyLiveVisualEdit({ scale: val });
+  });
+
+  /* Horizontal flip. The engine treats sprite art as left-facing and mirrors it when
+     a monster walks right, so art drawn facing right reads backwards forever. This
+     stores a flipX flag on the monster rather than rewriting the PNG, keeping it
+     reversible and shared by the dungeon renderer and this preview. */
+  const flipToggle = document.getElementById('flip-x-toggle');
+  flipToggle?.addEventListener('change', (e) => {
+    applyLiveVisualEdit({ flipX: !!e.target.checked });
+    updateFlipLabel(!!e.target.checked);
+  });
+
+  /* Bulk flip. Almost every sprite in the from-scratch batch was generated facing
+     right, so flipping them one checkbox at a time would mean hundreds of clicks.
+     Scope is whatever the list filters currently show, and it writes the same
+     per-monster flag, so any individual monster can still be corrected after. */
+  document.getElementById('flip-bulk-btn')?.addEventListener('click', () => {
+    const targets = filteredMonsters.slice();
+    if (!targets.length) return;
+    const already = targets.filter(m => m.flipX).length;
+    const turnOn = already < targets.length;
+    const verb = turnOn ? 'Flip' : 'Un-flip';
+    if (!confirm(`${verb} all ${targets.length} monsters currently listed?` +
+                 (already ? `
+
+${already} of them are already flipped.` : '') +
+                 `
+
+This edits the flipX flag only; remember to Save monsters.json afterwards.`)) return;
+    targets.forEach(m => {
+      if (!userEdits[m.id]) userEdits[m.id] = {};
+      userEdits[m.id].flipX = turnOn;
+      m.flipX = turnOn;
+      m._isEdited = true;
+    });
+    saveUserEdits();
+    renderMonsterList();
+    const cur = getCurrentMonster();
+    if (cur) {
+      const el = document.getElementById('flip-x-toggle');
+      if (el) el.checked = !!cur.flipX;
+      updateFlipLabel(!!cur.flipX);
+      updateSpriteDisplay();
+    }
+    showToast(`${verb}ped ${targets.length} monsters — save monsters.json to persist.`);
   });
 
   /* ---------------- GRANULAR COLOR BALANCE CONTROLS ---------------- */
@@ -505,6 +630,45 @@ function setupUIEventListeners() {
     }
   });
 
+  // ---------------- Animated Sprite Atlas Editor ----------------
+  const animFieldIds = [
+    'anim-idle-enabled', 'anim-idle-sprite', 'anim-idle-fw', 'anim-idle-fh',
+    'anim-idle-cols', 'anim-idle-rows', 'anim-idle-fps', 'anim-idle-frames', 'anim-idle-loop',
+    'anim-attack-enabled', 'anim-attack-sprite', 'anim-attack-fw', 'anim-attack-fh',
+    'anim-attack-cols', 'anim-attack-rows', 'anim-attack-fps', 'anim-attack-frames', 'anim-attack-loop'
+  ];
+  animFieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      syncAnimPanelToggles();
+      applyAnimEdits();
+      updateAnimPreview('idle');
+      updateAnimPreview('attack');
+    });
+    if (el.type === 'number') {
+      // live-preview while scrubbing numbers (persist happens on change)
+      el.addEventListener('input', () => updateAnimPreview(el.id.split('-')[1]));
+    }
+  });
+
+  document.getElementById('anim-remove-btn')?.addEventListener('click', () => {
+    applyLiveVisualEdit({ animations: {} });
+    const m = getCurrentMonster();
+    if (m) populateAnimEditor(m);
+    showToast("Removed animation config — falling back to the static sprite.");
+  });
+
+  // ---------------- Sprite Sheet Browser Modal ----------------
+  document.querySelectorAll('.sheet-browse-btn').forEach(btn => {
+    btn.addEventListener('click', () => openSheetPicker(btn.dataset.target));
+  });
+  document.getElementById('sheet-picker-close')?.addEventListener('click', closeSheetPicker);
+  document.getElementById('sheet-picker-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'sheet-picker-modal') closeSheetPicker();
+  });
+  document.getElementById('sheet-picker-search')?.addEventListener('input', renderSheetGrid);
+
   // Speed & Threat Editors
   document.getElementById('edit-speed-slider')?.addEventListener('input', (e) => {
     const val = parseFloat(e.target.value);
@@ -527,7 +691,6 @@ function setupUIEventListeners() {
     const updated = {
       name: document.getElementById('edit-name')?.value.trim() || m.name,
       cr: parseFloat(document.getElementById('edit-cr')?.value || m.cr),
-      isBoss: document.getElementById('edit-isboss')?.checked || false,
       type: document.getElementById('edit-type')?.value || m.type,
       size: document.getElementById('edit-size')?.value || m.size,
       ac: parseInt(document.getElementById('edit-ac')?.value, 10) ?? m.ac,
@@ -605,6 +768,24 @@ function setupUIEventListeners() {
     const jsonSnippet = `"sprite": "${spritePath}"`;
     navigator.clipboard.writeText(jsonSnippet).then(() => {
       showToast("Copied sprite JSON: " + jsonSnippet);
+    });
+  });
+
+  document.getElementById('copy-anim-json-btn')?.addEventListener('click', () => {
+    const monster = getCurrentMonster();
+    if (!monster) return;
+    const idle = readAnimPanel('idle');
+    const attack = readAnimPanel('attack');
+    const animations = {};
+    if (idle) animations.idle = idle;
+    if (attack) animations.attack = attack;
+    if (!Object.keys(animations).length) {
+      showToast("No animations configured for this monster yet.");
+      return;
+    }
+    const jsonSnippet = `"animations": ${JSON.stringify(animations, null, 2).replace(/\n/g, '\n  ')}`;
+    navigator.clipboard.writeText(jsonSnippet).then(() => {
+      showToast("Copied animations JSON snippet");
     });
   });
 
@@ -817,6 +998,316 @@ function applyLiveVisualEdit(fields) {
   if (nameEl) nameEl.textContent = m.name;
 }
 
+/* ---------------- ANIMATED SPRITE ATLAS EDITOR ---------------- */
+
+/* Parse a "Frames" text field into an ordered sheet-index array.
+   Accepts ranges ("0-7"), comma/space lists ("0,2,4" / "1 3 5"), or a mix.
+   Blank returns null → the whole sheet plays in order. */
+function parseFramesInput(str) {
+  const s = (str || '').trim();
+  if (!s) return null;
+  const parts = s.split(/[\s,;]+/).filter(Boolean);
+  const out = [];
+  for (const p of parts) {
+    const range = /^(\d+)\s*-\s*(\d+)$/.exec(p);
+    if (range) {
+      const a = parseInt(range[1], 10);
+      const b = parseInt(range[2], 10);
+      const step = a <= b ? 1 : -1;
+      for (let v = a; (step > 0 ? v <= b : v >= b); v += step) out.push(v);
+    } else if (/^\d+$/.test(p)) {
+      out.push(parseInt(p, 10));
+    }
+  }
+  return out.length ? out : null;
+}
+
+/* Reverse: compact array → "0-7" when sequential, else a comma list. */
+function framesToCompactString(frames) {
+  if (!frames || !frames.length) return '';
+  if (frames.length === 1) return String(frames[0]);
+  let seq = true;
+  for (let i = 1; i < frames.length; i++) {
+    if (frames[i] !== frames[i - 1] + 1) { seq = false; break; }
+  }
+  return seq ? `${frames[0]}-${frames[frames.length - 1]}` : frames.join(',');
+}
+
+/* Read one panel (idle | attack) into an animations config (or null when
+   disabled). Fields only present when they differ from a plain default. */
+function readAnimPanel(key) {
+  const enabled = document.getElementById(`anim-${key}-enabled`)?.checked;
+  if (!enabled) return null;
+  const sprite = (document.getElementById(`anim-${key}-sprite`)?.value || '').trim();
+  const frameWidth = parseInt(document.getElementById(`anim-${key}-fw`)?.value, 10) || 96;
+  const frameHeight = parseInt(document.getElementById(`anim-${key}-fh`)?.value, 10) || 96;
+  const cols = parseInt(document.getElementById(`anim-${key}-cols`)?.value, 10) || 8;
+  const rows = parseInt(document.getElementById(`anim-${key}-rows`)?.value, 10) || 1;
+  const fps = parseFloat(document.getElementById(`anim-${key}-fps`)?.value) || 8;
+  const frames = parseFramesInput(document.getElementById(`anim-${key}-frames`)?.value);
+  const loop = document.getElementById(`anim-${key}-loop`)?.checked ?? true;
+
+  const cfg = {
+    frameWidth: Math.max(1, frameWidth),
+    frameHeight: Math.max(1, frameHeight),
+    cols: Math.max(1, cols),
+    rows: Math.max(1, rows),
+    fps: Math.max(0.1, fps),
+    loop
+  };
+  if (sprite) cfg.sprite = sprite;
+  if (frames) cfg.frames = frames;
+  return cfg;
+}
+
+/* Read both panels and persist the animations block via applyLiveVisualEdit. */
+function applyAnimEdits() {
+  const m = getCurrentMonster();
+  if (!m) return;
+  const animations = {};
+  const idle = readAnimPanel('idle');
+  const attack = readAnimPanel('attack');
+  if (idle) animations.idle = idle;
+  if (attack) animations.attack = attack;
+  applyLiveVisualEdit({ animations });
+}
+
+/* Enable checkbox ↔ field enable/disable visual state + panel highlight. */
+function syncAnimPanelToggles() {
+  for (const key of ['idle', 'attack']) {
+    const enabled = document.getElementById(`anim-${key}-enabled`)?.checked;
+    const panel = document.getElementById(`anim-panel-${key}`);
+    const fields = document.getElementById(`anim-${key}-fields`);
+    if (panel) panel.classList.toggle('enabled', !!enabled);
+    if (fields) fields.classList.toggle('disabled', !enabled);
+  }
+}
+
+/* Populate the editor panels from the current monster's animations block. */
+function populateAnimEditor(monster) {
+  const anims = monster.animations || {};
+  for (const key of ['idle', 'attack']) {
+    const cfg = anims[key] || null;
+    document.getElementById(`anim-${key}-enabled`).checked = !!cfg;
+    document.getElementById(`anim-${key}-sprite`).value = (cfg && cfg.sprite) || '';
+    document.getElementById(`anim-${key}-fw`).value = (cfg && cfg.frameWidth) || 96;
+    document.getElementById(`anim-${key}-fh`).value = (cfg && cfg.frameHeight) || 96;
+    document.getElementById(`anim-${key}-cols`).value = (cfg && cfg.cols) || (key === 'idle' ? 8 : 6);
+    document.getElementById(`anim-${key}-rows`).value = (cfg && cfg.rows) || 1;
+    document.getElementById(`anim-${key}-fps`).value = (cfg && cfg.fps) || (key === 'idle' ? 8 : 12);
+    document.getElementById(`anim-${key}-frames`).value = framesToCompactString(cfg && cfg.frames);
+    document.getElementById(`anim-${key}-loop`).checked = cfg ? cfg.loop !== false : key === 'idle';
+  }
+  syncAnimPanelToggles();
+  updateAnimPreview('idle');
+  updateAnimPreview('attack');
+}
+
+const animPreviewRAF = { idle: null, attack: null };
+
+/* Live preview: plays one panel's atlas (with the monster's colour balance
+   baked in) on its canvas, sat on a ground line. */
+function updateAnimPreview(key) {
+  cancelAnimationFrame(animPreviewRAF[key]);
+  const canvas = document.getElementById(`anim-${key}-preview`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const meta = document.getElementById(`anim-${key}-meta`);
+  const monster = getCurrentMonster();
+
+  /* Keep the drawing buffer in sync with the canvas's CSS size so the preview
+     is never stretched/squished by layout — the frame math below uses the
+     buffer dims, so if they lag the on-screen box the sprite gets distorted. */
+  const syncCanvasSize = () => {
+    const cw = canvas.clientWidth || 288;
+    const ch = canvas.clientHeight || 176;
+    if (canvas.width !== cw) canvas.width = cw;
+    if (canvas.height !== ch) canvas.height = ch;
+  };
+
+  const drawEmpty = (msg) => {
+    syncCanvasSize();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0b0e1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#5a6279';
+    ctx.font = '11px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+    if (meta) meta.textContent = '—';
+  };
+
+  if (!monster) { drawEmpty('Select a monster'); return; }
+
+  const cfg = readAnimPanel(key);
+  if (!cfg) { drawEmpty('Disabled'); return; }
+
+  const path = cfg.sprite || monster.sprite || 'orc.png';
+  const url = resolveSpriteUrl(path);
+  const cb = monster.colorBalance || getDefaultColorBalance();
+
+  loadBalancedCanvas(url, cb, (sheet) => {
+    if (!sheet) { drawEmpty('Image not found'); return; }
+
+    const cols = cfg.cols;
+    const rows = cfg.rows;
+    const fw = Math.max(1, Math.min(cfg.frameWidth, Math.floor(sheet.width / cols)));
+    const fh = Math.max(1, Math.min(cfg.frameHeight, Math.floor(sheet.height / rows)));
+    if (fw * cols > sheet.width || fh * rows > sheet.height) {
+      drawEmpty(`Sheet smaller than ${cols}×${rows} × ${cfg.frameWidth}px frames`);
+      return;
+    }
+
+    const seq = cfg.frames && cfg.frames.length ? cfg.frames : null;
+    const count = seq ? seq.length : cols * rows;
+    if (count <= 0) { drawEmpty('No frames'); return; }
+
+    if (meta) {
+      meta.textContent = `${count} frame${count === 1 ? '' : 's'} · ${sheet.width}×${sheet.height} sheet · ${fw}×${fh} cell`;
+    }
+
+    const start = performance.now();
+    const step = (now) => {
+      if (document.getElementById(`anim-${key}-enabled`)?.checked === false) {
+        drawEmpty('Disabled');
+        return;
+      }
+      const t = (now - start) / 1000;
+      const idx = Math.floor(t * cfg.fps);
+      let f;
+      if (cfg.loop) {
+        f = idx % count;
+      } else if (idx >= count) {
+        f = count - 1;
+      } else {
+        f = idx;
+      }
+      const fi = seq ? seq[f] : f;
+      const col = fi % cols;
+      const row = Math.floor(fi / cols);
+
+      syncCanvasSize();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0b0e1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = 'rgba(217, 164, 65, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(8, canvas.height - 16);
+      ctx.lineTo(canvas.width - 8, canvas.height - 16);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const maxW = canvas.width - 24;
+      const maxH = canvas.height - 44;
+      const sc = Math.min(maxW / fw, maxH / fh);
+      const dw = fw * sc;
+      const dh = fh * sc;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sheet, col * fw, row * fh, fw, fh,
+        (canvas.width - dw) / 2, (canvas.height - 16) - dh, dw, dh);
+
+      animPreviewRAF[key] = requestAnimationFrame(step);
+    };
+    animPreviewRAF[key] = requestAnimationFrame(step);
+  }, () => { drawEmpty('Image not found'); });
+}
+
+/* ---------------- SPRITE SHEET BROWSER ---------------- */
+
+let SPRITE_SHEET_LIBRARY = null;   // cached disk listing from the dev server
+let sheetPickerTarget = null;      // input id a picked sheet will fill
+
+async function loadSpriteSheetLibrary() {
+  if (SPRITE_SHEET_LIBRARY) return SPRITE_SHEET_LIBRARY;
+  try {
+    const res = await fetch('/api/list-sprite-sheets');
+    const data = await res.json();
+    if (data.success && data.files.length) SPRITE_SHEET_LIBRARY = data.files;
+  } catch { /* static build — no disk listing */ }
+  if (!SPRITE_SHEET_LIBRARY) SPRITE_SHEET_LIBRARY = [];
+  return SPRITE_SHEET_LIBRARY;
+}
+
+function openSheetPicker(targetId) {
+  sheetPickerTarget = targetId;
+  const modal = document.getElementById('sheet-picker-modal');
+  if (!modal) return;
+  const search = document.getElementById('sheet-picker-search');
+  if (search) search.value = '';
+  modal.style.display = 'flex';
+  renderSheetGrid();
+  /* Swap the empty grid for the full library as soon as it arrives. */
+  if (!SPRITE_SHEET_LIBRARY) loadSpriteSheetLibrary().then(renderSheetGrid);
+}
+
+function closeSheetPicker() {
+  const modal = document.getElementById('sheet-picker-modal');
+  if (modal) modal.style.display = 'none';
+  sheetPickerTarget = null;
+}
+
+function renderSheetGrid() {
+  const grid = document.getElementById('sheet-picker-grid');
+  if (!grid) return;
+  const query = (document.getElementById('sheet-picker-search')?.value || '').toLowerCase().trim();
+
+  const all = SPRITE_SHEET_LIBRARY || [];
+  const matched = all.filter(p => !query || p.toLowerCase().includes(query));
+  /* ~1.5k DCSS monsters + uploads; render a page and let search narrow it. */
+  const LIMIT = 300;
+  const files = matched.slice(0, LIMIT);
+
+  const count = document.getElementById('sheet-picker-count');
+  if (count) {
+    count.textContent = all.length === 0
+      ? 'Run `npm run dev` to browse sheets from disk'
+      : matched.length > LIMIT
+        ? `Showing ${LIMIT} of ${matched.length} sheets — search to narrow`
+        : `${matched.length} sheet${matched.length === 1 ? '' : 's'}`;
+  }
+
+  grid.innerHTML = '';
+  files.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'sheet-grid-item';
+    item.title = p;
+    item.innerHTML = `<img src="./${p}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span class="sheet-name">${p}</span>`;
+    /* Wide sheets (many frames on one row) span extra columns so the strip is
+       big enough to identify, instead of a squashed sliver in a square tile. */
+    const img = item.querySelector('img');
+    if (img) {
+      const spanForRatio = () => {
+        const w = img.naturalWidth || 0;
+        const h = img.naturalHeight || 0;
+        if (!w || !h) return;
+        const ratio = w / h;
+        if (ratio > 3.5) item.classList.add('sheet-grid-item--span3');
+        else if (ratio > 1.8) item.classList.add('sheet-grid-item--span2');
+      };
+      if (img.complete) spanForRatio();
+      else img.addEventListener('load', spanForRatio);
+    }
+    item.addEventListener('click', () => {
+      const target = document.getElementById(sheetPickerTarget);
+      if (target) {
+        target.value = p;
+        if (sheetPickerTarget === 'custom-sprite-input') {
+          testSpriteOverride = p;
+          updateSpriteDisplay();
+        } else {
+          /* let the input's own change handler persist + refresh */
+          target.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      closeSheetPicker();
+    });
+    grid.appendChild(item);
+  });
+}
+
 function setupKeyboardNavigation() {
   window.addEventListener('keydown', (e) => {
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
@@ -861,10 +1352,8 @@ function applyFilters() {
     }
 
     if (tierVal !== 'all') {
-      /* Tier filter now selects CR bands (option value 1-5 -> band 0-4) or the
-         boss roster. Monsters no longer carry a `tier` field. */
-      if (tierVal === 'boss') { if (!m.isBoss) return false; }
-      else if (String(crBandIndex(m.cr)) !== String(Number(tierVal) - 1)) return false;
+      /* Tier filter selects CR bands (option value 1-5 -> band 0-4). */
+      if (String(crBandIndex(m.cr)) !== String(Number(tierVal) - 1)) return false;
     }
 
     if (typeVal !== 'all' && m.type !== typeVal) return false;
@@ -905,6 +1394,39 @@ function applyFilters() {
   renderCurrentMonster();
 }
 
+/* Inner markup for a monster list thumbnail. Monsters with an animation block
+   often point `sprite` at a spritesheet, so drawing it whole gives a strip of
+   specks — crop to the first frame of the idle (or attack) atlas instead, and
+   flag the entry as animated. */
+const THUMB_BOX = 58;
+
+function monsterThumbInnerHTML(m) {
+  const anim = (m.animations && (m.animations.idle || m.animations.attack)) || null;
+
+  if (!anim) {
+    return `<img src="${resolveSpriteUrl(m.sprite)}" alt="${m.name}" loading="lazy"${m.flipX ? ' style="transform:scaleX(-1)"' : ''} onerror="this.src='./dcss/monster/orc.png'">`;
+  }
+
+  const fw = Math.max(1, anim.frameWidth || 96);
+  const fh = Math.max(1, anim.frameHeight || 96);
+  const cols = Math.max(1, anim.cols || 1);
+  const rows = Math.max(1, anim.rows || 1);
+  const first = Array.isArray(anim.frames) && anim.frames.length ? anim.frames[0] : 0;
+  const col = first % cols;
+  const row = Math.floor(first / cols) % rows;
+  const s = THUMB_BOX / Math.max(fw, fh);
+  const flip = m.flipX ? ' scaleX(-1)' : '';
+  const fallback = "this.onerror=null;this.removeAttribute('style');this.parentElement.removeAttribute('style');this.src='./dcss/monster/orc.png'";
+
+  return `
+        <div class="monster-item-frame" style="width:${fw * s}px;height:${fh * s}px;transform:none${flip}">
+          <img src="${resolveSpriteUrl(anim.sprite || m.sprite)}" alt="${m.name}" loading="lazy"
+               style="width:${cols * fw * s}px;height:${rows * fh * s}px;margin-left:${-col * fw * s}px;margin-top:${-row * fh * s}px"
+               onerror="${fallback}">
+        </div>
+        <span class="monster-item-anim" title="Has animated sprite">▶</span>`;
+}
+
 function renderMonsterList() {
   const listContainer = document.getElementById('monster-list');
   const countLabel = document.getElementById('monster-count-label');
@@ -934,15 +1456,14 @@ function renderMonsterList() {
 
     return `
       <div class="monster-item ${isSelected ? 'selected' : ''}" data-index="${idx}" data-id="${m.id}">
-        <div class="monster-item-thumb" style="border-color: ${hexColor}">
-          <img src="${resolveSpriteUrl(m.sprite)}" alt="${m.name}" loading="lazy" onerror="this.src='./dcss/monster/orc.png'">
+        <div class="monster-item-thumb${m.animations && (m.animations.idle || m.animations.attack) ? ' has-anim' : ''}" style="border-color: ${hexColor}">
+          ${monsterThumbInnerHTML(m)}
         </div>
         <div class="monster-item-info">
           <div class="monster-item-name">${m.name}</div>
           <div class="monster-item-sub">
             <span class="cr-pill">CR ${formatCR(m.cr)}</span>
             <span class="type-pill">${m.type || 'creature'}</span>
-            ${m.isBoss ? '<span class="tier-pill boss">☠ BOSS</span>' : ''}
           </div>
           ${badges.length ? `<div class="monster-item-badges">${badges.join('')}</div>` : ''}
         </div>
@@ -986,8 +1507,8 @@ function updateMonsterListItem(id) {
   const thumbEl = el.querySelector('.monster-item-thumb');
   if (thumbEl) {
     thumbEl.style.borderColor = hexIntToHexStr(m.color);
-    const imgEl = thumbEl.querySelector('img');
-    if (imgEl) imgEl.src = resolveSpriteUrl(m.sprite);
+    thumbEl.classList.toggle('has-anim', !!(m.animations && (m.animations.idle || m.animations.attack)));
+    thumbEl.innerHTML = monsterThumbInnerHTML(m);
   }
 
   let badgeContainer = el.querySelector('.monster-item-badges');
@@ -1049,7 +1570,6 @@ function renderCurrentMonster() {
   if (metaEl) {
     metaEl.innerHTML = `
       <span class="meta-badge badge-cr">CR ${formatCR(monster.cr)}</span>
-      ${monster.isBoss ? '<span class="meta-badge badge-tier">☠ BOSS</span>' : ''}
       <span class="meta-badge badge-type">${(monster.size || 'medium').toUpperCase()} ${(monster.type || 'creature').toUpperCase()}</span>
       ${monster.tags && monster.tags.length ? monster.tags.map(t => `<span class="meta-badge badge-tag">${t}</span>`).join('') : ''}
       ${monster._isEdited ? '<span class="meta-badge badge-edited">✏️ MODIFIED</span>' : ''}
@@ -1104,6 +1624,11 @@ function populateEditorFormControls(monster) {
   const spriteInput = document.getElementById('edit-sprite-input');
   if (spriteInput) spriteInput.value = monster.sprite || '';
 
+  // Facing
+  const flipEl = document.getElementById('flip-x-toggle');
+  if (flipEl) flipEl.checked = !!monster.flipX;
+  updateFlipLabel(!!monster.flipX);
+
   // Speed & Threat
   const speedSlider = document.getElementById('edit-speed-slider');
   const speedNum = document.getElementById('edit-speed-num');
@@ -1120,9 +1645,6 @@ function populateEditorFormControls(monster) {
 
   const editCr = document.getElementById('edit-cr');
   if (editCr) editCr.value = monster.cr ?? 0.25;
-
-  const editIsBoss = document.getElementById('edit-isboss');
-  if (editIsBoss) editIsBoss.checked = !!monster.isBoss;
 
   const editType = document.getElementById('edit-type');
   if (editType) editType.value = monster.type || 'beast';
@@ -1153,6 +1675,9 @@ function populateEditorFormControls(monster) {
 
   // Spawnable Dungeon Types
   populateDungeonGrid(monster);
+
+  // Animated Sprite Atlas Editor
+  populateAnimEditor(monster);
 }
 
 function populateColorBalanceUI(cb, colorHexInt) {
@@ -1178,6 +1703,11 @@ function populateColorBalanceUI(cb, colorHexInt) {
 
 /* ---------------- CANVAS SPRITE RECOLOR & VIEWPORT ---------------- */
 
+function updateFlipLabel(flipped) {
+  const el = document.getElementById('flip-x-label');
+  if (el) el.textContent = flipped ? 'flipped — art faces right' : 'art faces left';
+}
+
 function updateSpriteDisplay() {
   const monster = getCurrentMonster();
   if (!monster) return;
@@ -1199,12 +1729,12 @@ function updateSpriteDisplay() {
       if (err) dimLabel.textContent = `Image Not Found`;
       else dimLabel.textContent = `${w} × ${h} px (Native)`;
     }
-  });
+  }, !!monster.flipX);
 }
 
 const imageCache = {};
 
-function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier, zoomFactor, callback) {
+function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier, zoomFactor, callback, flipX = false) {
   const canvas = document.getElementById('sprite-viewport-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -1258,8 +1788,26 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
       console.warn("Could not process pixel data for recoloring/bounds", e);
     }
 
+    /* Mirror the working buffer so every downstream draw uses the flipped art.
+       Done after getPixelBounds because that only feeds ground-snapping and content
+       size, which a horizontal mirror does not change. */
+    if (flipX) {
+      const flipped = document.createElement('canvas');
+      flipped.width = w;
+      flipped.height = h;
+      const fctx = flipped.getContext('2d');
+      fctx.imageSmoothingEnabled = false;
+      fctx.translate(w, 0);
+      fctx.scale(-1, 1);
+      fctx.drawImage(offscreen, 0, 0);
+      octx.clearRect(0, 0, w, h);
+      octx.drawImage(flipped, 0, 0);
+    }
+
     const groundY = Math.floor(canvas.height * 0.78);
-    const heroScaleFactor = HERO_SCALES[heroRefSprite] || 1.0;
+    const heroDefs = getRaceDefaults(heroRefRace);
+    const heroScaleX = heroDefs.spriteScaleX || 1.0;
+    const heroScaleY = heroDefs.spriteScaleY || 1.0;
     const yOffset = currentYOffset || 0;
 
     // Auto-Fit Zoom Calculation
@@ -1271,8 +1819,8 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
       const maxCanvasW = canvas.width - paddingX;
       const maxCanvasH = canvas.height - paddingY;
 
-      const heroUnscaledW = 32 * heroScaleFactor;
-      const heroUnscaledH = 32 * heroScaleFactor;
+      const heroUnscaledW = 32 * heroScaleX;
+      const heroUnscaledH = 32 * heroScaleY;
 
       const monsterUnscaledW = (snapToGround ? monsterBounds.contentWidth : w) * scaleMultiplier;
       const monsterUnscaledH = (snapToGround ? monsterBounds.contentHeight : h) * scaleMultiplier;
@@ -1299,10 +1847,9 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
     ctx.setLineDash([]);
 
     if (showHeroRef) {
-      const heroUrl = `./dcss/monster/${heroRefSprite}`;
       const drawBoth = (heroImg) => {
-        const heroW = heroImg.naturalWidth || heroImg.width || 32;
-        const heroH = heroImg.naturalHeight || heroImg.height || 32;
+        const heroW = heroImg.naturalWidth || heroImg.width || HERO_FRAME_PX;
+        const heroH = heroImg.naturalHeight || heroImg.height || HERO_FRAME_PX;
 
         let heroBottomPadding = 0;
         try {
@@ -1317,9 +1864,9 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
           heroBottomPadding = 0;
         }
 
-        const heroDisplayW = heroW * effectiveZoom * heroScaleFactor;
-        const heroDisplayH = heroH * effectiveZoom * heroScaleFactor;
-        const heroBottomPadDisp = heroBottomPadding * effectiveZoom * heroScaleFactor;
+        const heroDisplayW = heroW * HERO_FRAME_TO_PX * effectiveZoom * heroScaleX;
+        const heroDisplayH = heroH * HERO_FRAME_TO_PX * effectiveZoom * heroScaleY;
+        const heroBottomPadDisp = heroBottomPadding * HERO_FRAME_TO_PX * effectiveZoom * heroScaleY;
 
         const monsterDisplayW = w * effectiveZoom * scaleMultiplier;
         const monsterDisplayH = h * effectiveZoom * scaleMultiplier;
@@ -1343,7 +1890,10 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
         ctx.fillStyle = '#60a5fa';
         ctx.font = 'bold 11px Outfit, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`🧍 Hero (${heroScaleFactor.toFixed(2)}x)`, heroX + heroDisplayW / 2, Math.max(20, heroY - 8));
+        const heroScaleLabel = heroScaleX === heroScaleY
+          ? `${heroScaleY.toFixed(2)}x`
+          : `${heroScaleX.toFixed(2)}×${heroScaleY.toFixed(2)}`;
+        ctx.fillText(`🧍 ${heroRaceLabel(heroRefRace)} (${heroScaleLabel})`, heroX + heroDisplayW / 2, Math.max(20, heroY - 8));
 
         // Draw Monster Sprite
         ctx.drawImage(offscreen, monsterX, monsterY, monsterDisplayW, monsterDisplayH);
@@ -1353,23 +1903,19 @@ function renderSpriteCanvas(src, colorBalance, fallbackColorInt, scaleMultiplier
         ctx.fillText(`👾 Monster (${scaleMultiplier.toFixed(2)}x)`, monsterX + monsterDisplayW / 2, Math.max(20, monsterY - 8));
       };
 
-      if (imageCache[heroUrl]) {
-        drawBoth(imageCache[heroUrl]);
+      const heroCanvas = getHeroRefCanvas(heroRefRace, () => updateSpriteDisplay());
+      if (heroCanvas._ready) {
+        drawBoth(heroCanvas);
       } else {
-        const heroImg = new Image();
-        heroImg.crossOrigin = 'anonymous';
-        heroImg.onload = () => {
-          imageCache[heroUrl] = heroImg;
-          drawBoth(heroImg);
-        };
-        heroImg.onerror = () => {
+        /* Portrait layers still loading — draw the monster alone this pass; the
+           onReady callback above re-runs the display once it has composed. */
+        {
           const displayW = w * effectiveZoom * scaleMultiplier;
           const displayH = h * effectiveZoom * scaleMultiplier;
           const bottomPad = (snapToGround ? monsterBounds.bottomPadding : 0) * effectiveZoom * scaleMultiplier;
           const monsterYOffsetDisp = yOffset * effectiveZoom * 0.5;
           ctx.drawImage(offscreen, (canvas.width - displayW) / 2, groundY - displayH + bottomPad - monsterYOffsetDisp, displayW, displayH);
-        };
-        heroImg.src = heroUrl;
+        }
       }
     } else {
       // Draw Monster Alone
@@ -1529,6 +2075,26 @@ function generateArenaTerrainProps(w, h) {
   }
 }
 
+/* Build the test-skills arena URL for a monster. Carries the editor's LIVE
+   `animations` block (idle/attack atlas configs) so the preview animates
+   exactly as configured, without depending on the iframe's localStorage
+   copy of monsters.json catching up. */
+function buildTestSkillsUrl(monster, embed = false) {
+  if (!monster) return 'test-skills.html';
+  const params = new URLSearchParams();
+  if (monster.id) params.set('monster', monster.id);
+  if (monster.name) params.set('name', monster.name);
+  params.set('scale', monster.scale || 1.0);
+  const sprite = testSpriteOverride || monster.sprite;
+  if (sprite) params.set('sprite', sprite);
+  const anims = monster.animations && (monster.animations.idle || monster.animations.attack)
+    ? monster.animations
+    : null;
+  if (anims) params.set('animations', JSON.stringify(anims));
+  if (embed) params.set('embed', '1');
+  return `test-skills.html?${params.toString()}`;
+}
+
 function openArenaModal() {
   const monster = getCurrentMonster();
   if (!monster) return;
@@ -1539,10 +2105,9 @@ function openArenaModal() {
   const nameEl = document.getElementById('arena-monster-name');
   if (nameEl) nameEl.textContent = `${monster.name} — 3D Dungeon Skill & Animation Arena`;
 
-  const activeSpritePath = testSpriteOverride || monster.sprite;
   const iframe = document.getElementById('arena-3d-iframe');
   if (iframe) {
-    iframe.src = `test-skills.html?monster=${encodeURIComponent(monster.id)}&name=${encodeURIComponent(monster.name)}&scale=${monster.scale || 1.0}&sprite=${encodeURIComponent(activeSpritePath)}&embed=1`;
+    iframe.src = buildTestSkillsUrl(monster, true);
   }
 }
 
@@ -2170,6 +2735,14 @@ function cleanMonsterForExport(monster) {
   const base = MONSTERS_RAW.find(m => m.id === monster.id) || monster;
   const copy = JSON.parse(JSON.stringify({ ...base, ...monster }));
   delete copy._isEdited;
+  /* `isBoss` must never reach monsters.json. The flag used to leak bosses into
+     ordinary room spawns, and test/theme_roster_leak.test.js pins the roster to
+     zero of them; bosses are designated by boss_encounters.json alone. Stale
+     copies of it survive in localStorage from before that change, and the
+     {...base, ...monster} merge above carried them straight back to disk on
+     every save -- it silently re-broke the test twice. Strip it here, at the
+     one boundary every save path goes through. */
+  delete copy.isBoss;
   if (base.ac != null) copy.ac = base.ac;
   if (base.hp) copy.hp = JSON.parse(JSON.stringify(base.hp));
   if (base.atk != null) copy.atk = base.atk;
@@ -2334,17 +2907,20 @@ function switchTab(tab) {
   const bossView = document.getElementById('boss-encounters-view');
   const storyView = document.getElementById('story-quests-view');
   const drView = document.getElementById('dungeon-rosters-view');
+  const trView = document.getElementById('tactical-rooms-view');
   if (mainContainer) mainContainer.style.display = (tab === 'bestiary') ? 'flex' : 'none';
   if (crView) crView.classList.toggle('active', tab === 'cr-scaling');
   if (sbView) sbView.classList.toggle('active', tab === 'spawn-budget');
   if (bossView) bossView.classList.toggle('active', tab === 'boss-encounters');
   if (storyView) storyView.classList.toggle('active', tab === 'story-quests');
   if (drView) drView.classList.toggle('active', tab === 'dungeon-rosters');
+  if (trView) trView.classList.toggle('active', tab === 'tactical-rooms');
   if (tab === 'cr-scaling') renderCRTable();
   if (tab === 'spawn-budget') renderSpawnBudget();
   if (tab === 'boss-encounters') renderBossEncountersTab();
   if (tab === 'story-quests') renderStoryQuestsTab();
   if (tab === 'dungeon-rosters') renderDungeonRostersTab();
+  if (tab === 'tactical-rooms') renderTacticalRoomsTab();
   if (tab === 'bestiary') updateSpriteDisplay();
 }
 
@@ -2476,9 +3052,14 @@ function setupBossEncountersTab() {
   document.getElementById('boss-test-arena-btn')?.addEventListener('click', () => {
     const enc = allBossEncounters.find(e => e.id === currentBossId);
     if (enc) {
-      const activeSpritePath = getMonsterById(enc.bossId)?.sprite || './dcss/monster/orc.png';
-      const url = `test-skills.html?monster=${encodeURIComponent(enc.bossId)}&name=${encodeURIComponent(enc.bossTitle || enc.name)}&scale=1.5&sprite=${encodeURIComponent(activeSpritePath)}`;
-      window.open(url, '_blank');
+      const boss = getMonsterById(enc.bossId);
+      window.open(buildTestSkillsUrl({
+        id: enc.bossId,
+        name: enc.bossTitle || enc.name,
+        scale: 1.5,
+        sprite: boss?.sprite || './dcss/monster/orc.png',
+        animations: boss?.animations
+      }), '_blank');
     }
   });
 }
@@ -3156,6 +3737,10 @@ const SB_KNOBS = [
     desc: 'Hard ceiling on monsters bought by the generic room roll, however much budget is left.'
   },
   {
+    path: 'hordeMaxSpawns', name: 'Horde spawn cap (Infestation / Nest)', min: 5, max: 40, step: 1, dec: 0,
+    desc: 'Ceiling on monster count for Infestation and Brood Nest rooms, allowing swarms to bypass standard room limits.'
+  },
+  {
     path: 'overspendSlack', name: 'Overspend slack', min: 0, max: 1.5, step: 0.05, dec: 2,
     desc: 'How far the last buy may exceed the leftover budget, as a fraction of its own cost. Higher = fuller rooms.'
   },
@@ -3188,6 +3773,10 @@ function sbLevelKeys() {
 const SB_LEVEL_FIELDS = ['budgetMult', 'spawnCap'];
 
 function setupSpawnBudgetTab() {
+  const live = getSpawnBudget();
+  applySpawnBudget(live);
+  sbSavedBaseline = deepCloneTable(live);
+
   const densitySlider = document.getElementById('sb-density-slider');
   const densityLabel = document.getElementById('sb-density-label');
   densitySlider?.addEventListener('input', () => {
@@ -3287,6 +3876,7 @@ function setupSpawnBudgetTab() {
 
   document.getElementById('sb-reset-btn')?.addEventListener('click', () => {
     if (!confirm("Reset every spawn budget lever back to factory defaults?")) return;
+    try { localStorage.removeItem('dc_spawn_budget_edits'); } catch {}
     applySpawnBudget(SPAWN_BUDGET_FACTORY);
     onSpawnBudgetChanged();
     showToast("Restored factory default spawn budget. Save to make it stick.");
@@ -3382,6 +3972,11 @@ function sbMatchesBaseline() {
 
 function onSpawnBudgetChanged(clean = false) {
   sbDirty = clean ? false : !sbMatchesBaseline();
+  try {
+    localStorage.setItem('dc_spawn_budget_edits', JSON.stringify(SPAWN_BUDGET));
+  } catch (e) {
+    console.warn('Failed to save spawn budget to localStorage', e);
+  }
   renderSpawnBudget();
 }
 
@@ -3766,6 +4361,7 @@ function renderSpawnBudgetPreview() {
 
 async function saveSpawnBudget() {
   try {
+    try { localStorage.setItem('dc_spawn_budget_edits', JSON.stringify(SPAWN_BUDGET)); } catch {}
     const res = await fetch('/api/save-spawn-budget', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3777,7 +4373,7 @@ async function saveSpawnBudget() {
         sbSavedBaseline = deepCloneTable(SPAWN_BUDGET);
         sbDirty = false;
         renderSpawnBudget();
-        showToast("💾 Saved to src/game/spawn_budget.json — reload the game to apply.");
+        showToast("💾 Saved to src/game/spawn_budget.json successfully!");
         return;
       }
     }
@@ -3991,9 +4587,14 @@ function setupStoryQuestsTab() {
   document.getElementById('sq-test-arena-btn')?.addEventListener('click', () => {
     const m = effectiveMission(currentMissionId);
     if (!m || !m.finalBossId) return;
-    const sprite = getMonsterById(m.finalBossId)?.sprite || './dcss/monster/orc.png';
-    const url = `test-skills.html?monster=${encodeURIComponent(m.finalBossId)}&name=${encodeURIComponent(m.finalBossName || m.finalBossId)}&scale=1.5&sprite=${encodeURIComponent(sprite)}`;
-    window.open(url, '_blank');
+    const boss = getMonsterById(m.finalBossId);
+    window.open(buildTestSkillsUrl({
+      id: m.finalBossId,
+      name: m.finalBossName || m.finalBossId,
+      scale: 1.5,
+      sprite: boss?.sprite || './dcss/monster/orc.png',
+      animations: boss?.animations
+    }), '_blank');
   });
 
   document.getElementById('sq-save-btn')?.addEventListener('click', saveStoryEncounters);
@@ -4689,9 +5290,9 @@ function renderDungeonRosterGrid() {
   el.innerHTML = list.map(m => {
     const on = drMonsterIn(m, drCurrentTheme);
     return `
-      <label class="dr-mob-row ${on ? 'on' : ''}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)}${m.isBoss ? ' · boss-flagged' : ''}">
+      <label class="dr-mob-row ${on ? 'on' : ''}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)}">
         <input type="checkbox" ${on ? 'checked' : ''}>
-        <span class="dr-mob-name">${m.isBoss ? '👑 ' : ''}${m.name}</span>
+        <span class="dr-mob-name">${m.name}</span>
         <span class="dr-mob-fam">${getThemeForMonster(m)}</span>
         <span class="dr-mob-cr">CR ${formatCR(m.cr)}</span>
       </label>
@@ -4719,4 +5320,510 @@ function showToast(msg) {
   setTimeout(() => {
     toast.classList.remove('show');
   }, 2500);
+}
+
+/* ================= SPECIAL & TACTICAL ROOMS CURATION TAB ================= */
+
+const TACTICAL_ROOM_STYLES = [
+  { id: 'swarm', name: 'Infestation', title: 'THE SWARM', icon: '🐀', desc: 'Overwhelming single-species horde of low-level vermin or pests filling the room' },
+  { id: 'nest', name: 'The Brood Nest', title: 'THE BROOD NEST', icon: '🕷️', desc: 'A formidable brood mother or queen guarding a swarm of ravenous hatchlings' },
+  { id: 'necromantic', name: 'Necromantic Graveyard', title: 'NECROMANTIC GRAVEYARD', icon: '💀', desc: 'Dark practitioner raising and commanding undead minions from the earth' },
+  { id: 'ritual', name: 'Cult Ritual Chamber', title: 'CULT RITUAL CHAMBER', icon: '🕯️', desc: 'Backline spellcasters channeling dark magic screened by fanatical zealots' },
+  { id: 'miniboss', name: "Commander's Garrison", title: "COMMANDER'S GARRISON", icon: '👑', desc: 'A high-CR squad commander backed by disciplined bodyguard escorts' },
+  { id: 'killzone', name: 'The Killzone', title: 'THE KILLZONE', icon: '🏹', desc: 'Entrenched ranged snipers holding the back wall behind armored defenders' },
+  { id: 'ambush', name: 'Pincer Ambush', title: 'PINCER AMBUSH', icon: '🗡️', desc: 'Concealed strike team encircling the party entrance doors' },
+  { id: 'juggernaut', name: 'Siege Vanguard', title: 'SIEGE VANGUARD', icon: '🛡️', desc: 'A pair of heavily armored bruiser tanks holding chokepoints' },
+  { id: 'duelists', name: "Champions' Ring", title: "CHAMPIONS' RING", icon: '⚔️', desc: 'Two elite martial gladiators dueling together in a trial of combat' },
+  { id: 'arcane_surge', name: 'Ley Line Surge', title: 'LEY LINE SURGE', icon: '⚡', desc: 'Magical font infusing all monsters in the room with empowered spellcasting' }
+];
+
+let trCurrentStyle = 'swarm';
+let trCurrentTheme = 'ancient';
+let trCurrentLevel = 1;
+let trSearch = '';
+let trFamilyFilter = 'all';
+let trDungeonFilter = 'theme';
+let trCrMin = null;
+let trCrMax = null;
+
+let trData = {};
+
+function loadTacticalRoomsData() {
+  trData = JSON.parse(JSON.stringify(getCuratedTacticalRooms() || {}));
+  for (const s of TACTICAL_ROOM_STYLES) {
+    if (!trData[s.id]) trData[s.id] = {};
+    if (!Array.isArray(trData[s.id].enabledThemes)) {
+      trData[s.id].enabledThemes = DUNGEON_OPTIONS.map(d => d.key);
+    }
+  }
+}
+
+function isCurrentStyleEnabledInTheme(themeKey) {
+  const styleData = trData[trCurrentStyle];
+  if (!styleData || !Array.isArray(styleData.enabledThemes)) return true;
+  return styleData.enabledThemes.includes(themeKey);
+}
+
+function toggleCurrentStyleTheme(themeKey) {
+  if (!trData[trCurrentStyle]) trData[trCurrentStyle] = {};
+  if (!Array.isArray(trData[trCurrentStyle].enabledThemes)) {
+    trData[trCurrentStyle].enabledThemes = DUNGEON_OPTIONS.map(d => d.key);
+  }
+  const list = trData[trCurrentStyle].enabledThemes;
+  const idx = list.indexOf(themeKey);
+  if (idx !== -1) {
+    list.splice(idx, 1);
+    showToast(`Disabled ${trCurrentStyle} in ${drThemeLabel(themeKey)} dungeons.`);
+  } else {
+    list.push(themeKey);
+    showToast(`Enabled ${trCurrentStyle} in ${drThemeLabel(themeKey)} dungeons.`);
+  }
+  saveTacticalRoomsToLocalStorage();
+  renderTacticalStyleList();
+  renderTacticalThemeTabs();
+  renderTacticalThemeToggle();
+  renderTacticalCuratedChips();
+}
+
+function getCuratedListForCurrentSelection() {
+  if (!trData[trCurrentStyle]) trData[trCurrentStyle] = {};
+  if (!trData[trCurrentStyle][trCurrentTheme]) trData[trCurrentStyle][trCurrentTheme] = {};
+  const lvlKey = String(trCurrentLevel);
+  if (!Array.isArray(trData[trCurrentStyle][trCurrentTheme][lvlKey])) {
+    trData[trCurrentStyle][trCurrentTheme][lvlKey] = [];
+  }
+  return trData[trCurrentStyle][trCurrentTheme][lvlKey];
+}
+
+function setupTacticalRoomsTab() {
+  loadTacticalRoomsData();
+
+  const famSel = document.getElementById('tr-family-filter');
+  if (famSel) {
+    famSel.innerHTML = '<option value="all">All families</option>' +
+      MONSTER_THEMES.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+  }
+
+  document.getElementById('tr-theme-toggle-btn')?.addEventListener('click', () => {
+    toggleCurrentStyleTheme(trCurrentTheme);
+  });
+
+  document.getElementById('tr-search')?.addEventListener('input', (e) => {
+    trSearch = e.target.value.toLowerCase();
+    renderTacticalCandidateGrid();
+  });
+  document.getElementById('tr-family-filter')?.addEventListener('change', (e) => {
+    trFamilyFilter = e.target.value;
+    renderTacticalCandidateGrid();
+  });
+  document.getElementById('tr-dungeon-filter')?.addEventListener('change', (e) => {
+    trDungeonFilter = e.target.value;
+    renderTacticalCandidateGrid();
+  });
+  document.getElementById('tr-cr-min')?.addEventListener('change', (e) => {
+    trCrMin = e.target.value === '' ? null : parseFloat(e.target.value);
+    renderTacticalCandidateGrid();
+  });
+  document.getElementById('tr-cr-max')?.addEventListener('change', (e) => {
+    trCrMax = e.target.value === '' ? null : parseFloat(e.target.value);
+    renderTacticalCandidateGrid();
+  });
+
+  document.getElementById('tr-clear-band-btn')?.addEventListener('click', () => {
+    const list = getCuratedListForCurrentSelection();
+    if (!list.length) { showToast('Level ' + trCurrentLevel + ' is already empty.'); return; }
+    if (!confirm(`Clear all ${list.length} curated monster(s) for ${trCurrentStyle} in ${drThemeLabel(trCurrentTheme)} at Level ${trCurrentLevel}?`)) return;
+    trData[trCurrentStyle][trCurrentTheme][String(trCurrentLevel)] = [];
+    saveTacticalRoomsToLocalStorage();
+    renderTacticalCuratedChips();
+    renderTacticalCandidateGrid();
+    renderTacticalLevelStrip();
+    renderTacticalStyleList();
+    showToast(`Cleared Level ${trCurrentLevel}.`);
+  });
+
+  document.getElementById('tr-copy-next-btn')?.addEventListener('click', () => {
+    if (trCurrentLevel >= 20) { showToast('Already at Level 20.'); return; }
+    const curList = getCuratedListForCurrentSelection();
+    if (!curList.length) { showToast(`Level ${trCurrentLevel} has no monsters to copy.`); return; }
+    const nextLvl = trCurrentLevel + 1;
+    trData[trCurrentStyle][trCurrentTheme][String(nextLvl)] = [...curList];
+    saveTacticalRoomsToLocalStorage();
+    trCurrentLevel = nextLvl;
+    renderTacticalRoomsTab();
+    showToast(`Copied ${curList.length} monster(s) to Level ${nextLvl}!`);
+  });
+
+  document.getElementById('tr-apply-range-btn')?.addEventListener('click', () => {
+    const curList = getCuratedListForCurrentSelection();
+    if (!curList.length) { showToast(`Level ${trCurrentLevel} has no monsters to fill.`); return; }
+    const rangeStr = prompt(`Apply Level ${trCurrentLevel}'s ${curList.length} monster(s) to a level range?\nExample: "1-5" or "1-20" or "6-10"`, `${trCurrentLevel}-${Math.min(20, trCurrentLevel + 4)}`);
+    if (!rangeStr) return;
+    const parts = rangeStr.split('-').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 20);
+    if (parts.length < 2) { showToast('Invalid range. Format: "1-5"'); return; }
+    const start = Math.min(parts[0], parts[1]);
+    const end = Math.max(parts[0], parts[1]);
+    for (let l = start; l <= end; l++) {
+      trData[trCurrentStyle][trCurrentTheme][String(l)] = [...curList];
+    }
+    saveTacticalRoomsToLocalStorage();
+    renderTacticalRoomsTab();
+    showToast(`Applied ${curList.length} monster(s) across Levels ${start}–${end}!`);
+  });
+
+  document.getElementById('tr-seed-defaults-btn')?.addEventListener('click', () => {
+    seedTacticalRoomDefaults();
+  });
+
+  document.getElementById('tr-save-btn')?.addEventListener('click', saveTacticalRoomsDirectly);
+  document.getElementById('tr-export-btn')?.addEventListener('click', exportTacticalRoomsJson);
+}
+
+function saveTacticalRoomsToLocalStorage() {
+  try {
+    localStorage.setItem('dc_tactical_rooms_edits', JSON.stringify(trData));
+  } catch (e) {
+    console.warn('Failed saving tactical rooms to localStorage', e);
+  }
+}
+
+async function saveTacticalRoomsDirectly() {
+  saveTacticalRoomsToLocalStorage();
+  const jsonStr = JSON.stringify(trData, null, 2);
+  try {
+    const res = await fetch('/api/save-tactical-rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: jsonStr
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        showToast("💾 Saved tactical_rooms.json directly to project codebase!");
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("Direct server save unavailable, falling back to download", e);
+  }
+  exportTacticalRoomsJson();
+}
+
+function exportTacticalRoomsJson() {
+  const jsonStr = JSON.stringify(trData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tactical_rooms.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast("Exported tactical_rooms.json file download!");
+}
+
+function renderTacticalRoomsTab() {
+  renderTacticalStyleList();
+  renderTacticalHeader();
+  renderTacticalThemeTabs();
+  renderTacticalThemeToggle();
+  renderTacticalLevelStrip();
+  renderTacticalCuratedChips();
+  renderTacticalCandidateGrid();
+}
+
+function renderTacticalStyleList() {
+  const el = document.getElementById('tr-style-list');
+  if (!el) return;
+  el.innerHTML = TACTICAL_ROOM_STYLES.map(s => {
+    const styleData = trData[s.id] || {};
+    const enabledCount = Array.isArray(styleData.enabledThemes) ? styleData.enabledThemes.length : DUNGEON_OPTIONS.length;
+    let totalCurated = 0;
+    for (const tKey of Object.keys(styleData)) {
+      if (tKey === 'enabledThemes') continue;
+      for (const bKey of Object.keys(styleData[tKey])) {
+        if (Array.isArray(styleData[tKey][bKey])) totalCurated += styleData[tKey][bKey].length;
+      }
+    }
+    const isActive = s.id === trCurrentStyle;
+    return `
+      <div class="tr-style-card ${isActive ? 'active' : ''}" data-id="${s.id}">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:13px; font-weight:700; color:${isActive ? 'var(--gold-bright)' : '#fff'}; display:flex; align-items:center; gap:6px;">
+            <span>${s.icon}</span>
+            <span>${s.name}</span>
+          </span>
+          <span class="badge" style="font-size:10px; padding:1px 5px; color:${enabledCount ? 'var(--gold)' : 'var(--red)'}">${enabledCount}/${DUNGEON_OPTIONS.length}</span>
+        </div>
+        <div style="font-size:10.5px; color:var(--text-muted); line-height:1.2; margin-top:2px;">${s.title}</div>
+      </div>
+    `;
+  }).join('');
+
+  el.querySelectorAll('.tr-style-card').forEach(card => {
+    card.addEventListener('click', () => {
+      trCurrentStyle = card.dataset.id;
+      renderTacticalRoomsTab();
+    });
+  });
+}
+
+function renderTacticalHeader() {
+  const s = TACTICAL_ROOM_STYLES.find(x => x.id === trCurrentStyle) || TACTICAL_ROOM_STYLES[0];
+  const titleEl = document.getElementById('tr-header-title');
+  const subEl = document.getElementById('tr-header-sub');
+  if (titleEl) titleEl.innerHTML = `${s.icon} ${s.name} <span style="font-size:14px; font-weight:400; color:var(--text-muted); margin-left:8px;">(${s.title})</span>`;
+  if (subEl) subEl.textContent = s.desc;
+}
+
+function renderTacticalThemeTabs() {
+  const el = document.getElementById('tr-theme-tabs');
+  if (!el) return;
+  const styleData = trData[trCurrentStyle] || {};
+  const enabledList = Array.isArray(styleData.enabledThemes) ? styleData.enabledThemes : DUNGEON_OPTIONS.map(d => d.key);
+
+  el.innerHTML = DUNGEON_OPTIONS.map(d => {
+    const isActive = d.key === trCurrentTheme;
+    const isEnabled = enabledList.includes(d.key);
+    const themeData = styleData[d.key] || {};
+    let n = 0;
+    for (const [k, b] of Object.entries(themeData)) {
+      if (k !== 'enabledThemes' && Array.isArray(b)) n += b.length;
+    }
+    return `
+      <button class="tr-theme-tab-btn ${isActive ? 'active' : ''} ${!isEnabled ? 'disabled-biome' : ''}" data-key="${d.key}" title="${isEnabled ? `${d.label} (Enabled)` : `${d.label} (DISABLED for this room style)`}">
+        <span class="dr-theme-swatch" style="background:${isEnabled ? d.accent : '#666'}; width:8px; height:8px; border-radius:50%; align-self:center; min-height:auto;"></span>
+        <span>${d.label}</span>
+        <span style="font-size:9.5px; opacity:0.8;">${isEnabled ? (n > 0 ? `(${n})` : '') : '✕ OFF'}</span>
+      </button>
+    `;
+  }).join('');
+
+  el.querySelectorAll('.tr-theme-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      trCurrentTheme = btn.dataset.key;
+      renderTacticalRoomsTab();
+    });
+  });
+}
+
+function renderTacticalThemeToggle() {
+  const isEnabled = isCurrentStyleEnabledInTheme(trCurrentTheme);
+  const btn = document.getElementById('tr-theme-toggle-btn');
+  const statusEl = document.getElementById('tr-theme-toggle-status');
+  if (!btn || !statusEl) return;
+  const tName = drThemeLabel(trCurrentTheme);
+  if (isEnabled) {
+    btn.className = 'btn btn-sm btn-success';
+    btn.style.color = '#000';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    statusEl.textContent = `✓ Enabled in ${tName}`;
+  } else {
+    btn.className = 'btn btn-sm';
+    btn.style.borderColor = 'var(--red)';
+    btn.style.color = '#fca5a5';
+    btn.style.background = 'rgba(239,68,68,0.15)';
+    statusEl.textContent = `✕ Disabled in ${tName}`;
+  }
+}
+
+function renderTacticalLevelStrip() {
+  const el = document.getElementById('tr-level-strip');
+  if (!el) return;
+  const hintEl = document.getElementById('tr-band-cr-hint');
+  const baseCR = baseCrForDungeonLevel(trCurrentLevel);
+  const maxCR = maxCrForDungeonLevel(trCurrentLevel);
+  if (hintEl) hintEl.textContent = `Level ${trCurrentLevel} Target CR: ~${formatCR(baseCR)} (Ceiling CR: ${formatCR(maxCR)})`;
+
+  const styleData = trData[trCurrentStyle] || {};
+  const themeData = styleData[trCurrentTheme] || {};
+
+  let buttonsHtml = '';
+  for (let lvl = 1; lvl <= 20; lvl++) {
+    const isActive = lvl === trCurrentLevel;
+    const count = Array.isArray(themeData[String(lvl)]) ? themeData[String(lvl)].length : 0;
+    buttonsHtml += `
+      <button class="tr-lvl-btn ${isActive ? 'active' : ''}" data-level="${lvl}" title="Level ${lvl} — ${count} curated monster(s)">
+        <span class="tr-lvl-num">${lvl}</span>
+        <span class="tr-lvl-count">${count}</span>
+      </button>
+    `;
+  }
+  el.innerHTML = buttonsHtml;
+
+  el.querySelectorAll('.tr-lvl-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      trCurrentLevel = parseInt(btn.dataset.level, 10);
+      renderTacticalRoomsTab();
+    });
+  });
+}
+
+function renderTacticalCuratedChips() {
+  const el = document.getElementById('tr-curated-chips');
+  const countEl = document.getElementById('tr-curated-count');
+  if (!el) return;
+  const isEnabled = isCurrentStyleEnabledInTheme(trCurrentTheme);
+  const list = getCuratedListForCurrentSelection();
+  if (countEl) countEl.textContent = `${list.length} creature${list.length === 1 ? '' : 's'}`;
+
+  if (!isEnabled) {
+    el.innerHTML = `
+      <div class="warn-row warn-bad" style="width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <span>⚠️ <b>Disabled in ${drThemeLabel(trCurrentTheme)}:</b> This tactical room type will NOT spawn during dungeon generation for this biome. Click the button above to enable it.</span>
+        <button class="btn btn-xs btn-success" id="tr-quick-enable-btn" style="color:#000;">Enable Now</button>
+      </div>
+    `;
+    document.getElementById('tr-quick-enable-btn')?.addEventListener('click', () => {
+      toggleCurrentStyleTheme(trCurrentTheme);
+    });
+    return;
+  }
+
+  if (!list.length) {
+    el.innerHTML = `<div class="mob-lane-empty">No curated creatures yet for Level ${trCurrentLevel}. Check creatures in the candidate grid below, or click "Seed Level Defaults".</div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(id => {
+    const m = getMonsterById(id) || { id, name: id, cr: 0 };
+    return `
+      <div class="tr-mob-chip" data-id="${m.id}">
+        <span class="tr-chip-name">${m.name}</span>
+        <span class="tr-chip-cr">CR ${formatCR(m.cr)}</span>
+        <button type="button" class="tr-chip-del-btn" title="Remove ${m.name} from level ${trCurrentLevel}">×</button>
+      </div>
+    `;
+  }).join('');
+
+  el.querySelectorAll('.tr-chip-del-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = e.target.closest('.tr-mob-chip').dataset.id;
+      removeMonsterFromCuratedRoom(id);
+    });
+  });
+}
+
+function removeMonsterFromCuratedRoom(id) {
+  const list = getCuratedListForCurrentSelection();
+  const idx = list.indexOf(id);
+  if (idx !== -1) {
+    list.splice(idx, 1);
+    saveTacticalRoomsToLocalStorage();
+    renderTacticalCuratedChips();
+    renderTacticalLevelStrip();
+    renderTacticalCandidateGrid();
+    renderTacticalStyleList();
+    showToast(`Removed from Level ${trCurrentLevel}.`);
+  }
+}
+
+function addMonsterToCuratedRoom(id) {
+  const list = getCuratedListForCurrentSelection();
+  if (!list.includes(id)) {
+    list.push(id);
+    saveTacticalRoomsToLocalStorage();
+    renderTacticalCuratedChips();
+    renderTacticalLevelStrip();
+    renderTacticalCandidateGrid();
+    renderTacticalStyleList();
+    const m = getMonsterById(id);
+    showToast(`Added ${m?.name || id} to Level ${trCurrentLevel}.`);
+  }
+}
+
+function trFilteredCandidates() {
+  return allMonsters.filter(m => {
+    if (trSearch && !m.name.toLowerCase().includes(trSearch) && !m.id.includes(trSearch)) return false;
+    if (trFamilyFilter !== 'all' && getThemeForMonster(m) !== trFamilyFilter) return false;
+    if (trDungeonFilter === 'theme' && !drMonsterIn(m, trCurrentTheme)) return false;
+    const cr = m.cr ?? 0;
+    if (trCrMin != null && cr < trCrMin) return false;
+    if (trCrMax != null && cr > trCrMax) return false;
+    return true;
+  }).sort((a, b) => {
+    const crA = a.cr ?? 0, crB = b.cr ?? 0;
+    if (crA !== crB) return crA - crB;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function renderTacticalCandidateGrid() {
+  const el = document.getElementById('tr-candidate-grid');
+  const countEl = document.getElementById('tr-candidate-count');
+  if (!el) return;
+  const list = trFilteredCandidates();
+  if (countEl) countEl.textContent = `${list.length} shown / ${allMonsters.length}`;
+
+  const curatedSet = new Set(getCuratedListForCurrentSelection());
+
+  el.innerHTML = list.map(m => {
+    const isSelected = curatedSet.has(m.id);
+    return `
+      <label class="dr-mob-row ${isSelected ? 'on' : ''}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)}">
+        <input type="checkbox" ${isSelected ? 'checked' : ''}>
+        <span class="dr-mob-name">${m.name}</span>
+        <span class="dr-mob-fam">${getThemeForMonster(m)}</span>
+        <span class="dr-mob-cr">CR ${formatCR(m.cr)}</span>
+      </label>
+    `;
+  }).join('') || '<div class="mob-lane-empty">No candidate creatures match these filters.</div>';
+
+  el.querySelectorAll('.dr-mob-row input').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = e.target.closest('.dr-mob-row').dataset.id;
+      if (e.target.checked) {
+        addMonsterToCuratedRoom(id);
+      } else {
+        removeMonsterFromCuratedRoom(id);
+      }
+    });
+  });
+}
+
+function seedTacticalRoomDefaults() {
+  const list = getCuratedListForCurrentSelection();
+  const cap = maxCrForDungeonLevel(trCurrentLevel);
+  const minCR = Math.max(0, cap * 0.2);
+
+  let suggestions = [];
+  if (trCurrentStyle === 'swarm') {
+    suggestions = allMonsters.filter(m => {
+      const fam = getThemeForMonster(m);
+      const isVermin = fam === 'Vermin' || (m.tags && m.tags.includes('vermin'));
+      const inTheme = drMonsterIn(m, trCurrentTheme);
+      const cr = m.cr ?? 0;
+      return (isVermin || fam === 'Beasts') && inTheme && cr <= cap && cr >= minCR;
+    }).slice(0, 4).map(m => m.id);
+    if (!suggestions.length) {
+      suggestions = allMonsters.filter(m => {
+        const fam = getThemeForMonster(m);
+        const isVermin = fam === 'Vermin' || (m.tags && m.tags.includes('vermin'));
+        return (isVermin || fam === 'Beasts') && (m.cr ?? 0) <= cap;
+      }).slice(0, 3).map(m => m.id);
+    }
+  } else if (trCurrentStyle === 'necromantic') {
+    suggestions = allMonsters.filter(m => getThemeForMonster(m) === 'Undead' && drMonsterIn(m, trCurrentTheme) && (m.cr ?? 0) <= cap).slice(0, 4).map(m => m.id);
+  } else if (trCurrentStyle === 'nest') {
+    suggestions = allMonsters.filter(m => (m.type === 'monstrosity' || getThemeForMonster(m) === 'Vermin') && drMonsterIn(m, trCurrentTheme) && (m.cr ?? 0) <= cap).slice(0, 3).map(m => m.id);
+  } else {
+    suggestions = allMonsters.filter(m => drMonsterIn(m, trCurrentTheme) && (m.cr ?? 0) <= cap).slice(0, 3).map(m => m.id);
+  }
+
+  if (!suggestions.length) {
+    showToast(`No matching default candidates found for this theme at Level ${trCurrentLevel}.`);
+    return;
+  }
+
+  let added = 0;
+  for (const id of suggestions) {
+    if (!list.includes(id)) { list.push(id); added++; }
+  }
+  saveTacticalRoomsToLocalStorage();
+  renderTacticalCuratedChips();
+  renderTacticalCandidateGrid();
+  renderTacticalLevelStrip();
+  renderTacticalStyleList();
+  showToast(added ? `Seeded ${added} creature(s) for Level ${trCurrentLevel}.` : 'Creatures already present.');
 }

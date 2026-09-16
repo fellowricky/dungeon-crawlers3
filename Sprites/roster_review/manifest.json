@@ -1,0 +1,578 @@
+[
+ {
+  "folder": "ml2_1_cinder_scamp",
+  "faction": "Cinderkin",
+  "level": 2,
+  "role": "warrior",
+  "slug": "cinder_scamp",
+  "variants": 4
+ },
+ {
+  "folder": "ml2_2_cinder_flinger",
+  "faction": "Cinderkin",
+  "level": 2,
+  "role": "ranged",
+  "slug": "cinder_flinger",
+  "variants": 4
+ },
+ {
+  "folder": "ml2_3_cinder_witch",
+  "faction": "Cinderkin",
+  "level": 2,
+  "role": "caster",
+  "slug": "cinder_witch",
+  "variants": 4
+ },
+ {
+  "folder": "ml2_4_cinder_lumper",
+  "faction": "Cinderkin",
+  "level": 2,
+  "role": "tank",
+  "slug": "cinder_lumper",
+  "variants": 4
+ },
+ {
+  "folder": "ml2_5_cinder_darter",
+  "faction": "Cinderkin",
+  "level": 2,
+  "role": "elite",
+  "slug": "cinder_darter",
+  "variants": 4
+ },
+ {
+  "folder": "ml2_6_cinder_hearthmother",
+  "faction": "Cinderkin",
+  "level": 2,
+  "role": "boss",
+  "slug": "cinder_hearthmother",
+  "variants": 4
+ },
+ {
+  "folder": "ml3_1_slag_hauler",
+  "faction": "Slagbound",
+  "level": 3,
+  "role": "warrior",
+  "slug": "slag_hauler",
+  "variants": 4
+ },
+ {
+  "folder": "ml3_2_slag_slinger",
+  "faction": "Slagbound",
+  "level": 3,
+  "role": "ranged",
+  "slug": "slag_slinger",
+  "variants": 4
+ },
+ {
+  "folder": "ml3_3_slag_stoker",
+  "faction": "Slagbound",
+  "level": 3,
+  "role": "caster",
+  "slug": "slag_stoker",
+  "variants": 4
+ },
+ {
+  "folder": "ml3_4_slag_anvilback",
+  "faction": "Slagbound",
+  "level": 3,
+  "role": "tank",
+  "slug": "slag_anvilback",
+  "variants": 4
+ },
+ {
+  "folder": "ml3_5_slag_crucible",
+  "faction": "Slagbound",
+  "level": 3,
+  "role": "elite",
+  "slug": "slag_crucible",
+  "variants": 4
+ },
+ {
+  "folder": "ml3_6_slag_overseer",
+  "faction": "Slagbound",
+  "level": 3,
+  "role": "boss",
+  "slug": "slag_overseer",
+  "variants": 4
+ },
+ {
+  "folder": "ml4_1_ember_legionary",
+  "faction": "Emberguard",
+  "level": 4,
+  "role": "warrior",
+  "slug": "ember_legionary",
+  "variants": 4
+ },
+ {
+  "folder": "ml4_2_ember_javelin",
+  "faction": "Emberguard",
+  "level": 4,
+  "role": "ranged",
+  "slug": "ember_javelin",
+  "variants": 4
+ },
+ {
+  "folder": "ml4_3_ember_pyromancer",
+  "faction": "Emberguard",
+  "level": 4,
+  "role": "caster",
+  "slug": "ember_pyromancer",
+  "variants": 4
+ },
+ {
+  "folder": "ml4_4_ember_bulwark",
+  "faction": "Emberguard",
+  "level": 4,
+  "role": "tank",
+  "slug": "ember_bulwark",
+  "variants": 4
+ },
+ {
+  "folder": "ml4_5_ember_houndmaster",
+  "faction": "Emberguard",
+  "level": 4,
+  "role": "elite",
+  "slug": "ember_houndmaster",
+  "variants": 4
+ },
+ {
+  "folder": "ml4_6_ember_centurion",
+  "faction": "Emberguard",
+  "level": 4,
+  "role": "boss",
+  "slug": "ember_centurion",
+  "variants": 4
+ },
+ {
+  "folder": "ml5_1_brass_praetor",
+  "faction": "Brasscoat",
+  "level": 5,
+  "role": "warrior",
+  "slug": "brass_praetor",
+  "variants": 4
+ },
+ {
+  "folder": "ml5_2_brass_arbalest",
+  "faction": "Brasscoat",
+  "level": 5,
+  "role": "ranged",
+  "slug": "brass_arbalest",
+  "variants": 4
+ },
+ {
+  "folder": "ml5_3_brass_priest",
+  "faction": "Brasscoat",
+  "level": 5,
+  "role": "caster",
+  "slug": "brass_priest",
+  "variants": 4
+ },
+ {
+  "folder": "ml5_4_brass_immolate",
+  "faction": "Brasscoat",
+  "level": 5,
+  "role": "tank",
+  "slug": "brass_immolate",
+  "variants": 4
+ },
+ {
+  "folder": "ml5_5_brass_flayer",
+  "faction": "Brasscoat",
+  "level": 5,
+  "role": "elite",
+  "slug": "brass_flayer",
+  "variants": 4
+ },
+ {
+  "folder": "ml5_6_brass_legate",
+  "faction": "Brasscoat",
+  "level": 5,
+  "role": "boss",
+  "slug": "brass_legate",
+  "variants": 4
+ },
+ {
+  "folder": "ml6_1_maw_warden",
+  "faction": "Ironmaw",
+  "level": 6,
+  "role": "warrior",
+  "slug": "maw_warden",
+  "variants": 4
+ },
+ {
+  "folder": "ml6_2_maw_spitter",
+  "faction": "Ironmaw",
+  "level": 6,
+  "role": "ranged",
+  "slug": "maw_spitter",
+  "variants": 4
+ },
+ {
+  "folder": "ml6_3_maw_voice",
+  "faction": "Ironmaw",
+  "level": 6,
+  "role": "caster",
+  "slug": "maw_voice",
+  "variants": 4
+ },
+ {
+  "folder": "ml6_4_maw_bastion",
+  "faction": "Ironmaw",
+  "level": 6,
+  "role": "tank",
+  "slug": "maw_bastion",
+  "variants": 4
+ },
+ {
+  "folder": "ml6_5_maw_houndbrand",
+  "faction": "Ironmaw",
+  "level": 6,
+  "role": "elite",
+  "slug": "maw_houndbrand",
+  "variants": 4
+ },
+ {
+  "folder": "ml6_6_maw_overlord",
+  "faction": "Ironmaw",
+  "level": 6,
+  "role": "boss",
+  "slug": "maw_overlord",
+  "variants": 4
+ },
+ {
+  "folder": "fr3_1_hollow_drudge",
+  "faction": "Hollowkin",
+  "level": 3,
+  "role": "warrior",
+  "slug": "hollow_drudge",
+  "variants": 4
+ },
+ {
+  "folder": "fr3_2_hollow_slinger",
+  "faction": "Hollowkin",
+  "level": 3,
+  "role": "ranged",
+  "slug": "hollow_slinger",
+  "variants": 4
+ },
+ {
+  "folder": "fr3_3_hollow_rimespeak",
+  "faction": "Hollowkin",
+  "level": 3,
+  "role": "caster",
+  "slug": "hollow_rimespeak",
+  "variants": 4
+ },
+ {
+  "folder": "fr3_4_hollow_doorstop",
+  "faction": "Hollowkin",
+  "level": 3,
+  "role": "tank",
+  "slug": "hollow_doorstop",
+  "variants": 4
+ },
+ {
+  "folder": "fr3_5_hollow_gnasher",
+  "faction": "Hollowkin",
+  "level": 3,
+  "role": "elite",
+  "slug": "hollow_gnasher",
+  "variants": 4
+ },
+ {
+  "folder": "fr3_6_hollow_overseer",
+  "faction": "Hollowkin",
+  "level": 3,
+  "role": "boss",
+  "slug": "hollow_overseer",
+  "variants": 4
+ },
+ {
+  "folder": "fr4_1_wright_shard",
+  "faction": "Rimewrights",
+  "level": 4,
+  "role": "warrior",
+  "slug": "wright_shard",
+  "variants": 4
+ },
+ {
+  "folder": "fr4_2_wright_needler",
+  "faction": "Rimewrights",
+  "level": 4,
+  "role": "ranged",
+  "slug": "wright_needler",
+  "variants": 4
+ },
+ {
+  "folder": "fr4_3_wright_chorus",
+  "faction": "Rimewrights",
+  "level": 4,
+  "role": "caster",
+  "slug": "wright_chorus",
+  "variants": 4
+ },
+ {
+  "folder": "fr4_4_wright_bulwark",
+  "faction": "Rimewrights",
+  "level": 4,
+  "role": "tank",
+  "slug": "wright_bulwark",
+  "variants": 4
+ },
+ {
+  "folder": "fr4_5_wright_glassblade",
+  "faction": "Rimewrights",
+  "level": 4,
+  "role": "elite",
+  "slug": "wright_glassblade",
+  "variants": 4
+ },
+ {
+  "folder": "fr4_6_wright_wintersmith",
+  "faction": "Rimewrights",
+  "level": 4,
+  "role": "boss",
+  "slug": "wright_wintersmith",
+  "variants": 4
+ },
+ {
+  "folder": "fr5_1_huscarl_axeman",
+  "faction": "Huscarls",
+  "level": 5,
+  "role": "warrior",
+  "slug": "huscarl_axeman",
+  "variants": 4
+ },
+ {
+  "folder": "fr5_2_huscarl_harpoon",
+  "faction": "Huscarls",
+  "level": 5,
+  "role": "ranged",
+  "slug": "huscarl_harpoon",
+  "variants": 4
+ },
+ {
+  "folder": "fr5_3_huscarl_stormspeak",
+  "faction": "Huscarls",
+  "level": 5,
+  "role": "caster",
+  "slug": "huscarl_stormspeak",
+  "variants": 4
+ },
+ {
+  "folder": "fr5_4_huscarl_shieldwall",
+  "faction": "Huscarls",
+  "level": 5,
+  "role": "tank",
+  "slug": "huscarl_shieldwall",
+  "variants": 4
+ },
+ {
+  "folder": "fr5_5_huscarl_berserk",
+  "faction": "Huscarls",
+  "level": 5,
+  "role": "elite",
+  "slug": "huscarl_berserk",
+  "variants": 4
+ },
+ {
+  "folder": "fr5_6_huscarl_thegn",
+  "faction": "Huscarls",
+  "level": 5,
+  "role": "boss",
+  "slug": "huscarl_thegn",
+  "variants": 4
+ },
+ {
+  "folder": "fr6_1_court_iceward",
+  "faction": "JarlsCourt",
+  "level": 6,
+  "role": "warrior",
+  "slug": "court_iceward",
+  "variants": 4
+ },
+ {
+  "folder": "fr6_2_court_stonecaster",
+  "faction": "JarlsCourt",
+  "level": 6,
+  "role": "ranged",
+  "slug": "court_stonecaster",
+  "variants": 4
+ },
+ {
+  "folder": "fr6_3_court_wintersinger",
+  "faction": "JarlsCourt",
+  "level": 6,
+  "role": "caster",
+  "slug": "court_wintersinger",
+  "variants": 4
+ },
+ {
+  "folder": "fr6_4_court_glacierback",
+  "faction": "JarlsCourt",
+  "level": 6,
+  "role": "tank",
+  "slug": "court_glacierback",
+  "variants": 4
+ },
+ {
+  "folder": "fr6_5_court_wyrmhound",
+  "faction": "JarlsCourt",
+  "level": 6,
+  "role": "elite",
+  "slug": "court_wyrmhound",
+  "variants": 4
+ },
+ {
+  "folder": "fr6_6_court_jarl",
+  "faction": "JarlsCourt",
+  "level": 6,
+  "role": "boss",
+  "slug": "court_jarl",
+  "variants": 4
+ },
+ {
+  "folder": "vg5_1_bog_crone",
+  "faction": "BlackbogCoven",
+  "level": 5,
+  "role": "warrior",
+  "slug": "bog_crone",
+  "variants": 4
+ },
+ {
+  "folder": "vg5_2_bog_hexspitter",
+  "faction": "BlackbogCoven",
+  "level": 5,
+  "role": "ranged",
+  "slug": "bog_hexspitter",
+  "variants": 4
+ },
+ {
+  "folder": "vg5_3_bog_greenmother",
+  "faction": "BlackbogCoven",
+  "level": 5,
+  "role": "caster",
+  "slug": "bog_greenmother",
+  "variants": 4
+ },
+ {
+  "folder": "vg5_4_bog_swollen",
+  "faction": "BlackbogCoven",
+  "level": 5,
+  "role": "tank",
+  "slug": "bog_swollen",
+  "variants": 4
+ },
+ {
+  "folder": "vg5_5_bog_stitchling",
+  "faction": "BlackbogCoven",
+  "level": 5,
+  "role": "elite",
+  "slug": "bog_stitchling",
+  "variants": 4
+ },
+ {
+  "folder": "vg5_6_bog_grandmother",
+  "faction": "BlackbogCoven",
+  "level": 5,
+  "role": "boss",
+  "slug": "bog_grandmother",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_1_growth_sapling",
+  "faction": "OldGrowth",
+  "level": 6,
+  "role": "warrior",
+  "slug": "growth_sapling",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_2_growth_thornlobber",
+  "faction": "OldGrowth",
+  "level": 6,
+  "role": "ranged",
+  "slug": "growth_thornlobber",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_3_growth_heartwood",
+  "faction": "OldGrowth",
+  "level": 6,
+  "role": "caster",
+  "slug": "growth_heartwood",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_4_growth_bulwark",
+  "faction": "OldGrowth",
+  "level": 6,
+  "role": "tank",
+  "slug": "growth_bulwark",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_5_growth_stalker",
+  "faction": "OldGrowth",
+  "level": 6,
+  "role": "elite",
+  "slug": "growth_stalker",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_6_growth_elder",
+  "faction": "OldGrowth",
+  "level": 6,
+  "role": "boss",
+  "slug": "growth_elder",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_1_cerement_bearer",
+  "faction": "Cerement",
+  "level": 6,
+  "role": "warrior",
+  "slug": "cerement_bearer",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_2_cerement_archer",
+  "faction": "Cerement",
+  "level": 6,
+  "role": "ranged",
+  "slug": "cerement_archer",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_3_cerement_lector",
+  "faction": "Cerement",
+  "level": 6,
+  "role": "caster",
+  "slug": "cerement_lector",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_4_cerement_shieldbearer",
+  "faction": "Cerement",
+  "level": 6,
+  "role": "tank",
+  "slug": "cerement_shieldbearer",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_5_cerement_unwound",
+  "faction": "Cerement",
+  "level": 6,
+  "role": "elite",
+  "slug": "cerement_unwound",
+  "variants": 4
+ },
+ {
+  "folder": "vg6_6_cerement_guardian",
+  "faction": "Cerement",
+  "level": 6,
+  "role": "boss",
+  "slug": "cerement_guardian",
+  "variants": 4
+ }
+]

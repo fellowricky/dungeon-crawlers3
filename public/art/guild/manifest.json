@@ -1,0 +1,702 @@
+{
+  "academy": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.0766,
+        "file": "./art/guild/academy/lvl1.png",
+        "worldW": 4.494
+      },
+      {
+        "aspect": 1.1282,
+        "file": "./art/guild/academy/lvl2.png",
+        "worldW": 4.76
+      },
+      {
+        "aspect": 1.1269,
+        "file": "./art/guild/academy/lvl3.png",
+        "worldW": 5.117
+      },
+      {
+        "aspect": 0.7598,
+        "file": "./art/guild/academy/lvl4.png",
+        "worldW": 8.76
+      },
+      {
+        "aspect": 1.2172,
+        "file": "./art/guild/academy/lvl5.png",
+        "worldW": 6.338
+      },
+      {
+        "aspect": 0.8193,
+        "file": "./art/guild/academy/lvl6.png",
+        "worldW": 10.026
+      },
+      {
+        "aspect": 0.7739,
+        "file": "./art/guild/academy/lvl7.png",
+        "worldW": 11.662
+      },
+      {
+        "aspect": 0.7699,
+        "file": "./art/guild/academy/lvl8.png",
+        "worldW": 12.896
+      },
+      {
+        "aspect": 0.709,
+        "file": "./art/guild/academy/lvl9.png",
+        "worldW": 15.506
+      },
+      {
+        "aspect": 0.8429,
+        "file": "./art/guild/academy/lvl10.png",
+        "worldW": 13.974
+      }
+    ]
+  },
+  "apothecary": {
+    "hitbox": {
+      "d": 6.2,
+      "dx": 0,
+      "dz": 0.1,
+      "h": 4.1,
+      "w": 8.8
+    },
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 0.974,
+        "file": "./art/guild/apothecary/lvl1.png",
+        "worldW": 4.494
+      },
+      {
+        "aspect": 1.0331,
+        "file": "./art/guild/apothecary/lvl2.png",
+        "worldW": 4.708
+      },
+      {
+        "aspect": 0.9926,
+        "file": "./art/guild/apothecary/lvl3.png",
+        "worldW": 5.26
+      },
+      {
+        "aspect": 1.0357,
+        "file": "./art/guild/apothecary/lvl4.png",
+        "worldW": 6.364
+      },
+      {
+        "aspect": 0.9348,
+        "file": "./art/guild/apothecary/lvl5.png",
+        "worldW": 8.162
+      },
+      {
+        "aspect": 0.9907,
+        "file": "./art/guild/apothecary/lvl6.png",
+        "worldW": 8.338
+      },
+      {
+        "aspect": 0.8684,
+        "file": "./art/guild/apothecary/lvl7.png",
+        "worldW": 10.312
+      },
+      {
+        "aspect": 0.8116,
+        "file": "./art/guild/apothecary/lvl8.png",
+        "worldW": 12.169
+      },
+      {
+        "aspect": 0.6869,
+        "file": "./art/guild/apothecary/lvl9.png",
+        "worldW": 15.532
+      },
+      {
+        "aspect": 0.7591,
+        "file": "./art/guild/apothecary/lvl10.png",
+        "worldW": 14.909
+      }
+    ]
+  },
+  "armory": {
+    "hitbox": {
+      "d": 8.8,
+      "dx": 0,
+      "dz": 0,
+      "h": 3.3,
+      "w": 6.2
+    },
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 0.8858,
+        "file": "./art/guild/armory/lvl1.png",
+        "worldW": 5.175
+      },
+      {
+        "aspect": 0.9367,
+        "file": "./art/guild/armory/lvl2.png",
+        "worldW": 5.539
+      },
+      {
+        "aspect": 0.8346,
+        "file": "./art/guild/armory/lvl3.png",
+        "worldW": 6.675
+      },
+      {
+        "aspect": 0.8536,
+        "file": "./art/guild/armory/lvl4.png",
+        "worldW": 7.364
+      },
+      {
+        "aspect": 0.6611,
+        "file": "./art/guild/armory/lvl5.png",
+        "worldW": 10.844
+      },
+      {
+        "aspect": 0.6786,
+        "file": "./art/guild/armory/lvl6.png",
+        "worldW": 11.455
+      },
+      {
+        "aspect": 0.6518,
+        "file": "./art/guild/armory/lvl7.png",
+        "worldW": 12.981
+      },
+      {
+        "aspect": 0.6737,
+        "file": "./art/guild/armory/lvl8.png",
+        "worldW": 14.11
+      },
+      {
+        "aspect": 0.6522,
+        "file": "./art/guild/armory/lvl9.png",
+        "worldW": 16.169
+      },
+      {
+        "aspect": 0.7655,
+        "file": "./art/guild/armory/lvl10.png",
+        "worldW": 14.539
+      }
+    ]
+  },
+  "blacksmith": {
+    "hitbox": {
+      "d": 5.7,
+      "dx": -0.4,
+      "dz": 1.7,
+      "h": 7.1,
+      "w": 8.6
+    },
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.088,
+        "dx": -0.49,
+        "dz": 4.76,
+        "file": "./art/guild/blacksmith/lvl1.png",
+        "scale": 1,
+        "worldW": 5.221
+      },
+      {
+        "aspect": 0.8716,
+        "dx": -0.44,
+        "dz": 3.3,
+        "file": "./art/guild/blacksmith/lvl2.png",
+        "scale": 0.741,
+        "worldW": 7.469
+      },
+      {
+        "aspect": 0.9986,
+        "dx": -0.49,
+        "dz": 4.07,
+        "file": "./art/guild/blacksmith/lvl3.png",
+        "scale": 1,
+        "worldW": 5.664
+      },
+      {
+        "aspect": 1.0488,
+        "dx": -0.16,
+        "dz": 4.82,
+        "file": "./art/guild/blacksmith/lvl4.png",
+        "scale": 0.861,
+        "worldW": 7.107
+      },
+      {
+        "aspect": 0.7104,
+        "dx": -0.77,
+        "dz": 4.24,
+        "file": "./art/guild/blacksmith/lvl5.png",
+        "scale": 1,
+        "worldW": 10.628
+      },
+      {
+        "aspect": 0.7904,
+        "dx": -0.3,
+        "dz": 3.85,
+        "file": "./art/guild/blacksmith/lvl6.png",
+        "scale": 0.861,
+        "worldW": 8.686
+      },
+      {
+        "aspect": 0.7967,
+        "dx": -0.42,
+        "dz": 2.73,
+        "file": "./art/guild/blacksmith/lvl7.png",
+        "scale": 1,
+        "worldW": 8.718
+      },
+      {
+        "aspect": 0.8136,
+        "dx": -0.81,
+        "dz": 3.44,
+        "file": "./art/guild/blacksmith/lvl8.png",
+        "scale": 1,
+        "worldW": 9.032
+      },
+      {
+        "aspect": 0.7907,
+        "dx": -0.6,
+        "dz": 3.68,
+        "file": "./art/guild/blacksmith/lvl9.png",
+        "scale": 1,
+        "worldW": 9.201
+      },
+      {
+        "aspect": 0.8271,
+        "dx": -1.02,
+        "dz": 4.52,
+        "file": "./art/guild/blacksmith/lvl10.png",
+        "scale": 1.205,
+        "worldW": 8.992
+      }
+    ]
+  },
+  "cartographer": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.0997,
+        "file": "./art/guild/cartographer/lvl1.png",
+        "worldW": 4.494
+      },
+      {
+        "aspect": 1.1452,
+        "file": "./art/guild/cartographer/lvl2.png",
+        "worldW": 4.786
+      },
+      {
+        "aspect": 1.1454,
+        "file": "./art/guild/cartographer/lvl3.png",
+        "worldW": 5.136
+      },
+      {
+        "aspect": 1.1468,
+        "file": "./art/guild/cartographer/lvl4.png",
+        "worldW": 5.662
+      },
+      {
+        "aspect": 1.2951,
+        "file": "./art/guild/cartographer/lvl5.png",
+        "worldW": 5.942
+      },
+      {
+        "aspect": 1.2923,
+        "file": "./art/guild/cartographer/lvl6.png",
+        "worldW": 6.442
+      },
+      {
+        "aspect": 1.0742,
+        "file": "./art/guild/cartographer/lvl7.png",
+        "worldW": 8.494
+      },
+      {
+        "aspect": 1.0059,
+        "file": "./art/guild/cartographer/lvl8.png",
+        "worldW": 9.942
+      },
+      {
+        "aspect": 0.9854,
+        "file": "./art/guild/cartographer/lvl9.png",
+        "worldW": 11.091
+      },
+      {
+        "aspect": 0.8887,
+        "file": "./art/guild/cartographer/lvl10.png",
+        "worldW": 13.013
+      }
+    ]
+  },
+  "crypt": {
+    "hitbox": {
+      "d": 6.2,
+      "dx": 0,
+      "dz": 0,
+      "h": 4.7,
+      "w": 7.1
+    },
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.0925,
+        "file": "./art/guild/crypt/lvl1.png",
+        "worldW": 4.494
+      },
+      {
+        "aspect": 1.1027,
+        "file": "./art/guild/crypt/lvl2.png",
+        "worldW": 4.805
+      },
+      {
+        "aspect": 1.1096,
+        "file": "./art/guild/crypt/lvl3.png",
+        "worldW": 5.156
+      },
+      {
+        "aspect": 0.6972,
+        "file": "./art/guild/crypt/lvl4.png",
+        "worldW": 8.662
+      },
+      {
+        "aspect": 0.8842,
+        "file": "./art/guild/crypt/lvl5.png",
+        "worldW": 8.526
+      },
+      {
+        "aspect": 0.8133,
+        "file": "./art/guild/crypt/lvl6.png",
+        "worldW": 10.052
+      },
+      {
+        "aspect": 0.8235,
+        "file": "./art/guild/crypt/lvl7.png",
+        "worldW": 10.558
+      },
+      {
+        "aspect": 0.6559,
+        "file": "./art/guild/crypt/lvl8.png",
+        "worldW": 14.435
+      },
+      {
+        "aspect": 0.6868,
+        "file": "./art/guild/crypt/lvl9.png",
+        "worldW": 14.909
+      },
+      {
+        "aspect": 0.7383,
+        "file": "./art/guild/crypt/lvl10.png",
+        "worldW": 14.786
+      }
+    ]
+  },
+  "enchanter": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.0561,
+        "file": "./art/guild/enchanter/lvl1.png",
+        "worldW": 4.63
+      },
+      {
+        "aspect": 1.1047,
+        "file": "./art/guild/enchanter/lvl2.png",
+        "worldW": 4.961
+      },
+      {
+        "aspect": 1.1022,
+        "file": "./art/guild/enchanter/lvl3.png",
+        "worldW": 5.338
+      },
+      {
+        "aspect": 1.3807,
+        "file": "./art/guild/enchanter/lvl4.png",
+        "worldW": 4.844
+      },
+      {
+        "aspect": 1.2842,
+        "file": "./art/guild/enchanter/lvl5.png",
+        "worldW": 5.942
+      },
+      {
+        "aspect": 1.1886,
+        "file": "./art/guild/enchanter/lvl6.png",
+        "worldW": 6.922
+      },
+      {
+        "aspect": 1.0932,
+        "file": "./art/guild/enchanter/lvl7.png",
+        "worldW": 8.364
+      },
+      {
+        "aspect": 0.8772,
+        "file": "./art/guild/enchanter/lvl8.png",
+        "worldW": 11.266
+      },
+      {
+        "aspect": 0.8987,
+        "file": "./art/guild/enchanter/lvl9.png",
+        "worldW": 12.247
+      },
+      {
+        "aspect": 0.9525,
+        "file": "./art/guild/enchanter/lvl10.png",
+        "worldW": 12.305
+      }
+    ]
+  },
+  "infirmary": {
+    "hitbox": {
+      "d": 4.9,
+      "dx": -0.1,
+      "dz": 0,
+      "h": 5.2,
+      "w": 8
+    },
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 0.9214,
+        "file": "./art/guild/infirmary/lvl1.png",
+        "worldW": 4.792
+      },
+      {
+        "aspect": 1.0529,
+        "file": "./art/guild/infirmary/lvl2.png",
+        "worldW": 4.909
+      },
+      {
+        "aspect": 1.0543,
+        "file": "./art/guild/infirmary/lvl3.png",
+        "worldW": 5.266
+      },
+      {
+        "aspect": 1.0525,
+        "file": "./art/guild/infirmary/lvl4.png",
+        "worldW": 5.818
+      },
+      {
+        "aspect": 0.9604,
+        "file": "./art/guild/infirmary/lvl5.png",
+        "worldW": 7.87
+      },
+      {
+        "aspect": 0.7541,
+        "file": "./art/guild/infirmary/lvl6.png",
+        "worldW": 10.565
+      },
+      {
+        "aspect": 0.7394,
+        "file": "./art/guild/infirmary/lvl7.png",
+        "worldW": 11.909
+      },
+      {
+        "aspect": 0.6438,
+        "file": "./art/guild/infirmary/lvl8.png",
+        "worldW": 14.877
+      },
+      {
+        "aspect": 0.7007,
+        "file": "./art/guild/infirmary/lvl9.png",
+        "worldW": 15.513
+      },
+      {
+        "aspect": 0.7128,
+        "file": "./art/guild/infirmary/lvl10.png",
+        "worldW": 16.123
+      }
+    ]
+  },
+  "living_quarters": {
+    "hitbox": {
+      "d": 4.9,
+      "dx": 0,
+      "dz": 0,
+      "h": 6.3,
+      "w": 8.8
+    },
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 0.9023,
+        "file": "./art/guild/living_quarters/lvl1.png",
+        "worldW": 4.987
+      },
+      {
+        "aspect": 0.9879,
+        "file": "./art/guild/living_quarters/lvl2.png",
+        "worldW": 5.351
+      },
+      {
+        "aspect": 0.9864,
+        "file": "./art/guild/living_quarters/lvl3.png",
+        "worldW": 5.747
+      },
+      {
+        "aspect": 0.972,
+        "file": "./art/guild/living_quarters/lvl4.png",
+        "worldW": 6.734
+      },
+      {
+        "aspect": 0.9015,
+        "file": "./art/guild/living_quarters/lvl5.png",
+        "worldW": 8.305
+      },
+      {
+        "aspect": 0.7686,
+        "file": "./art/guild/living_quarters/lvl6.png",
+        "worldW": 10.552
+      },
+      {
+        "aspect": 0.7687,
+        "file": "./art/guild/living_quarters/lvl7.png",
+        "worldW": 11.481
+      },
+      {
+        "aspect": 0.7667,
+        "file": "./art/guild/living_quarters/lvl8.png",
+        "worldW": 12.721
+      },
+      {
+        "aspect": 0.7366,
+        "file": "./art/guild/living_quarters/lvl9.png",
+        "worldW": 14.422
+      },
+      {
+        "aspect": 0.7365,
+        "file": "./art/guild/living_quarters/lvl10.png",
+        "worldW": 15.156
+      }
+    ]
+  },
+  "merchant": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 0.6938,
+        "file": "./art/guild/merchant/lvl1.png",
+        "worldW": 8.0
+      }
+    ]
+  },
+  "tavern": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.0846,
+        "dx": 0,
+        "dz": 0,
+        "file": "./art/guild/tavern/lvl1.png",
+        "scale": 0.741,
+        "worldW": 11.0
+      }
+    ]
+  },
+  "training_grounds": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 0.9319,
+        "file": "./art/guild/training_grounds/lvl1.png",
+        "worldW": 4.961
+      },
+      {
+        "aspect": 0.916,
+        "file": "./art/guild/training_grounds/lvl2.png",
+        "worldW": 5.409
+      },
+      {
+        "aspect": 0.9161,
+        "file": "./art/guild/training_grounds/lvl3.png",
+        "worldW": 5.805
+      },
+      {
+        "aspect": 0.8737,
+        "file": "./art/guild/training_grounds/lvl4.png",
+        "worldW": 6.89
+      },
+      {
+        "aspect": 0.7052,
+        "file": "./art/guild/training_grounds/lvl5.png",
+        "worldW": 10.0
+      },
+      {
+        "aspect": 0.6745,
+        "file": "./art/guild/training_grounds/lvl6.png",
+        "worldW": 11.312
+      },
+      {
+        "aspect": 0.6248,
+        "file": "./art/guild/training_grounds/lvl7.png",
+        "worldW": 13.273
+      },
+      {
+        "aspect": 0.5052,
+        "file": "./art/guild/training_grounds/lvl8.png",
+        "worldW": 15.104
+      },
+      {
+        "aspect": 0.5988,
+        "file": "./art/guild/training_grounds/lvl9.png",
+        "worldW": 16.331
+      },
+      {
+        "aspect": 0.7296,
+        "file": "./art/guild/training_grounds/lvl10.png",
+        "worldW": 15.416
+      }
+    ]
+  },
+  "war_room": {
+    "perLevel": true,
+    "tiers": [
+      {
+        "aspect": 1.101,
+        "file": "./art/guild/war_room/lvl1.png",
+        "worldW": 4.5
+      },
+      {
+        "aspect": 1.1766,
+        "file": "./art/guild/war_room/lvl2.png",
+        "worldW": 4.669
+      },
+      {
+        "aspect": 1.1762,
+        "file": "./art/guild/war_room/lvl3.png",
+        "worldW": 5.013
+      },
+      {
+        "aspect": 1.1772,
+        "file": "./art/guild/war_room/lvl4.png",
+        "worldW": 5.532
+      },
+      {
+        "aspect": 0.7973,
+        "file": "./art/guild/war_room/lvl5.png",
+        "worldW": 9.162
+      },
+      {
+        "aspect": 0.8958,
+        "file": "./art/guild/war_room/lvl6.png",
+        "worldW": 8.974
+      },
+      {
+        "aspect": 0.8355,
+        "file": "./art/guild/war_room/lvl7.png",
+        "worldW": 10.617
+      },
+      {
+        "aspect": 0.6955,
+        "file": "./art/guild/war_room/lvl8.png",
+        "worldW": 14.266
+      },
+      {
+        "aspect": 0.7143,
+        "file": "./art/guild/war_room/lvl9.png",
+        "worldW": 15.299
+      },
+      {
+        "aspect": 0.7108,
+        "file": "./art/guild/war_room/lvl10.png",
+        "worldW": 16.571
+      }
+    ]
+  }
+}

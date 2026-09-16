@@ -1,0 +1,579 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sprite Sheet Viewer</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex;
+    background: #1a1a1a; color: #ddd; font-family: system-ui, sans-serif;
+  }
+  #sidebar {
+    width: 300px; flex: none; border-right: 1px solid #333;
+    display: flex; flex-direction: column; background: #161616;
+  }
+  #searchWrap { padding: 10px; border-bottom: 1px solid #333; }
+  #search {
+    width: 100%; padding: 7px 9px; background: #222; color: #ddd;
+    border: 1px solid #444; border-radius: 4px; font-size: 13px;
+  }
+  #tree { overflow-y: auto; flex: 1; padding-bottom: 20px; }
+  .group { padding: 10px 12px 4px; font-size: 11px; letter-spacing: .08em;
+           text-transform: uppercase; color: #666; }
+  .subject { padding: 5px 12px 3px; font-size: 12px; color: #8ab; font-weight: 600; }
+  .item {
+    padding: 5px 12px 5px 22px; font-size: 13px; color: #bbb;
+    cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .item:hover { background: #222; color: #fff; }
+  .item.active { background: #2a3f52; color: #9cf; }
+  #main { flex: 1; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 14px; padding: 20px; }
+  #title { font-size: 14px; color: #ccc; }
+  #stage {
+    background:
+      linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    image-rendering: pixelated;
+  }
+  #strip { max-width: 100%; overflow-x: auto; border: 1px solid #333; background: #111; }
+  #strip img { image-rendering: pixelated; display: block; }
+  #controls { display: flex; flex-direction: column; gap: 10px; width: 440px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row label { width: 110px; font-size: 13px; color: #aaa; }
+  .row input[type=number] { width: 70px; }
+  .row input[type=range] { flex: 1; }
+  button { background: #333; color: #ddd; border: 1px solid #555; border-radius: 4px;
+           padding: 6px 14px; cursor: pointer; }
+  button:hover { background: #444; }
+  button:disabled { opacity: .4; cursor: default; }
+  #info, .hint { font-size: 12px; color: #888; }
+  #empty { color: #666; font-size: 14px; }
+  #scaleval, #fpsval { color: #ddd; width: 32px; text-align: right; }
+  kbd { background:#2a2a2a; border:1px solid #444; border-radius:3px; padding:1px 5px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="searchWrap"><input id="search" placeholder="Filter sheets..." autocomplete="off"></div>
+  <div id="tree"></div>
+</div>
+
+<div id="main">
+  <div id="title">Pick a sprite sheet on the left</div>
+  <canvas id="stage"></canvas>
+  <div id="strip"></div>
+  <div id="controls">
+    <div class="row">
+      <label for="frameW">Frame width</label>
+      <input type="number" id="frameW" value="64" min="1">
+      <label for="frameH" style="width:auto;margin-left:8px">height</label>
+      <input type="number" id="frameH" value="64" min="1">
+    </div>
+    <div class="row">
+      <label for="fps">FPS</label>
+      <input type="range" id="fps" min="1" max="48" value="16">
+      <span id="fpsval">16</span>
+    </div>
+    <div class="row">
+      <label for="scale">Scale</label>
+      <input type="range" id="scale" min="1" max="12" value="6">
+      <span id="scaleval">6x</span>
+    </div>
+    <div class="row">
+      <button id="playBtn">Pause</button>
+      <button id="prevBtn">&#8593; Prev</button>
+      <button id="nextBtn">&#8595; Next</button>
+      <button id="audioBtn">Play audio</button>
+    </div>
+    <div id="info"></div>
+    <div class="hint"><kbd>&#8593;</kbd>/<kbd>&#8595;</kbd> switch sheet &nbsp; <kbd>space</kbd> play/pause</div>
+  </div>
+</div>
+
+<audio id="audioEl"></audio>
+
+<script>
+const SHEETS = [
+ {
+  "group": "SpellVFX",
+  "subject": "ArmsOfHadar",
+  "label": "v01",
+  "name": "armsOfHadar_v01_spritesheet_64x64",
+  "src": "SpellVFX/ArmsOfHadar/Variations/v01/armsOfHadar_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/ArmsOfHadar/Variations/v01/armsOfHadar_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Bane",
+  "label": "v01",
+  "name": "bane_v01_spritesheet_64x64",
+  "src": "SpellVFX/Bane/Variations/v01/bane_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Bane/Variations/v01/bane_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Bless",
+  "label": "v01",
+  "name": "bless_v01_spritesheet_64x64",
+  "src": "SpellVFX/Bless/Variations/v01/bless_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Bless/Variations/v01/bless_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "BurningHands",
+  "label": "v01",
+  "name": "dragonBreathSpell_v01_spritesheet_64x64",
+  "src": "SpellVFX/BurningHands/Variations/v01/dragonBreathSpell_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/BurningHands/Variations/v01/dragonBreathSpell_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ChaosBolt",
+  "label": "v01",
+  "name": "chaosBolt_v01_spritesheet_64x64",
+  "src": "SpellVFX/ChaosBolt/Variations/v01/chaosBolt_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/ChaosBolt/Variations/v01/chaosBolt_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ChillTouch",
+  "label": "chill_touch_v10_spritesheet_64x64",
+  "name": "chill_touch_v10_spritesheet_64x64",
+  "src": "SpellVFX/ChillTouch/chill_touch_v10_spritesheet_64x64.png",
+  "audio": "SpellVFX/ChillTouch/chill_touch_v10_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ChromaticOrb",
+  "label": "v01",
+  "name": "chromaticOrb_v01_spritesheet_64x64",
+  "src": "SpellVFX/ChromaticOrb/Variations/v01/chromaticOrb_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/ChromaticOrb/Variations/v01/chromaticOrb_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "CureWounds",
+  "label": "v01",
+  "name": "cureWounds_v01_spritesheet_64x64",
+  "src": "SpellVFX/CureWounds/Variations/v01/cureWounds_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/CureWounds/Variations/v01/cureWounds_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "EldritchBlast",
+  "label": "eldritch_blast_v01_spritesheet_64x64",
+  "name": "eldritch_blast_v01_spritesheet_64x64",
+  "src": "SpellVFX/EldritchBlast/eldritch_blast_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/EldritchBlast/eldritch_blast_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Entangle",
+  "label": "v01",
+  "name": "entangle_v01_spritesheet_64x64",
+  "src": "SpellVFX/Entangle/Variations/v01/entangle_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Entangle/Variations/v01/entangle_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "FaerieFire",
+  "label": "v01",
+  "name": "faerieFire_v01_spritesheet_64x64",
+  "src": "SpellVFX/FaerieFire/Variations/v01/faerieFire_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/FaerieFire/Variations/v01/faerieFire_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "FindFamiliar",
+  "label": "v01",
+  "name": "findFamiliar_v01_spritesheet_64x64",
+  "src": "SpellVFX/FindFamiliar/Variations/v01/findFamiliar_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/FindFamiliar/Variations/v01/findFamiliar_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "FireBolt",
+  "label": "fire_bolt_v04_spritesheet_64x64",
+  "name": "fire_bolt_v04_spritesheet_64x64",
+  "src": "SpellVFX/FireBolt/fire_bolt_v04_spritesheet_64x64.png",
+  "audio": "SpellVFX/FireBolt/fire_bolt_v04_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Grease",
+  "label": "v01",
+  "name": "grease_v01_spritesheet_64x64",
+  "src": "SpellVFX/Grease/Variations/v01/grease_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Grease/Variations/v01/grease_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "GuidingBolt",
+  "label": "v01",
+  "name": "guidingBolt_v01_spritesheet_64x64",
+  "src": "SpellVFX/GuidingBolt/Variations/v01/guidingBolt_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/GuidingBolt/Variations/v01/guidingBolt_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "HealingWord",
+  "label": "v01",
+  "name": "healingWord_v01_spritesheet_64x64",
+  "src": "SpellVFX/HealingWord/Variations/v01/healingWord_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/HealingWord/Variations/v01/healingWord_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Hex",
+  "label": "v01",
+  "name": "hex_v01_spritesheet_64x64",
+  "src": "SpellVFX/Hex/Variations/v01/hex_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Hex/Variations/v01/hex_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "HideousLaughter",
+  "label": "v01",
+  "name": "hideousLaughter_v01_spritesheet_64x64",
+  "src": "SpellVFX/HideousLaughter/Variations/v01/hideousLaughter_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/HideousLaughter/Variations/v01/hideousLaughter_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "HuntersMark",
+  "label": "v01",
+  "name": "huntersMark_v01_spritesheet_64x64",
+  "src": "SpellVFX/HuntersMark/Variations/v01/huntersMark_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/HuntersMark/Variations/v01/huntersMark_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "InflictWounds",
+  "label": "v01",
+  "name": "inflictWounds_v01_spritesheet_64x64",
+  "src": "SpellVFX/InflictWounds/Variations/v01/inflictWounds_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/InflictWounds/Variations/v01/inflictWounds_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "MagicMissile",
+  "label": "v01",
+  "name": "magicMissile_v01_spritesheet_64x64",
+  "src": "SpellVFX/MagicMissile/Variations/v01/magicMissile_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/MagicMissile/Variations/v01/magicMissile_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ProduceFlame",
+  "label": "produce_flame_spritesheet_64x64",
+  "name": "produce_flame_spritesheet_64x64",
+  "src": "SpellVFX/ProduceFlame/produce_flame_spritesheet_64x64.png",
+  "audio": "SpellVFX/ProduceFlame/produce_flame_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ProtectionFromEvil",
+  "label": "v01",
+  "name": "protectionFromEvil_v01_spritesheet_64x64",
+  "src": "SpellVFX/ProtectionFromEvil/Variations/v01/protectionFromEvil_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/ProtectionFromEvil/Variations/v01/protectionFromEvil_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "RayOfSickness",
+  "label": "v01",
+  "name": "rayOfSickness_v01_spritesheet_64x64",
+  "src": "SpellVFX/RayOfSickness/Variations/v01/rayOfSickness_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/RayOfSickness/Variations/v01/rayOfSickness_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "SacredFlame",
+  "label": "sacred_flame_v06_spritesheet_64x64",
+  "name": "sacred_flame_v06_spritesheet_64x64",
+  "src": "SpellVFX/SacredFlame/sacred_flame_v06_spritesheet_64x64.png",
+  "audio": "SpellVFX/SacredFlame/sacred_flame_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Shield",
+  "label": "v01",
+  "name": "shield_v01_spritesheet_64x64",
+  "src": "SpellVFX/Shield/Variations/v01/shield_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Shield/Variations/v01/shield_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ShieldOfFaith",
+  "label": "v01",
+  "name": "shieldOfFaith_v01_spritesheet_64x64",
+  "src": "SpellVFX/ShieldOfFaith/Variations/v01/shieldOfFaith_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/ShieldOfFaith/Variations/v01/shieldOfFaith_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Sleep",
+  "label": "v01",
+  "name": "sleep_v01_spritesheet_64x64",
+  "src": "SpellVFX/Sleep/Variations/v01/sleep_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Sleep/Variations/v01/sleep_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "ThunderousSmite",
+  "label": "v01",
+  "name": "thunderousSmite_v01_spritesheet_64x64",
+  "src": "SpellVFX/ThunderousSmite/Variations/v01/thunderousSmite_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/ThunderousSmite/Variations/v01/thunderousSmite_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "SpellVFX",
+  "subject": "Thunderwave",
+  "label": "v01",
+  "name": "thunderwave_v01_spritesheet_64x64",
+  "src": "SpellVFX/Thunderwave/Variations/v01/thunderwave_v01_spritesheet_64x64.png",
+  "audio": "SpellVFX/Thunderwave/Variations/v01/thunderwave_v01_audio.m4a",
+  "fw": 64,
+  "fh": 64
+ },
+ {
+  "group": "Zenu",
+  "subject": "Goblin",
+  "label": "Attack",
+  "name": "goblin_attack_spritesheet_96x96",
+  "src": "Zenu/Goblin/Attack/goblin_attack_spritesheet_96x96.png",
+  "audio": null,
+  "fw": 96,
+  "fh": 96
+ },
+ {
+  "group": "Zenu",
+  "subject": "Goblin",
+  "label": "Idle",
+  "name": "goblin_idle_spritesheet_96x96",
+  "src": "Zenu/Goblin/Idle/goblin_idle_spritesheet_96x96.png",
+  "audio": null,
+  "fw": 96,
+  "fh": 96
+ }
+];
+
+const tree = document.getElementById('tree');
+const search = document.getElementById('search');
+const stage = document.getElementById('stage');
+const ctx = stage.getContext('2d');
+const titleEl = document.getElementById('title');
+const stripEl = document.getElementById('strip');
+const frameWInput = document.getElementById('frameW');
+const frameHInput = document.getElementById('frameH');
+const fpsInput = document.getElementById('fps');
+const fpsval = document.getElementById('fpsval');
+const scaleInput = document.getElementById('scale');
+const scaleval = document.getElementById('scaleval');
+const playBtn = document.getElementById('playBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const audioBtn = document.getElementById('audioBtn');
+const audioEl = document.getElementById('audioEl');
+const info = document.getElementById('info');
+
+let img = null, frameCount = 1, currentFrame = 0, playing = true;
+let lastTime = 0, acc = 0;
+let visible = SHEETS.slice();   // filtered list, drives prev/next
+let selectedIdx = -1;
+
+function buildTree() {
+  const q = search.value.trim().toLowerCase();
+  visible = SHEETS.filter(s => !q ||
+    (s.group + ' ' + s.subject + ' ' + s.label + ' ' + s.name).toLowerCase().includes(q));
+  tree.innerHTML = '';
+  let lastGroup = null, lastSubject = null;
+  visible.forEach((s, i) => {
+    if (s.group !== lastGroup) {
+      const g = document.createElement('div');
+      g.className = 'group'; g.textContent = s.group;
+      tree.appendChild(g); lastGroup = s.group; lastSubject = null;
+    }
+    if (s.subject !== lastSubject) {
+      const sub = document.createElement('div');
+      sub.className = 'subject'; sub.textContent = s.subject;
+      tree.appendChild(sub); lastSubject = s.subject;
+    }
+    const it = document.createElement('div');
+    it.className = 'item';
+    it.textContent = s.label;
+    it.title = s.name;
+    it.dataset.idx = i;
+    it.addEventListener('click', () => select(i));
+    tree.appendChild(it);
+  });
+  if (!visible.length) {
+    const e = document.createElement('div');
+    e.className = 'group'; e.textContent = 'no matches';
+    tree.appendChild(e);
+  }
+  highlight();
+}
+
+function highlight() {
+  [...tree.querySelectorAll('.item')].forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.idx) === selectedIdx);
+  });
+}
+
+function select(i) {
+  if (i < 0 || i >= visible.length) return;
+  selectedIdx = i;
+  highlight();
+  const s = visible[i];
+  titleEl.textContent = s.group + ' / ' + s.subject + ' / ' + s.label;
+
+  const image = new Image();
+  image.onload = () => {
+    img = image;
+    frameWInput.value = s.fw || image.height;
+    frameHInput.value = s.fh || image.height;
+    currentFrame = 0;
+    recompute();
+  };
+  image.onerror = () => {
+    info.textContent = 'Could not load ' + s.src + ' (was it moved or deleted? re-run build_viewer.py)';
+  };
+  image.src = s.src;
+
+  stripEl.innerHTML = '';
+  const full = new Image();
+  full.src = s.src;
+  stripEl.appendChild(full);
+
+  audioBtn.disabled = !s.audio;
+  audioEl.src = s.audio || '';
+
+  const el = tree.querySelector('.item[data-idx="' + i + '"]');
+  if (el) el.scrollIntoView({ block: 'nearest' });
+}
+
+function recompute() {
+  if (!img) return;
+  const fw = parseInt(frameWInput.value) || 1;
+  const fh = parseInt(frameHInput.value) || 1;
+  frameCount = Math.max(1, Math.round(img.width / fw));
+  const scale = parseInt(scaleInput.value);
+  stage.width = fw * scale;
+  stage.height = fh * scale;
+  info.textContent = img.width + 'x' + img.height + ' sheet -> ' + frameCount + ' frames @ ' + fw + 'x' + fh;
+  draw();
+}
+
+function draw() {
+  if (!img) return;
+  const fw = parseInt(frameWInput.value) || 1;
+  const fh = parseInt(frameHInput.value) || 1;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, stage.width, stage.height);
+  ctx.drawImage(img, currentFrame * fw, 0, fw, fh, 0, 0, stage.width, stage.height);
+}
+
+function tick(t) {
+  if (!lastTime) lastTime = t;
+  const dt = t - lastTime;
+  lastTime = t;
+  if (playing && img) {
+    acc += dt;
+    const frameDur = 1000 / parseInt(fpsInput.value);
+    while (acc >= frameDur) { acc -= frameDur; currentFrame = (currentFrame + 1) % frameCount; }
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+
+search.addEventListener('input', () => { selectedIdx = -1; buildTree(); });
+frameWInput.addEventListener('input', recompute);
+frameHInput.addEventListener('input', recompute);
+scaleInput.addEventListener('input', () => { scaleval.textContent = scaleInput.value + 'x'; recompute(); });
+fpsInput.addEventListener('input', () => { fpsval.textContent = fpsInput.value; });
+playBtn.addEventListener('click', () => {
+  playing = !playing; playBtn.textContent = playing ? 'Pause' : 'Play';
+});
+prevBtn.addEventListener('click', () => select(selectedIdx - 1));
+nextBtn.addEventListener('click', () => select(selectedIdx + 1));
+audioBtn.addEventListener('click', () => { audioEl.currentTime = 0; audioEl.play(); });
+
+document.addEventListener('keydown', e => {
+  if (e.target === search) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); select(selectedIdx + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); select(selectedIdx - 1); }
+  else if (e.key === ' ') { e.preventDefault(); playBtn.click(); }
+});
+
+buildTree();
+if (visible.length) select(0);
+requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>

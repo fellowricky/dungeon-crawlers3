@@ -20,6 +20,10 @@
  */
 import { mod } from './srd.js';
 import { ROUND_SECONDS, clearCombatEffects } from './conditions.js';
+import { Trace } from './ai_trace.js';
+import { Motion, describeActor } from './motion_debug.js';
+import { beginTurnFx } from './fx_clock.js';
+import { firstRunTip } from './help_ui.js';
 
 /* Seconds each combatant holds the spotlight before the turn passes.
    Phase 1: raised from 0.8s so a tactical actor has time to spend its
@@ -27,6 +31,13 @@ import { ROUND_SECONDS, clearCombatEffects } from './conditions.js';
    Manual mode (Phase 4) will override this to pause until the player ends
    the turn. Tunable playtest knob alongside COMBAT_MOVE_BOOST. */
 export const TURN_TIME = 0.6;
+
+/* Deadlock breaker. Time spent legitimately waiting on animations is NOT
+   counted against this (see updateInitiative) — it measures an actor being
+   STUCK, not an actor being watched. Without that exemption a long spell plus
+   its read buffer would trip the breaker and clearEffects() would wipe the
+   animation mid-flight, which is the opposite of what the pacing is for. */
+const STUCK_CEILING = 2.5;
 
 const rollD20 = () => 1 + Math.floor(Math.random() * 20);
 
@@ -72,10 +83,35 @@ export const initiativeMethods = {
     return (this.initiative.active && o.length && this.initiative.idx < o.length) ? o[this.initiative.idx] : null;
   },
 
-  isCurrentActor(e) { return this.initiative && this.initiative.active && this._currentActor() === e; },
+  /**
+   * The single gate every action path consults — combat.js, monster_ai.js,
+   * turn_engine.js and pathfinding.js all ask this before letting an entity
+   * move, attack or cast.
+   *
+   * `_awaitingReveal` returns false for EVERYONE, which is what actually
+   * freezes the field during the combat-start roll-off. Parking
+   * `updateInitiative` was not enough on its own: `_rollInitiative` sets
+   * `active = true` and `idx = 0` before the reveal begins, so `_currentActor()`
+   * already resolved to the top of the order and that combatant was free to act
+   * through the whole animation — a hero would open with a spell before the
+   * dice had finished landing.
+   */
+  isCurrentActor(e) {
+    return !!(this.initiative
+      && this.initiative.active
+      && !this.initiative._awaitingReveal
+      && this._currentActor() === e);
+  },
 
   _beginTurn() {
+    /* Reset the presentation beat. Every turn starts at ROUTINE, so even a
+       silent turn settles briefly instead of snapping to the next actor; what
+       the actor then does upgrades it. See fx_clock.js. */
+    beginTurnFx();
+    this.initiative._turnAge = 0;
     if (this.clearPendingMove) this.clearPendingMove();
+    if (this.cancelAttackTargeting) this.cancelAttackTargeting();
+    if (this.cancelSpellTargeting) this.cancelSpellTargeting();
     /* Ensure all combatants adhere strictly to tile centers at start of turn */
     if (this.heroes) {
       for (const h of this.heroes) {
@@ -96,6 +132,8 @@ export const initiativeMethods = {
          Wind, Cunning Action, Bardic Inspiration, Fast Hands). See combat.js. */
       a._bonusActed = false;
       a._bonusLeveled = false;
+      a._actionSurged = false;
+      a._pendingAttacks = 0;
       /* Tactical turn-engine budgets (turn_engine.js). Additive only — these
          fields are dormant until Phase 1 gates movement on moveLeft / canMove.
          Dash adds to moveLeft; everything else spends these flags. */
@@ -114,6 +152,7 @@ export const initiativeMethods = {
   },
 
   _rollInitiative(parts) {
+    firstRunTip('initiative');
     for (const e of parts) { e._init = rollD20() + initMod(e); e._initTb = Math.random(); }
     parts.sort((a, b) => b._init - a._init || initMod(b) - initMod(a) || b._initTb - a._initTb);
     this.initiative.order = parts;
@@ -135,6 +174,21 @@ export const initiativeMethods = {
         if (this.snapToTileCenter && m.data && m.data.hp > 0) this.snapToTileCenter(m);
       }
     }
+
+    /* Combat-start roll-off. While it plays, nobody acts — updateInitiative
+       parks on _awaitingReveal below and turn 1 begins when it finishes. If the
+       reveal is disabled, unavailable (headless) or declines, fall straight
+       through to the old behaviour. */
+    const aliveRows = this.initiative.order.filter(e => this._actorAlive(e));
+    /* Raise the freeze BEFORE starting the reveal, and lower it again only if
+       the reveal declines. Setting it afterwards would leave a window in which
+       `active` is true and idx is 0 — i.e. the top of the order is already the
+       current actor and free to swing. */
+    this.initiative._awaitingReveal = true;
+    const revealing = !!(this.fxBeginInitiativeReveal &&
+      this.fxBeginInitiativeReveal(this.initiative.order, aliveRows));
+    if (revealing) return;
+    this.initiative._awaitingReveal = false;
 
     this._beginTurn();
   },
@@ -162,6 +216,12 @@ export const initiativeMethods = {
       if (this.initiative.idx >= o.length) {
         this.initiative.idx = 0;
         this.initiative.round++;
+        /* New round — clear the party's damage ledger. It records how much
+           damage each hero has already promised to each monster this round so
+           the rest of the party can route around targets that are already
+           dead-on-arrival (see combat_eval.effectiveHp). */
+        this.combatIntent = { allocated: new Map(), round: this.initiative.round };
+        Trace._round = this.initiative.round;
         this.fxLog(`⚔️ --- Round ${this.initiative.round} ---`, 'sys');
       }
       guard++;
@@ -202,6 +262,9 @@ export const initiativeMethods = {
       cleared += clearCombatEffects(h);
       this.fxStatusTray(h);
     }
+    for (const h of this.heroes) {
+      if (h.data && h.data.hp > 0 && typeof this.clearEntityPath === 'function') this.clearEntityPath(h);
+    }
     /* Concentration can't outlive the spells it was holding up. */
     for (const h of this.heroes) if (h.conc && this.breakConcentration) this.breakConcentration(h, 'the fight ended');
 
@@ -215,6 +278,12 @@ export const initiativeMethods = {
    * Drive initiative once per combat frame. Called before updateMonsters so the
    * current actor's "ready" pulse is set before any acting happens this frame.
    */
+  /** The current turn just did something (a follow-up strike fired): it is
+      being watched, not stuck, so the deadlock breaker's clock restarts. */
+  markTurnProgress() {
+    if (this.initiative && this.initiative.active) this.initiative._turnAge = 0;
+  },
+
   updateInitiative(dt) {
     const parts = this._initParticipants();
     const engaged = parts.some(e => e._side === 'mon');
@@ -223,12 +292,27 @@ export const initiativeMethods = {
       if (this.initiative.active) {
         this._endCombatEffects();
         this._initReset();
+        this.initiative._awaitingReveal = false;
+        if (this.fxResetPacing) this.fxResetPacing();
         this.fxUpdateInitTracker();
       }
       return;
     }
 
     if (!this.initiative.active) { this._rollInitiative(parts); return; }
+
+    /* Roll-off in progress: hold every actor until the dice have landed in the
+       rail, then start turn 1 exactly once. */
+    if (this.initiative._awaitingReveal) {
+      /* Real seconds, not combat-scaled — see game.js rawDt. */
+      const playing = this.fxTickInitiativeReveal
+        ? this.fxTickInitiativeReveal(this.rawDt != null ? this.rawDt : dt)
+        : false;
+      if (playing) return;
+      this.initiative._awaitingReveal = false;
+      this._beginTurn();
+      return;
+    }
 
     /* fold in anyone who joined the fight after it started (late aggro, etc.) */
     for (const e of parts) if (!this.initiative.order.includes(e)) this._insertActor(e);
@@ -249,13 +333,53 @@ export const initiativeMethods = {
        The turn waits until the user performs actions or clicks End Turn. */
     if (isManualHero) return;
 
-    /* Animation Lock: wait for active spell, projectile, and attack FX to finish playing */
-    if (this.fxHasActiveFX()) return;
+    /* Is the screen still saying something? Either an effect is playing or this
+       turn's read buffer hasn't elapsed. fx_clock.js owns both; in headless the
+       hook is stubbed and this is always false, so the sim runs at full speed. */
+    const presenting = this.fxHasActiveFX()
+      || (this.fxTurnReady ? !this.fxTurnReady() : false);
 
-    /* Early advance for AI actors (monsters or auto-mode heroes): once an AI
-       actor has taken its action (actUsed) and isn't currently moving, snap to
-       the next combatant immediately. */
-    if (cur && cur.actUsed && !cur.moving) { this._advanceTurn(); return; }
+    /* Hard ceiling: absolute deadlock breaker. Even when presenting, if 4 seconds
+       pass without the turn making PROGRESS, forcibly clear hanging effects and
+       advance. Progress, not the turn's start: a three-shot Multiattack is
+       three full draw-release cycles back to back (see scheduleFollowUpStrike),
+       and each strike that fires resets the age through markTurnProgress —
+       otherwise a legitimately long volley tripped this every time, wiping
+       its own arrows and zones mid-flight and snapping to the next actor. */
+    this.initiative._turnAge = (this.initiative._turnAge || 0) + dt;
+    const ceiling = presenting ? 4.0 : STUCK_CEILING;
+    if (this.initiative._turnAge > ceiling) {
+      console.warn('[initiative] Turn stuck ceiling hit (' + this.initiative._turnAge.toFixed(1) + 's) for actor:', cur?.data?.name || 'unknown', 'forcing turn advance',
+        describeActor(this, cur),
+        { presenting: !!presenting, lastMoves: Motion.dump(cur && cur.data && cur.data.name) });
+      if (this.clearEffects && this.engine?.scene) this.clearEffects(this.engine.scene, { keepPersistentAoE: true });
+      if (cur) {
+        cur._pendingAttacks = 0;
+        cur.moving = false;
+        cur.actUsed = true;
+        if (typeof this.clearEntityPath === 'function') this.clearEntityPath(cur);
+      }
+      this.initiative._turnAge = 0;
+      this._advanceTurn();
+      return;
+    }
+
+    /* Animation lock: in-flight visuals, an unfinished read buffer, or pending
+       multi-attacks all hold the spotlight. This is the fix for casters being
+       talked over — a spell's flight now blocks the next actor, where previously
+       only the projectile pool was consulted and composite animations were
+       invisible to this check entirely. */
+    if (presenting || (cur && cur._pendingAttacks > 0)) return;
+
+    /* Paced turn advance for AI actors (monsters or auto-mode heroes): the actor
+       has acted, stopped moving, resolved its multi-attacks — and `presenting`
+       above has already confirmed the visuals finished and the beat's dwell
+       elapsed. The dwell length scales with what happened (routine hit vs. crit
+       vs. kill); see BEAT_BUFFER in fx_clock.js. */
+    if (cur && cur.actUsed && !cur.moving && (!cur._pendingAttacks || cur._pendingAttacks <= 0)) {
+      this._advanceTurn();
+      return;
+    }
 
     /* Advance when the actor has exhausted movement and isn't going anywhere,
        even if it never got to use its action (e.g. target is unreachable). */
@@ -265,19 +389,20 @@ export const initiativeMethods = {
     }
 
     /* Timer fallback: if actor is actively walking a valid path with remaining budget (e.g. Dash),
-       keep timer refreshed so movement isn't truncated mid-sprint. */
+       keep timer refreshed so movement isn't truncated mid-sprint. A 1.5s watchdog prevents
+       an actor stuck on an obstacle from refreshing the timer indefinitely. */
     if (cur && cur.moving && cur.path && cur.pathI < cur.path.length && (cur.moveLeft || 0) > 0) {
-      this.initiative.timer = TURN_TIME;
+      cur._moveWaitT = (cur._moveWaitT || 0) + dt;
+      if (cur._moveWaitT < 1.5) {
+        this.initiative.timer = TURN_TIME;
+      } else {
+        cur.moving = false;
+        if (typeof this.clearEntityPath === 'function') this.clearEntityPath(cur);
+      }
     } else {
+      if (cur) cur._moveWaitT = 0;
       this.initiative.timer -= dt;
       if (this.initiative.timer <= 0) this._advanceTurn();
-    }
-
-    /* Hard ceiling: absolute deadlock breaker. No single AI turn should ever
-       last more than 3 seconds. If it does, something is stuck — force advance. */
-    this.initiative._turnAge = (this.initiative._turnAge || 0) + dt;
-    if (!isManualHero && this.initiative._turnAge > 3.0) {
-      this._advanceTurn();
     }
   }
 };

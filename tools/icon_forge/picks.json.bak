@@ -1,0 +1,769 @@
+{
+ "status__blinded": {
+  "file": "status__blinded_00004_.png",
+  "note": "a single open eye with a bold diagonal slash across it\nPalette: black and white white red iris"
+ },
+ "status__burning": {
+  "file": "status__burning_00002_.png"
+ },
+ "status__frightened": {
+  "regen": true
+ },
+ "status__hasted": {
+  "regen": true,
+  "note": "a single bold lightning bolt \nPalette: bright yellow-white with violet edges"
+ },
+ "status__invisible": {
+  "file": "status__invisible_00002_.png"
+ },
+ "status__poisoned": {
+  "file": "status__poisoned_00003_.png"
+ },
+ "status__raging": {
+  "file": "status__raging_00002_.png"
+ },
+ "status__restrained": {
+  "file": "status__restrained_00001_.png"
+ },
+ "status__shielded": {
+  "regen": true,
+  "note": "a solid heater shield seen face on with a raised boss in the centre\nPalette: steel blue-grey with a dark blue rim light"
+ },
+ "status__slowed": {
+  "file": "status__slowed_00003_.png"
+ },
+ "status__stunned": {
+  "regen": true,
+  "note": "a thin blue spiral swirl with two small four-pointed stars orbiting it\nPalette: light blue and yellow"
+ },
+ "status__wounded": {
+  "file": "status__wounded_00003_.png"
+ },
+ "ability__actionSurge": {
+  "file": "ability__actionSurge_00003_.png"
+ },
+ "ability__bardicInspiration": {
+  "note": "a bold eighth note with two sparkles above it\nPalette: purple",
+  "file": "ability__bardicInspiration_00008_.png"
+ },
+ "ability__bearTotem": {
+  "file": "ability__bearTotem_00004_.png"
+ },
+ "ability__channelDivinity": {
+  "note": "a holy symbol disc radiating four bold beams\nPalette: silver and pale gold",
+  "file": "ability__channelDivinity_00007_.png"
+ },
+ "ability__colossusSlayer": {
+  "file": "ability__colossusSlayer_00003_.png"
+ },
+ "ability__combatInspiration": {
+  "note": "an eighth note overlapping a small upright sword\nPalette: purple and cold steel",
+  "file": "ability__combatInspiration_00006_.png"
+ },
+ "ability__cunningAction": {
+  "file": "ability__cunningAction_00001_.png"
+ },
+ "ability__cuttingWords": {
+  "file": "ability__cuttingWords_00003_.png"
+ },
+ "ability__deathstrike": {
+  "file": "ability__deathstrike_00002_.png"
+ },
+ "ability__divineSmite": {
+  "file": "ability__divineSmite_00004_.png"
+ },
+ "ability__dragonBreath": {
+  "file": "ability__dragonBreath_00001_.png"
+ },
+ "ability__fastHands": {
+  "file": "ability__fastHands_00003_.png"
+ },
+ "ability__feyPresence": {
+  "file": "ability__feyPresence_00004_.png"
+ },
+ "ability__fiendishBlessing": {
+  "file": "ability__fiendishBlessing_00004_.png"
+ },
+ "ability__fireBolt": {
+  "file": "ability__fireBolt_00004_.png"
+ },
+ "ability__flurryOfBlows": {
+  "regen": true,
+  "note": "clenched fist three speed streaks\nPalette: warm amber and dark bronze"
+ },
+ "ability__frenzy": {
+  "regen": true,
+  "note": "a snarling open mouth\nPalette: hot red and dark maroon and white teeth"
+ },
+ "ability__guidedStrike": {
+  "file": "ability__guidedStrike_00001_.png"
+ },
+ "ability__indomitable": {
+  "file": "ability__indomitable_00002_.png"
+ },
+ "ability__ki": {
+  "file": "ability__ki_00004_.png"
+ },
+ "ability__layOnHands": {
+  "file": "ability__layOnHands_00002_.png"
+ },
+ "ability__patientDefense": {
+  "file": "ability__patientDefense_00001_.png"
+ },
+ "ability__preserveLife": {
+  "file": "ability__preserveLife_00002_.png"
+ },
+ "ability__produceFlame": {
+  "file": "ability__produceFlame_00002_.png"
+ },
+ "ability__quiveringPalm": {
+  "file": "ability__quiveringPalm_00001_.png"
+ },
+ "ability__rage": {
+  "file": "ability__rage_00004_.png"
+ },
+ "ability__rallyingCry": {
+  "file": "ability__rallyingCry_00003_.png"
+ },
+ "ability__remarkableAthlete": {
+  "regen": true,
+  "note": "a running figure mid-stride\nPalette: warm amber and dark bronze"
+ },
+ "ability__sacredFlame": {
+  "file": "ability__sacredFlame_00001_.png"
+ },
+ "ability__sacredWeapon": {
+  "file": "ability__sacredWeapon_00004_.png"
+ },
+ "ability__secondWind": {
+  "file": "ability__secondWind_00004_.png"
+ },
+ "ability__shadowStep": {
+  "file": "ability__shadowStep_00001_.png"
+ },
+ "ability__stepOfTheWind": {
+  "file": "ability__stepOfTheWind_00001_.png"
+ },
+ "ability__stunningStrike": {
+  "file": "ability__stunningStrike_00002_.png"
+ },
+ "ability__summonCompanion": {
+  "regen": true,
+  "note": "a wolf sitting\nPalette: warm brown and pale blue"
+ },
+ "ability__tidesOfChaos": {
+  "regen": true,
+  "note": "a wave curling into a spiral of mismatched colour\nPalette: Red, Purple, Green, Yellow,"
+ },
+ "ability__vowOfEnmity": {
+  "file": "ability__vowOfEnmity_00001_.png"
+ },
+ "ability__wildShape": {
+  "file": "ability__wildShape_00004_.png"
+ },
+ "ability__wildSurge": {
+  "file": "ability__wildSurge_00004_.png"
+ },
+ "damage__acid": {
+  "file": "damage__acid_00003_.png"
+ },
+ "damage__bludgeoning": {
+  "file": "damage__bludgeoning_00002_.png"
+ },
+ "damage__cold": {
+  "file": "damage__cold_00001_.png"
+ },
+ "damage__fire": {
+  "file": "damage__fire_00001_.png"
+ },
+ "damage__force": {
+  "file": "damage__force_00001_.png"
+ },
+ "damage__lightning": {
+  "file": "damage__lightning_00001_.png"
+ },
+ "damage__necrotic": {
+  "file": "damage__necrotic_00004_.png"
+ },
+ "damage__piercing": {
+  "regen": true,
+  "note": "spear on an angle \nPalette: cold steel grey with a bright point"
+ },
+ "damage__poison": {
+  "file": "damage__poison_00003_.png"
+ },
+ "damage__psychic": {
+  "file": "damage__psychic_00003_.png"
+ },
+ "damage__radiant": {
+  "file": "damage__radiant_00001_.png"
+ },
+ "damage__slashing": {
+  "regen": true,
+  "note": "three parallel separate diagonal claw slashes\nPalette: cold steel grey with a bright edge"
+ },
+ "damage__thunder": {
+  "file": "damage__thunder_00001_.png"
+ },
+ "facility__academy": {
+  "file": "facility__academy_00001_.png"
+ },
+ "facility__apothecary": {
+  "file": "facility__apothecary_00004_.png"
+ },
+ "facility__armory": {
+  "file": "facility__armory_00002_.png"
+ },
+ "facility__blacksmith": {
+  "file": "facility__blacksmith_00001_.png"
+ },
+ "facility__cartographer": {
+  "file": "facility__cartographer_00003_.png"
+ },
+ "facility__crypt": {
+  "file": "facility__crypt_00004_.png"
+ },
+ "facility__enchanter": {
+  "file": "facility__enchanter_00002_.png"
+ },
+ "facility__infirmary": {
+  "file": "facility__infirmary_00002_.png"
+ },
+ "facility__living_quarters": {
+  "file": "facility__living_quarters_00003_.png"
+ },
+ "facility__training_grounds": {
+  "file": "facility__training_grounds_00002_.png"
+ },
+ "facility__war_room": {
+  "regen": true,
+  "note": "a round table with three red banners pins standing on it\nPalette: dark timber and brass"
+ },
+ "injury__concussion": {
+  "file": "injury__concussion_00001_.png"
+ },
+ "injury__fractured_rib": {
+  "file": "injury__fractured_rib_00001_.png"
+ },
+ "injury__gash_wound": {
+  "file": "injury__gash_wound_00003_.png"
+ },
+ "injury__severed_tendon": {
+  "file": "injury__severed_tendon_00003_.png"
+ },
+ "order__aberration_ward": {
+  "file": "order__aberration_ward_00001_.png"
+ },
+ "order__beast_cull": {
+  "file": "order__beast_cull_00002_.png"
+ },
+ "order__dragon_hunt": {
+  "file": "order__dragon_hunt_00004_.png"
+ },
+ "order__fiendbane": {
+  "file": "order__fiendbane_00004_.png"
+ },
+ "order__undead_purge": {
+  "file": "order__undead_purge_00001_.png"
+ },
+ "rune__rune_flame": {
+  "file": "rune__rune_flame_00002_.png"
+ },
+ "rune__rune_frost": {
+  "file": "rune__rune_frost_00002_.png"
+ },
+ "rune__rune_thunder": {
+  "file": "rune__rune_thunder_00001_.png"
+ },
+ "rune__rune_titan": {
+  "file": "rune__rune_titan_00002_.png"
+ },
+ "rune__rune_vampire": {
+  "regen": true,
+  "note": "a carved stone rune tablet with a blood drop glyph glowing on it\nPalette: grey stone with a deep red glow"
+ },
+ "rune__rune_warding": {
+  "file": "rune__rune_warding_00004_.png"
+ },
+ "slot__amulet": {
+  "regen": true
+ },
+ "slot__armor": {
+  "file": "slot__armor_00001_.png"
+ },
+ "slot__boots": {
+  "file": "slot__boots_00001_.png"
+ },
+ "slot__gloves": {
+  "file": "slot__gloves_00002_.png"
+ },
+ "slot__helm": {
+  "file": "slot__helm_00003_.png"
+ },
+ "slot__kit1": {
+  "file": "slot__kit1_00004_.png"
+ },
+ "slot__kit2": {
+  "file": "slot__kit2_00001_.png"
+ },
+ "slot__offhand": {
+  "file": "slot__offhand_00004_.png"
+ },
+ "slot__ring1": {
+  "file": "slot__ring1_00004_.png"
+ },
+ "slot__ring2": {
+  "file": "slot__ring2_00004_.png"
+ },
+ "slot__trinket": {
+  "file": "slot__trinket_00003_.png"
+ },
+ "slot__weapon": {
+  "file": "slot__weapon_00004_.png"
+ },
+ "spell__acidArrow": {
+  "regen": true
+ },
+ "spell__animateObjects": {
+  "file": "spell__animateObjects_00001_.png"
+ },
+ "spell__armsOfHadar": {
+  "file": "spell__armsOfHadar_00001_.png"
+ },
+ "spell__bane": {
+  "file": "spell__bane_00003_.png"
+ },
+ "spell__banishment": {
+  "file": "spell__banishment_00003_.png"
+ },
+ "spell__barkskin": {
+  "file": "spell__barkskin_00001_.png"
+ },
+ "spell__bestowCurse": {
+  "file": "spell__bestowCurse_00001_.png"
+ },
+ "spell__bless": {
+  "file": "spell__bless_00003_.png"
+ },
+ "spell__blight": {
+  "file": "spell__blight_00003_.png"
+ },
+ "spell__blindness": {
+  "file": "spell__blindness_00003_.png"
+ },
+ "spell__dragonBreathSpell": {
+  "regen": true,
+  "note": "a hand inside fire\nPalette: hot orange fading to yellow, deep red base"
+ },
+ "spell__callLightning": {
+  "file": "spell__callLightning_00001_.png"
+ },
+ "spell__chainLightning": {
+  "regen": true,
+  "note": "a bolt forking into three branching arcs\nPalette: bright light blue with violet edges"
+ },
+ "spell__chaosBolt": {
+  "file": "spell__chaosBolt_00002_.png"
+ },
+ "spell__chillTouch": {
+  "regen": true,
+  "note": "a blue skeletal hand reaching upward\nPalette: bone white and dark purple-black"
+ },
+ "spell__chromaticOrb": {
+  "file": "spell__chromaticOrb_00003_.png"
+ },
+ "spell__cloudkill": {
+  "regen": true,
+  "note": "a cloud of toxic fog with a skull in it\nPalette: sickly green and dark violet"
+ },
+ "spell__coneOfCold": {
+  "regen": true
+ },
+ "spell__counterspell": {
+  "file": "spell__counterspell_00001_.png"
+ },
+ "spell__crusadersMantle": {
+  "file": "spell__crusadersMantle_00001_.png"
+ },
+ "spell__cureWounds": {
+  "note": "a plus cross \nPalette: healing green and warm white",
+  "file": "spell__cureWounds_00003_.png"
+ },
+ "spell__deathWard": {
+  "file": "spell__deathWard_00004_.png"
+ },
+ "spell__dimensionDoor": {
+  "file": "spell__dimensionDoor_00001_.png"
+ },
+ "spell__disintegrate": {
+  "regen": true,
+  "note": "a solid block evaporating into pixels\nPalette: magenta and pale blue"
+ },
+ "spell__dominateMonster": {
+  "file": "spell__dominateMonster_00003_.png"
+ },
+ "spell__dominatePerson": {
+  "file": "spell__dominatePerson_00003_.png"
+ },
+ "spell__earthquake": {
+  "file": "spell__earthquake_00002_.png"
+ },
+ "spell__eldritchBlast": {
+  "regen": true,
+  "note": "a fireball made of dark energy\nPalette: magenta and pale blue"
+ },
+ "spell__enlargeReduce": {
+  "file": "spell__enlargeReduce_00003_.png"
+ },
+ "spell__entangle": {
+  "file": "spell__entangle_00001_.png"
+ },
+ "spell__faerieFire": {
+  "file": "spell__faerieFire_00001_.png"
+ },
+ "spell__fear": {
+  "regen": true,
+  "note": "A flat minimalist icon of a a panic-stricken face emoji, wide shrinking pupils, open screaming mouth,\nPalette: deep violet and sickly green"
+ },
+ "spell__findFamiliar": {
+  "file": "spell__findFamiliar_00002_.png"
+ },
+ "spell__fingerOfDeath": {
+  "file": "spell__fingerOfDeath_00002_.png"
+ },
+ "spell__fireStorm": {
+  "file": "spell__fireStorm_00001_.png"
+ },
+ "spell__fireball": {
+  "file": "spell__fireball_00003_.png"
+ },
+ "spell__flameStrike": {
+  "file": "spell__flameStrike_00002_.png"
+ },
+ "spell__flamingSphere": {
+  "file": "spell__flamingSphere_00004_.png"
+ },
+ "spell__forcecage": {
+  "file": "spell__forcecage_00003_.png"
+ },
+ "spell__foresight": {
+  "file": "spell__foresight_00002_.png"
+ },
+ "spell__grease": {
+  "file": "spell__grease_00001_.png"
+ },
+ "spell__greaterRestoration": {
+  "file": "spell__greaterRestoration_00001_.png"
+ },
+ "spell__guidingBolt": {
+  "file": "spell__guidingBolt_00002_.png"
+ },
+ "spell__harm": {
+  "file": "spell__harm_00001_.png"
+ },
+ "spell__haste": {
+  "file": "spell__haste_00002_.png"
+ },
+ "spell__heal": {
+  "file": "spell__heal_00003_.png"
+ },
+ "spell__healingWord": {
+  "file": "spell__healingWord_00002_.png"
+ },
+ "spell__hex": {
+  "file": "spell__hex_00004_.png"
+ },
+ "spell__holdMonster": {
+  "file": "spell__holdMonster_00003_.png"
+ },
+ "spell__holdPerson": {
+  "file": "spell__holdPerson_00003_.png"
+ },
+ "spell__huntersMark": {
+  "file": "spell__huntersMark_00003_.png"
+ },
+ "spell__hypnoticPattern": {
+  "file": "spell__hypnoticPattern_00003_.png"
+ },
+ "spell__iceStorm": {
+  "regen": true,
+  "note": "storm of jagged ice shards falling point down\nPalette: pale cyan and white with a deep blue core"
+ },
+ "spell__inflictWounds": {
+  "file": "spell__inflictWounds_00004_.png"
+ },
+ "spell__lesserRestoration": {
+  "file": "spell__lesserRestoration_00004_.png"
+ },
+ "spell__lightningBolt": {
+  "file": "spell__lightningBolt_00001_.png"
+ },
+ "spell__magicMissile": {
+  "file": "spell__magicMissile_00004_.png"
+ },
+ "spell__magicWeapon": {
+  "file": "spell__magicWeapon_00004_.png"
+ },
+ "spell__massCureWounds": {
+  "file": "spell__massCureWounds_00004_.png"
+ },
+ "spell__massHeal": {
+  "file": "spell__massHeal_00002_.png"
+ },
+ "spell__massHealingWord": {
+  "file": "spell__massHealingWord_00001_.png"
+ },
+ "spell__meteorSwarm": {
+  "file": "spell__meteorSwarm_00001_.png"
+ },
+ "spell__mindBlank": {
+  "file": "spell__mindBlank_00001_.png"
+ },
+ "spell__mirrorImage": {
+  "file": "spell__mirrorImage_00002_.png"
+ },
+ "spell__mistyStep": {
+  "file": "spell__mistyStep_00001_.png"
+ },
+ "spell__moonbeam": {
+  "regen": true,
+  "note": "a crescent moon\nPalette: pale silver-white and cool blue"
+ },
+ "spell__passWithoutTrace": {
+  "file": "spell__passWithoutTrace_00001_.png"
+ },
+ "spell__polymorph": {
+  "file": "spell__polymorph_00004_.png"
+ },
+ "spell__powerWordHeal": {
+  "file": "spell__powerWordHeal_00002_.png"
+ },
+ "spell__powerWordKill": {
+  "file": "spell__powerWordKill_00002_.png"
+ },
+ "spell__prismaticSpray": {
+  "file": "spell__prismaticSpray_00002_.png"
+ },
+ "spell__protectionFromEvil": {
+  "file": "spell__protectionFromEvil_00004_.png"
+ },
+ "spell__rayOfEnfeeblement": {
+  "file": "spell__rayOfEnfeeblement_00003_.png"
+ },
+ "spell__rayOfSickness": {
+  "file": "spell__rayOfSickness_00004_.png"
+ },
+ "spell__regenerate": {
+  "file": "spell__regenerate_00004_.png"
+ },
+ "spell__scorchingRay": {
+  "file": "spell__scorchingRay_00003_.png"
+ },
+ "spell__shatter": {
+  "file": "spell__shatter_00003_.png"
+ },
+ "spell__shield": {
+  "file": "spell__shield_00002_.png"
+ },
+ "spell__shieldOfFaith": {
+  "file": "spell__shieldOfFaith_00002_.png"
+ },
+ "spell__silence": {
+  "file": "spell__silence_00004_.png"
+ },
+ "spell__sleep": {
+  "file": "spell__sleep_00003_.png"
+ },
+ "spell__slow": {
+  "file": "spell__slow_00003_.png"
+ },
+ "spell__spikeGrowth": {
+  "file": "spell__spikeGrowth_00004_.png"
+ },
+ "spell__spiritGuardians": {
+  "file": "spell__spiritGuardians_00004_.png"
+ },
+ "spell__spiritualWeapon": {
+  "file": "spell__spiritualWeapon_00004_.png"
+ },
+ "spell__steelWindStrike": {
+  "file": "spell__steelWindStrike_00002_.png"
+ },
+ "spell__stormOfVengeance": {
+  "file": "spell__stormOfVengeance_00002_.png"
+ },
+ "spell__sunbeam": {
+  "file": "spell__sunbeam_00002_.png"
+ },
+ "spell__sunburst": {
+  "file": "spell__sunburst_00003_.png"
+ },
+ "spell__hideousLaughter": {
+  "file": "spell__hideousLaughter_00003_.png"
+ },
+ "spell__thunderousSmite": {
+  "file": "spell__thunderousSmite_00003_.png"
+ },
+ "spell__thunderwave": {
+  "file": "spell__thunderwave_00002_.png"
+ },
+ "spell__timeStop": {
+  "file": "spell__timeStop_00002_.png"
+ },
+ "spell__trueResurrection": {
+  "file": "spell__trueResurrection_00001_.png"
+ },
+ "spell__vampiricTouch": {
+  "file": "spell__vampiricTouch_00001_.png"
+ },
+ "spell__wallOfFire": {
+  "file": "spell__wallOfFire_00001_.png"
+ },
+ "spell__web": {
+  "file": "spell__web_00002_.png"
+ },
+ "spell__wish": {
+  "file": "spell__wish_00001_.png"
+ },
+ "status__baned": {
+  "file": "status__baned_00003_.png"
+ },
+ "status__barkskin": {
+  "file": "status__barkskin_00004_.png"
+ },
+ "status__bearTotem": {
+  "file": "status__bearTotem_00004_.png"
+ },
+ "status__bloodlust": {
+  "file": "status__bloodlust_00003_.png"
+ },
+ "status__charmed": {
+  "file": "status__charmed_00002_.png"
+ },
+ "status__corroded": {
+  "file": "status__corroded_00002_.png"
+ },
+ "status__deafened": {
+  "file": "status__deafened_00002_.png"
+ },
+ "status__deathWarded": {
+  "file": "status__deathWarded_00003_.png"
+ },
+ "status__patientDefense": {
+  "file": "status__patientDefense_00003_.png"
+ },
+ "status__drained": {
+  "file": "status__drained_00003_.png"
+ },
+ "status__enlarged": {
+  "file": "status__enlarged_00002_.png"
+ },
+ "status__faerieFire": {
+  "file": "status__faerieFire_00001_.png"
+ },
+ "status__foresight": {
+  "file": "status__foresight_00003_.png"
+ },
+ "status__giantStrength": {
+  "file": "status__giantStrength_00004_.png"
+ },
+ "status__hexMarked": {
+  "file": "status__hexMarked_00004_.png"
+ },
+ "status__incapacitated": {
+  "file": "status__incapacitated_00003_.png"
+ },
+ "status__inspired": {
+  "note": "a bold three sparkles \nPalette: light blue, pink, and pale gold",
+  "regen": true
+ },
+ "status__magicWeapon": {
+  "file": "status__magicWeapon_00001_.png"
+ },
+ "status__huntersMarked": {
+  "file": "status__huntersMarked_00004_.png"
+ },
+ "status__paralyzed": {
+  "file": "status__paralyzed_00001_.png"
+ },
+ "status__petrified": {
+  "file": "status__petrified_00003_.png"
+ },
+ "status__phaseStep": {
+  "file": "status__phaseStep_00004_.png"
+ },
+ "status__prone": {
+  "file": "status__prone_00004_.png"
+ },
+ "status__remarkableAthlete": {
+  "regen": true,
+  "note": "a running figure mid-stride\nPalette: warm amber and dark bronze"
+ },
+ "status__sacredWeapon": {
+  "regen": true,
+  "note": "an upright sword blade with a halo ring behind the hilt\nPalette: steel gray and pale gold"
+ },
+ "status__shieldOfFaith": {
+  "file": "status__shieldOfFaith_00001_.png"
+ },
+ "status__unconscious": {
+  "file": "status__unconscious_00001_.png"
+ },
+ "status__weakenedDmg": {
+  "file": "status__weakenedDmg_00001_.png"
+ },
+ "status__bossWeakened": {
+  "file": "status__bossWeakened_00001_.png"
+ },
+ "status__wildShape": {
+  "file": "status__wildShape_00004_.png"
+ },
+ "tech__a1_alchemy": {
+  "file": "tech__a1_alchemy_00001_.png"
+ },
+ "tech__a2_attunement": {
+  "file": "tech__a2_attunement_00001_.png"
+ },
+ "tech__a3_resilience": {
+  "file": "tech__a3_resilience_00001_.png"
+ },
+ "tech__a4_archmage": {
+  "file": "tech__a4_archmage_00001_.png"
+ },
+ "tech__e1_pathfinding": {
+  "file": "tech__e1_pathfinding_00003_.png"
+ },
+ "tech__e2_scouting": {
+  "file": "tech__e2_scouting_00002_.png"
+ },
+ "tech__e3_dungeoneering": {
+  "file": "tech__e3_dungeoneering_00001_.png"
+ },
+ "tech__e4_omniscience": {
+  "file": "tech__e4_omniscience_00002_.png"
+ },
+ "tech__l1_treasury": {
+  "file": "tech__l1_treasury_00001_.png"
+ },
+ "tech__l2_barter": {
+  "file": "tech__l2_barter_00002_.png"
+ },
+ "tech__l3_expansion": {
+  "file": "tech__l3_expansion_00004_.png"
+ },
+ "tech__l4_monopoly": {
+  "file": "tech__l4_monopoly_00002_.png"
+ },
+ "tech__m1_vitality": {
+  "file": "tech__m1_vitality_00001_.png"
+ },
+ "tech__m2_striking": {
+  "file": "tech__m2_striking_00001_.png"
+ },
+ "tech__m3_warlord": {
+  "file": "tech__m3_warlord_00003_.png"
+ },
+ "tech__m4_legend": {
+  "file": "tech__m4_legend_00003_.png"
+ }
+}

@@ -1,0 +1,29 @@
+{
+  "sheet": [
+    250,
+    14
+  ],
+  "slice": [
+    5,
+    11,
+    6,
+    11
+  ],
+  "thickness": [
+    3,
+    27,
+    3,
+    10
+  ],
+  "tile": [
+    228,
+    3
+  ],
+  "period_detected": [
+    null,
+    null
+  ],
+  "fill": "#1f2137",
+  "keep_fill": false,
+  "source": "bar.png"
+}

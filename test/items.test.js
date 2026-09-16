@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import {
   rollItem, recomputeItemBonuses, rollLegendary,
   makeDye, DYE_COLORS, migrateItem, migrateInventory, itemCategory, rollChestLoot, RARITIES,
-  itemPoints, itemSpend, itemBudget, getBase, baseCost, BASES
+  itemPoints, itemSpend, itemBudget, getBase, baseCost, BASES, slotsFor, compareItemStats
 } from '../src/game/items.js';
 import { mulberry32 } from '../src/game/quests.js';
 
@@ -318,4 +318,95 @@ describe('Items & Loot System', () => {
       expect(fromAffix.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Trinket slot & consumable items', () => {
+    it('slotsFor maps the trinket slot one-to-one', () => {
+      expect(slotsFor('trinket')).toEqual(['trinket']);
+    });
+
+    it('trinkets land in the Accessories bag tab', () => {
+      expect(itemCategory({ slot: 'trinket' })).toBe('accessory');
+    });
+
+    it('forceSlot trinket rolls a scroll with charges and a spell', () => {
+      let sc = null;
+      for (let i = 0; i < 60; i++) {
+        const itm = rollItem(5, Math.random, 'trinket', { source: 'chest' });
+        if (itm && itm.scroll && !itm.thrown) { sc = itm; break; }   // a spell scroll, not thrown gear
+      }
+      expect(sc).toBeDefined();
+      expect(sc.slot).toBe('trinket');
+      expect(sc.scroll).toBe(true);
+      expect(sc.spellKey).toBeTruthy();
+      expect(sc.casterOnly).toBe(true);
+      expect(sc.charges).toBeGreaterThan(0);
+      expect(sc.bonuses).toEqual({});
+    });
+
+    it('the trinket pool includes potions usable by any class', () => {
+      let sawPotion = false;
+      for (let i = 0; i < 120; i++) {
+        const t = rollItem(10, Math.random, 'trinket', { source: 'chest' });
+        if (t.potion) { sawPotion = true; break; }
+      }
+      expect(sawPotion).toBe(true);
+    });
+
+    it('migration preserves a scroll\'s name, value and charges', () => {
+      let sc = null;
+      for (let i = 0; i < 60; i++) {
+        const itm = rollItem(5, Math.random, 'trinket', { source: 'chest' });
+        if (itm && itm.scroll && !itm.thrown) { sc = itm; break; }   // a spell scroll, not thrown gear
+      }
+      const { name, value, charges, spellKey } = sc;
+      migrateItem(sc);
+      expect(sc.name).toBe(name);
+      expect(sc.value).toBe(value);
+      expect(sc.charges).toBe(charges);
+      expect(sc.spellKey).toBe(spellKey);
+    });
+
+    it('random chest loot can include trinkets', () => {
+      let sawTrinket = false;
+      for (let i = 0; i < 40; i++) {
+        const items = rollChestLoot(5, Math.random, 1);
+        if (items.some(it => it.slot === 'trinket')) { sawTrinket = true; break; }
+      }
+      expect(sawTrinket).toBe(true);
+    });
+
+    it('compareItemStats correctly calculates stat deltas', () => {
+      const shieldOld = { slot: 'shield', acBase: 2, bonuses: { hp: 5 } };
+      const shieldNew = { slot: 'shield', acBase: 2, bonuses: { ac: 1, hp: 10, str: 2 } };
+      const diffs = compareItemStats(shieldNew, shieldOld);
+      
+      const acDiff = diffs.find(d => d.stat === 'AC');
+      const hpDiff = diffs.find(d => d.stat === 'Max HP');
+      const strDiff = diffs.find(d => d.stat === 'STR');
+
+      expect(acDiff).toBeDefined();
+      expect(acDiff.diff).toBe(1);
+      expect(acDiff.text).toBe('+1 AC');
+      expect(acDiff.isPositive).toBe(true);
+
+      expect(hpDiff).toBeDefined();
+      expect(hpDiff.diff).toBe(5);
+      expect(hpDiff.text).toBe('+5 Max HP');
+      expect(hpDiff.isPositive).toBe(true);
+
+      expect(strDiff).toBeDefined();
+      expect(strDiff.diff).toBe(2);
+      expect(strDiff.text).toBe('+2 STR');
+
+      // Test weapon comparison
+      const dagger = { slot: 'weapon', dmg: [1, 4], dmgType: 'piercing', bonuses: {} }; // avg 2.5
+      const sword = { slot: 'weapon', dmg: [1, 8], dmgType: 'slashing', bonuses: { dmg: 2 } }; // avg 4.5 + 2 = 6.5
+      const weaponDiffs = compareItemStats(sword, dagger);
+      const dmgDiff = weaponDiffs.find(d => d.stat === 'Damage');
+      expect(dmgDiff).toBeDefined();
+      expect(dmgDiff.diff).toBe(4);
+      expect(dmgDiff.isPositive).toBe(true);
+    });
+  });
 });
+

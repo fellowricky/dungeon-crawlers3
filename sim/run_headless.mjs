@@ -14,10 +14,14 @@
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
-import { installSeededRandom } from './rng.mjs';
+import { installSeededRandom, mulberry32, withStream } from './rng.mjs';
 import { makeParty, levelPartyTo } from './herogen.mjs';
 import { spawnMonster, crForDungeonLevel, CLASSES } from '../src/game/srd.js';
 import { createArenaRoom, HeadlessGame } from './headless_game.mjs';
+import { attachAiMetrics, makeAiStats, mergeAiStats, formatAiMetrics } from './ai_metrics.mjs';
+
+/* Campaign-wide AI-quality totals, folded in per encounter. */
+const AI_TOTALS = makeAiStats();
 
 /* ───────────────────────────────────────────────────────────────────────── */
 /* CLI args                                                                  */
@@ -206,35 +210,54 @@ function longRest(game) {
 /* ───────────────────────────────────────────────────────────────────────── */
 /* One party's career (synchronous — HeadlessGame is CPU-bound, no async)    */
 /* ───────────────────────────────────────────────────────────────────────── */
-function simulatePartyCareer(rng, cfg) {
-  const party = makeParty(rng, cfg.partySize);
+function simulatePartyCareer(rng, cfg, contentRng) {
+  /* Party and encounter generation run on their OWN stream (see rng.withStream)
+     so the same seed always produces the same fights regardless of what the
+     combat AI does. Sharing a stream with combat made every A/B comparison
+     partly noise: a change in AI behaviour shifted the RNG and the next party
+     and monsters came out different. */
+  const gen = (fn) => withStream(contentRng, fn);
+  const party = gen(() => makeParty(contentRng, cfg.partySize));
   for (const h of party) initStats(h);
 
   for (let level = 1; level <= cfg.maxLevel; level++) {
-    levelPartyTo(party, level, rng);
+    gen(() => levelPartyTo(party, level, contentRng));
 
     const arena = createArenaRoom(24, 18);
     const game = new HeadlessGame(arena, party, { dungeonLevel: level });
+    attachAiMetrics(game);
     longRest(game);
 
     for (let e = 0; e < cfg.encountersPerLevel; e++) {
       game.monsters = [];
       const isBoss = e === cfg.encountersPerLevel - 1;
-      const monsterCount = isBoss ? cfg.partySize : (2 + Math.floor(rng() * 3));
-      const monsters = [];
-      for (let i = 0; i < monsterCount; i++) {
-        const cr = crForDungeonLevel(level, rng);
-        const m = spawnMonster(cr, level, rng, null, null);
-        if (isBoss) m.isBoss = true;
-        monsters.push(m);
-      }
+      const monsterCount = isBoss ? cfg.partySize : (2 + Math.floor(contentRng() * 3));
+      const monsters = gen(() => {
+        const out = [];
+        for (let i = 0; i < monsterCount; i++) {
+          const cr = crForDungeonLevel(level, contentRng);
+          const m = spawnMonster(cr, level, contentRng, null, null);
+          if (isBoss) m.isBoss = true;
+          out.push(m);
+        }
+        return out;
+      });
       game.spawnMonsters(monsters);
 
-      game.runUntilResolved();
+      const outcome = game.runUntilResolved();
+      game._flushAiTurn();
+      game.aiStats.encounters++;
+      if (outcome === 'victory') game.aiStats.victories++;
+      else if (outcome === 'wipe') game.aiStats.wipes++;
+      else game.aiStats.timeouts++;
       harvestStats(game, party);
 
       if (!isBoss) longRest(game);
     }
+    /* One HeadlessGame covers all encounters at this level — fold its
+       AI-quality counters into the campaign totals before it goes out of
+       scope. */
+    mergeAiStats(AI_TOTALS, game.aiStats);
   }
   return party;
 }
@@ -287,6 +310,10 @@ function renderReport(agg, cfg) {
     const enc = sum.avgEncounters || 1;
     s += `| ${cls} | ${sum.count} | ${(sum.avgDmgDealt / enc).toFixed(0)} | ${(sum.avgDmgTaken / enc).toFixed(0)} | ${(sum.avgHealing / enc).toFixed(0)} | ${(sum.avgKills / enc).toFixed(2)} | ${(sum.avgDowns / enc).toFixed(2)} |\n`;
   }
+
+  s += '\n## AI Decision Quality\n\n';
+  s += 'Measures how well the AI *plays*, independent of how strong the party is.\n\n';
+  s += '```\n' + formatAiMetrics(AI_TOTALS).join('\n') + '\n```\n';
   return s;
 }
 
@@ -301,8 +328,11 @@ function main() {
   const t0 = Date.now();
   const allHeroes = [];
 
+  /* One independent content stream per party, derived from the seed, so party
+     N's generation is unaffected by how long party N-1's fights ran. */
   for (let p = 0; p < cfg.parties; p++) {
-    const party = simulatePartyCareer(rng, cfg);
+    const contentRng = mulberry32((cfg.seed ^ 0x9E3779B9) + p * 0x85EBCA77);
+    const party = simulatePartyCareer(rng, cfg, contentRng);
     allHeroes.push(...party);
     if (!cfg.quiet && (p + 1) % Math.max(1, Math.floor(cfg.parties / 10)) === 0) {
       process.stdout.write(`\r  simulated ${p + 1}/${cfg.parties} parties…`);

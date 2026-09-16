@@ -5,11 +5,18 @@ import { RACES, CLASSES, PLAYABLE_RACES, PLAYABLE_CLASSES,
          ABILITIES, ABILITY_LABEL, rollStat, mod, fmtMod, XP_TABLE, MAX_LEVEL, HERO_NAMES,
          subclassOf, SKILLS, getDefaultProficiencies, STARTER_GEAR, WILD_SHAPE_FORMS } from './srd.js';
 import { SPELLS } from './spells.js';
+import { drawHeroPortrait } from './sprite_animator.js';
+import { playUiTap } from './audio.js';
+
+import { iconHtml, iconifyText } from './icons.js';
+import { showLoadingScreenPainted } from '../ui/loading_screen.js';
 import { totalSlots, hasSlotFor, slotBreakdown, hasFeature,
-  chargeDef, chargesLeft } from './features.js';
+  chargeDef, chargesLeft, isArcanum } from './features.js';
 import { getAvailableAttackOptions } from './combat.js';
 import { ROUND_SECONDS } from './conditions.js';   // leaf module — no cycle
 import { openOptions } from './options_ui.js';
+import { onError } from './errors.js';
+import { openHelp, onTip } from './help_ui.js';
 import { HAIR_GROUPS, HAIR_EXTENSION_GROUPS, FACIAL_HAIR_GROUPS,
          HAIR_VALUES, HAIR_EXTENSION_VALUES, FACIAL_HAIR_VALUES,
          HAIR_COLORS, EYE_COLORS, SKIN_PALETTES, skinColorsFor,
@@ -39,6 +46,10 @@ export function formatLogMessage(msg, gameOverride = null) {
   // If msg already contains HTML tags (e.g. <span), don't double escape
   const hasHtml = /<[a-z][\s\S]*>/i.test(msg);
   let safeText = hasHtml ? msg : msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  /* Most emoji in the log are inline literals in ~374 call sites rather than
+     entries in an icon map, so the swap happens here, once, after escaping.
+     Safe because both callers assign the result to innerHTML. */
+  safeText = iconifyText(safeText);
 
   const g = gameOverride || currentLoggedGame || (typeof window !== 'undefined' ? window.__game : null);
 
@@ -102,6 +113,12 @@ export function formatLogMessage(msg, gameOverride = null) {
   safeText = safeText.replace(/\((d20[^)]+)\)/gi, (m, inner) => {
     return `(${addPlaceholder(`<span class="log-roll-detail">${inner}</span>`)})`;
   });
+  /* Attack roll math, e.g. "(6+7=13 vs AC 13, adv)". This now lives inside the
+     message rather than the dim `detail` span — the damage has to come last —
+     so it needs the same secondary styling applied in place. */
+  safeText = safeText.replace(/\((\d+\+\d+=\d+ vs AC \d+(?:, (?:adv|dis))?)\)/gi, (m, inner) => {
+    return `(${addPlaceholder(`<span class="log-roll-detail">${inner}</span>`)})`;
+  });
   safeText = safeText.replace(/\((saved for half|crit!|critical hit!)\)/gi, (m, inner) => {
     if (/crit/i.test(inner)) {
       return `(${addPlaceholder(`<span class="log-crit-tag">${inner}</span>`)})`;
@@ -157,16 +174,33 @@ export function formatLogMessage(msg, gameOverride = null) {
   return safeText;
 }
 
+/* A paused crawl still animates — float text, projectiles, the camera all
+   keep ticking — so with the log's tiny ⏸ button out of eye-line a pause
+   reads as a frozen turn. One banner, centre-top, until it is resumed. */
+function updatePausedBanner(isPaused) {
+  if (typeof document === 'undefined') return;
+  let el = $('dc-paused-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dc-paused-banner';
+    el.innerHTML = '⏸ PAUSED <span>Space or ▶ to resume</span>';
+    el.addEventListener('click', () => { const g = window.__game; if (g && g.setPaused) g.setPaused(false); });
+    document.body.appendChild(el);
+  }
+  el.classList.toggle('show', !!isPaused);
+}
+
 export function updateLogPauseBtn(isPaused) {
+  updatePausedBanner(isPaused);
   const btn = $('log-pause-btn');
   if (!btn) return;
   if (isPaused) {
     btn.classList.add('paused');
-    btn.innerHTML = '▶️ Resume';
+    btn.innerHTML = '▶️<span class="log-pause-label">Resume</span>';
     btn.title = 'Resume game (Space)';
   } else {
     btn.classList.remove('paused');
-    btn.innerHTML = '⏸️ Pause';
+    btn.innerHTML = '⏸️<span class="log-pause-label">Pause</span>';
     btn.title = 'Pause game (Space)';
   }
 }
@@ -235,19 +269,111 @@ export function log(msg, kind='', opts={}){
 }
 
 /* Right-rail vertical stacking: floor badge → quest tracker → initiative.
-   The quest tracker's height varies with objectives/phases, so anchor the
-   initiative tracker just below whichever element above it is visible. */
+   Panel heights vary (objectives/phases, combatant count), so the whole column
+   is positioned programmatically instead of trusting the static CSS `top`s, and
+   the bottom-most panel is clamped so the rail can never run under the combat
+   log. During combat the quest tracker is hidden outright and the initiative
+   tracker takes its slot. */
+const RAIL_GAP = 8;
+const RAIL_TOP = 12;
+const RAIL_MIN_PANEL = 80;
+
+/* Rendered at all? (`offsetParent` is always null for position:fixed elements,
+   so measure instead.) */
+function railShown(el){
+  return !!el && el.getBoundingClientRect().height > 0;
+}
+
+/* Top edge available to the rail. #hud-top-right (floor readout + options gear)
+   is anchored directly above the rail, so the rail has to start below it rather
+   than at a constant. */
+function railTop(){
+  const nav = $('hud-top-right');
+  if(nav && typeof nav.getBoundingClientRect === 'function'){
+    const r = nav.getBoundingClientRect();
+    if(r.height > 0) return r.bottom + RAIL_GAP;
+  }
+  return RAIL_TOP;
+}
+
+/* Bottom edge available to the rail — the top of the log panel (or its tray
+   button when minimized), else the viewport floor. */
+function railCeiling(){
+  const panel = $('logpanel');
+  const tray = $('log-tray-btn');
+  let el = null;
+  if(panel && !panel.classList.contains('minimized')) el = panel;
+  else if(tray && tray.style.display !== 'none') el = tray;
+  if(el && typeof el.getBoundingClientRect === 'function'){
+    const r = el.getBoundingClientRect();
+    if(r.height > 0) return r.top - RAIL_GAP;
+  }
+  return window.innerHeight - RAIL_TOP;
+}
+
+/* The bottom action stack (potions + auto/manual toggle) is anchored at the
+   viewport centre by its CSS (left/right:12px). It used to be re-centred on
+   the clear floor between the party-frame column and the combat log, which
+   made the buttons drift whenever the log opened or collapsed to its tray;
+   a fixed anchor was preferred over that. Kept as the hook the resize
+   observers call so any inline offsets from an older session are cleared. */
+export function layoutBottomStack(){
+  const stack = $('hud-bottom-center');
+  if(!stack || !stack.style) return; // headless
+  if(stack.style.left) stack.style.left = '';
+  if(stack.style.right) stack.style.right = '';
+}
+
+/* Re-anchor every piece of fixed HUD chrome. */
+export function layoutHud(){
+  layoutRightRail();
+  layoutBottomStack();
+}
+
+/* A viewport resize can change a right-anchored panel's *position* without
+   changing its size, so nothing observes it and a single synchronous pass can
+   read the pre-resize geometry. Re-run once more on the next frame, when the
+   new layout has actually settled. */
+export function layoutHudDeferred(){
+  layoutHud();
+  if(typeof requestAnimationFrame === 'function') requestAnimationFrame(layoutHud);
+}
+
 export function layoutRightRail(){
   const init = $('initiative');
   if(!init || typeof init.getBoundingClientRect !== 'function') return; // headless / stubbed DOM
-  const gap = 8;
-  const badge = $('floorbadge');
+
+  /* Combat swaps the quest box out for the initiative tracker. */
+  const g = currentLoggedGame || (typeof window !== 'undefined' ? window.__game : null);
+  const inCombat = !!(g && typeof g.isCombatActive === 'function' && g.isCombatActive());
   const qt = $('questtracker');
-  let top = badge ? badge.getBoundingClientRect().bottom + gap : 52;
-  if(qt && qt.style.display !== 'none'){
-    top = qt.getBoundingClientRect().bottom + gap;
+  if(qt) qt.classList.toggle('combat-hidden', inCombat);
+
+  /* #floorbadge is anchored top-LEFT and is deliberately not part of this
+     stack — it used to be, which meant the quest tracker on the right was
+     pushed down by the height of an element on the opposite side of the
+     screen. Its own CSS `top` is the only thing that positions it. */
+  const stack = [];
+  if(railShown(qt)) stack.push(qt);
+  if(railShown(init)) stack.push(init);
+
+  const ceiling = railCeiling();
+  let top = railTop();
+  for(let i = 0; i < stack.length; i++){
+    const el = stack[i];
+    el.style.top = Math.round(top) + 'px';
+    /* Only the last panel needs clamping — anything above it is short and fixed
+       enough that shrinking it would just hide information the player needs. */
+    if(i === stack.length - 1){
+      el.style.maxHeight = Math.round(Math.max(RAIL_MIN_PANEL, ceiling - top)) + 'px';
+    } else {
+      el.style.maxHeight = '';
+    }
+    top = el.getBoundingClientRect().bottom + RAIL_GAP;
   }
-  init.style.top = Math.round(top) + 'px';
+  /* Panels that dropped out of the stack keep no stale clamp. */
+  if(qt && stack.indexOf(qt) < 0) qt.style.maxHeight = '';
+  if(stack.indexOf(init) < 0) init.style.maxHeight = '';
 }
 
 /* ---------------- initiative turn tracker ---------------- */
@@ -257,7 +383,10 @@ export function updateInitiativeTracker(game){
   const init = game.initiative;
   const alive = e => e._side === 'hero' ? e.data.hp > 0 : (e.active && e.data.hp > 0);
   if(!init || !init.active || !init.order.length){
-    el.classList.remove('show'); el.innerHTML = ''; return;
+    /* Combat just ended — re-lay the rail so the quest tracker comes back. */
+    el.classList.remove('show'); el.innerHTML = '';
+    layoutRightRail();
+    return;
   }
   const cur = init.order[init.idx];
   const rows = init.order.filter(alive).map(e => {
@@ -278,8 +407,60 @@ export function updateInitiativeTracker(game){
 }
 
 /* Wire the log filter tabs (All / Combat / Other). Called once at boot. */
+/* A thrown error becomes a red toast (dev build) and a combat-log line
+   (always), so a bug is seen the moment it happens rather than when its
+   consequences are noticed an hour later. errors.js folds repeats. */
+let _errorSurfaceInstalled = false;
+function installErrorSurface() {
+  if (_errorSurfaceInstalled || typeof document === 'undefined') return;
+  _errorSurfaceInstalled = true;
+  const dev = !!(import.meta && import.meta.env && import.meta.env.DEV);
+  onError((where, err, count) => {
+    const text = `${where}: ${(err && err.message) || String(err)}`;
+    log(`🐞 ${text}${count > 1 ? ` (×${count})` : ''}`, 'sys', { cat: 'error' });
+    if (!dev) return;
+    let host = $('dc-error-toasts');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'dc-error-toasts';
+      document.body.appendChild(host);
+    }
+    const t = document.createElement('div');
+    t.className = 'dc-error-toast';
+    t.textContent = text;
+    t.title = (err && err.stack) || text;
+    host.appendChild(t);
+    while (host.children.length > 4) host.removeChild(host.firstChild);
+    setTimeout(() => { t.classList.add('gone'); setTimeout(() => t.remove(), 400); }, 8000);
+  });
+}
+
+/* First-run tips (help_ui.js): a combat-log line, and a toast that lingers
+   long enough to read. Same host as the error toasts, calmer colour. */
+let _tipSurfaceInstalled = false;
+function installTipSurface() {
+  if (_tipSurfaceInstalled || typeof document === 'undefined') return;
+  _tipSurfaceInstalled = true;
+  onTip((key, text) => {
+    log(`💡 ${text}`, 'sys', { cat: 'tip' });
+    let hostEl = $('dc-error-toasts');
+    if (!hostEl) {
+      hostEl = document.createElement('div');
+      hostEl.id = 'dc-error-toasts';
+      document.body.appendChild(hostEl);
+    }
+    const t = document.createElement('div');
+    t.className = 'dc-error-toast dc-tip-toast';
+    t.textContent = `💡 ${text}`;
+    hostEl.appendChild(t);
+    setTimeout(() => { t.classList.add('gone'); setTimeout(() => t.remove(), 400); }, 12000);
+  });
+}
+
 export function initGameLog(game = null){
   if (game) setLogGameInstance(game);
+  installErrorSurface();
+  installTipSurface();
   const box = $('gamelog');
   if(!box) return;
   box.classList.add('filter-all');
@@ -334,6 +515,7 @@ export function initGameLog(game = null){
       box.style.maxHeight = h + 'px';
       box.style.height = h + 'px';
       box.scrollTop = box.scrollHeight;
+      layoutHud();   // the log just ate (or freed) rail + bottom-bar space
     };
 
     const onMouseMove = e => { if(isDragging) resize(e.clientX, e.clientY); };
@@ -364,6 +546,7 @@ export function initGameLog(game = null){
     minBtn.addEventListener('click', () => {
       panel.classList.add('minimized');
       trayBtn.style.display = 'block';
+      layoutHud();
     });
     trayBtn.addEventListener('click', () => {
       panel.classList.remove('minimized');
@@ -371,25 +554,109 @@ export function initGameLog(game = null){
       trayBtn.classList.remove('unread');
       // Scroll to bottom when restored to ensure latest messages are seen
       box.scrollTop = box.scrollHeight;
+      layoutHud();
     });
+  }
+
+  /* Keep the right rail off the log whenever the geometry underneath it moves:
+     window resizes, and the log panel growing/shrinking with its content. */
+  if(typeof window !== 'undefined' && window.addEventListener){
+    window.addEventListener('resize', layoutHudDeferred);
+  }
+  if(panel && typeof ResizeObserver === 'function'){
+    new ResizeObserver(() => layoutHud()).observe(panel);
+  }
+  /* The party-frame column also drives the bottom bar's left inset, and it
+     changes height whenever a hero gains or spends abilities. */
+  const frames = $('partyframes');
+  if(frames && typeof ResizeObserver === 'function'){
+    new ResizeObserver(() => layoutBottomStack()).observe(frames);
+  }
+  /* The stack is display:none behind the title screen, so its first real
+     geometry only arrives when the run actually starts — observe it rather
+     than relying on a one-shot pass that would measure a zero-height box. */
+  const stack = $('hud-bottom-center');
+  if(stack && typeof ResizeObserver === 'function'){
+    new ResizeObserver(() => layoutBottomStack()).observe(stack);
+  }
+  layoutHud();   // first pass — nothing has resized yet
+
+  /* Stone-tap feedback for every button-like control: one delegated pair of
+     listeners rather than a hook in each renderer. Hover is a thin, quiet
+     tick and only fires on entering the control, not moving within it. */
+  if(typeof document !== 'undefined' && document.addEventListener){
+    const SEL = 'button, .btn, .cs-tab, .bag-tab, .ai-chip, .ai-preset, .ps-chip, .bag-item, .eq-slot, .pframe, .rail-hero, .fam-form-card, .save-slot-card, .ts-btn, [role=button], summary, .eq-cosmetic';
+    const hit = e => (e.target && e.target.closest) ? e.target.closest(SEL) : null;
+    document.addEventListener('pointerdown', e => {
+      const t = hit(e);
+      if(t && !t.disabled) playUiTap('click');
+    }, { capture:true, passive:true });
+    document.addEventListener('pointerover', e => {
+      const t = hit(e);
+      if(t && !t.disabled && !(e.relatedTarget && t.contains(e.relatedTarget))) playUiTap('hover');
+    }, { capture:true, passive:true });
   }
 }
 
 /* ---------------- party frames ---------------- */
-const ABILITY_ICON = {
+export const ABILITY_ICON = {
+  // Class & Subclass Features
   actionSurge:'⚔', actionSurgeClass:'⚔', rallyingCry:'📣', cunningAction:'💨',
   cunningActionClass:'💨', deathstrike:'🗡', preserveLife:'✨', guidedStrike:'⚡',
-  fireball:'🔥', magicMissile:'✴', frenzy:'🪓', bearTotem:'🐻', cuttingWords:'💬',
-  combatInspiration:'🎵', entangle:'🌿', wildShape:'🐺', wildShapeClass:'🐺',
-  quiveringPalm:'🫱', shadowStep:'👥', sacredWeapon:'✨', vowOfEnmity:'🎯',
-  colossusSlayer:'🏹', summonCompanion:'🐺', dragonBreath:'🐲', wildSurge:'🔮',
-  fiendishBlessing:'😈', feyPresence:'🌸', flurryOfBlows:'👊', rage:'😡',
-  divineSmite:'💫', tidesOfChaos:'🌀', bardicInspiration:'🎵', indomitable:'🛡',
-  layOnHands:'🙏', shield:'🛡', scorchingRay:'🔥', haste:'⚡', bless:'✨',
-  spiritualWeapon:'⚔', spiritGuardians:'👻', moonbeam:'🌙', moveMoonbeam:'🌙', callLightning:'⚡',
-  healingWord:'💬', shatter:'💥', chaosBolt:'🌈', dragonBreathSpell:'🔥',
-  hex:'🔮', armsOfHadar:'🦑', thunderousSmite:'⚡', huntersMark:'🎯',
-  remarkableAthlete:'🏃', fastHands:'💨'
+  frenzy:'🪓', bearTotem:'🐻', cuttingWords:'💬', combatInspiration:'🎵',
+  wildShape:'🐺', wildShapeClass:'🐺', quiveringPalm:'🫱', shadowStep:'👥',
+  sacredWeapon:'✨', vowOfEnmity:'🎯', colossusSlayer:'🏹', summonCompanion:'🐺',
+  dragonBreath:'🐲', wildSurge:'🔮', fiendishBlessing:'😈', feyPresence:'🌸',
+  flurryOfBlows:'👊', patientDefense:'🛡️', stepOfTheWind:'💨', stunningStrike:'💫', ki:'🥋', rage:'😡', divineSmite:'💫', tidesOfChaos:'🌀',
+  bardicInspiration:'🎵', indomitable:'🛡', layOnHands:'🙏', channelDivinity:'✝',
+  secondWind:'🌀', remarkableAthlete:'🏃', fastHands:'💨',
+
+  // Thrown items (trinket consumables)
+  acidVial:'🧪', alchemistsFire:'🔥', holyWater:'💧', bolas:'🪢', chokingDust:'🌫️', beadOfForce:'🔮', fireBreath:'🐲',
+
+  // Cantrips & Tier 1
+  eldritchBlast:'💥', chillTouch:'❄️', fireBolt:'🔥', sacredFlame:'✨', produceFlame:'🔥',
+  magicMissile:'✴', shield:'🛡', bless:'✨', entangle:'🌿', healingWord:'💬',
+  cureWounds:'💚', chaosBolt:'🌈', burningHands:'🔥', hex:'🔮', armsOfHadar:'🦑',
+  thunderousSmite:'⚡', huntersMark:'🎯', sleep:'💤', bane:'👁️', faerieFire:'🧚',
+  hideousLaughter:'🎭', protectionFromEvil:'🛡️', grease:'🧈', inflictWounds:'💀',
+  guidingBolt:'✨', thunderwave:'🌊', shieldOfFaith:'🛡️', chromaticOrb:'🔮',
+  rayOfSickness:'🤢', findFamiliar:'🦉',
+
+  // Tier 2
+  dragonBreathSpell:'🐲', scorchingRay:'🔥', spiritualWeapon:'⚔', moonbeam:'🌙', moveMoonbeam:'🌙',
+  shatter:'💥', blindness:'🙈', holdPerson:'⛓️', rayOfEnfeeblement:'🥀',
+  web:'🕸️', lesserRestoration:'🌿', acidArrow:'🧪', mistyStep:'🌫️',
+  silence:'🤫', magicWeapon:'✨', barkskin:'🪵', enlargeReduce:'📏',
+  flamingSphere:'🔥', mirrorImage:'🪞', spikeGrowth:'🌵', passWithoutTrace:'👣',
+
+  // Tier 3
+  fireball:'🔥', haste:'⚡', spiritGuardians:'👻', callLightning:'⚡',
+  fear:'😱', slow:'⏳', bestowCurse:'🕷️', lightningBolt:'⚡',
+  massHealingWord:'💖', vampiricTouch:'🧛', counterspell:'✋', hypnoticPattern:'🌀',
+  crusadersMantle:'⚔️',
+
+  // Tier 4
+  iceStorm:'🌨️', blight:'🥀', deathWard:'💀', wallOfFire:'🔥',
+  polymorph:'🐑', dimensionDoor:'🚪', banishment:'🌀',
+
+  // Tier 5
+  greaterRestoration:'🌟', coneOfCold:'❄️', flameStrike:'🔥', massCureWounds:'💚',
+  holdMonster:'⛓️', cloudkill:'☣', animateObjects:'⚔', steelWindStrike:'🌪️',
+
+  // Tier 6
+  disintegrate:'🟢', chainLightning:'⚡', heal:'💖', sunbeam:'☀️', harm:'☣️',
+
+  // Tier 7
+  fingerOfDeath:'💀', fireStorm:'🌋', regenerate:'🌿', prismaticSpray:'🌈',
+
+  // Tier 8
+  sunburst:'💥', earthquake:'⛰️', mindBlank:'🧠', dominateMonster:'👁️',
+
+  // Tier 9
+  meteorSwarm:'☄️', timeStop:'⏳', powerWordKill:'☠️', massHeal:'🌟', wish:'💫',
+  dominatePerson:'🌀', forcecage:'🔲', foresight:'👁️',
+  powerWordHeal:'💚', stormOfVengeance:'⛈️', trueResurrection:'✨'
 };
 
 /* Class features that appear on the HUD with ready/spent state */
@@ -403,8 +670,6 @@ const HUD_FEATURES = [
     has: h => !!(h.secondWind || (h.features && h.features.includes('secondWind'))) },
   { key:'actionSurgeClass', ico:'⚔', label:'Action Surge', recharge:'short',
     has: h => h.features && h.features.includes('actionSurgeClass') },
-  { key:'flurryOfBlows', ico:'👊', label:'Flurry of Blows', recharge:'short',
-    has: h => h.features && h.features.includes('flurryOfBlows') },
   { key:'cunningActionClass', ico:'💨', label:'Cunning Action', recharge:'short',
     has: h => h.features && h.features.includes('cunningActionClass') },
   { key:'rage', ico:'😡', label:'Rage', recharge:'long',
@@ -489,6 +754,12 @@ function abilityIconSets(h){
     pushCount(resources, 'layOnHands', '🙏', 'Lay on Hands', h.layOnHands ?? h.layOnHandsMax ?? 0,
       `Lay on Hands — ${h.layOnHands ?? 0}/${h.layOnHandsMax ?? 0} (half short · full long)`);
   }
+  if ((h.classKey === 'monk' || (h.features && h.features.includes('ki'))) && (h.kiMax > 0 || (h.level >= 2 && h.classKey === 'monk'))) {
+    const kMax = h.kiMax || (h.level >= 2 ? h.level : 0);
+    const kCur = h.ki !== undefined ? h.ki : kMax;
+    pushCount(resources, 'ki', '🥋', 'Ki', kCur,
+      `Ki — ${kCur}/${kMax} points left (recharges on short rest)`);
+  }
 
   /* ── Class skills that do not spend slots ── */
   for (const f of HUD_FEATURES) {
@@ -516,16 +787,32 @@ function abilityIconSets(h){
   for (const key of (h.knownSpells || [])) {
     const sp = SPELLS[key];
     if (!sp) continue;
-    const ico = ABILITY_ICON[key] || '★';
+    const ico = iconHtml('ability', key, ABILITY_ICON[key] || '★');
     let ready = true;
     let tipExtra = sp.desc || '';
-    if (sp.recharge === 'slot') {
+    if (isArcanum(h, key)) {
+      ready = chargesLeft(h, 'arcanum:' + key) > 0;
+      tipExtra = `${sp.desc || ''} · Mystic Arcanum · ${ready ? REST_TIP.long.ready : REST_TIP.long.spent}`;
+    } else if (sp.recharge === 'slot') {
       ready = hasSlotFor(h, sp.level || 1);
       tipExtra = `${sp.desc || ''} · costs a level-${sp.level || 1}+ slot (${ready ? 'ready' : 'no slot'})`;
     } else if (sp.recharge === 'short' || sp.recharge === 'long' || sp.recharge === 'day') {
       const bucket = sp.recharge === 'short' ? 'short' : 'long';
       ready = chargesLeft(h, 'spell:' + key) > 0;
       tipExtra = `${sp.desc || ''} · ${ready ? REST_TIP[bucket].ready : REST_TIP[bucket].spent}`;
+    }
+    if (key === 'findFamiliar') {
+      const g = currentLoggedGame || (typeof window !== 'undefined' ? (window.__game || window.game) : null);
+      const hasFam = g && g.heroes && g.heroes.some(c =>
+        c.companion && c.kind && (c.kind.includes('Familiar') || c.kind === 'owl' || c.kind === 'imp' || c.kind === 'viper') &&
+        c.summonerName === (h.name || h.data?.name) &&
+        c.summonerClassKey === (h.classKey || h.data?.classKey) &&
+        c.data && c.data.hp > 0
+      );
+      if (hasFam) {
+        ready = false;
+        tipExtra = `${sp.desc || ''} · Familiar is already active`;
+      }
     }
     pushReady(spells, 'spell:' + key, ico, sp.label, ready, tipExtra);
   }
@@ -536,7 +823,7 @@ function abilityIconSets(h){
     const a = sc.active;
     const alias = SUBCLASS_ALIASES[a.key];
     if (!seen.has(a.key) && !seen.has('spell:' + a.key) && !(alias && seen.has(alias))) {
-      const ico = ABILITY_ICON[a.key] || '★';
+      const ico = iconHtml('ability', a.key, ABILITY_ICON[a.key] || '★');
       if (a.recharge === 'slot') {
         /* Slot-fuelled: belongs with the spells, and the slot tiles already
            say how many castings are left. */
@@ -608,7 +895,8 @@ const CONDITION_ICONS = {
   baned: '📉',
   faerieFire: '🧚',
   hexMarked: '🔮',
-  huntersMarked: '🎯'
+  huntersMarked: '🎯',
+  enlarged: '💪'
 };
 
 const CONDITION_NAMES = {
@@ -622,6 +910,7 @@ const CONDITION_NAMES = {
   phaseStep: 'Phase Step',
   remarkableAthlete: 'Remarkable Athlete',
   deathWarded: 'Death Warded',
+  enlarged: 'Enlarged (+50% Size, +25% Damage)',
   blinded: 'Blinded',
   charmed: 'Charmed',
   frightened: 'Frightened',
@@ -653,6 +942,7 @@ const CONDITION_COLORS = {
   phaseStep: '#38bdf8',
   remarkableAthlete: '#4ade4a',
   deathWarded: '#fbbf24',
+  enlarged: '#ffb45a', // warm orange
   blinded: '#e0483a', // red
   charmed: '#c084fc', // purple
   frightened: '#e0483a',
@@ -679,9 +969,10 @@ function buildEffectsHTML(h) {
   if (conc && conc.key) {
     const sp = SPELLS[conc.key];
     const spLabel = sp ? sp.label : conc.key;
-    const ico = ABILITY_ICON[conc.key] || '🌙';
+    const spDesc = sp?.desc ? ` — ${sp.desc}` : '';
+    const ico = iconHtml('ability', conc.key, ABILITY_ICON[conc.key] || '🌙');
     concHTML = `
-      <span class="pf-conc-badge" title="Concentrating: ${spLabel}">
+      <span class="pf-conc-badge" title="Concentrating: ${spLabel}${spDesc}">
         <span class="pf-conc-badge-icon">${ico}</span>
         <span>Conc: ${spLabel}</span>
       </span>
@@ -694,7 +985,7 @@ function buildEffectsHTML(h) {
   const list = effs ? Object.entries(effs).sort((a, b) => a[0].localeCompare(b[0])) : [];
 
   const items = list.map(([key, eff]) => {
-    const ico = CONDITION_ICONS[key] || '⭐';
+    const ico = iconHtml('status', key, CONDITION_ICONS[key] || '⭐');
     const name = CONDITION_NAMES[key] || (key.charAt(0).toUpperCase() + key.slice(1));
     const color = CONDITION_COLORS[key] || '#fbbf24';
 
@@ -744,6 +1035,7 @@ export function bindCompanionUI(hook){ _companionHook = hook; }
 
 export function buildPartyFrames(heroes){
   const wrap = $('partyframes');
+  if (!wrap) return;
   wrap.innerHTML = '';
   heroes = heroes.filter(h => !h.companion);   // companions badge onto their owner
   heroes.forEach((h,i)=>{
@@ -752,9 +1044,11 @@ export function buildPartyFrames(heroes){
     f.className = 'pframe';
     f.id = 'pframe'+i;
     f.title = 'Click to make party leader';
+    const classHex = '#' + cls.color.toString(16).padStart(6,'0');
     f.innerHTML = `
+      <canvas class="pf-portrait" id="pf${i}-face" width="64" height="64" style="border-color:${classHex}"></canvas>
       <div class="pf-top">
-        <span class="pf-dot" style="background:#${cls.color.toString(16).padStart(6,'0')}"></span>
+        <span class="pf-dot" style="background:${classHex}"></span>
         <span class="pf-name">${h.name}</span>
         <span class="pf-leader" title="Party leader">👑</span>
         <span class="pf-lvl">Lv <b id="pf${i}-lvl">${h.level}</b></span>
@@ -786,15 +1080,41 @@ export function buildPartyFrames(heroes){
       if (_leaderHook) _leaderHook.setLeader(i);
     });
     wrap.appendChild(f);
+    refreshPortrait(h, i);
   });
   updatePartyFrames(heroes);
 }
+/* The frame's portrait is the hero's own layered sprite (same renderer as the
+   character sheet). Redrawn only when the visible gear/looks change — the
+   draw is async image compositing, not something to do 60x a second. */
+function refreshPortrait(h, i){
+  const c = $('pf'+i+'-face');
+  if(!c || typeof c.getContext !== 'function') return;   // headless DOM
+  const d = h.data || h;
+  const key = JSON.stringify([d.visual || null, d.equipment || null]);
+  if(c._portraitKey === key) return;
+  c._portraitKey = key;
+  drawHeroPortrait(c, d);
+}
+
 export function updatePartyFrames(heroes){
   heroes = heroes.filter(h => !h.companion);   // keep frame indices in sync with buildPartyFrames
   heroes.forEach((h,i)=>{
     const hpEl = $('pf'+i+'-hp');
     if(!hpEl) return;
+    refreshPortrait(h, i);
     const inWS = !!(h.inWildShape && h.wildShapeHp > 0);
+    /* Low-HP warning: a pulsing red outline on THIS frame (ui_kit.css) while
+       the hero is standing but in the red. Wild-shape HP is its own pool, so
+       a bear at full form HP doesn't trip it. Only touch the class on change:
+       this runs every frame. */
+    const lowFrame = $('pframe'+i);
+    if (lowFrame && lowFrame.classList) {
+      const low = h.hp > 0 && !inWS && h.hp / h.maxHp <= 0.25;
+      const has = lowFrame.classList.contains ? lowFrame.classList.contains('low-hp') : false;
+      if (low && !has) lowFrame.classList.add('low-hp');
+      else if (!low && has) lowFrame.classList.remove('low-hp');
+    }
     const frac = inWS ? Math.max(0, h.wildShapeHp / h.wildShapeMaxHp) : Math.max(0, h.hp / h.maxHp);
     hpEl.style.width = (frac*100)+'%';
     hpEl.style.background = inWS
@@ -831,6 +1151,7 @@ export function updatePartyFrames(heroes){
     const frame = $('pframe'+i);
     frame.classList.toggle('down', h.hp<=0);
     frame.classList.toggle('leader', !!_leaderHook && _leaderHook.getLeader() === i);
+    frame.classList.toggle('concentrating', !!(h.conc?.key || h.data?.conc?.key));
 
     /* Companion badge: a small circular icon (the companion's own sprite
        glyph) with an HP-coloured ring, shown inside the owner's frame. */
@@ -852,6 +1173,84 @@ export function updatePartyFrames(heroes){
   });
 }
 
+/* ── loot feed ───────────────────────────────────────────────────────────
+   Top-centre list of what the party just picked up, replacing the world-space
+   bubble that used to hang over the leader.
+
+   Killfeed ordering: rows are PREPENDED, so the newest is on top and older rows
+   are pushed down; the oldest therefore sit at the bottom and expire first,
+   which is what makes the column dissolve upward from its bottom edge. */
+
+const LOOT_ROW_TTL = 3600;      // ms a row sits at full opacity
+const LOOT_FADE_MS = 450;       // must match the lootOut animation in game.css
+const LOOT_MAX_ROWS = 7;        // beyond this the oldest is retired early
+
+export const LOOT_RARITY_COLORS = {
+  common:    '#d0d4d8',
+  uncommon:  '#30e060',
+  rare:      '#3399ff',
+  epic:      '#bb55ff',
+  legendary: '#ff9900'
+};
+
+function retireLootRow(row) {
+  if (!row || row._retiring) return;
+  row._retiring = true;
+  if (row._timer) { clearTimeout(row._timer); row._timer = null; }
+  row.classList.add('loot-out');
+  setTimeout(() => row.remove(), LOOT_FADE_MS);
+}
+
+/**
+ * Push one line onto the loot feed.
+ * @param {{icon?:string, name:string, qty?:string, rarity?:string}} entry
+ */
+export function pushLootFeed(entry) {
+  const box = $('lootfeed');
+  if (!box || !entry || !entry.name) return;
+
+  const tint = LOOT_RARITY_COLORS[String(entry.rarity || 'common').toLowerCase()]
+    || LOOT_RARITY_COLORS.common;
+
+  const row = document.createElement('div');
+  row.className = 'loot-row';
+  row.style.setProperty('--loot-tint', tint);
+
+  const icon = document.createElement('span');
+  icon.className = 'loot-icon';
+  icon.textContent = entry.icon || '✦';
+  const name = document.createElement('span');
+  name.className = 'loot-name';
+  name.textContent = entry.name;
+  row.appendChild(icon);
+  row.appendChild(name);
+  if (entry.qty) {
+    const qty = document.createElement('span');
+    qty.className = 'loot-qty';
+    qty.textContent = entry.qty;
+    row.appendChild(qty);
+  }
+
+  box.prepend(row);
+
+  /* Cap the column. Retire from the BOTTOM (oldest) so a burst of loot never
+     grows past the top strip of the screen. */
+  const rows = [...box.children].filter(r => !r._retiring);
+  for (let i = LOOT_MAX_ROWS; i < rows.length; i++) retireLootRow(rows[i]);
+
+  row._timer = setTimeout(() => retireLootRow(row), LOOT_ROW_TTL);
+}
+
+/** Drop the feed immediately (floor change, run end, cutscene). */
+export function clearLootFeed() {
+  const box = $('lootfeed');
+  if (!box) return;
+  for (const row of [...box.children]) {
+    if (row._timer) clearTimeout(row._timer);
+    row.remove();
+  }
+}
+
 export function pulseLeaderFrame(type = 'gold', rarity = 'common') {
   if (!_leaderHook) return;
   const lIdx = _leaderHook.getLeader();
@@ -861,8 +1260,13 @@ export function pulseLeaderFrame(type = 'gold', rarity = 'common') {
   const rStr = String(rarity || 'common').toLowerCase();
   const pulseClass = type === 'gold' ? 'pf-gold-pulse' : `pf-loot-pulse-${rStr}`;
   frame.classList.remove('pf-gold-pulse', 'pf-loot-pulse-common', 'pf-loot-pulse-uncommon', 'pf-loot-pulse-rare', 'pf-loot-pulse-epic', 'pf-loot-pulse-legendary');
-  void frame.offsetWidth;
-  frame.classList.add(pulseClass);
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      frame.classList.add(pulseClass);
+    });
+  } else {
+    frame.classList.add(pulseClass);
+  }
   setTimeout(() => {
     frame.classList.remove(pulseClass);
   }, 850);
@@ -905,28 +1309,60 @@ export function showBanner(text, sub='', styleClass=''){
  * `onNew` hands off to the party setup screen, `onContinue` loads the save
  * (its button is disabled when there isn't one).
  */
-export function showTitle(hasSave, { onNew, onContinue }){
+export function showTitle(hasSave, { onNew, onContinue, onLoad }){
   const ts = $('titlescreen');
-  if(!ts) { onNew(); return; }
+  /* No title card to show — drop the boot-time chrome guard so the HUD isn't
+     stranded hidden (index.html ships <body class="title-open">). */
+  if(!ts) { document.body.classList.remove('title-open'); layoutHud(); onNew(); return; }
   ts.classList.add('show');
   document.body.classList.add('title-open');
 
   const close = ()=>{
     ts.classList.remove('show');
     document.body.classList.remove('title-open');
+    /* The HUD was display:none until this moment. ResizeObserver does not
+       report a hidden -> visible transition, so anchor it by hand now that
+       the elements finally have geometry to measure. */
+    layoutHud();
   };
 
   $('ts-new').onclick = ()=>{ close(); onNew(); };
 
   const contBtn = $('ts-continue');
-  contBtn.disabled = !hasSave;
-  contBtn.title = hasSave ? 'Resume your saved game' : 'No saved game found';
-  contBtn.onclick = ()=>{ if(!hasSave) return; close(); onContinue(); };
+  if (contBtn) {
+    contBtn.disabled = !hasSave;
+    contBtn.title = hasSave ? 'Resume your saved game' : 'No saved game found';
+    /* Paint the curtain BEFORE resuming. Restoring a save blocks the thread for
+       seconds; without this the menu simply freezes and the click reads as
+       ignored. See nextPaint() in loading_screen.js. */
+    contBtn.onclick = async ()=>{
+      if(!hasSave) return;
+      close();
+      await showLoadingScreenPainted({ title: 'LOADING GAME', subtitle: 'Restoring your saved run...' });
+      onContinue();
+    };
+  }
+
+  const loadBtn = $('ts-load');
+  if (loadBtn) {
+    loadBtn.disabled = !hasSave;
+    loadBtn.title = hasSave ? 'Select a save slot to load' : 'No saved game found';
+    loadBtn.onclick = async ()=>{
+      if(!hasSave) return;
+      /* The slot picker is cheap and interactive — only the direct-resume path
+         is blocking, so only that one gets the curtain. */
+      if (onLoad) { close(); onLoad(); return; }
+      close();
+      await showLoadingScreenPainted({ title: 'LOADING GAME', subtitle: 'Restoring your saved run...' });
+      onContinue();
+    };
+  }
 
   /* Settings opens the one shared Options panel — volume, combat log and
      automation all live there now (options_ui.js owns its own Escape/backdrop
      dismissal, so there is nothing to bind here). */
   $('ts-settings').onclick = openOptions;
+  if ($('ts-help')) $('ts-help').onclick = () => openHelp('loop');
 
   /* Exit: closes the Electron window. In a plain browser tab window.close()
      is a no-op unless we opened the tab, so fall back to a parting message. */
@@ -982,7 +1418,23 @@ export function showSetup(onEmbark, onBack){
     eyeColor: EYE_COLORS
   };
   const EARS_OPTS  = [['none','Human'], ['elven','Elven'], ['dragon','Dragon']];
-  const HORNS_OPTS = [['none','None'], ['backwards','Backswept'], ['curl','Curled']];
+  /* Horns and fins are tinted from either the hair or the skin swatch depending
+     on the race (`hornTint`), so both rows name what they actually drive — a
+     dragonborn has no hair layer at all, and "Hair Colour" over a row that only
+     moves their horns reads as a dead control. Returns [skinLabel, hairLabel]. */
+  const colorRowLabels = (visual) => {
+    const app = visual.horns && visual.horns !== 'none'
+      ? ((visual.horns === 'fin' || visual.horns === 'fin_short') ? 'Fins' : 'Horns')
+      : null;
+    if (!app) return ['Skin', 'Hair Colour'];
+    const hasHair = !visual.head && visual.hair && visual.hair !== 'none';
+    if (visual.hornTint === 'skin') return [`Skin &amp; ${app}`, 'Hair Colour'];
+    return ['Skin', hasHair ? `Hair &amp; ${app}` : `${app.replace(/s$/, '')} Colour`];
+  };
+  /* Head appendages share one slot: the LPC horn sheets plus the two fin
+     sheets, which dragonborn builds lean on. */
+  const HORNS_OPTS = [['none','None'], ['backwards','Backswept'], ['curled','Curled'],
+                      ['fin','Fin'], ['fin_short','Short Fin']];
 
   /* <optgroup>-backed picker for the big style catalogues. */
   const styleSelect = (cls, groups, current, noneLabel = 'None') => `
@@ -1020,6 +1472,7 @@ export function showSetup(onEmbark, onBack){
         eyeColor: raceDefs.eyeColor,
         ears: raceDefs.ears,
         horns: raceDefs.horns || 'none',
+        hornTint: raceDefs.hornTint || 'hair',
         spriteScaleX: raceDefs.spriteScaleX || 1.0,
         spriteScaleY: raceDefs.spriteScaleY || 1.0
       }
@@ -1213,6 +1666,7 @@ export function showSetup(onEmbark, onBack){
     v.eyeColor = pick(VISUAL_OPTS.eyeColor);
     v.ears = raceDefs.ears;
     v.horns = raceDefs.horns || 'none';
+    v.hornTint = raceDefs.hornTint || 'hair';
     v.head = raceDefs.head || '';
   }
 
@@ -1310,7 +1764,7 @@ export function showSetup(onEmbark, onBack){
               <select class="vis-ears">${EARS_OPTS.map(([v,l])=>`<option value="${v}" ${v===(slot.visual.ears||'none')?'selected':''}>${l}</option>`).join('')}</select>
             </label>
             <label class="cc-field"><span>Horns</span>
-              <select class="vis-horns">${HORNS_OPTS.map(([v,l])=>`<option value="${v}" ${v===(slot.visual.horns||'none')?'selected':''}>${l}</option>`).join('')}</select>
+              <select class="vis-horns">${HORNS_OPTS.map(([v,l])=>`<option value="${v}" ${v===(slot.visual.horns==='curl'?'curled':(slot.visual.horns||'none'))?'selected':''}>${l}</option>`).join('')}</select>
             </label>
             <label class="cc-field"><span>Facial Hair</span>
               ${styleSelect('vis-facialHair', FACIAL_HAIR_GROUPS, slot.visual.facialHair, 'Clean Shaven')}
@@ -1322,10 +1776,10 @@ export function showSetup(onEmbark, onBack){
             <label class="cc-field cc-field-wide"><span>Extension</span>
               ${styleSelect('vis-hairExtension', HAIR_EXTENSION_GROUPS, slot.visual.hairExtension, 'None')}
             </label>
-            <div class="cc-field cc-field-wide"><span>Skin</span>
+            <div class="cc-field cc-field-wide"><span>${colorRowLabels(slot.visual)[0]}</span>
               ${colorSwatches('skinColor', slot.visual.skinColor, skinColorsFor(slot.raceKey))}
             </div>
-            <div class="cc-field cc-field-wide"><span>Hair Colour</span>
+            <div class="cc-field cc-field-wide"><span>${colorRowLabels(slot.visual)[1]}</span>
               ${colorSwatches('hairColor', slot.visual.hairColor)}
             </div>
             ${slot.visual.hairExtension && slot.visual.hairExtension !== 'none' ? `
@@ -1514,6 +1968,7 @@ export function showSetup(onEmbark, onBack){
       slot.visual.skinColor = raceDefs.skinColor;
       slot.visual.ears = raceDefs.ears;
       slot.visual.horns = raceDefs.horns || 'none';
+      slot.visual.hornTint = raceDefs.hornTint || 'hair';
       slot.visual.spriteScaleX = raceDefs.spriteScaleX || 1.0;
       slot.visual.spriteScaleY = raceDefs.spriteScaleY || 1.0;
       renderSlot();
@@ -1614,19 +2069,39 @@ export function showSetup(onEmbark, onBack){
   $('setup-back').onclick = ()=>{ ov.classList.remove('show'); onBack(); };
   $('setup-next').onclick = ()=> goStep(1);
   $('setup-prev').onclick = ()=> goStep(-1);
-  $('setup-embark').onclick = ()=>{
+  $('setup-embark').onclick = async ()=>{
     if(slots.some(s => pointsLeft(s) < 0 || skillsOver(s) > 0)) return;
     ov.classList.remove('show');
+    /* Third blocking entry point: leaving party setup forges the first floor. */
+    await showLoadingScreenPainted({ title: 'ENTERING THE DUNGEON', subtitle: 'The party sets out...' });
     onEmbark(slots);
   };
 }
 
 /* ---------------- manual combat UI bar ---------------- */
-let _activeSubmenu = null; // 'action' | 'bonus' | null
-let _levelSelectSpellKey = null;
-let _branchCategory = null; // 'attack' | 'spells' | 'features' | null
-let _branchSpellLevel = null; // 0 | 1 | 2 | 3 | null
+let _drawerOpen = false;
+let _drawerTab = 'attacks'; // 'attacks' | 'spells' | 'bonus' | 'features'
+let _spellTierFilter = null; // null | 0 | 1 | 2...
 let _lastBarStateKey = '';
+
+export function closeManualDrawer() {
+  if (_drawerOpen) {
+    _drawerOpen = false;
+    if (typeof window !== 'undefined' && window.__updateManualBar) window.__updateManualBar();
+  }
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function' && typeof window !== 'undefined' && !window.__manualDrawerClickBound) {
+  window.__manualDrawerClickBound = true;
+  document.addEventListener('pointerdown', (e) => {
+    if (!_drawerOpen) return;
+    const bar = $('manual-combat-bar');
+    if (bar && !bar.contains(e.target)) {
+      _drawerOpen = false;
+      if (window.__updateManualBar) window.__updateManualBar();
+    }
+  });
+}
 
 function getAvailableSlotLevels(h, spellKey) {
   const sp = SPELLS[spellKey];
@@ -1653,7 +2128,16 @@ export function updateManualCombatBar(game) {
   if (!isHeroTurn || !cur || !cur.data) {
     bar.style.display = 'none';
     _lastBarStateKey = null;
+    _drawerOpen = false;
     return;
+  }
+
+  const isSpellTargeting = !!(game.targetingState && game.targetingState.active);
+  const isAttackTargeting = !!(game.attackTargetingState && game.attackTargetingState.active);
+  const isAiming = isSpellTargeting || isAttackTargeting;
+
+  if (isAiming) {
+    _drawerOpen = false;
   }
 
   const moveLeft = cur.moveLeft != null ? cur.moveLeft : game.cellsForSpeed(cur);
@@ -1663,8 +2147,13 @@ export function updateManualCombatBar(game) {
   const heroName = cur.data.name || 'Hero';
   const hp = cur.data.hp || 0;
 
-  /* State key comparison */
-  const stateKey = `${heroName}_${hp}_${moveLeft}_${maxMove}_${actUsed}_${bonusUsed}_${_activeSubmenu}_${_levelSelectSpellKey}_${_branchCategory}_${_branchSpellLevel}`;
+  /* State key comparison — must capture every field the bar reads, otherwise
+     spending a slot/charge short-circuits the rebuild and buttons stay stale. */
+  const _d = cur.data || {};
+  const _slotsSig = _d.slots ? Object.keys(_d.slots).sort().map(k => k + ':' + _d.slots[k]).join('|') : '';
+  const _chargeSig = `${!!_d.secondWindUsed}_${!!_d.rageUsed}_${!!_d.smiteUsed}_${!!_d.inWildShape}_${!!cur._actionSurged}_${_d.ki}`;
+  const _targetingSig = `${isSpellTargeting}_${isAttackTargeting}_${game.targetingState?.spellKey}_${game.targetingState?.assignedTargets?.length || 0}`;
+  const stateKey = `${heroName}_${hp}_${moveLeft}_${maxMove}_${actUsed}_${bonusUsed}_${_drawerOpen}_${_drawerTab}_${_spellTierFilter}_${_targetingSig}|${_slotsSig}|${_chargeSig}`;
   if (stateKey === _lastBarStateKey && bar.style.display === 'flex') {
     return;
   }
@@ -1680,17 +2169,90 @@ export function updateManualCombatBar(game) {
   const maxHp = cur.data.maxHp || 1;
   const initial = heroName.charAt(0).toUpperCase();
 
+  /* If aiming a spell or attack, display the clear Aiming Banner */
+  if (isAiming) {
+    let aimTitle = 'Aiming';
+    let aimDesc = 'Click on target';
+    if (isSpellTargeting) {
+      const ts = game.targetingState;
+      const sp = SPELLS[ts.spellKey] || (ts.spellKey === 'moveMoonbeam' ? { label: 'Move Moonbeam' } : null);
+      aimTitle = `AIMING: ${sp ? sp.label : ts.spellKey}`;
+      if (ts.isMultiTarget) {
+        aimDesc = `Click target for Dart ${(ts.assignedTargets?.length || 0) + 1} of ${ts.totalDarts}`;
+      } else if (ts.isAoE) {
+        aimDesc = `Click dungeon floor to detonate (${Math.round((ts.radius || 0) * 5)} ft radius)`;
+      } else if (ts.isAlly) {
+        aimDesc = 'Click an ally hero on the battlefield to cast';
+      } else {
+        aimDesc = 'Click target monster on the battlefield to cast';
+      }
+    } else if (isAttackTargeting) {
+      const at = game.attackTargetingState;
+      const prof = at.profile || {};
+      const ranged = !prof.melee;
+      const reach = ranged ? Math.max(1, Math.round(prof.range || 6)) * 5 : 5;
+      aimTitle = `AIMING: ${prof.name || (ranged ? 'Ranged Attack' : 'Melee Attack')}`;
+      aimDesc = `Click a target monster (range ${reach} ft)`;
+    }
+
+    let html = `
+      <div class="mbar-hero">
+        <div class="mbar-hero-avatar">${initial}</div>
+        <div class="mbar-hero-info">
+          <div class="mbar-hero-name">${heroName} <span style="font-size:11px;color:#d8aa46;">(${classKey})</span></div>
+          <div class="mbar-hero-hp">❤️ ${hp}/${maxHp} HP</div>
+        </div>
+      </div>
+
+      <div class="mbar-aiming-banner">
+        <span class="mbar-aiming-icon">🎯</span>
+        <div class="mbar-aiming-info">
+          <div class="mbar-aiming-title">${aimTitle}</div>
+          <div class="mbar-aiming-desc">${aimDesc}</div>
+        </div>
+        <button id="mbar-cancel-targeting-btn" class="mbar-btn mbar-cancel-btn">
+          ❌ Cancel (Esc)
+        </button>
+      </div>
+    `;
+
+    bar.innerHTML = html;
+    const cancelBtn = $('mbar-cancel-targeting-btn');
+    if (cancelBtn) {
+      cancelBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (game.cancelSpellTargeting) game.cancelSpellTargeting();
+        if (game.cancelAttackTargeting) game.cancelAttackTargeting();
+        updateManualCombatBar(game);
+      };
+    }
+    return;
+  }
+
   /* Action submenu items */
   const knownSpells = cur.data.inWildShape ? [] : (cur.data.knownSpells || []);
+
+  const trinket = cur.data.equipment && cur.data.equipment.trinket;
+  const trinketScrollKey = (trinket && trinket.scroll && trinket.spellKey && trinket.charges > 0 && !knownSpells.includes(trinket.spellKey)) ? trinket.spellKey : null;
+  const trinketPotion = (trinket && trinket.potion && trinket.buffKey && trinket.charges > 0) ? trinket : null;
+
   const actionSpells = knownSpells.filter(k => {
     const s = SPELLS[k];
     return s && s.castingTime !== 'bonus' && s.bonusAction !== true;
   });
+  if (trinketScrollKey) {
+    const s = SPELLS[trinketScrollKey];
+    if (s && s.castingTime !== 'bonus' && s.bonusAction !== true) actionSpells.push(trinketScrollKey);
+  }
 
   const bonusSpells = knownSpells.filter(k => {
     const s = SPELLS[k];
     return s && (s.castingTime === 'bonus' || s.bonusAction === true);
   });
+  if (trinketScrollKey) {
+    const s = SPELLS[trinketScrollKey];
+    if (s && (s.castingTime === 'bonus' || s.bonusAction === true)) bonusSpells.push(trinketScrollKey);
+  }
 
   /* Action Abilities */
   const d = cur.data;
@@ -1699,8 +2261,8 @@ export function updateManualCombatBar(game) {
   if (cur.conc?.key === 'moonbeam') {
     actionAbilities.push({ key: 'moveMoonbeam', label: 'Move Moonbeam', desc: 'Relocate Moonbeam up to 60ft' });
   }
-  if ((hasFeature(d, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge')) && chargesLeft(d, 'actionSurgeClass') > 0) {
-    actionAbilities.push({ key: 'actionSurge', label: 'Action Surge', desc: 'Attack again' });
+  if ((hasFeature(d, 'actionSurgeClass') || (sc && sc.active.key === 'actionSurge')) && chargesLeft(d, 'actionSurgeClass') > 0 && !cur._actionSurged) {
+    actionAbilities.push({ key: 'actionSurge', label: 'Action Surge', desc: 'Grants one additional Action' });
   }
   if (sc && sc.active.key === 'fastHands' && chargesLeft(d, 'fastHands') > 0) {
     actionAbilities.push({ key: 'fastHands', label: 'Smoke Bomb (Fast Hands)', desc: 'Blind foes in 4m' });
@@ -1720,8 +2282,14 @@ export function updateManualCombatBar(game) {
   if (hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction')) {
     bonusAbilities.push({ key: 'cunningAction', label: 'Cunning Action', desc: 'Haste / Dash / Disengage' });
   }
-  if (hasFeature(d, 'flurryOfBlows') && chargesLeft(d, 'flurryOfBlows') > 0) {
-    bonusAbilities.push({ key: 'flurry', label: 'Flurry of Blows', desc: 'Extra martial strike' });
+  if (hasFeature(d, 'flurryOfBlows') && (d.ki === undefined || d.ki >= 1)) {
+    bonusAbilities.push({ key: 'flurry', label: '👊 Flurry of Blows (1 Ki)', desc: 'Two unarmed strikes' });
+  }
+  if (hasFeature(d, 'patientDefense') && (d.ki === undefined || d.ki >= 1)) {
+    bonusAbilities.push({ key: 'patientDefense', label: '🛡️ Patient Defense (1 Ki)', desc: 'Take Dodge action (+5 AC)' });
+  }
+  if (hasFeature(d, 'stepOfTheWind') && (d.ki === undefined || d.ki >= 1)) {
+    bonusAbilities.push({ key: 'stepOfTheWind', label: '💨 Step of the Wind (1 Ki)', desc: 'Dash / Disengage (+40% speed)' });
   }
   if (hasFeature(d, 'bardicInspiration') && chargesLeft(d, 'bardicInspiration') > 0) {
     bonusAbilities.push({ key: 'bardicInspiration', label: 'Bardic Inspiration', desc: 'Party gains advantage on their next attack' });
@@ -1729,10 +2297,199 @@ export function updateManualCombatBar(game) {
   if (d.inWildShape) {
     bonusAbilities.push({ key: 'dropWildShape', label: '🌿 Drop Wild Shape', desc: 'Revert to natural form' });
   }
+  if (trinketPotion) {
+    bonusAbilities.push({ key: 'useTrinket', label: `🧪 ${trinketPotion.name}`, desc: `Drink it (${trinketPotion.charges} charge${trinketPotion.charges === 1 ? '' : 's'})` });
+  }
 
   const atkOpts = getAvailableAttackOptions(cur);
 
+  function renderDrawer() {
+    const hasSpells = actionSpells.length > 0 || bonusSpells.length > 0;
+    const slots = cur.data?.slots || {};
+    const maxSlots = cur.data?.maxSlots || {};
+
+    let bodyHtml = '';
+
+    if (_drawerTab === 'attacks') {
+      bodyHtml = `
+        <div class="mbar-sub-header">Select Attack Type</div>
+        ${cur.attacksLeft > 0 ? `<div style="padding:6px 10px;font-size:12px;color:#6ae06a;background:rgba(106,224,106,0.12);border-radius:4px;margin-bottom:6px;">⚔️ Extra Attack: ${cur.attacksLeft} attack${cur.attacksLeft > 1 ? 's' : ''} remaining</div>` : ''}
+        ${atkOpts.map(opt => `
+          <button class="mbar-entry-btn attack-opt-btn" data-opt-key="${opt.key}" data-type="${opt.type}">
+            <div class="mbar-entry-left">
+              <div class="mbar-entry-title">${opt.label}</div>
+              <div class="mbar-entry-desc">${opt.sub}</div>
+            </div>
+            <div class="mbar-entry-right">
+              <span class="mbar-entry-badge">${opt.type === 'cantrip' ? 'Magic' : (opt.profile?.melee ? 'Melee' : 'Ranged')}</span>
+            </div>
+          </button>
+        `).join('')}
+      `;
+    } else if (_drawerTab === 'spells') {
+      const allKnownSpells = [...new Set([...actionSpells, ...bonusSpells])];
+      const cantripList = allKnownSpells.filter(k => SPELLS[k] && (!SPELLS[k].level || SPELLS[k].level === 0));
+      const leveledSpells = allKnownSpells.filter(k => SPELLS[k] && SPELLS[k].level > 0);
+
+      const slotTiers = [];
+      for (let l = 1; l <= 9; l++) {
+        if ((slots[l] || 0) > 0 && leveledSpells.some(k => SPELLS[k].level <= l)) slotTiers.push(l);
+      }
+
+      const filterChips = `
+        <div class="mbar-tier-filters">
+          <button class="mbar-tier-chip ${_spellTierFilter === null ? 'active' : ''}" data-filter-tier="all">All (${allKnownSpells.length})</button>
+          ${cantripList.length ? `<button class="mbar-tier-chip ${_spellTierFilter === 0 ? 'active' : ''}" data-filter-tier="0">Cantrips</button>` : ''}
+          ${slotTiers.map(l => `
+            <button class="mbar-tier-chip ${_spellTierFilter === l ? 'active' : ''}" data-filter-tier="${l}">
+              Lv ${l} (${slots[l] || 0}/${maxSlots[l] || 0})
+            </button>
+          `).join('')}
+        </div>
+      `;
+
+      const visibleSpells = allKnownSpells.filter(k => {
+        const sp = SPELLS[k];
+        if (!sp) return false;
+        if (_spellTierFilter === null) return true;
+        if (_spellTierFilter === 0) return !sp.level || sp.level === 0;
+        return sp.level > 0 && sp.level <= _spellTierFilter;
+      });
+
+      const castLvl = _spellTierFilter && _spellTierFilter > 0 ? _spellTierFilter : null;
+
+      bodyHtml = `
+        ${filterChips}
+        ${visibleSpells.length ? visibleSpells.map(k => {
+          const sp = SPELLS[k];
+          const isScroll = k === trinketScrollKey;
+          const isBonus = sp && (sp.bonusAction === true || sp.castingTime === 'bonus');
+          const costDesc = sp?.thrown ? `${trinket.name} ×${trinket.charges}` : sp?.level ? `Level ${sp.level} Slot` : isScroll ? `Scroll ×${trinket.charges}` : 'Cantrip';
+          const finalCastLvl = castLvl || sp?.level || 1;
+          const isUpcast = sp?.level > 0 && castLvl && castLvl > sp.level;
+          const disabled = (isBonus && bonusUsed) || (!isBonus && (actUsed || (cur.attacksLeft > 0 && cur.attackActionCommitted)));
+
+          return `
+            <button class="mbar-entry-btn spell-cast-btn" data-spell="${k}" data-level="${finalCastLvl}" ${disabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">
+                  <span>${sp?.thrown ? (sp.icon || '🧪') : isScroll ? '📜' : '✨'} ${sp ? sp.label : k}</span>
+                  ${isUpcast ? '<small style="color:#d8aa46;">(Upcast Lv' + finalCastLvl + ')</small>' : ''}
+                </div>
+                <div class="mbar-entry-desc">${sp?.desc || ''}</div>
+              </div>
+              <div class="mbar-entry-right">
+                <span class="mbar-entry-badge">${isBonus ? 'Bonus' : 'Action'}</span>
+                <span class="mbar-entry-sub">${costDesc}</span>
+              </div>
+            </button>
+          `;
+        }).join('') : '<div style="padding:14px;text-align:center;color:#8f95a8;">No spells available in this tier.</div>'}
+      `;
+    } else if (_drawerTab === 'bonus') {
+      bodyHtml = `
+        <div class="mbar-sub-header">Bonus Actions & Abilities</div>
+        ${bonusUsed ? '<div style="padding:6px 10px;font-size:12px;color:#d8aa46;background:rgba(216,170,70,0.12);border-radius:4px;margin-bottom:6px;">⚠️ Bonus Action already spent this turn</div>' : ''}
+        ${bonusAbilities.map(a => `
+          <button class="mbar-entry-btn" data-act="bonus-ability" data-key="${a.key}" ${bonusUsed ? 'disabled' : ''}>
+            <div class="mbar-entry-left">
+              <div class="mbar-entry-title">${a.label}</div>
+              <div class="mbar-entry-desc">${a.desc}</div>
+            </div>
+            <div class="mbar-entry-right">
+              <span class="mbar-entry-badge">Bonus</span>
+            </div>
+          </button>
+        `).join('')}
+        ${bonusSpells.map(k => {
+          const sp = SPELLS[k];
+          return `
+            <button class="mbar-entry-btn spell-cast-btn" data-spell="${k}" data-level="${sp?.level || 1}" ${bonusUsed ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">${k === trinketScrollKey ? '📜' : '✨'} ${sp ? sp.label : k}</div>
+                <div class="mbar-entry-desc">${sp?.desc || ''}</div>
+              </div>
+              <div class="mbar-entry-right">
+                <span class="mbar-entry-badge">Bonus Spell</span>
+                <span class="mbar-entry-sub">${sp?.level ? 'Lv ' + sp.level : 'Cantrip'}</span>
+              </div>
+            </button>
+          `;
+        }).join('')}
+        ${(!bonusAbilities.length && !bonusSpells.length) ? '<div style="padding:14px;text-align:center;color:#8f95a8;">No bonus actions available.</div>' : ''}
+      `;
+    } else if (_drawerTab === 'features') {
+      bodyHtml = `
+        <div class="mbar-sub-header">Class Action Features</div>
+        ${actionAbilities.map(a => `
+          <button class="mbar-entry-btn" data-act="action-ability" data-key="${a.key}">
+            <div class="mbar-entry-left">
+              <div class="mbar-entry-title">⚡ ${a.label}</div>
+              <div class="mbar-entry-desc">${a.desc}</div>
+            </div>
+            <div class="mbar-entry-right">
+              <span class="mbar-entry-badge">Feature</span>
+            </div>
+          </button>
+        `).join('')}
+        <div class="mbar-sub-header" style="margin-top:6px;">Common Actions</div>
+        ${(() => {
+          const commonDisabled = actUsed || (cur.attacksLeft > 0 && cur.attackActionCommitted);
+          return `
+            <button class="mbar-entry-btn" data-act="common" data-type="dash" ${commonDisabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">🏃 Dash</div>
+                <div class="mbar-entry-desc">Gain additional movement equal to your speed</div>
+              </div>
+              <div class="mbar-entry-right">
+                <span class="mbar-entry-badge">Action</span>
+                <span class="mbar-entry-sub">+Speed</span>
+              </div>
+            </button>
+            <button class="mbar-entry-btn" data-act="common" data-type="dodge" ${commonDisabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">🛡️ Dodge</div>
+                <div class="mbar-entry-desc">Focus on defense (+5 AC until next turn)</div>
+              </div>
+              <div class="mbar-entry-right">
+                <span class="mbar-entry-badge">Action</span>
+                <span class="mbar-entry-sub">+5 AC</span>
+              </div>
+            </button>
+            <button class="mbar-entry-btn" data-act="common" data-type="disengage" ${commonDisabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">💨 Disengage</div>
+                <div class="mbar-entry-desc">Movement doesn't provoke opportunity attacks</div>
+              </div>
+              <div class="mbar-entry-right">
+                <span class="mbar-entry-badge">Action</span>
+                <span class="mbar-entry-sub">Safe Move</span>
+              </div>
+            </button>
+          `;
+        })()}
+      `;
+    }
+
+    return `
+      <div id="mbar-drawer" class="mbar-drawer">
+        <div class="mbar-drawer-tabs">
+          <button class="mbar-dtab ${_drawerTab === 'attacks' ? 'active' : ''}" data-tab="attacks">⚔️ Attacks</button>
+          ${hasSpells ? `<button class="mbar-dtab ${_drawerTab === 'spells' ? 'active' : ''}" data-tab="spells">✨ Spells</button>` : ''}
+          <button class="mbar-dtab ${_drawerTab === 'bonus' ? 'active' : ''}" data-tab="bonus">⚡ Bonus Action</button>
+          <button class="mbar-dtab ${_drawerTab === 'features' ? 'active' : ''}" data-tab="features">🏃 Features</button>
+          <button class="mbar-drawer-close" title="Close Drawer (Esc)">✕</button>
+        </div>
+        <div class="mbar-drawer-body">
+          ${bodyHtml}
+        </div>
+      </div>
+    `;
+  }
+
   let html = `
+    ${_drawerOpen ? renderDrawer() : ''}
+
     <div class="mbar-hero">
       <div class="mbar-hero-avatar">${initial}</div>
       <div class="mbar-hero-info">
@@ -1748,158 +2505,21 @@ export function updateManualCombatBar(game) {
     </div>
 
     <div class="mbar-btn-wrap">
-      <button id="mbar-act-btn" class="mbar-btn ${actUsed ? 'spent disabled' : ''}" ${actUsed ? 'disabled' : ''}>
-        ⚔️ Action ${actUsed ? '(Spent)' : (_activeSubmenu === 'action' ? '▲' : '▼')}
-      </button>
-
-      <!-- Level 1 Category Menu -->
-      <div class="mbar-submenu ${_activeSubmenu === 'action' ? 'show' : ''}">
-        <div class="mbar-sub-header">Action Categories</div>
-        <button class="mbar-branch-btn ${_branchCategory === 'attack' ? 'active' : ''}" data-branch="attack">
-          <span>⚔️ Attack Options</span>
-          <span class="mbar-sub-item-sub">▶</span>
-        </button>
-        ${actionSpells.length ? `
-          <button class="mbar-branch-btn ${_branchCategory === 'spells' ? 'active' : ''}" data-branch="spells">
-            <span>✨ Spells & Magic</span>
-            <span class="mbar-sub-item-sub">▶</span>
-          </button>
-        ` : ''}
-        ${actionAbilities.length ? `
-          <button class="mbar-branch-btn ${_branchCategory === 'features' ? 'active' : ''}" data-branch="features">
-            <span>⚡ Class Features</span>
-            <span class="mbar-sub-item-sub">▶</span>
-          </button>
-        ` : ''}
-        <div class="mbar-sub-header">Common Actions</div>
-        <button class="mbar-sub-item" data-act="common" data-type="dash">
-          <span>🏃 Dash</span>
-          <span class="mbar-sub-item-sub">+Move Speed</span>
-        </button>
-        <button class="mbar-sub-item" data-act="common" data-type="dodge">
-          <span>🛡️ Dodge</span>
-          <span class="mbar-sub-item-sub">+5 AC</span>
-        </button>
-        <button class="mbar-sub-item" data-act="common" data-type="disengage">
-          <span>💨 Disengage</span>
-          <span class="mbar-sub-item-sub">No Opp Attacks</span>
-        </button>
-      </div>
-
-      <!-- Level 2 Branch Popover: Attack Options -->
-      ${(_activeSubmenu === 'action' && _branchCategory === 'attack') ? `
-        <div class="mbar-branch-panel level-2 show">
-          <div class="mbar-sub-header">Select Attack Type</div>
-          ${atkOpts.map(opt => `
-            <button class="mbar-sub-item attack-opt-btn" data-opt-key="${opt.key}" data-type="${opt.type}">
-              <span>${opt.label}</span>
-              <span class="mbar-sub-item-sub">${opt.sub}</span>
-            </button>
-          `).join('')}
-        </div>
-      ` : ''}
-
-      <!-- Level 2 Branch Popover: Spell Slots -->
-      ${(_activeSubmenu === 'action' && _branchCategory === 'spells') ? (() => {
-        const slots = cur.data?.slots || {};
-        const maxSlots = cur.data?.maxSlots || {};
-        const cantripList = actionSpells.filter(k => SPELLS[k] && (!SPELLS[k].level || SPELLS[k].level === 0));
-        const lvl1List = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level === 1);
-        const lvl2List = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level > 0 && SPELLS[k].level <= 2);
-        const lvl3List = actionSpells.filter(k => SPELLS[k] && SPELLS[k].level > 0 && SPELLS[k].level <= 3);
-
-        return `
-          <div class="mbar-branch-panel level-2 show">
-            <div class="mbar-sub-header">Select Spell Tier</div>
-            ${cantripList.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 0 ? 'active' : ''}" data-spell-level="0">
-                <span>🔹 Cantrips (At-Will)</span>
-                <span class="mbar-sub-item-sub">▶</span>
-              </button>
-            ` : ''}
-            ${lvl1List.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 1 ? 'active' : ''}" data-spell-level="1">
-                <span>🔮 Level 1 Slots</span>
-                <span class="mbar-sub-item-sub">${slots[1] || 0}/${maxSlots[1] || 0} ▶</span>
-              </button>
-            ` : ''}
-            ${lvl2List.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 2 ? 'active' : ''}" data-spell-level="2">
-                <span>🔮 Level 2 Slots</span>
-                <span class="mbar-sub-item-sub">${slots[2] || 0}/${maxSlots[2] || 0} ▶</span>
-              </button>
-            ` : ''}
-            ${lvl3List.length ? `
-              <button class="mbar-branch-btn ${_branchSpellLevel === 3 ? 'active' : ''}" data-spell-level="3">
-                <span>🔮 Level 3 Slots</span>
-                <span class="mbar-sub-item-sub">${slots[3] || 0}/${maxSlots[3] || 0} ▶</span>
-              </button>
-            ` : ''}
-          </div>
-        `;
-      })() : ''}
-
-      <!-- Level 3 Branch Popover: Spell Selection -->
-      ${(_activeSubmenu === 'action' && _branchCategory === 'spells' && _branchSpellLevel !== null) ? (() => {
-        const targetLvl = _branchSpellLevel;
-        const matchingSpells = actionSpells.filter(k => {
-          const sp = SPELLS[k];
-          if (!sp) return false;
-          if (targetLvl === 0) return !sp.level || sp.level === 0;
-          return sp.level > 0 && sp.level <= targetLvl;
-        });
-
-        return `
-          <div class="mbar-branch-panel level-3 show">
-            <div class="mbar-sub-header">${targetLvl === 0 ? 'Cantrips' : 'Level ' + targetLvl + ' Spells'}</div>
-            ${matchingSpells.map(k => {
-              const sp = SPELLS[k];
-              const isUpcast = sp && sp.level > 0 && sp.level < targetLvl;
-              return `
-                <button class="spell-cast-btn" data-spell="${k}" data-level="${targetLvl || 1}">
-                  <span>✨ ${sp ? sp.label : k} ${isUpcast ? '<small style="color:#d8aa46;">(Upcast)</small>' : ''}</span>
-                  <span class="mbar-sub-item-sub">${sp && sp.school ? sp.school : 'Magic'}</span>
-                </button>
-              `;
-            }).join('')}
-          </div>
-        `;
-      })() : ''}
-
-      <!-- Level 2 Branch Popover: Features -->
-      ${(_activeSubmenu === 'action' && _branchCategory === 'features') ? `
-        <div class="mbar-branch-panel level-2 show">
-          <div class="mbar-sub-header">Class Features</div>
-          ${actionAbilities.map(a => `
-            <button class="mbar-sub-item" data-act="action-ability" data-key="${a.key}">
-              <span>⚡ ${a.label}</span>
-              <span class="mbar-sub-item-sub">${a.desc}</span>
-            </button>
-          `).join('')}
-        </div>
-      ` : ''}
+      ${(() => {
+        const surgeReady = actionAbilities.some(a => a.key === 'actionSurge');
+        const actDisabled = actUsed && !surgeReady;
+        const extraAtk = cur.attacksLeft > 0;
+        const label = actDisabled ? '(Spent)' : (actUsed && surgeReady ? '(Surge!)' : (extraAtk ? `(${cur.attacksLeft} left)` : (_drawerOpen && (_drawerTab === 'attacks' || _drawerTab === 'spells' || _drawerTab === 'features') ? '▲' : '▼')));
+        return `<button id="mbar-act-btn" class="mbar-btn ${actDisabled ? 'spent disabled' : (actUsed && surgeReady ? 'surge-ready' : (extraAtk ? 'extra-atk-ready' : ''))}" ${actDisabled ? 'disabled' : ''}>
+          ⚔️ Actions ${label}
+        </button>`;
+      })()}
     </div>
 
     <div class="mbar-btn-wrap">
       <button id="mbar-bonus-btn" class="mbar-btn ${bonusUsed ? 'spent disabled' : ''}" ${bonusUsed ? 'disabled' : ''}>
-        ⚡ Bonus ${bonusUsed ? '(Spent)' : (_activeSubmenu === 'bonus' ? '▲' : '▼')}
+        ⚡ Bonus ${bonusUsed ? '(Spent)' : (_drawerOpen && _drawerTab === 'bonus' ? '▲' : '▼')}
       </button>
-      <div class="mbar-submenu ${_activeSubmenu === 'bonus' ? 'show' : ''}">
-        ${bonusSpells.length ? `<div class="mbar-sub-header">Bonus Spells</div>` : ''}
-        ${bonusSpells.map(k => {
-          const sp = SPELLS[k];
-          return `<button class="spell-cast-btn" data-spell="${k}" data-level="${sp?.level || 1}">
-            <span>✨ ${sp ? sp.label : k}</span>
-            <span class="mbar-sub-item-sub">${sp && sp.level ? 'Lv' + sp.level : 'Cantrip'}</span>
-          </button>`;
-        }).join('')}
-        ${bonusAbilities.length ? `<div class="mbar-sub-header">Bonus Features</div>` : ''}
-        ${bonusAbilities.map(a => `<button class="mbar-sub-item" data-act="bonus-ability" data-key="${a.key}">
-          <span>⚡ ${a.label}</span>
-          <span class="mbar-sub-item-sub">${a.desc}</span>
-        </button>`).join('')}
-        ${(!bonusSpells.length && !bonusAbilities.length) ? `<div style="padding:8px;font-size:12px;color:#8f95a8;">No bonus actions available</div>` : ''}
-      </div>
     </div>
 
     <button id="mbar-endturn-btn" class="mbar-btn endturn-btn">
@@ -1914,9 +2534,13 @@ export function updateManualCombatBar(game) {
   if (actBtn) {
     actBtn.onclick = (e) => {
       e.stopPropagation();
-      _levelSelectSpellKey = null;
-      _activeSubmenu = _activeSubmenu === 'action' ? null : 'action';
-      if (!_activeSubmenu) { _branchCategory = null; _branchSpellLevel = null; }
+      if (_drawerOpen && (_drawerTab === 'attacks' || _drawerTab === 'spells' || _drawerTab === 'features')) {
+        _drawerOpen = false;
+      } else {
+        _drawerOpen = true;
+        _drawerTab = 'attacks';
+        _spellTierFilter = null;
+      }
       updateManualCombatBar(game);
     };
   }
@@ -1925,10 +2549,13 @@ export function updateManualCombatBar(game) {
   if (bonusBtn) {
     bonusBtn.onclick = (e) => {
       e.stopPropagation();
-      _levelSelectSpellKey = null;
-      _branchCategory = null;
-      _branchSpellLevel = null;
-      _activeSubmenu = _activeSubmenu === 'bonus' ? null : 'bonus';
+      if (_drawerOpen && _drawerTab === 'bonus') {
+        _drawerOpen = false;
+      } else {
+        _drawerOpen = true;
+        _drawerTab = 'bonus';
+        _spellTierFilter = null;
+      }
       updateManualCombatBar(game);
     };
   }
@@ -1936,25 +2563,36 @@ export function updateManualCombatBar(game) {
   const endBtn = $('mbar-endturn-btn');
   if (endBtn) {
     endBtn.onclick = () => {
-      _activeSubmenu = null;
-      _levelSelectSpellKey = null;
-      _branchCategory = null;
-      _branchSpellLevel = null;
+      _drawerOpen = false;
       if (game && game.manualEndTurn) game.manualEndTurn();
     };
   }
 
-  /* Branch Category buttons */
-  bar.querySelectorAll('.mbar-branch-btn').forEach(btn => {
-    btn.onclick = (e) => {
+  const closeBtn = bar.querySelector('.mbar-drawer-close');
+  if (closeBtn) {
+    closeBtn.onclick = (e) => {
       e.stopPropagation();
-      if (btn.dataset.branch !== undefined) {
-        _branchCategory = _branchCategory === btn.dataset.branch ? null : btn.dataset.branch;
-        _branchSpellLevel = null;
-      } else if (btn.dataset.spellLevel !== undefined) {
-        const lvl = parseInt(btn.dataset.spellLevel, 10);
-        _branchSpellLevel = _branchSpellLevel === lvl ? null : lvl;
-      }
+      _drawerOpen = false;
+      updateManualCombatBar(game);
+    };
+  }
+
+  /* Drawer Tab switching */
+  bar.querySelectorAll('.mbar-dtab').forEach(tabBtn => {
+    tabBtn.onclick = (e) => {
+      e.stopPropagation();
+      _drawerTab = tabBtn.dataset.tab;
+      _spellTierFilter = null;
+      updateManualCombatBar(game);
+    };
+  });
+
+  /* Tier Filter chips */
+  bar.querySelectorAll('.mbar-tier-chip').forEach(chip => {
+    chip.onclick = (e) => {
+      e.stopPropagation();
+      const tierVal = chip.dataset.filterTier;
+      _spellTierFilter = (tierVal === 'all') ? null : parseInt(tierVal, 10);
       updateManualCombatBar(game);
     };
   });
@@ -1964,18 +2602,17 @@ export function updateManualCombatBar(game) {
     btn.onclick = (e) => {
       e.stopPropagation();
       const type = btn.dataset.type;
-      _activeSubmenu = null;
-      _branchCategory = null;
-      _branchSpellLevel = null;
+      const optKey = btn.dataset.optKey;
+      _drawerOpen = false;
 
       if (type === 'cantrip') {
         const cantripKey = cur.data?.cantripProfile?.nameKey || 'fireBolt';
         game.manualPerformSpell(cur, cantripKey, null, null, 0);
-      } else if (type === 'thrown') {
-        const w = cur.data?.weaponProfile;
-        game.manualPerformAttack(cur, null, { thrown: true, range: w?.range || 6 });
       } else {
-        game.manualPerformAttack(cur);
+        const opt = atkOpts.find(o => o.key === optKey) || atkOpts.find(o => o.type === type);
+        const profileOverride = opt ? opt.profile : (type === 'thrown' ? 'thrown' : undefined);
+        if (game.startAttackTargeting) game.startAttackTargeting(cur, profileOverride);
+        else game.manualPerformAttack(cur, null, profileOverride);
       }
     };
   });
@@ -1986,30 +2623,25 @@ export function updateManualCombatBar(game) {
       e.stopPropagation();
       const spellKey = btn.dataset.spell;
       const level = parseInt(btn.dataset.level, 10);
-      _activeSubmenu = null;
-      _branchCategory = null;
-      _branchSpellLevel = null;
+      _drawerOpen = false;
       game.manualPerformSpell(cur, spellKey, null, null, level);
     };
   });
 
-  /* Submenu item clicks */
-  bar.querySelectorAll('.mbar-sub-item').forEach(item => {
+  /* Action ability, bonus ability, common action clicks */
+  bar.querySelectorAll('.mbar-entry-btn').forEach(item => {
+    if (item.classList.contains('attack-opt-btn') || item.classList.contains('spell-cast-btn')) return;
     item.onclick = (e) => {
       e.stopPropagation();
       const act = item.dataset.act;
+      _drawerOpen = false;
       if (act === 'common') {
-        _activeSubmenu = null;
-        _branchCategory = null;
-        _branchSpellLevel = null;
         game.manualPerformCommonAction(cur, item.dataset.type);
       } else if (act === 'action-ability' || act === 'bonus-ability') {
-        _activeSubmenu = null;
-        _branchCategory = null;
-        _branchSpellLevel = null;
         if (item.dataset.key === 'moveMoonbeam') game.manualPerformSpell(cur, 'moveMoonbeam');
+        else if (item.dataset.key === 'useTrinket') game.manualUseTrinket(cur);
         else if (act === 'bonus-ability') game.manualPerformBonusAbility(cur, item.dataset.key);
-        else if (act === 'action-ability') { /* handle as needed */ }
+        else if (act === 'action-ability') game.manualPerformActionAbility(cur, item.dataset.key);
       }
     };
   });
@@ -2019,5 +2651,6 @@ if (typeof window !== 'undefined') {
   window.__updateManualBar = () => {
     if (window.__game) updateManualCombatBar(window.__game);
   };
+  window.__closeManualDrawer = closeManualDrawer;
 }
 
