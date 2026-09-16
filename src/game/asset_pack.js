@@ -184,6 +184,30 @@ export async function initAssetPack() {
         configurable: true
       });
     }
+
+    /* The setter above never sees markup: `el.innerHTML = '<img src="./dcss/…">'`
+       (item icons, shop, codex portraits) has the parser write the content
+       attribute directly, so those images went to the network for a folder the
+       packager removed from dist. Rewrite them as they are inserted; and since
+       the fetch may already be queued by then, also swap the blob in on error. */
+    const fixImg = img => {
+      const raw = img.getAttribute('src');
+      if (!raw || raw.startsWith('blob:') || raw.startsWith('data:')) return;
+      const url = getAssetUrl(raw);
+      if (url) img.src = url;
+    };
+    new MutationObserver(muts => {
+      for (const m of muts) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          if (n.tagName === 'IMG') fixImg(n);
+          else if (n.querySelectorAll) for (const img of n.querySelectorAll('img[src]')) fixImg(img);
+        }
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener('error', e => {
+      if (e.target && e.target.tagName === 'IMG') fixImg(e.target);
+    }, true);
   } catch (err) {
     console.log('[asset_pack] Running in direct-file mode.', err?.message || '');
   }
