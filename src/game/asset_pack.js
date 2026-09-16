@@ -1,14 +1,29 @@
 /**
  * asset_pack.js — In-memory virtual asset bundle loader for itch.io and web distribution.
  *
- * When `assets.pak` is present (created by `scripts/pack_web.mjs`), this module
- * loads the entire virtual file archive and routes all asset requests (images,
- * sprites, audio) into in-memory Blob URLs, reducing thousands of individual
- * files into a single bundle to satisfy itch.io's 1,000-file limit.
+ * `scripts/pack_web.mjs` folds thousands of individual asset files into a few
+ * `assets-N.pak` parts described by `assets.manifest.json`, so the upload
+ * stays under itch.io's 1,000-file limit and its 200 MB single-file cap. This
+ * module loads that manifest and routes asset requests (images, sprites,
+ * audio) to in-memory Blob URLs.
+ *
+ * Parts are either eager (fetched at boot: sprites, icons, SFX — anything an
+ * `<img src>` may ask for synchronously) or lazy (fetched on first request:
+ * narration, which is only ever reached through `fetch()` and so can be
+ * awaited). A lazy part must never hold an image; the packer enforces that.
+ *
+ * A manifest-less `assets.pak` (single part, self-describing 'PAK1' header)
+ * is still understood so an older build keeps working.
  */
 
+// path -> [partIndex, offset, size, mime]
 let packIndex = null;
-let packBuffer = null;
+// partIndex -> ArrayBuffer once loaded
+const partBuffers = new Map();
+// partIndex -> { file, lazy }
+let parts = [];
+// partIndex -> in-flight load promise
+const partLoads = new Map();
 const blobUrlCache = new Map();
 const blobCache = new Map();
 
@@ -26,22 +41,32 @@ function normalizePath(p) {
   return clean;
 }
 
-export function getAssetBlob(pathKey) {
-  if (!packIndex || !packBuffer) return null;
-  const clean = normalizePath(pathKey);
-  const entry = packIndex[clean];
-  if (!entry) return null;
-  if (blobCache.has(clean)) return blobCache.get(clean);
+/** True when the pack ships this asset (loaded or not). Lets callers skip a
+ *  probe that is guaranteed to 404 on the web, e.g. narration .wav vs .mp3. */
+export function hasPackedAsset(pathKey) {
+  return !!(packIndex && packIndex[normalizePath(pathKey)]);
+}
 
-  const [offset, size, mime] = entry;
-  const slice = packBuffer.slice(offset, offset + size);
-  const blob = new Blob([slice], { type: mime || 'image/png' });
+function sliceEntry(clean, entry) {
+  const [part, offset, size, mime] = entry;
+  const buf = partBuffers.get(part);
+  if (!buf) return null;
+  const blob = new Blob([buf.slice(offset, offset + size)], { type: mime || 'image/png' });
   blobCache.set(clean, blob);
   return blob;
 }
 
+export function getAssetBlob(pathKey) {
+  if (!packIndex) return null;
+  const clean = normalizePath(pathKey);
+  const entry = packIndex[clean];
+  if (!entry) return null;
+  if (blobCache.has(clean)) return blobCache.get(clean);
+  return sliceEntry(clean, entry);
+}
+
 export function getAssetUrl(pathKey) {
-  if (!packIndex || !packBuffer) return null;
+  if (!packIndex) return null;
   const clean = normalizePath(pathKey);
   if (blobUrlCache.has(clean)) return blobUrlCache.get(clean);
 
@@ -53,43 +78,89 @@ export function getAssetUrl(pathKey) {
   return url;
 }
 
+async function fetchBuffer(origFetch, file) {
+  const res = await origFetch(file);
+  if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
+  return res.arrayBuffer();
+}
+
+/* Load one part, once. Concurrent callers share the same promise. */
+function ensurePart(origFetch, part) {
+  if (partBuffers.has(part)) return Promise.resolve(partBuffers.get(part));
+  if (partLoads.has(part)) return partLoads.get(part);
+  const p = fetchBuffer(origFetch, './' + parts[part].file)
+    .then(buf => { partBuffers.set(part, buf); return buf; })
+    .finally(() => partLoads.delete(part));
+  partLoads.set(part, p);
+  return p;
+}
+
+/* Async variant for the fetch hook: pulls in a lazy part on first use. */
+async function getAssetBlobAsync(origFetch, clean) {
+  const entry = packIndex[clean];
+  if (!entry) return null;
+  if (blobCache.has(clean)) return blobCache.get(clean);
+  await ensurePart(origFetch, entry[0]);
+  return sliceEntry(clean, entry);
+}
+
+/* Legacy single-file layout: 'PAK1' + uint32 index length + JSON index of
+   path -> [offset, size, mime] + raw bytes. Rewritten into the part form. */
+function loadLegacyPak(buf) {
+  const view = new DataView(buf);
+  const magic = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+  if (magic !== 'PAK1') throw new Error('Invalid magic header in assets.pak');
+  const indexLen = view.getUint32(4, true);
+  const indexJson = new TextDecoder('utf-8').decode(new Uint8Array(buf, 8, indexLen));
+  const legacy = JSON.parse(indexJson);
+  packIndex = {};
+  for (const [k, [offset, size, mime]] of Object.entries(legacy)) packIndex[k] = [0, offset, size, mime];
+  parts = [{ file: 'assets.pak', lazy: false }];
+  partBuffers.set(0, buf.slice(8 + indexLen));
+}
+
 export async function initAssetPack() {
   if (typeof window === 'undefined') return;
+  const origFetch = window.fetch;
 
   try {
-    const res = await fetch('./assets.pak');
-    if (!res.ok) {
-      // In dev mode or when assets.pak is absent, fallback to regular individual files
-      return;
+    const manifestRes = await origFetch('./assets.manifest.json');
+    if (manifestRes.ok) {
+      const manifest = await manifestRes.json();
+      if (manifest.version !== 2 || !Array.isArray(manifest.parts) || !manifest.index) {
+        console.warn('[asset_pack] Unrecognised assets.manifest.json; running in direct-file mode.');
+        return;
+      }
+      parts = manifest.parts;
+      packIndex = manifest.index;
+      // Eager parts all in flight at once; lazy ones wait for their first hit.
+      await Promise.all(parts.map((p, i) => p.lazy ? null : ensurePart(origFetch, i)));
+    } else {
+      const res = await origFetch('./assets.pak');
+      if (!res.ok) {
+        // In dev mode or when no pack is present, fall back to individual files
+        return;
+      }
+      loadLegacyPak(await res.arrayBuffer());
     }
-    const buf = await res.arrayBuffer();
-    const view = new DataView(buf);
-    const magic = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
-    if (magic !== 'PAK1') {
-      console.warn('[asset_pack] Invalid magic header in assets.pak');
-      return;
-    }
-    const indexLen = view.getUint32(4, true);
-    const indexBytes = new Uint8Array(buf, 8, indexLen);
-    const indexJson = new TextDecoder('utf-8').decode(indexBytes);
-    packIndex = JSON.parse(indexJson);
-    packBuffer = buf.slice(8 + indexLen);
 
-    console.log(`[asset_pack] Loaded ${Object.keys(packIndex).length} virtual assets from assets.pak!`);
+    const lazyCount = parts.filter(p => p.lazy).length;
+    console.log(`[asset_pack] Indexed ${Object.keys(packIndex).length} virtual assets across ${parts.length} part(s) (${lazyCount} lazy).`);
 
     // Hook window.fetch so fetch('sounds/...') or fetch('dcss/...') returns the virtual blob
-    const origFetch = window.fetch;
     window.fetch = async function(input, init) {
       const urlStr = typeof input === 'string' ? input : input?.url;
       if (urlStr) {
         const clean = normalizePath(urlStr);
-        const blob = getAssetBlob(clean);
-        if (blob) {
-          const mime = packIndex[clean]?.[2] || 'application/octet-stream';
-          return new Response(blob, {
-            status: 200,
-            headers: { 'Content-Type': mime }
-          });
+        if (packIndex[clean]) {
+          const blob = await getAssetBlobAsync(origFetch, clean);
+          if (blob) {
+            const mime = packIndex[clean][3] || 'application/octet-stream';
+            return new Response(blob, {
+              status: 200,
+              headers: { 'Content-Type': mime }
+            });
+          }
         }
       }
       return origFetch.apply(this, arguments);
@@ -114,6 +185,6 @@ export async function initAssetPack() {
       });
     }
   } catch (err) {
-    console.log('[asset_pack] Running in direct-file mode.');
+    console.log('[asset_pack] Running in direct-file mode.', err?.message || '');
   }
 }

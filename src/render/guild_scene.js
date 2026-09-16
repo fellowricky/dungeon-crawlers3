@@ -873,8 +873,10 @@ function buildWall(infra) {
    one look. */
 
 const OUTSKIRT_PROPS = [
-  { url: './3d/Forest/tree.glb',           scale: 2.6, weight: 26 },
-  { url: './3d/Moor/swamptree.glb',        scale: 2.4, weight: 10 },
+  /* The .opt.glb variants (same mesh, up-axis baked in, ~3 MB instead of
+     ~25 MB each) — the raw masters must not ship in the web build. */
+  { url: './3d/Forest/tree.opt.glb',       scale: 2.6, weight: 26 },
+  { url: './3d/Moor/swamptree.opt.glb',    scale: 2.4, weight: 10 },
   { url: './3d/Moor/bush.opt.glb',         scale: 1.3, weight: 20 },
   { url: './3d/Forest/rocks.opt.glb',      scale: 1.2, weight: 14 },
   { url: './3d/Forest/stump.opt.glb',      scale: 1.2, weight: 8 },

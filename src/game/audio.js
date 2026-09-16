@@ -31,6 +31,7 @@ const LS_KEY = 'dc_audio_v1';
  * audio_coverage.test.js fails the build if an ability has no slot, a slot
  * name is misspelled, or a listed file is missing from public/sounds. */
 import SOUNDS from './sounds.json' with { type: 'json' };
+import { hasPackedAsset } from './asset_pack.js';
 
 const SFX = {};
 const SFX_FALLBACK = {};
@@ -261,6 +262,16 @@ function loadNarrationBuffer(c, path) {
   return p;
 }
 
+/* Files to try for a line, in order. Dev serves the recorded .wav; the web
+   build ships narration transcoded to .mp3 inside the asset pack, and probing
+   the .wav there is a guaranteed 404 per line, so go straight to the mp3 when
+   the pack says that is all it has. */
+function narrationCandidates(id) {
+  const base = NARR_DIR + narrationId(id);
+  if (hasPackedAsset(base + '.mp3') && !hasPackedAsset(base + '.wav')) return [base + '.mp3'];
+  return [base + '.wav', base + '.mp3'];
+}
+
 /* Pull the next queued line and play it once the current one is free. A missing
    file is skipped (silently advances), so unrecorded lines never stall or break
    the game. Tries .wav then .mp3. */
@@ -272,10 +283,10 @@ function playNextNarration(c) {
   const begin = () => {
     narrationWaiting = false;
     if (gen !== narrationGen) return;                         // interrupted during delay
-    const base = NARR_DIR + narrationId(id);
+    const [first, second] = narrationCandidates(id);
     narrationLoading = true;
-    loadNarrationBuffer(c, base + '.wav')
-      .then(b => b || loadNarrationBuffer(c, base + '.mp3'))
+    loadNarrationBuffer(c, first)
+      .then(b => b || (second ? loadNarrationBuffer(c, second) : null))
       .then(b => {
         if (gen !== narrationGen) return;                     // interrupted mid-load (stop cleared the flag)
         narrationLoading = false;
@@ -317,8 +328,7 @@ export function preloadNarration(ids) {
   const c = ensureCtx();
   if (!c) return;
   for (const id of ids || []) {
-    const base = NARR_DIR + narrationId(id);
-    loadNarrationBuffer(c, base + '.wav');
+    loadNarrationBuffer(c, narrationCandidates(id)[0]);
   }
 }
 

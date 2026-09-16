@@ -48,3 +48,6 @@ __pycache__/
 
 # itch.io butler CLI: downloaded tool, not source.
 tools/butler.exe
+
+# Web packager transcode cache (narration/music mp3, guild webp); regenerable.
+.cache/
