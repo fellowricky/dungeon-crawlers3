@@ -238,6 +238,331 @@ const PLANS = {
 };
 
 /**
+ * Natural terraced elevation for overland journey maps.
+ *
+ * Rather than interior architectural archetypes (ziggurats, amphitheaters),
+ * overland journeys climb upward through natural geography:
+ * 1. Stepped Journey Ascent: Zones along the polyline path climb from trailhead (level 0)
+ *    up to the boss palisade camp on the mountain terrace (level 2).
+ * 2. Trail Stairs: Where the road climbs across an elevation tier, a clean 1-step
+ *    stair ramp is stamped into the path, keeping the journey 100% connected.
+ * 3. Clearing Knolls: Landmark clearings (shrine, treasure, boss camp) feature an elevated
+ *    knoll or stone dais overlooking the clearing, surrounded by natural stair steps.
+ * 4. Gradient Invariant: Adjacent floor cells never differ by > 1 level without stairs,
+ *    guaranteeing 100% 8-way pathfinding reachability across the entire map.
+ */
+export function buildOverlandElevation(d, rng) {
+  const { W, H, grid, corridor, rooms, entrance, boss, pools, lakeMask } = d;
+  const total = W * H;
+  const height = new Int8Array(total);
+  const ramp = new Uint8Array(total);
+  const features = [];
+
+  const chance = d.params && typeof d.params.elevationChance === 'number'
+    ? d.params.elevationChance : 0.85;
+  if (chance <= 0 || !rooms || rooms.length < 2) return { height, ramp, features };
+
+  const idx = (x, y) => y * W + x;
+  const inB = (x, y) => x >= 0 && y >= 0 && x < W && y < H;
+  const isFloor = c => c >= 0 && c < total && grid[c] === FLOOR;
+  const isLiquid = c => c >= 0 && c < total && (grid[c] === POOL || (grid[c] === FLOOR && lakeMask && lakeMask[c]));
+
+  const N = rooms.length;
+  // Step ascending climb: zone 0 is trailhead (0), intermediate zones climb to 1, boss zone is 2
+  const zoneBaseH = new Int8Array(N);
+  for (let i = 0; i < N; i++) {
+    const ratio = i / (N - 1);
+    zoneBaseH[i] = Math.min(2, Math.round(ratio * 2));
+  }
+
+  // 1. Assign zone heights to floor cells in clearings
+  const cellZone = new Int16Array(total).fill(-1);
+  for (let i = 0; i < N; i++) {
+    const r = rooms[i];
+    const zH = zoneBaseH[i];
+    const rad2 = (r.rad + 2) * (r.rad + 2);
+    const x0 = Math.max(0, Math.floor(r.cx - r.rad - 2));
+    const x1 = Math.min(W - 1, Math.ceil(r.cx + r.rad + 2));
+    const y0 = Math.max(0, Math.floor(r.cy - r.rad - 2));
+    const y1 = Math.min(H - 1, Math.ceil(r.cy + r.rad + 2));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const c = idx(x, y);
+        if (!isFloor(c) || isLiquid(c)) continue;
+        const d2 = (x - r.cx) * (x - r.cx) + (y - r.cy) * (y - r.cy);
+        if (d2 <= rad2) {
+          height[c] = zH;
+          cellZone[c] = i;
+        }
+      }
+    }
+  }
+
+  // 2. Propagate heights along the corridor connecting zones
+  const dist = new Int16Array(total).fill(-1);
+  const fromZone = new Int16Array(total).fill(-1);
+  const q = new Int32Array(total);
+  let qh = 0, qt = 0;
+
+  for (let c = 0; c < total; c++) {
+    if (isFloor(c) && cellZone[c] >= 0) {
+      dist[c] = 0;
+      fromZone[c] = cellZone[c];
+      q[qt++] = c;
+    }
+  }
+
+  while (qh < qt) {
+    const c = q[qh++];
+    const x = c % W, y = (c / W) | 0;
+    const z = fromZone[c];
+    for (const [ox, oy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+      const nx = x + ox, ny = y + oy;
+      if (!inB(nx, ny)) continue;
+      const nc = idx(nx, ny);
+      if (isFloor(nc) && !isLiquid(nc) && dist[nc] < 0) {
+        dist[nc] = dist[c] + 1;
+        fromZone[nc] = z;
+        q[qt++] = nc;
+      }
+    }
+  }
+
+  for (let c = 0; c < total; c++) {
+    if (isFloor(c) && !isLiquid(c) && cellZone[c] < 0 && fromZone[c] >= 0) {
+      height[c] = zoneBaseH[fromZone[c]];
+    }
+  }
+
+  // 3. Elevate landmark knolls in ceremonial clearings (shrine, treasure, boss camp)
+  for (let i = 0; i < N; i++) {
+    const r = rooms[i];
+    if (r.type === 'boss' || r.type === 'shrine' || r.type === 'treasure') {
+      /* a fenced boss graveyard (boneyard's oc.graveyards.arena) needs its yard level */
+      if (r.type === 'boss' && d.flatCamp) continue;
+      const baseH = zoneBaseH[i];
+      const knollH = Math.min(3, baseH + 1);
+      const knollRad = Math.max(2.5, Math.min(4.5, r.rad * 0.40));
+      const knollRad2 = knollRad * knollRad;
+      const x0 = Math.max(0, Math.floor(r.cx - knollRad));
+      const x1 = Math.min(W - 1, Math.ceil(r.cx + knollRad));
+      const y0 = Math.max(0, Math.floor(r.cy - knollRad));
+      const y1 = Math.min(H - 1, Math.ceil(r.cy + knollRad));
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const c = idx(x, y);
+          if (!isFloor(c) || isLiquid(c) || (corridor && corridor[c])) continue;
+          const d2 = (x - r.cx) * (x - r.cx) + (y - r.cy) * (y - r.cy);
+          if (d2 <= knollRad2) {
+            height[c] = knollH;
+          }
+        }
+      }
+      features.push({ roomId: r.id, kind: 'knoll', high: knollH, low: baseH });
+    }
+  }
+
+  // 4. Smooth terrain gradient so adjacent floor cells never differ by > 1 level
+  for (let iter = 0; iter < 10; iter++) {
+    let changed = false;
+    for (let c = 0; c < total; c++) {
+      if (!isFloor(c) || isLiquid(c)) continue;
+      const x = c % W, y = (c / W) | 0;
+      for (const [ox, oy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+        const nx = x + ox, ny = y + oy;
+        if (!inB(nx, ny)) continue;
+        const nc = idx(nx, ny);
+        if (!isFloor(nc) || isLiquid(nc)) continue;
+        if (height[c] - height[nc] > 1) {
+          height[c] = height[nc] + 1;
+          changed = true;
+        }
+      }
+    }
+    if (!changed) break;
+  }
+
+  // 4a. River bridges (d.bridges: one cell list per deck, from the generator).
+  // A deck is one level end to end, the highest it touches, so where the banks
+  // differ the step is a stair up onto the bridge at the low end rather than
+  // one halfway across. Never more than one above the lowest bank, so that
+  // stair is always climbable.
+  for (const deck of (d.bridges || [])) {
+    const on = new Set(deck);
+    let top = -Infinity, lowBank = Infinity;
+    for (const c of deck) {
+      if (!isFloor(c)) continue;
+      top = Math.max(top, height[c]);
+      const x = c % W, y = (c / W) | 0;
+      for (const [ox, oy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+        if (!inB(x + ox, y + oy)) continue;
+        const n = idx(x + ox, y + oy);
+        if (!on.has(n) && isFloor(n) && !isLiquid(n)) lowBank = Math.min(lowBank, height[n]);
+      }
+    }
+    if (top === -Infinity) continue;
+    if (lowBank !== Infinity) top = Math.min(top, lowBank + 1);
+    for (const c of deck) if (isFloor(c)) height[c] = top;
+  }
+
+  // 4b. Arena bluffs and hollows (d.mesas, chosen by the generator): a plateau
+  // two levels above everything around it, or a hollow two below where the
+  // ground is already too high, with a SHEER cliff all round except one stepped
+  // approach (a one-level shoulder). Two levels can never be climbed, so this
+  // is real high ground you have to walk round to reach. It runs after the
+  // smoothing so the cliff is measured against the ground as it finally lies:
+  // the plateau clears the HIGHEST cell on its rim, not the arena's centre.
+  const N4 = (c) => { const x = c % W, y = (c / W) | 0, out = [];
+    for (const [ox, oy] of [[1,0], [-1,0], [0,1], [0,-1]]) if (inB(x + ox, y + oy)) out.push(idx(x + ox, y + oy));
+    return out; };
+  const mesaTaken = new Uint8Array(total);
+  for (const m of (d.mesas || [])) {
+    const cells = m.cells.filter(c => isFloor(c) && !isLiquid(c) && !mesaTaken[c]);
+    if (cells.length < 6) continue;
+    const inside = new Set(cells);
+    /* the rim: open ground touching the plateau */
+    const rim = new Set();
+    for (const c of cells) for (const n of N4(c)) if (!inside.has(n) && isFloor(n) && !isLiquid(n)) rim.add(n);
+    if (!rim.size || [...rim].some(c => mesaTaken[c])) continue;
+    let lo = Infinity, hi = -Infinity;
+    for (const c of rim) { lo = Math.min(lo, height[c]); hi = Math.max(hi, height[c]); }
+    const up = hi + 2 <= MAX_LEVEL;
+    if (!up && lo - 2 < MIN_LEVEL) continue;
+    const top = up ? hi + 2 : lo - 2, mid = up ? hi + 1 : lo - 1, foot = up ? hi : lo;
+    /* the shoulder: the rim cell furthest round toward m.face that steps off
+       onto ground at the foot level, widened along the rim to 2-3 cells */
+    const fx = Math.cos(m.face || 0), fy = Math.sin(m.face || 0);
+    const steps = (c, sh) => N4(c).some(n => !inside.has(n) && !rim.has(n) && !sh.has(n) && isFloor(n) && !isLiquid(n) && height[n] === foot);
+    const order = [...rim].sort((a, b) => ((b % W - m.cx) * fx + (((b / W) | 0) - m.cy) * fy) - ((a % W - m.cx) * fx + (((a / W) | 0) - m.cy) * fy));
+    let shoulder = null;
+    for (const s0 of order) {
+      if (!steps(s0, new Set())) continue;
+      shoulder = new Set([s0]);
+      for (const n of N4(s0)) if (rim.has(n) && shoulder.size < 3) shoulder.add(n);
+      break;
+    }
+    if (!shoulder) continue;
+    for (const c of cells) { height[c] = top; mesaTaken[c] = 1; }
+    for (const c of shoulder) { height[c] = mid; mesaTaken[c] = 1; }
+    for (const c of rim) mesaTaken[c] = 1;
+    features.push({ roomId: m.roomId, kind: up ? 'bluff' : 'hollow', high: Math.max(top, foot), low: Math.min(top, foot), cells: cells.length, shoulder: [...shoulder] });
+  }
+
+  // 5. Place stairs (ramps) along all Δ1 step boundaries
+  for (let c = 0; c < total; c++) {
+    if (!isFloor(c) || isLiquid(c)) continue;
+    const x = c % W, y = (c / W) | 0;
+    for (const [ox, oy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+      const nx = x + ox, ny = y + oy;
+      if (!inB(nx, ny)) continue;
+      const nc = idx(nx, ny);
+      if (!isFloor(nc) || isLiquid(nc)) continue;
+      if (height[nc] - height[c] === 1) {
+        ramp[c] = 1; // stair placed on the lower tread
+      }
+    }
+  }
+
+  // 5b. Level every liquid body as a unit to the lowest adjacent walkable floor,
+  // so every pool, mere, and lake surface remains completely flat.
+  const poolSeen = new Uint8Array(total);
+  const liquidBody = [];
+  for (let start = 0; start < total; start++) {
+    if (!isLiquid(start) || poolSeen[start]) continue;
+    liquidBody.length = 0;
+    let qh = 0;
+    liquidBody.push(start);
+    poolSeen[start] = 1;
+    let lowest = null;
+    while (qh < liquidBody.length) {
+      const c = liquidBody[qh++];
+      const x = c % W, y = (c / W) | 0;
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!ox && !oy) continue;
+          const nx = x + ox, ny = y + oy;
+          if (!inB(nx, ny)) continue;
+          const nc = idx(nx, ny);
+          if (isLiquid(nc)) {
+            if (!poolSeen[nc]) {
+              poolSeen[nc] = 1;
+              liquidBody.push(nc);
+            }
+          } else if (isFloor(nc)) {
+            if (lowest === null || height[nc] < lowest) {
+              lowest = height[nc];
+            }
+          }
+        }
+      }
+    }
+    const bodyH = lowest !== null ? lowest : 0;
+    for (const c of liquidBody) {
+      height[c] = bodyH;
+    }
+  }
+
+  // 6. Propagate height outward to all wall/blocker cells, creating natural mountain ridges & cliff bluffs
+  const distFromFloor = new Int16Array(total).fill(-1);
+  const floorRoot = new Int32Array(total).fill(-1);
+  const qOut = new Int32Array(total);
+  let qhOut = 0, qtOut = 0;
+  for (let c = 0; c < total; c++) {
+    // Both walkable floor and flat liquid surfaces seed outward cliff propagation
+    if ((isFloor(c) && !isLiquid(c)) || isLiquid(c)) {
+      distFromFloor[c] = 0;
+      floorRoot[c] = c;
+      qOut[qtOut++] = c;
+    }
+  }
+
+  const dungeonThemeKey = d.params?.themeKey || d.themeKey;
+  const isForest = (dungeonThemeKey === 'forest' || !dungeonThemeKey);
+  const maxExtra = isForest ? 2 : 3;
+
+  while (qhOut < qtOut) {
+    const c = qOut[qhOut++];
+    const x = c % W, y = (c / W) | 0;
+    const curDist = distFromFloor[c];
+    const rootC = floorRoot[c];
+    const fx = rootC % W, fy = (rootC / W) | 0;
+    const baseH = height[rootC];
+    for (const [ox, oy] of [[1,0], [-1,0], [0,1], [0,-1]]) {
+      const nx = x + ox, ny = y + oy;
+      if (!inB(nx, ny)) continue;
+      const nc = idx(nx, ny);
+      if (distFromFloor[nc] < 0) {
+        distFromFloor[nc] = curDist + 1;
+        floorRoot[nc] = rootC;
+        const distStep = distFromFloor[nc];
+        // Camera vector looks from (+X, +Z) towards (-X, -Z).
+        // Cells with ((nx - fx) + (ny - fy)) <= 0 are in the BACKGROUND (behind the path, away from camera).
+        // Cells with ((nx - fx) + (ny - fy)) > 0 are in the FOREGROUND (between camera and path).
+        const isBackground = ((nx - fx) + (ny - fy)) <= 0;
+        const ridgeNoise = Math.sin(nx * 0.22 + ny * 0.16) * 0.6 + Math.cos(nx * 0.11 - ny * 0.27) * 0.4;
+        let extra = 1;
+        if (isBackground) {
+          // Background ridges: on forest, capped to at most 1/3 of previous height (max +1 to +2 steps = 0.45m to 0.90m)
+          if (distStep === 1) {
+            extra = (ridgeNoise > -0.2 && maxExtra >= 2) ? 2 : 1;
+          } else {
+            extra = (ridgeNoise > -0.35 && maxExtra >= 2) ? 2 : 1;
+            if (!isForest && distStep >= 3 && ridgeNoise > 0.1) extra = 3;
+          }
+        } else {
+          // Foreground boundary: gentle +1 tier natural terrace, never occluding camera
+          extra = 1;
+        }
+        height[nc] = baseH + extra;
+        qOut[qtOut++] = nc;
+      }
+    }
+  }
+
+  return { height, ramp, features };
+}
+
+/**
  * Assign per-cell heights for a generated level.
  *
  * Runs AFTER all carving (rooms, corridors, pools, pits, doorway widening) so
@@ -283,6 +608,15 @@ export function buildElevation(d, rng) {
   for (let c = 0; c < total; c++) {
     if (!isFloor(c)) continue;
     if (corridor[c] || doorway[c] || roomId[c] < 0) pinned[c] = 1;
+  }
+  /* A magic circle is a flat floor decal over a 3x3 (dungeon_generator
+     placeMagicCircle reserves it); a step through it cuts the drawing in two. */
+  for (const p of props || []) {
+    if (!p || p.kind !== 'magicCircle') continue;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const nx = Math.round(p.x) + ox, ny = Math.round(p.y) + oy;
+      if (nx >= 0 && ny >= 0 && nx < W && ny < H && isFloor(idx(nx, ny))) pinned[idx(nx, ny)] = 1;
+    }
   }
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {

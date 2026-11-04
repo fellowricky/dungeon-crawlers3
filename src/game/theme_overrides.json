@@ -74,15 +74,24 @@
     "hemi": [
       4742258,
       1843240,
-      0.85
+      0.47
     ],
     "dir": [
       15586744,
-      0.17
+      0.07
     ],
-    "fogD": 0.0018,
+    "fogD": 0.0013,
     "floor": 6646650,
-    "wall": 3293554
+    "wall": 3293554,
+    "sunAngle": [
+      360,
+      85
+    ],
+    "torchLight": [
+      16747578,
+      3.2,
+      4.5
+    ]
   },
   "grim": {
     "tiles": {
@@ -138,15 +147,15 @@
         "bumpScale": 0.45
       }
     },
-    "fogD": 0.0039,
+    "fogD": 0.0003,
     "hemi": [
-      1923616,
-      1266276,
-      0.92
+      4684898,
+      2132134,
+      0.39
     ],
     "dir": [
       7112815,
-      0.68
+      0.45
     ],
     "floor": 5659237,
     "wall": 5840403,
@@ -185,9 +194,15 @@
     "flame": 52250,
     "torchLight": [
       7854410,
-      1.1,
+      1.15,
       7.5
-    ]
+    ],
+    "lightLevels": {
+      "bright": 0.79,
+      "dim": 0.4,
+      "skyWeight": 0,
+      "darkCue": 0.8
+    }
   },
   "frost": {
     "tiles": {
@@ -266,11 +281,11 @@
     "hemi": [
       5883391,
       1185828,
-      0.05
+      0.18
     ],
     "dir": [
       9214975,
-      0.46
+      0.22
     ],
     "floor": 15856629,
     "corridor": 16053751,
@@ -291,9 +306,15 @@
     "cap": 47856,
     "torchLight": [
       7324927,
-      1.1,
-      15
-    ]
+      4,
+      3
+    ],
+    "lightLevels": {
+      "bright": 0.3,
+      "dim": 0.26,
+      "skyWeight": 0,
+      "darkCue": 1.5
+    }
   },
   "verdant": {
     "tiles": {
@@ -395,7 +416,13 @@
     "dir": [
       16772299,
       0.39
-    ]
+    ],
+    "lightLevels": {
+      "bright": 1.13,
+      "dim": 0.51,
+      "skyWeight": 0,
+      "darkCue": 0.8
+    }
   },
   "snowfield": {
     "oc": {
@@ -404,9 +431,10 @@
         "brokenSignpost": 0.058,
         "rocks": 0,
         "cairn": 0,
-        "icebone": 0.022,
-        "snowtree": 0.03,
-        "tree_winter": 0.066,
+        "icebone": 0.044,
+        "snowspruce": 0.11,
+        "snowfir": 0.09,
+        "snowpine": 0.066,
         "signpost": 0.046
       }
     },
@@ -429,7 +457,7 @@
         "neutralizeAmt": 1,
         "rotate": 0,
         "stack": 1,
-        "bumpScale": 0.45
+        "bumpScale": 1.5
       },
       "wall": {
         "family": "",
@@ -492,9 +520,54 @@
     "bg": 0,
     "floor": 8886443,
     "pools": {
-      "glow": 0.35
+      "glow": 0,
+      "amount": 0.6
     },
-    "canopyTint": 14674418
+    "canopyTint": 14674418,
+    "tod": {
+      "day": {
+        "lightLevels": {
+          "bright": 0.5,
+          "dim": 0.3,
+          "skyWeight": 0,
+          "darkCue": 1.5
+        },
+        "dir": [
+          15003903,
+          0.64
+        ],
+        "sunAngle": [
+          144,
+          41
+        ],
+        "fogD": 0.0001
+      },
+      "dusk": {
+        "lightLevels": {
+          "bright": 0.44,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
+      },
+      "night": {
+        "hemi": [
+          1582134,
+          527380,
+          1.48
+        ],
+        "dir": [
+          8956620,
+          0.04
+        ],
+        "lightLevels": {
+          "bright": 0.12,
+          "dim": 0.03,
+          "skyWeight": 0,
+          "darkCue": 1.5
+        }
+      }
+    }
   },
   "molten": {
     "tiles": {
@@ -575,19 +648,31 @@
       "smeltingCrucible": 0.002
     },
     "hemi": [
-      6043686,
-      1707532,
-      0.16
+      8092281,
+      11534336,
+      1.5
     ],
     "dir": [
       16763032,
-      0.42
+      0.21
     ],
     "torchLight": [
       16741158,
-      1.15,
-      10
-    ]
+      2.75,
+      9.5
+    ],
+    "sunAngle": [
+      0,
+      85
+    ],
+    "lightLevels": {
+      "bright": 0.72,
+      "dim": 0.65,
+      "skyWeight": 0,
+      "darkCue": 1.5
+    },
+    "fogD": 0.0016,
+    "fog": 4210752
   },
   "forest": {
     "tiles": {
@@ -643,16 +728,107 @@
         "bumpScale": 0.45
       }
     },
-    "fogD": 0.0017,
+    "fogD": 0.0006,
     "dir": [
-      15586744,
-      0.67
+      16774363,
+      0.78
     ],
     "hemi": [
-      5268858,
-      1975837,
-      0
-    ]
+      8565980,
+      5137976,
+      0.45
+    ],
+    "sunAngle": [
+      54,
+      46
+    ],
+    "bg": 5407400,
+    "fog": 7380676,
+    "particles": {
+      "kind": 0,
+      "color": 16771242,
+      "n": 220
+    },
+    "tod": {
+      "day": {
+        "sunAngle": [
+          54,
+          77
+        ],
+        "fogD": 0,
+        "dir": [
+          16773303,
+          0.7865
+        ],
+        "hemi": [
+          15925239,
+          724487,
+          0.9328
+        ],
+        "bg": 0,
+        "fog": 0,
+        "torchLight": [
+          16747578,
+          2.2,
+          9.5
+        ],
+        "lightLevels": {
+          "bright": 0.67,
+          "dim": 0.14,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
+      },
+      "dusk": {
+        "hemi": [
+          15102780,
+          7896137,
+          0.4664
+        ],
+        "lightLevels": {
+          "bright": 0.28,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        },
+        "dir": [
+          16759677,
+          0.431
+        ]
+      },
+      "night": {
+        "torchLight": [
+          16747578,
+          4,
+          24
+        ],
+        "lightLevels": {
+          "bright": 0.36,
+          "dim": 0.3,
+          "skyWeight": 0.45,
+          "darkCue": 1.5
+        },
+        "hemi": [
+          5930678,
+          2636130,
+          0.3168
+        ],
+        "fogD": 0.0001,
+        "sunAngle": [
+          163,
+          10
+        ],
+        "dir": [
+          4947375,
+          1.3
+        ],
+        "fog": 0
+      }
+    },
+    "pools": {
+      "glow": 0,
+      "colB": 1390662
+    }
   },
   "moor": {
     "tiles": {
@@ -740,7 +916,65 @@
         "wheel": 0.016
       }
     },
-    "roots": true
+    "roots": true,
+    "tod": {
+      "night": {
+        "hemi": [
+          4021129,
+          2505826,
+          1.5
+        ],
+        "dir": [
+          8956620,
+          0.294
+        ],
+        "sunAngle": [
+          360,
+          78
+        ],
+        "torchLight": [
+          16747578,
+          1.85,
+          12
+        ],
+        "lightLevels": {
+          "bright": 0.55,
+          "dim": 0.45,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
+      },
+      "dusk": {
+        "hemi": [
+          10185552,
+          2695192,
+          1.23
+        ],
+        "dir": [
+          15839346,
+          1.148
+        ],
+        "lightLevels": {
+          "bright": 0.64,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
+      },
+      "day": {
+        "sunAngle": [
+          54,
+          48
+        ],
+        "hemi": [
+          16777215,
+          1121810,
+          0.56
+        ],
+        "fog": 2370082,
+        "fogD": 0.0038
+      }
+    }
   },
   "mire": {
     "tiles": {
@@ -817,7 +1051,67 @@
     "dir": [
       11386029,
       0.65
-    ]
+    ],
+    "tod": {
+      "day": {
+        "hemi": [
+          3951682,
+          1185300,
+          1.5
+        ],
+        "dir": [
+          14936291,
+          1.69
+        ],
+        "lightLevels": {
+          "bright": 0.49,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        },
+        "sunAngle": [
+          54,
+          68
+        ],
+        "fogD": 0
+      },
+      "dusk": {
+        "hemi": [
+          9594445,
+          2366742,
+          1.012
+        ],
+        "dir": [
+          16753431,
+          1.1304
+        ],
+        "fogD": 0.0026,
+        "lightLevels": {
+          "bright": 0.58,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0
+        }
+      },
+      "night": {
+        "hemi": [
+          1582134,
+          5864125,
+          0.7452
+        ],
+        "fogD": 0.0051,
+        "dir": [
+          8956620,
+          0.6552
+        ],
+        "lightLevels": {
+          "bright": 0.56,
+          "dim": 0.54,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
+      }
+    }
   },
   "holdfast": {
     "tiles": {
@@ -871,6 +1165,37 @@
         "rotate": 0,
         "stack": 1,
         "bumpScale": 0.45
+      }
+    },
+    "tod": {
+      "dusk": {
+        "lightLevels": {
+          "bright": 0.24,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        },
+        "dir": [
+          16757870,
+          0.4039
+        ]
+      },
+      "night": {
+        "hemi": [
+          2966372,
+          4020888,
+          0.5796
+        ],
+        "dir": [
+          8956620,
+          0.3816
+        ],
+        "lightLevels": {
+          "bright": 0.41,
+          "dim": 0.32,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
       }
     }
   },
@@ -948,13 +1273,83 @@
     },
     "dir": [
       11120354,
-      0.52
+      0.44
     ],
     "hemi": [
       4872272,
       1448470,
-      0
-    ]
+      1.38
+    ],
+    "sunAngle": [
+      103,
+      27
+    ],
+    "tod": {
+      "day": {
+        "sunAngle": [
+          319,
+          74
+        ],
+        "dir": [
+          16250071,
+          1.15
+        ],
+        "lightLevels": {
+          "bright": 1.47,
+          "dim": 0.97,
+          "skyWeight": 0.2,
+          "darkCue": 1.5
+        },
+        "fogD": 0.0045,
+        "fog": 2371366,
+        "bg": 6783340,
+        "hemi": [
+          4872272,
+          1448470,
+          1.08
+        ]
+      },
+      "dusk": {
+        "dir": [
+          14787199,
+          1.0728
+        ],
+        "lightLevels": {
+          "bright": 0.5,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 1.2
+        }
+      },
+      "night": {
+        "hemi": [
+          3691646,
+          8822222,
+          0.5796
+        ],
+        "dir": [
+          4881582,
+          1.2384
+        ],
+        "torchLight": [
+          7854410,
+          2.1,
+          9
+        ],
+        "sunAngle": [
+          95,
+          32
+        ],
+        "lightLevels": {
+          "bright": 0.5,
+          "dim": 0.49,
+          "skyWeight": 0,
+          "darkCue": 0
+        },
+        "fogD": 0.0033,
+        "fog": 1582874
+      }
+    }
   },
   "ruinfield": {
     "tiles": {
@@ -1032,7 +1427,54 @@
       8025186,
       2367770,
       0.26
-    ]
+    ],
+    "tod": {
+      "day": {
+        "dir": [
+          12508668,
+          1.5
+        ],
+        "sunAngle": [
+          122,
+          55
+        ],
+        "fogD": 0.0003,
+        "fog": 2108501,
+        "lightLevels": {
+          "bright": 1.5,
+          "dim": 0.82,
+          "skyWeight": 0.15,
+          "darkCue": 0.8
+        }
+      },
+      "dusk": {
+        "lightLevels": {
+          "bright": 0.33,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 1.5
+        },
+        "dir": [
+          13339477,
+          0.9853
+        ]
+      },
+      "night": {
+        "lightLevels": {
+          "bright": 0.22,
+          "dim": 0.18,
+          "skyWeight": 0,
+          "darkCue": 1.25
+        },
+        "dir": [
+          8956620,
+          0.2016
+        ]
+      }
+    },
+    "pools": {
+      "glow": 0
+    }
   },
   "ashfield": {
     "tiles": {
@@ -1103,7 +1545,66 @@
     "dir": [
       15182187,
       0.52
-    ]
+    ],
+    "tod": {
+      "day": {
+        "sunAngle": [
+          54,
+          85
+        ],
+        "dir": [
+          15182187,
+          1.53
+        ]
+      },
+      "dusk": {
+        "dir": [
+          16228694,
+          1.54
+        ],
+        "sunAngle": [
+          345,
+          24
+        ],
+        "lightLevels": {
+          "bright": 1.16,
+          "dim": 0.3,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        }
+      },
+      "night": {
+        "lightLevels": {
+          "bright": 0.32,
+          "dim": 0.23,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        },
+        "hemi": [
+          13673242,
+          16750089,
+          0.22
+        ],
+        "dir": [
+          8956620,
+          0.36
+        ],
+        "sunAngle": [
+          360,
+          32
+        ],
+        "fogD": 0.0036
+      }
+    },
+    "pools": {
+      "glow": 0.75,
+      "amount": 0.12
+    },
+    "particles": {
+      "n": 600,
+      "kind": 1,
+      "color": 16679184
+    }
   },
   "sporewood": {
     "tiles": {
@@ -1170,7 +1671,8 @@
     ],
     "flame": 16774193,
     "pools": {
-      "amount": 0.09
+      "amount": 0.09,
+      "glow": 0.05
     },
     "particles": {
       "color": 16766773
@@ -1192,6 +1694,50 @@
     "tile": {
       "sprout": 0.31,
       "stains": 0.38
+    },
+    "tod": {
+      "dusk": {
+        "dir": [
+          16760713,
+          1.3
+        ],
+        "hemi": [
+          10447616,
+          11010048,
+          0.8976
+        ],
+        "fogD": 0.0035,
+        "lightLevels": {
+          "bright": 0.05,
+          "dim": 0.01,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        },
+        "torchLight": [
+          4905358,
+          2.3,
+          9.5
+        ],
+        "sunAngle": [
+          80,
+          20
+        ]
+      },
+      "night": {
+        "dir": [
+          8956620,
+          0.351
+        ],
+        "fog": 1384755,
+        "bg": 0,
+        "lightLevels": {
+          "bright": 0.36,
+          "dim": 0.3,
+          "skyWeight": 0,
+          "darkCue": 0.8
+        },
+        "fogD": 0.0035
+      }
     }
   }
 }

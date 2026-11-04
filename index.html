@@ -218,6 +218,7 @@
           Assembled with the Universal LPC Spritesheet Character Generator (GPL-3.0). ·
           Tiles, monster &amp; item art from Dungeon Crawl Stone Soup (CC0). ·
           Particle effects from the Kenney Particle Pack (CC0). ·
+          Title theme by Aboda. ·
           Music: <i>Castle Tales</i> — Free 30 Pixel Fantasy RPG Tracks by alkakrab
           (free for commercial use). ·
           Sound effects: Free Fantasy 200 SFX Pack by TomMusic
@@ -256,6 +257,7 @@
           Assembled with the Universal LPC Spritesheet Character Generator (GPL-3.0). ·
           Tiles, monster &amp; item art from Dungeon Crawl Stone Soup (CC0). ·
           Particle effects from the Kenney Particle Pack (CC0). ·
+          Title theme by Aboda. ·
           Music: <i>Castle Tales</i> — Free 30 Pixel Fantasy RPG Tracks by alkakrab
           (free for commercial use). ·
           Sound effects: Free Fantasy 200 SFX Pack by TomMusic
@@ -287,8 +289,14 @@
         <!-- Panel: Map -->
         <div class="wm-content wm-panel active" id="wm-panel-map">
           <div class="wm-map-container" id="wm-map-container">
-            <img id="wm-map-bg" src="./world_map.jpg" alt="World Map" />
-            <div id="wm-quest-nodes"></div>
+            <!-- The stage is the art's own shape: art, route, hub and pins all
+                 share one 0-100% frame, so pins never drift off their spot. -->
+            <img class="wm-map-backdrop" src="./art/world_map_3072.jpg" alt="" aria-hidden="true" />
+            <div class="wm-map-stage" id="wm-map-stage">
+              <img id="wm-map-bg" src="./art/world_map_3072.jpg" alt="World Map" />
+              <svg id="wm-route-layer" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <div id="wm-quest-nodes"></div>
+            </div>
           </div>
           <div class="wm-sidebar" id="wm-sidebar">
             <div id="wm-detail-placeholder">Select a quest on the map to view details.</div>
@@ -369,28 +377,36 @@
           <div class="wm-guild-layout">
             <!-- Guild Sub-Tabs Navigation Bar -->
             <div class="guild-subtabs-bar" id="guild-subtabs-bar">
-              <button class="guild-subtab active" data-subtab="roster">🏰 Roster & Quarters</button>
-              <button class="guild-subtab" data-subtab="armory">🗄️ Armory</button>
-              <button class="guild-subtab" data-subtab="blacksmith">⚒️ Blacksmith</button>
-              <button class="guild-subtab" data-subtab="apothecary">🧪 Apothecary</button>
-              <button class="guild-subtab" data-subtab="training_grounds">⚔️ Training Grounds</button>
-              <button class="guild-subtab" data-subtab="infirmary">🩺 Infirmary</button>
-              <button class="guild-subtab" data-subtab="crypt">🪦 Crypt</button>
-              <button class="guild-subtab" data-subtab="enchanter">🔮 Enchanter</button>
-              <button class="guild-subtab" data-subtab="academy">📜 Academy</button>
-              <button class="guild-subtab" data-subtab="cartographer">🗺️ Cartographer</button>
-              <button class="guild-subtab" data-subtab="war_room">🛡️ War Room</button>
+              <div class="guild-subtabs-row">
+                <button class="guild-subtab active" data-subtab="roster">🏰 Roster & Quarters</button>
+                <button class="guild-subtab" data-subtab="armory">🗄️ Armory</button>
+                <button class="guild-subtab" data-subtab="blacksmith">⚒️ Blacksmith</button>
+                <button class="guild-subtab" data-subtab="apothecary">🧪 Apothecary</button>
+                <button class="guild-subtab" data-subtab="training_grounds">⚔️ Training Grounds</button>
+              </div>
+              <div class="guild-subtabs-row">
+                <button class="guild-subtab" data-subtab="enchanter">🔮 Enchanter</button>
+                <button class="guild-subtab" data-subtab="academy">📜 Academy</button>
+                <button class="guild-subtab" data-subtab="cartographer">🗺️ Cartographer</button>
+                <button class="guild-subtab" data-subtab="war_room">🛡️ War Room</button>
+              </div>
             </div>
 
             <!-- Subpanel: Roster & Quarters -->
             <div class="guild-subpanel" id="guild-subpanel-roster">
               <div class="wm-tavern-layout">
                 <div class="wm-tavern-column wm-tavern-active">
-                  <h3>Active Party (<span id="wm-tavern-active-count">0</span>/4)</h3>
+                  <div class="wm-tavern-col-head">
+                    <h3>Active Party</h3>
+                    <span class="wm-tavern-cap"><span id="wm-tavern-active-count">0</span>/4</span>
+                  </div>
                   <div class="wm-tavern-list" id="wm-tavern-active-list"></div>
                 </div>
                 <div class="wm-tavern-column wm-tavern-stored">
-                  <h3>Stored Heroes</h3>
+                  <div class="wm-tavern-col-head">
+                    <h3>Stored Heroes</h3>
+                    <span class="wm-tavern-cap" id="wm-tavern-stored-heading"><span id="wm-tavern-stored-count">0</span>/<span id="wm-tavern-stored-cap">8</span></span>
+                  </div>
                   <div class="wm-tavern-list" id="wm-tavern-stored-list"></div>
                 </div>
                 <div class="wm-tavern-column wm-tavern-hire">

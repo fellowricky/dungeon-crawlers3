@@ -46,7 +46,7 @@ import {
   MIN_CAM_ZOOM, MAX_CAM_ZOOM, BASE_HALF,
   yaw as camYaw, pitch as camPitch
 } from '../render/dungeon_scene.js';
-import { screenOffset, fitZoom, centroid, CAM_ACTION_PITCH, CAM_BODY_HEIGHT } from './camera_director.js';
+import { screenOffset, fitZoom, centroid, resetDirector, CAM_ACTION_PITCH, CAM_BODY_HEIGHT } from './camera_director.js';
 import { atlasDuration } from './sprite_atlas.js';
 import { playSfx } from './audio.js';
 
@@ -266,8 +266,9 @@ export function isBossCutsceneActive(game) { return !!(game && game.bossCutscene
 
 /**
  * Per-frame arm check. Fires once per expedition, the frame the party first
- * sets foot in the boss room — which is before the monsters in it have woken,
- * so the scene opens on a room nobody is fighting in yet. Safe to call every
+ * sets foot in the boss room or the frame after anything in it wakes —
+ * whichever comes first, and always before initiative can roll — so the scene
+ * opens on a room nobody is fighting in yet. Safe to call every
  * frame; returns true on the frame it starts.
  */
 export function checkBossCutscene(game) {
@@ -297,7 +298,15 @@ export function checkBossCutscene(game) {
   const boss = game.boss;
   if (!boss || !boss.data || boss.data.hp <= 0) return false;
   const bossRoom = game.D && game.D.boss;
-  if (bossRoom === undefined || !game.visitedRooms || !game.visitedRooms[bossRoom]) return false;
+  if (bossRoom === undefined) return false;
+  /* The party walking in is the usual cue, but the room can wake first: its
+     escorts see the party from the corridor (aggro reaches ~12 units through
+     an open doorway) and would start the fight, rolling initiative before the
+     scene. Anything in the boss room waking counts as arriving. */
+  const entered = !!(game.visitedRooms && game.visitedRooms[bossRoom]);
+  const roomAwake = (game.monsters || []).some(
+    m => m.roomId === bossRoom && m.active && m.data && m.data.hp > 0);
+  if (!entered && !roomAwake) return false;
 
   beginBossCutscene(game, cut);
   return true;
@@ -455,11 +464,7 @@ export function endBossCutscene(game) {
      scene left the camera, so an early skip is not a snap. Its carried state
      (dwell, in-flight turn, zoom goal) is stale after a scripted move though,
      so drop it: this is exactly the "camera snap" case resetDirector is for. */
-  if (game._camDir) {
-    game._camDir.zoomGoal = null; game._camDir.dwell = 0; game._camDir.turnT = null;
-    game._camDir.turnFrom = 0; game._camDir.turnDelta = 0; game._camDir.turnCooldown = 0;
-    game._camDir.focusGoalX = null; game._camDir.focusGoalZ = null;
-  }
+  if (game._camDir) resetDirector(game._camDir);
   game.freeCamUntil = 0;   // the director takes the frame back immediately
 }
 

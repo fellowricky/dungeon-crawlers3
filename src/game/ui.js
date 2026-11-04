@@ -5,6 +5,7 @@ import { RACES, CLASSES, PLAYABLE_RACES, PLAYABLE_CLASSES,
          ABILITIES, ABILITY_LABEL, rollStat, mod, fmtMod, XP_TABLE, MAX_LEVEL, HERO_NAMES,
          subclassOf, SKILLS, getDefaultProficiencies, STARTER_GEAR, WILD_SHAPE_FORMS } from './srd.js';
 import { SPELLS } from './spells.js';
+import { canHide } from './light_rules.js';
 import { drawHeroPortrait } from './sprite_animator.js';
 import { playUiTap } from './audio.js';
 
@@ -176,7 +177,9 @@ export function formatLogMessage(msg, gameOverride = null) {
 
 /* A paused crawl still animates — float text, projectiles, the camera all
    keep ticking — so with the log's tiny ⏸ button out of eye-line a pause
-   reads as a frozen turn. One banner, centre-top, until it is resumed. */
+   reads as a frozen turn. One banner, centre-top, until it is resumed.
+   Only for the player's explicit pause: a modal screen that pauses the game
+   is its own cue, and the banner just covered its top-centre controls. */
 function updatePausedBanner(isPaused) {
   if (typeof document === 'undefined') return;
   let el = $('dc-paused-banner');
@@ -184,14 +187,14 @@ function updatePausedBanner(isPaused) {
     el = document.createElement('div');
     el.id = 'dc-paused-banner';
     el.innerHTML = '⏸ PAUSED <span>Space or ▶ to resume</span>';
-    el.addEventListener('click', () => { const g = window.__game; if (g && g.setPaused) g.setPaused(false); });
+    el.addEventListener('click', () => { const g = window.__game; if (g && g.setPaused) g.setPaused(false, true); });
     document.body.appendChild(el);
   }
-  el.classList.toggle('show', !!isPaused);
+  if (isPaused) el.classList.add('show'); else el.classList.remove('show');
 }
 
-export function updateLogPauseBtn(isPaused) {
-  updatePausedBanner(isPaused);
+export function updateLogPauseBtn(isPaused, showBanner = isPaused) {
+  updatePausedBanner(showBanner);
   const btn = $('log-pause-btn');
   if (!btn) return;
   if (isPaused) {
@@ -478,7 +481,7 @@ export function initGameLog(game = null){
     pauseBtn.addEventListener('click', () => {
       const g = game || currentLoggedGame || (typeof window !== 'undefined' ? window.__game : null);
       if (g && typeof g.setPaused === 'function') {
-        g.setPaused(!g.paused);
+        g.setPaused(!g.paused, true);
       }
     });
   }
@@ -612,13 +615,13 @@ export const ABILITY_ICON = {
   secondWind:'🌀', remarkableAthlete:'🏃', fastHands:'💨',
 
   // Thrown items (trinket consumables)
-  acidVial:'🧪', alchemistsFire:'🔥', holyWater:'💧', bolas:'🪢', chokingDust:'🌫️', beadOfForce:'🔮', fireBreath:'🐲',
+  acidVial:'🧪', alchemistsFire:'🔥', oilFlask:'🛢️', dancingLights:'✨', darkness:'🌑', daylight:'🌞', holyWater:'💧', bolas:'🪢', chokingDust:'🌫️', beadOfForce:'🔮', fireBreath:'🐲',
 
   // Cantrips & Tier 1
-  eldritchBlast:'💥', chillTouch:'❄️', fireBolt:'🔥', sacredFlame:'✨', produceFlame:'🔥',
+  eldritchBlast:'💥', chillTouch:'❄️', viciousMockery:'🎵', fireBolt:'🔥', sacredFlame:'✨', produceFlame:'🔥',
   magicMissile:'✴', shield:'🛡', bless:'✨', entangle:'🌿', healingWord:'💬',
   cureWounds:'💚', chaosBolt:'🌈', burningHands:'🔥', hex:'🔮', armsOfHadar:'🦑',
-  thunderousSmite:'⚡', huntersMark:'🎯', sleep:'💤', bane:'👁️', faerieFire:'🧚',
+  thunderousSmite:'⚡', huntersMark:'🎯', sleep:'💤', bane:'👁️', faerieFire:'🧚', light:'💡',
   hideousLaughter:'🎭', protectionFromEvil:'🛡️', grease:'🧈', inflictWounds:'💀',
   guidingBolt:'✨', thunderwave:'🌊', shieldOfFaith:'🛡️', chromaticOrb:'🔮',
   rayOfSickness:'🤢', findFamiliar:'🦉',
@@ -670,12 +673,8 @@ const HUD_FEATURES = [
     has: h => !!(h.secondWind || (h.features && h.features.includes('secondWind'))) },
   { key:'actionSurgeClass', ico:'⚔', label:'Action Surge', recharge:'short',
     has: h => h.features && h.features.includes('actionSurgeClass') },
-  { key:'cunningActionClass', ico:'💨', label:'Cunning Action', recharge:'short',
-    has: h => h.features && h.features.includes('cunningActionClass') },
   { key:'rage', ico:'😡', label:'Rage', recharge:'long',
     has: h => h.features && h.features.includes('rage') },
-  { key:'divineSmite', ico:'💫', label:'Divine Smite', recharge:'short',
-    has: h => h.features && h.features.includes('divineSmite') },
   { key:'tidesOfChaos', ico:'🌀', label:'Tides of Chaos', recharge:'short',
     has: h => h.features && h.features.includes('tidesOfChaos') },
   { key:'bardicInspiration', ico:'🎵', label:'Bardic Inspiration', recharge:'short',
@@ -894,9 +893,20 @@ const CONDITION_ICONS = {
   weakenedDmg: '🥀',
   baned: '📉',
   faerieFire: '🧚',
+  guided: '✦',
   hexMarked: '🔮',
   huntersMarked: '🎯',
-  enlarged: '💪'
+  enlarged: '💪',
+  silenced: '🤫',
+  warded: '🔰',
+  crusadersMantle: '✝️',
+  dominated: '🧠',
+  blessed: '🙏',
+  dashing: '💨',
+  regenerating: '🌿',
+  mirrorImages: '🪞',
+  polymorphed: '🐑',
+  banished: '🌀'
 };
 
 const CONDITION_NAMES = {
@@ -927,8 +937,19 @@ const CONDITION_NAMES = {
   weakenedDmg: 'Weakened Damage',
   baned: 'Baned',
   faerieFire: 'Faerie Fire',
+  guided: 'Guided',
   hexMarked: 'Hex Marked',
-  huntersMarked: "Hunter's Marked"
+  huntersMarked: "Hunter's Marked",
+  silenced: 'Silenced (no spells)',
+  warded: 'Warded (Protection from Evil)',
+  crusadersMantle: "Crusader's Mantle",
+  dominated: 'Dominated (fights for the party)',
+  blessed: 'Blessed (+1d4 attacks and saves)',
+  dashing: 'Dashing',
+  regenerating: 'Regenerating',
+  mirrorImages: 'Mirror Image',
+  polymorphed: 'Polymorphed (sheep)',
+  banished: 'Banished'
 };
 
 const CONDITION_COLORS = {
@@ -959,8 +980,19 @@ const CONDITION_COLORS = {
   weakenedDmg: '#e0483a',
   baned: '#e0483a',
   faerieFire: '#c084fc',
+  guided: '#ffd23c',
   hexMarked: '#c084fc',
-  huntersMarked: '#e0483a'
+  huntersMarked: '#e0483a',
+  silenced: '#9a9ab8',
+  warded: '#fbbf24',
+  crusadersMantle: '#fbbf24',
+  dominated: '#c084fc',
+  blessed: '#fbbf24',
+  dashing: '#38bdf8',
+  regenerating: '#4ade4a',
+  mirrorImages: '#c0d8ff',
+  polymorphed: '#f0f0f0',
+  banished: '#a0b0e0'
 };
 
 function buildEffectsHTML(h) {
@@ -1033,6 +1065,31 @@ export function bindPartyLeaderUI(hook){ _leaderHook = hook; }
 let _companionHook = null;
 export function bindCompanionUI(hook){ _companionHook = hook; }
 
+/* Hero card light badge: the light the hero is standing in
+   (render/sprite_lighting.js, docs/LIGHT_AND_DARKVISION.md) — sun = bright,
+   sun behind cloud = dim, moon = dark. The cards themselves only redraw on
+   events, so the game also calls updatePartyLightBadges every frame; it
+   touches the DOM only when a badge actually changes. */
+const LIGHT_BADGE = {
+  bright: { icon: '☀️', tip: 'Bright light — seen clearly. A carried light lets monsters notice you from further away.' },
+  dim:    { icon: '⛅', tip: 'Dim light — Perception checks at disadvantage.' },
+  dark:   { icon: '🌙', tip: "Darkness — foes that can't see in the dark attack you at disadvantage and you strike them with advantage. Perception at disadvantage." }
+};
+function setLightBadge(i, h) {
+  const el = $('pf'+i+'-light');
+  if (!el) return;
+  const st = (h && h._lightState) || '';
+  if (el._st === st) return;
+  el._st = st;
+  const L = LIGHT_BADGE[st];
+  el.textContent = L ? L.icon : '';
+  el.title = L ? L.tip : '';
+  el.className = 'pf-light' + (st ? ' pf-light-' + st : '');
+}
+export function updatePartyLightBadges(heroes){
+  heroes.filter(h => !h.companion).forEach((h, i) => setLightBadge(i, h));
+}
+
 export function buildPartyFrames(heroes){
   const wrap = $('partyframes');
   if (!wrap) return;
@@ -1051,6 +1108,7 @@ export function buildPartyFrames(heroes){
         <span class="pf-dot" style="background:${classHex}"></span>
         <span class="pf-name">${h.name}</span>
         <span class="pf-leader" title="Party leader">👑</span>
+        <span class="pf-light" id="pf${i}-light"></span>
         <span class="pf-lvl">Lv <b id="pf${i}-lvl">${h.level}</b></span>
         <span class="pf-comp-slot" id="pf${i}-comp"></span>
       </div>
@@ -1137,6 +1195,7 @@ export function updatePartyFrames(heroes){
       ? `${h.wildShapeHp}/${h.wildShapeMaxHp} (${wsForm.icon})`
       : (h.hp<=0 ? 'DOWN' : (tmp>0 ? `${h.hp}/${h.maxHp} +${tmp}` : `${h.hp}/${h.maxHp}`));
     $('pf'+i+'-lvl').textContent = h.level;
+    setLightBadge(i, h);
     const sub = subclassOf(h);
     $('pf'+i+'-sub').textContent = inWS
       ? `${wsForm.icon} ${wsForm.label} — AC ${h.ac}`
@@ -2236,9 +2295,10 @@ export function updateManualCombatBar(game) {
   const trinketScrollKey = (trinket && trinket.scroll && trinket.spellKey && trinket.charges > 0 && !knownSpells.includes(trinket.spellKey)) ? trinket.spellKey : null;
   const trinketPotion = (trinket && trinket.potion && trinket.buffKey && trinket.charges > 0) ? trinket : null;
 
+  /* passive spells (Light) have nothing to cast */
   const actionSpells = knownSpells.filter(k => {
     const s = SPELLS[k];
-    return s && s.castingTime !== 'bonus' && s.bonusAction !== true;
+    return s && !s.passive && s.castingTime !== 'bonus' && s.bonusAction !== true;
   });
   if (trinketScrollKey) {
     const s = SPELLS[trinketScrollKey];
@@ -2247,7 +2307,7 @@ export function updateManualCombatBar(game) {
 
   const bonusSpells = knownSpells.filter(k => {
     const s = SPELLS[k];
-    return s && (s.castingTime === 'bonus' || s.bonusAction === true);
+    return s && !s.passive && (s.castingTime === 'bonus' || s.bonusAction === true);
   });
   if (trinketScrollKey) {
     const s = SPELLS[trinketScrollKey];
@@ -2258,6 +2318,13 @@ export function updateManualCombatBar(game) {
   const d = cur.data;
   const sc = subclassOf(d);
   const actionAbilities = [];
+  /* light abilities (docs/LIGHT_IDEAS.md 13, 50, 51) */
+  if (d.skills && d.skills.radiantFlare > 0 && chargesLeft(d, 'radiantFlare') > 0) {
+    actionAbilities.push({ key: 'radiantFlare', label: '☀️ Radiant Flare', desc: 'Flood 4 tiles with holy light; sears undead and shadow creatures (2d8 radiant)' });
+  }
+  if (d.classKey === 'wizard' && d.subclass === 'evoker') {
+    actionAbilities.push({ key: 'blindingFlash', label: '💥 Blinding Flash', desc: 'Spend a 1st-level slot: foes lurking in the dark near the target are blinded (CON save)' });
+  }
   if (cur.conc?.key === 'moonbeam') {
     actionAbilities.push({ key: 'moveMoonbeam', label: 'Move Moonbeam', desc: 'Relocate Moonbeam up to 60ft' });
   }
@@ -2280,7 +2347,20 @@ export function updateManualCombatBar(game) {
     bonusAbilities.push({ key: 'rage', label: 'Rage', desc: 'Enter raging stance' });
   }
   if (hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction')) {
-    bonusAbilities.push({ key: 'cunningAction', label: 'Cunning Action', desc: 'Haste / Dash / Disengage' });
+    bonusAbilities.push({ key: 'cunningAction', label: 'Cunning Action', desc: 'Bonus action: Dash and Disengage (double move, no opportunity attacks)' });
+  }
+  /* Shadow Arts (Way of Shadow): 2 ki for magical Darkness around you */
+  if (d.classKey === 'monk' && d.subclass === 'shadow' && (d.ki === undefined || d.ki >= 2)) {
+    bonusAbilities.push({ key: 'shadowArts', label: '🌑 Shadow Arts (2 Ki)', desc: 'Magical Darkness around you — then Shadow Step through it' });
+  }
+  /* Hood / unhood a carried lantern (docs/LIGHT_IDEAS.md 21) */
+  if (d.equipment && d.equipment.trinket && d.equipment.trinket.lightSource === 'lantern') {
+    bonusAbilities.push({ key: 'hoodLantern', label: d._lanternHooded ? '🏮 Unhood Lantern' : '🏮 Hood Lantern',
+      desc: d._lanternHooded ? 'Let the lantern shine again' : 'Dim the lantern to a faint glow to sneak' });
+  }
+  /* Hide (rogue Cunning Action / Skulker): only offered on a dim or dark tile */
+  if (!cur._hidden && canHide(cur)) {
+    bonusAbilities.push({ key: 'hide', label: '🌑 Hide', desc: 'Melt into the shadows: unseen until you attack or step into bright light' });
   }
   if (hasFeature(d, 'flurryOfBlows') && (d.ki === undefined || d.ki >= 1)) {
     bonusAbilities.push({ key: 'flurry', label: '👊 Flurry of Blows (1 Ki)', desc: 'Two unarmed strikes' });
@@ -2446,6 +2526,30 @@ export function updateManualCombatBar(game) {
                 <span class="mbar-entry-sub">+Speed</span>
               </div>
             </button>
+            ${game && game.throwTorchTarget && game.throwTorchTarget(cur) ? `
+            <button class="mbar-entry-btn" data-act="common" data-type="throwTorch" ${commonDisabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">🔥 Throw Torch</div>
+                <div class="mbar-entry-desc">Light up the nearest foe you can't see (uses a torch)</div>
+              </div>
+              <div class="mbar-entry-right"><span class="mbar-entry-badge">Action</span></div>
+            </button>` : ''}
+            ${game && game.canSnuff && game.canSnuff(cur) ? `
+            <button class="mbar-entry-btn" data-act="common" data-type="snuff" ${commonDisabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">🌑 Snuff</div>
+                <div class="mbar-entry-desc">Put out the wall torch beside you (Thief)</div>
+              </div>
+              <div class="mbar-entry-right"><span class="mbar-entry-badge">Action</span></div>
+            </button>` : ''}
+            ${game && game.canKindle && game.canKindle(cur) ? `
+            <button class="mbar-entry-btn" data-act="common" data-type="kindle" ${commonDisabled ? 'disabled' : ''}>
+              <div class="mbar-entry-left">
+                <div class="mbar-entry-title">🔥 Kindle</div>
+                <div class="mbar-entry-desc">Light the dark sconce beside you with your flame</div>
+              </div>
+              <div class="mbar-entry-right"><span class="mbar-entry-badge">Action</span></div>
+            </button>` : ''}
             <button class="mbar-entry-btn" data-act="common" data-type="dodge" ${commonDisabled ? 'disabled' : ''}>
               <div class="mbar-entry-left">
                 <div class="mbar-entry-title">🛡️ Dodge</div>

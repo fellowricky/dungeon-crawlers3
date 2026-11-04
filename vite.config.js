@@ -138,6 +138,31 @@ function saveMonstersPlugin() {
           res.end('Method Not Allowed');
         }
       });
+      /* World map biome painter (world_map_editor.html) writes the painted
+         cell grid back into the source. The shape is checked first: a short
+         row or an unknown letter would shift every biome lookup after it. */
+      server.middlewares.use('/api/save-world-biomes', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          res.setHeader('Content-Type', 'application/json');
+          try {
+            const data = JSON.parse(body);
+            const { cols, rows, legend, cells } = data;
+            if (!Array.isArray(cells) || cells.length !== rows) throw new Error(`expected ${rows} rows, got ${cells?.length}`);
+            cells.forEach((row, r) => {
+              if (typeof row !== 'string' || row.length !== cols) throw new Error(`row ${r} is not ${cols} cells`);
+              for (const ch of row) if (!(ch in legend)) throw new Error(`row ${r} has unknown cell '${ch}'`);
+            });
+            fs.writeFileSync(path.resolve(__dirname, 'src/game/world_biomes.json'), JSON.stringify(data, null, 2) + '\n', 'utf8');
+            res.end(JSON.stringify({ success: true }));
+          } catch (err) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ success: false, error: err.message }));
+          }
+        });
+      });
       /* Bestiary "CR Scaling" tab writes the monster difficulty levers straight
          back into the source table so a tuning pass survives a page reload. */
       server.middlewares.use('/api/save-cr-scaling', (req, res) => {

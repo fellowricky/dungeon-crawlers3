@@ -452,99 +452,125 @@ Old Growth - it is their whole identity - and deliberately avoided everywhere el
 
 ---
 
-## BlackbogCoven - verdant level 5 - CR 2
+## BlackbogCourt - verdant level 5 - CR 2
 
-**The hook.** Curses rather than damage. Every one of them is a save-or-suffer, and their hp is a tier low to pay for it. Green hags who wear no armour and carry hoarded human jewellery instead, which reads as older and worse than kit.
+**The hook.** Curses rather than damage, and a court rather than a coven: two hags (the young Daughter casting, the Grandmother ruling) with their fey servants - redcaps, blight fairies, a toad the size of a cart and a starved hound. Nobody wears armour; the hags carry hoarded wealth instead, and the redcap's iron boots are the whole of a redcap.
 
-*type `fey`; resist poison. Boss at CR 3.*
+*type `fey`; immune poisoned. Boss at CR 3. Replaces the first-pass Blackbog Coven (2026-09-17): the Stitchling and the Swollen were cut, the Greenmother redrawn as the Daughter.*
 
 | role | creature | CR | AC | HP | attack | speed | size |
 |---|---|---|---|---|---|---|---|
-| warrior | **Blackbog Crone** | 2 | 15 | 33 | +5 to hit, 2d6+3 (avg 10) | 30 ft | medium |
-| ranged | **Blackbog Hexspitter** | 2 | 14 | 27 | +6 to hit, 2d6+3 (avg 10) | 30 ft | medium |
-| caster | **Blackbog Greenmother** | 2 | 14 | 28 | +5 to hit, 1d10+2 (avg 8) | 30 ft | medium |
-| tank | **The Swollen** | 2 | 15 | 50 | +4 to hit, 1d10+2 (avg 8) | 15 ft | large |
-| elite | **Blackbog Stitchling** | 2 | 16 | 38 | +6 to hit, 2d6+4 (avg 11) x2 | 35 ft | medium |
+| warrior | **Blackbog Redcap** | 2 | 13 | 33 | +5 to hit, 2d6+3 (avg 10) | 35 ft | small |
+| ranged | **Blight Fairy** | 2 | 14 | 22 | +6 to hit, 2d6+3 (avg 10) | 40 ft | tiny |
+| caster | **The Blackbog Daughter** | 2 | 13 | 27 | +5 to hit, 1d10+2 (avg 7) | 30 ft | medium |
+| tank | **The Grandmother's Toad** | 2 | 14 | 49 | +4 to hit, 1d10+2 (avg 7) | 10 ft | large |
+| elite | **Blackbog Hound** | 2 | 14 | 38 | +6 to hit, 2d6+4 (avg 11) x2 | 50 ft | large |
 | boss | **The Blackbog Grandmother** | 3 | 16 | 52 | +6 to hit, 2d8+4 (avg 13) | 25 ft | large |
 
-**Blackbog Crone** (warrior)  
-- *Nails, Not Weapons.* She has never held a sword and does not need to start.
-- **Rot Touch** (`onHit`) - DC 14 CON, weakenedDmg 10r, 35% of hits
+**Blackbog Redcap** (warrior)  
+- *Iron Boots.* The boots are the only thing it owns that it did not steal. They are too big, and it does not care, and you will hear them coming.
+- *Wet The Cap.* When it kills a creature it soaks its cap in the blood and goes berserk for three rounds. The cap has to stay wet. That is the whole of its religion.
+- **Wet The Cap** (`onKill`) - buff bloodlust 3r
+- **Sickle Gash** (`onHit`) - 30% of hits, DC 13 CON, wounded 2r
+- **Iron Boots** (`cycle`) - every 4 rd, DC 13 DEX, 1d8+3 bludgeoning, prone 1r
 
-**Blackbog Hexspitter** (ranged)  
-*ranged 9, poison*  
-- *Spits It.* Whatever she has been chewing, she has been chewing since before you got here.
-- **Blinding Bile** (`onHit`) - DC 14 CON, blinded 6r, 30% of hits
+**Blight Fairy** (ranged)  
+*ranged 9, poison; flying*  
+- *Hovers.* Fly 40 ft. It never lands, and it crosses the bog water without a thought.
+- *Fed On.* It was a fairy once. The bog has been feeding on it for a long time and it is now mostly bog.
+- **Blight Thorn** (`onHit`) - 35% of hits, DC 13 CON, poisoned 2r
+- **Spore Burst** (`cycle`) - every 3 rd, max 1, DC 13 CON, half on save, 2d6 poison, poisoned 2r, AoE 2.0
 
-**Blackbog Greenmother** (caster)  
-*ranged 10, poison; casts as warlock*  
+**The Blackbog Daughter** (caster)  
+*ranged 10, necrotic; casts as warlock*  
+- *Wearing Her Glamour.* She is the youngest hag and the only one who bothers. From the front she is a drowned girl in a white shift. The teeth give it away, and then the hands.
 - *Speaks To It First.* She asks the bog for things and the bog has never once refused her.
-- **Sweet Word** (`cycle`) - every 4 rd, DC 15 WIS, charmed 6r
-- **Bog Hands** (`cycle`) - every 3 rd, DC 14 STR, restrained 3r, save ends, AoE 2.8
+- **Sweet Word** (`cycle`) - every 4 rd, DC 14 WIS, charmed 2r
+- **Bog Hands** (`cycle`) - every 3 rd, DC 13 STR, restrained 2r, save ends, AoE 2.8
+- **Under The Water** (`cycle`) - every 5 rd, blink 4
 
-**The Swollen** (tank)  
-- *Hugely Bloated.* No armour. There is simply a great deal of her and it is all in the way.
-- *Does Not Chase.* She has not moved out of this room in a long time and does not intend to.
-- **Swallow Whole** (`onHit`) - DC 15 STR, restrained 4r, save ends, 30% of hits
+**The Grandmother's Toad** (tank)  
+- *Hers.* The rings through its lip are the Grandmother's. She feeds it. It has never had to hunt and it is enormous.
+- *Does Not Chase.* Speed 10 ft. It has not left this pool in years. Going around it is always an option; its hide is not.
+- *Toxic Hide.* A creature that ends its turn within 5 ft. of the toad must succeed on a DC 13 Constitution save or be poisoned for two rounds.
+- *Sticky Tongue (recharge 3 rounds).* One creature within 25 ft. must succeed on a DC 14 Strength save or take 3 (1d6) bludgeoning damage and be hauled 15 ft. toward the toad's mouth.
+- **Swallow Whole** (`onHit`) - 30% of hits, DC 14 STR, restrained 2r, save ends
+- **Sticky Tongue** (`cycle`) - every 3 rd, DC 14 STR, 1d6 bludgeoning, pull 3
+- **Toxic Hide** (`aura`) - DC 13 CON, poisoned 2r, AoE 1.6
 
-**Blackbog Stitchling** (elite)  
-- *Sewn Together.* It is a servant in the sense that it was assembled to be one, out of the parts of people who were not asked.
-- **Unravel** (`onDeath`) - DC 14 WIS, frightened 8r, AoE 2.4
+**Blackbog Hound** (elite)  
+- *Kept Hungry.* The hags do not feed it. That is the point of it.
+- *Baying.* Its howl carries the bog in it. Each creature within 15 ft. must succeed on a DC 13 Wisdom save or be frightened for two rounds.
+- **Baying** (`cycle`) - every 4 rd, DC 13 WIS, frightened 2r, AoE 2.6
+- **Worry** (`onHit`) - 30% of hits, DC 13 STR, prone 1r
 
 **The Blackbog Grandmother** (boss)  
+*ranged 8, necrotic; casts as warlock*  
 - *Breastplate Of Rings.* Stolen gold wedding rings, hundreds of them, wired into a plate. She can tell you about any one of them.
 - *The Oldest Thing In The Bog.* The others are hers in the way the bog is hers, which is to say completely.
-- **The Old Curse** (`cycle`) - every 4 rd, DC 16 WIS, hexMarked 12r
-- **Drowning Word** (`cycle`) - every 3 rd, DC 16 CON, half on save, 3d8 poison, AoE 3.0
-- **She Calls Them Back** (`onBloodied`) - allies gain bloodlust, AoE 3.4
+- *She Calls Them Back.* When first bloodied, every ally within 20 ft. is driven into a frenzy (bloodlust) for two rounds.
+- **The Old Curse** (`cycle`) - every 4 rd, DC 15 WIS, hexMarked 4r
+- **Drowning Word** (`cycle`) - every 3 rd, DC 15 CON, half on save, 3d8 poison, AoE 3.0
+- **She Calls Them Back** (`onBloodied`) - buff bloodlust 2r, AoE 3.4
 
 ---
 
 ## OldGrowth - verdant level 6 - CR 3
 
-**The hook.** A pure stat check, and the only one in the game. `plant` type grants blanket immunity to blinded, deafened, frightened, paralyzed, poisoned, stunned and unconscious - nothing the party says lands. Huge hp, slow, heavy hits, and fire vulnerability as the single stated answer.
+**The hook.** A pure stat check, the only one in the game. `plant` grants blanket immunity to blinded, deafened, frightened, paralyzed, poisoned, stunned and unconscious, so nothing the party says lands. Huge hp, slow, heavy hits, fire vulnerability as the single stated answer, piercing resistance so the bow is the wrong tool.
 
-*type `plant`; resist piercing; vulnerable fire. Boss at CR 4.*
+*type `plant`; resist piercing; vulnerable fire. Boss at CR 4. Wired 2026-09-18.*
 
 | role | creature | CR | AC | HP | attack | speed | size |
 |---|---|---|---|---|---|---|---|
 | warrior | **Old Growth Sapling** | 3 | 16 | 58 | +6 to hit, 2d8+4 (avg 13) | 25 ft | large |
-| ranged | **Old Growth Thornlobber** | 3 | 15 | 50 | +6 to hit, 2d8+4 (avg 13) | 20 ft | large |
+| ranged | **Old Growth Thornlobber** | 3 | 15 | 49 | +6 to hit, 2d8+4 (avg 13) | 20 ft | large |
 | caster | **Old Growth Heartwood** | 3 | 15 | 52 | +6 to hit, 2d6+3 (avg 10) | 20 ft | large |
 | tank | **Old Growth Bulwark** | 3 | 19 | 78 | +5 to hit, 2d6+3 (avg 10) | 10 ft | huge |
 | elite | **Old Growth Stalker** | 3 | 16 | 52 | +7 to hit, 2d8+5 (avg 14) x2 | 45 ft | huge |
 | boss | **The Elder** | 4 | 18 | 90 | +7 to hit, 3d8+5 (avg 18) | 15 ft | huge |
 
 **Old Growth Sapling** (warrior)  
-- *Young.* Only three metres. It is the smallest thing in this dungeon and it is still twice your height.
-- **Root Catch** (`onHit`) - DC 15 STR, restrained 3r, save ends, 30% of hits
+- *Young.* Only three metres. It is the smallest thing in this wood and it is still twice your height.
+- *Heartwood.* Vulnerable to fire. Resistant to piercing. Immune to being blinded, deafened, frightened, paralyzed, poisoned, stunned or put to sleep - it is a tree, and none of that means anything to a tree.
+- **Root Catch** (`onHit`) - 30% of hits, DC 14 STR, restrained 2r, save ends
 
 **Old Growth Thornlobber** (ranged)  
 *ranged 10, piercing*  
 - *Grows Them, Then Throws Them.* Seed pods the size of a fist, thrown hard enough to bury.
-- **Splinter** (`onHit`) - DC 15 CON, wounded 10r, 30% of hits
+- *Heartwood.* Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice.
+- **Splinter** (`onHit`) - 30% of hits, DC 14 CON, wounded 2r
+- **Seed Storm** (`cycle`) - every 4 rd, max 2, DC 14 DEX, half on save, 3d6 piercing, AoE 2.2
 
 **Old Growth Heartwood** (caster)  
 *ranged 10, force; casts as druid*  
 - *The Wood Remembers.* It does not cast so much as ask, and the whole forest answers at once.
-- **The Floor Objects** (`cycle`) - every 3 rd, DC 16 DEX, half on save, 3d8 bludgeoning, restrained 2r, save ends, AoE 3.0
-- **Greenmend** (`cycle`) - every 5 rd, heal 20, AoE 3.0
+- *Heartwood.* Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice.
+- **The Floor Objects** (`cycle`) - every 3 rd, DC 15 DEX, half on save, 3d8 bludgeoning, restrained 2r, save ends, AoE 3.0
+- **Greenmend** (`cycle`) - every 5 rd, heal 3d8+6, AoE 3.0
 
 **Old Growth Bulwark** (tank)  
 - *Shaped Like A Stump.* Wider than it is tall. It was cut down a long time ago and disagreed.
 - *Barely Moves.* Speed 10 ft. Going around it is always an option and it has never minded.
-- **Crush** (`onHit`) - DC 16 STR, prone 3r, 35% of hits
+- *Heartwood.* Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice.
+- **Crush** (`onHit`) - 35% of hits, DC 15 STR, prone 1r
+- **Settle** (`onBloodied`) - buff barkskin 4r
 
 **Old Growth Stalker** (elite)  
 - *Spindly And Black-Barked.* Too tall, too thin, too fast, and it holds still when you look directly at it.
-- **Long Reach** (`onHit`) - DC 16 STR, restrained 3r, save ends, 30% of hits
+- *Holds Still.* When first bloodied it stops moving entirely and is lost among the trunks until it strikes again.
+- *Heartwood.* Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice.
+- **Long Reach** (`cycle`) - every 3 rd, DC 15 STR, 1d8 bludgeoning, pull 3
+- **Holds Still** (`onBloodied`) - buff invisible
 
 **The Elder** (boss)  
 - *Three Times A Man's Height.* The room was not built to hold it. It got in by being here first.
 - *Slow To Decide.* It has been considering this for eleven years and has now finished.
-- **The Grove Closes** (`cycle`) - every 3 rd, DC 17 STR, restrained 4r, save ends, AoE 3.4
-- **Fell Swing** (`cycle`) - every 4 rd, DC 17 DEX, half on save, 4d8 bludgeoning, AoE 3.0
-- **Deep Roots** (`onBloodied`) - heal 32
+- *Deep Roots.* When first bloodied it drives its roots down and regains 32 (5d8 + 10) hit points.
+- *Heartwood.* Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice.
+- **The Grove Closes** (`cycle`) - every 3 rd, DC 16 STR, restrained 4r, save ends, AoE 3.4
+- **Fell Swing** (`cycle`) - every 4 rd, DC 16 DEX, half on save, 4d8 bludgeoning, AoE 3.0
+- **Deep Roots** (`onBloodied`) - heal 5d8+10
 
 ---
 

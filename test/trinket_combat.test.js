@@ -15,7 +15,7 @@ function mockGame(overrides = {}) {
     refreshAbilityHud: vi.fn(),
     fxUpdateInitTracker: vi.fn(),
     fxUpdateManualBar: vi.fn(),
-    _combatSec: () => 999,
+    _combatRound: () => 999,
     monsterEliteRoom: () => false,
     ...overrides
   };

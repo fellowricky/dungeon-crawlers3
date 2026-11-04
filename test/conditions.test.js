@@ -28,7 +28,7 @@ describe('Conditions & Status Effects Engine', () => {
   it('should compute aggregate effect modifiers correctly', () => {
     const hero = { data: { type: 'humanoid' } };
     
-    // Apply hasted: +2 AC, 1.4x speed
+    // Apply hasted: +2 AC, 2x speed (the Haste spell doubles speed)
     applyEffect(hero, 'hasted', { duration: 6, elapsed: 0 });
     
     // Apply slowed: -2 AC, 0.5x speed
@@ -37,8 +37,10 @@ describe('Conditions & Status Effects Engine', () => {
     const mods = getEffectMods(hero);
     // AC bonus: 2 - 2 = 0
     expect(mods.acBonus).toBe(0);
-    // Speed multiplier: 1.4 * 0.5 = 0.7
-    expect(mods.speedMul).toBeCloseTo(0.7);
+    // Speed multiplier: 2 * 0.5 = 1.0
+    expect(mods.speedMul).toBeCloseTo(1.0);
+    // and Haste's extra weapon attack is surfaced for heroCombat
+    expect(mods.extraAttack).toBe(1);
   });
 
   it('should handle saving throws and special rules (rollSave)', () => {

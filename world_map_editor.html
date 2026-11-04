@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dungeon Crawlers — World Map Biome Painter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090b12;
+      --bg-panel: #111422;
+      --bg-card: #181c2e;
+      --bg-input: #0e101a;
+      --border: rgba(255, 255, 255, 0.08);
+      --text-main: #e2e4f0;
+      --text-muted: #8e95b0;
+      --gold: #d9a441;
+      --gold-glow: rgba(217, 164, 65, 0.2);
+      --red: #ef4444;
+      --green: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    aside {
+      width: 290px;
+      flex-shrink: 0;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      font-size: 13px;
+    }
+
+    h1 { font-size: 16px; font-weight: 600; color: var(--gold); }
+    h2 { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+
+    .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .swatch {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 6px; border-radius: 6px; cursor: pointer;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-main); font: inherit; text-align: left;
+    }
+    .swatch .chip { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+    .swatch .key { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+    .swatch.active { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-glow); }
+    .swatch.doorstep .name::after { content: ' ⌂'; color: var(--gold); }
+
+    .row { display: flex; align-items: center; gap: 8px; }
+    .row label { color: var(--text-muted); min-width: 64px; }
+    .row input[type=range] { flex: 1; }
+    .tools { display: flex; gap: 4px; }
+    .tools button, .actions button {
+      flex: 1; padding: 6px 4px; border-radius: 6px; cursor: pointer;
+      background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); font: inherit;
+    }
+    .tools button.active { border-color: var(--gold); color: var(--gold); }
+    .actions { display: flex; gap: 4px; }
+    #save.dirty { border-color: var(--gold); color: var(--gold); }
+
+    #coverage { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #coverage td { padding: 2px 4px; }
+    #coverage td.n { text-align: right; font-variant-numeric: tabular-nums; }
+    #coverage tr.warn td { color: var(--red); }
+    #coverage .theme { color: var(--text-muted); }
+
+    #readout, #status { color: var(--text-muted); font-size: 12px; min-height: 16px; }
+    #status.ok { color: var(--green); }
+    #status.err { color: var(--red); }
+    .help { color: var(--text-muted); font-size: 11px; line-height: 1.6; }
+    kbd { background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; font-size: 10px; }
+
+    main { flex: 1; position: relative; overflow: hidden; background: #05060a; }
+    canvas { display: block; position: absolute; inset: 0; }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>World Map Biome Painter</h1>
+
+    <section>
+      <h2>Biome</h2>
+      <div class="palette" id="palette"></div>
+    </section>
+
+    <section>
+      <h2>Tool</h2>
+      <div class="tools" id="tools">
+        <button data-tool="brush" title="Brush (B)">Brush</button>
+        <button data-tool="fill" title="Flood fill (F)">Fill</button>
+        <button data-tool="rect" title="Rectangle (R)">Rect</button>
+        <button data-tool="pick" title="Eyedropper (I, or right-click)">Pick</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="row"><label>Brush</label><input type="range" id="brush" min="1" max="8" value="3"><span id="brushVal">3</span></div>
+      <div class="row"><label>Opacity</label><input type="range" id="opacity" min="0" max="100" value="50"><span id="opacityVal">50%</span></div>
+      <div class="row"><label><input type="checkbox" id="grid"> Grid</label><label><input type="checkbox" id="solo"> Solo</label><label><input type="checkbox" id="overlay" checked> Layer</label></div>
+    </section>
+
+    <section class="actions">
+      <button id="undo" title="Ctrl+Z">Undo</button>
+      <button id="redo" title="Ctrl+Y">Redo</button>
+      <button id="save" title="Ctrl+S">Save</button>
+    </section>
+    <div id="status"></div>
+    <div id="readout"></div>
+
+    <section>
+      <h2>Coverage</h2>
+      <table id="coverage"></table>
+    </section>
+
+    <section class="help">
+      <h2>Keys</h2>
+      <kbd>1</kbd>–<kbd>=</kbd> biome · <kbd>B</kbd> <kbd>F</kbd> <kbd>R</kbd> <kbd>I</kbd> tools ·
+      <kbd>[</kbd> <kbd>]</kbd> brush size · <kbd>G</kbd> grid · <kbd>S</kbd> solo ·
+      <kbd>O</kbd> layer on/off · <kbd>H</kbd> fit view<br>
+      Wheel zooms, middle-drag or <kbd>Space</kbd>+drag pans, right-click picks a biome.<br>
+      ⌂ marks dungeon ground: dungeons of the listed themes can appear on it.
+    </section>
+  </aside>
+
+  <main id="main"><canvas id="view"></canvas></main>
+
+  <script type="module" src="./src/world_map_editor.js"></script>
+</body>
+</html>

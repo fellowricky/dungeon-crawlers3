@@ -96,6 +96,9 @@ export const SOLID_PROP_KINDS = new Set([
   'bench', 'chair', 'globe', 'anvil', 'ossuaryWall', 'runicObelisk',
   'glacialSpire', 'stalagmite', 'hearthPit', 'smeltingCrucible', 'cairn',
   'skulltotem', 'boulderPile', 'tree', 'snowtree', 'tree_winter', 'swamptree', 'deadtree',
+  'elm', 'oak', 'birch', 'hawthorn', 'pollarded',   /* broadleaf (3d/Holdfast) */
+  'spruce', 'fir', 'pine',                          /* conifers (3d/Forest) */
+  'snowspruce', 'snowfir', 'snowpine',              /* the same, frosted (snowfield) */
   'alchemyBench', 'mammothTusks', 'lectern', 'grainjars', 'scrollshelf',
   /* Waist-or-taller obstacles that render as real blockers but were never
      listed here, so they stayed walk-through: a fallen log, a tree stump, a
@@ -110,7 +113,21 @@ export const SOLID_PROP_KINDS = new Set([
      signposts, wheel). */
   'boneTotem', 'grave', 'mushroomLog',
   'stump', 'rack', 'goblinfire', 'icebone', 'stakes',
-  'cage', 'cage2', 'throne'
+  'cage', 'cage2', 'throne', 'weepingAngel', 'apothecaryShelf', 'funeralBell',
+  /* boneyard (3d/Grim): the other headstones, the 2x2 mausoleums and the
+     two-cell open grave. The lychgate stays walk-through: the road runs under it. */
+  'stoneCross', 'woodMarkerA', 'woodMarkerB', 'mausoleumA', 'mausoleumB', 'mausoleumC', 'openGrave', 'gallowsTree', 'stoneBench',
+  /* graveFence is only drawn; its cells are blocked by graveFenceBlock, an
+     invisible one-cell prop, so the two-cell model needs no footprint shape */
+  'graveFenceBlock',
+  /* batch 3 models. coolingRocks (a low slag pile) and the cattails stay
+     walk-through scatter. */
+  'tent', 'quenchBarrel', 'mineCart', 'lavaSpikeA', 'lavaSpikeB',
+  'standingStoneA', 'standingStoneB', 'rotBoat',
+  /* batch 4: the snow carts. The bone models stay walk-through scatter. */
+  'snowcartA', 'snowcartB',
+  /* 3d/Holdfast settled-country models */
+  'stoneWallA', 'stoneWallB', 'oldCart', 'oldWell', 'firewood'
 ]);
 
 /** Props that are meant to be climbed rather than walked around. buildElevation
@@ -139,9 +156,30 @@ export const SIGHT_BLOCKING_KINDS = new Set([
   'pillar', 'pillarA', 'pillarB', 'statue', 'bookshelf', 'scrollshelf', 'megalith',
   'runicObelisk', 'glacialSpire', 'stalagmite', 'ossuaryWall',
   'tree', 'snowtree', 'tree_winter', 'swamptree', 'deadtree',
+  'elm', 'oak', 'birch', 'hawthorn', 'pollarded', 'spruce', 'fir', 'pine',
+  'snowspruce', 'snowfir', 'snowpine',
   'boneTotem', 'skulltotem', 'iceThrone', 'throne', 'forge', 'boulderPile',
-  'sporePod', 'wagon'
+  'sporePod', 'wagon', 'tent', 'standingStoneA', 'standingStoneB'
 ]);
+
+/** Low or waist-high obstacles that provide Half Cover (+2 AC, +2 DEX saves)
+ *  in D&D 5e rather than fully occluding line of sight. */
+export const HALF_COVER_PROP_KINDS = new Set([
+  'altarTable', 'coffin', 'sarco', 'alchemyBench', 'forge',
+  'boulderPile', 'stump', 'mushroomLog', 'crate', 'barrel',
+  'table', 'bench', 'chair', 'chest', 'urn', 'cauldron',
+  'smeltingCrucible', 'cairn', 'hearthPit', 'quenchBarrel', 'mineCart', 'rotBoat',
+  'snowcartA', 'snowcartB',
+  'stoneWallA', 'stoneWallB', 'oldCart', 'oldWell', 'firewood'
+]);
+
+/** Returns true if cell `c` contains a solid waist-high obstacle granting half cover. */
+export function isHalfCoverCell(d, c) {
+  if (!d || c < 0) return false;
+  const solid = d.solidProps;
+  const sight = d.sightBlockers;
+  return !!(solid && solid[c] && (!sight || !sight[c]));
+}
 
 export const PROP_FOOTPRINTS = {
   // Multi-tile elongated rectangular props: { length: majorAxisLength, width: minorAxisLength }
@@ -166,6 +204,17 @@ export const PROP_FOOTPRINTS = {
   tree_winter:     { radius: 0.8 },
   swamptree:       { radius: 0.8 },
   deadtree:        { radius: 0.8 },
+  elm:             { radius: 0.8 },
+  oak:             { radius: 0.9 },
+  birch:           { radius: 0.7 },
+  hawthorn:        { radius: 0.8 },
+  pollarded:       { radius: 0.8 },
+  spruce:          { radius: 0.8 },
+  fir:             { radius: 0.8 },
+  pine:            { radius: 0.7 },
+  snowspruce:      { radius: 0.8 },
+  snowfir:         { radius: 0.8 },
+  snowpine:        { radius: 0.7 },
 
   // Single-tile props:
   table:           { radius: 0.5 },
@@ -178,6 +227,21 @@ export const PROP_FOOTPRINTS = {
   lectern:         { radius: 0.45 },
   grainjars:       { radius: 0.45 },
   statue:          { radius: 0.5 },
+  weepingAngel:    { radius: 0.5 },
+  apothecaryShelf: { radius: 0.5 },
+  funeralBell:     { radius: 0.5 },
+  stoneCross:      { radius: 0.5 },
+  woodMarkerA:     { radius: 0.5 },
+  woodMarkerB:     { radius: 0.5 },
+  gallowsTree:     { radius: 0.5 },
+  /* centred between cells (x.5, y.5): exactly the 2x2 at rot 0 or 90 deg */
+  mausoleumA:      { length: 2, width: 2 },
+  mausoleumB:      { length: 2, width: 2 },
+  mausoleumC:      { length: 2, width: 2 },
+  /* the model is long along its local Z, so the two cells go in `width` */
+  openGrave:       { length: 1, width: 2 },
+  stoneBench:      { length: 1, width: 2 },   // long along local Z, like the grave
+  graveFenceBlock: { radius: 0.5 },
   goldBullion:     { radius: 0.35 },
   pillar:          { radius: 0.5 },
   pillarA:         { radius: 0.5 },
@@ -204,7 +268,28 @@ export const PROP_FOOTPRINTS = {
   rack:            { radius: 0.5 },
   goblinfire:      { radius: 0.5 },
   icebone:         { radius: 0.5 },
-  stakes:          { radius: 0.45 }
+  stakes:          { radius: 0.45 },
+  tent:            { radius: 0.9 },
+  quenchBarrel:    { radius: 0.4 },
+  mineCart:        { radius: 0.5 },
+  lavaSpikeA:      { radius: 0.45 },
+  lavaSpikeB:      { radius: 0.5 },
+  standingStoneA:  { radius: 0.5 },
+  standingStoneB:  { radius: 0.5 },
+  /* the boat model runs along its local Z, and this table's `length` runs
+     along (cos rot, sin rot) — local X — so the long side is `width` here */
+  rotBoat:         { length: 0.8, width: 2.0 },
+  snowcartA:       { radius: 0.55 },
+  /* the barrow's shafts run along its local X, which is `length` here */
+  snowcartB:       { length: 1.3, width: 0.75 },
+  /* 3d/Holdfast. The field walls run along local Z, so their run is `width`;
+     the cart runs along local X, so its length is `length`. Sizes are the
+     model bounds × PROP_SCALE_MULTIPLIER (dungeon_scene.js). */
+  stoneWallA:      { length: 0.75, width: 5.4 },
+  stoneWallB:      { length: 0.6,  width: 2.2 },
+  oldCart:         { length: 2.0,  width: 1.0 },
+  oldWell:         { radius: 0.6 },
+  firewood:        { radius: 0.45 }
 };
 
 /**
@@ -676,6 +761,15 @@ export const pathfindingMethods = {
         if (!avoidDoors && hasDoorCheck && this.isCellDoorClosed(n)) step += 5.0;
         if (hasAoE && isHazard(n)) step += HAZARD_COST;
         if (typeof this.isDifficultTerrain === 'function' && this.isDifficultTerrain(n, mover)) step += 1.0;
+        if (opts && opts.threat && typeof this.hasLOS === 'function') {
+          const wx = (typeof this.wx === 'function') ? this.wx(n % W) : (n % W) - W / 2 + 0.5;
+          const wz = (typeof this.wz === 'function') ? this.wz(Math.floor(n / W)) : Math.floor(n / W) - H / 2 + 0.5;
+          if (!this.hasLOS(opts.threat.x, opts.threat.z, wx, wz)) {
+            step = Math.max(0.4, step - 0.35); // Cover discount
+          } else {
+            step += 0.35; // Exposure penalty
+          }
+        }
         if (wallAdj && wallAdj[n]) step += 0.001; /* centre-room tiebreak */
         const nd = dc + step;
         if (nd < dist[n]) { dist[n] = nd; par[n] = c; push(n, nd); }
@@ -739,13 +833,56 @@ export const pathfindingMethods = {
     return false;
   },
 
+  /* The cells a body standing on `cell` could WALK to within `radius`
+     (Chebyshev) without crossing a wall, a solid prop or a shut gate — the
+     same step rules as findPath, minus bodies. Ring scans below used to be
+     purely Euclidean: a square two tiles away is two tiles away whether or
+     not there is a closed door between. Relocating a body onto such a square
+     (an overlap fix, a snap-to-centre) put a hero through a gate no fight
+     was allowed to open, into a room whose monsters then woke on him alone. */
+  _doorFreeCellsNear(cell, radius, mover) {
+    const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
+    const solid = this.D.solidProps;
+    const flies = canFly(mover);
+    const hasDoorCheck = typeof this.isCellDoorClosed === 'function';
+    const cx = cell % W, cy = Math.floor(cell / W);
+    const passable = (nx, ny) => {
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) return false;
+      if (Math.abs(nx - cx) > radius || Math.abs(ny - cy) > radius) return false;
+      const nc = ny * W + nx;
+      if (!isGroundFor(this.D.grid, nc, flies)) return false;
+      if (solid && solid[nc]) return false;
+      if (hasDoorCheck && this.isCellDoorClosed(nc)) return false;
+      return true;
+    };
+    const seen = new Set([cell]);
+    const q = [cell];
+    for (let i = 0; i < q.length; i++) {
+      const c = q[i];
+      const x = c % W, y = Math.floor(c / W);
+      for (let oy = -1; oy <= 1; oy++) {
+        for (let ox = -1; ox <= 1; ox++) {
+          if (!ox && !oy) continue;
+          const nx = x + ox, ny = y + oy;
+          if (!passable(nx, ny)) continue;
+          /* no corner-cutting: a diagonal needs both cardinals open too */
+          if (ox && oy && !(passable(x + ox, y) && passable(x, y + oy))) continue;
+          const nc = ny * W + nx;
+          if (seen.has(nc)) continue;
+          seen.add(nc);
+          q.push(nc);
+        }
+      }
+    }
+    return seen;
+  },
+
   getUnoccupiedCellNear(cell, mover, radius = 3) {
     if (cell < 0 || !this.D) return cell;
     if (!this.isCellOccupiedAny(cell, mover)) return cell;
     const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
     const cx = cell % W, cy = Math.floor(cell / W);
-    const solid = this.D.solidProps;
-    const flies = canFly(mover);
+    const reach = this._doorFreeCellsNear(cell, radius, mover);
     for (let r = 1; r <= radius; r++) {
       for (let oy = -r; oy <= r; oy++) {
         for (let ox = -r; ox <= r; ox++) {
@@ -753,8 +890,7 @@ export const pathfindingMethods = {
           const nx = cx + ox, ny = cy + oy;
           if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
           const nc = ny * W + nx;
-          if (!isGroundFor(this.D.grid, nc, flies)) continue;
-          if (solid && solid[nc]) continue;
+          if (!reach.has(nc)) continue;
           if (this.isCellOccupiedAny(nc, mover)) continue;
           return nc;
         }
@@ -826,16 +962,38 @@ export const pathfindingMethods = {
   /* Line of sight. A still-closed doorway gate is as opaque as a wall — this
      is what tryActivateMonster relies on to avoid waking a room through a
      locked door (and, with it, latching this.combat on while the party is
-     still on the wrong side of the gate). */
-  hasLOS(x0, z0, x1, z1) {
-    const { W } = this.D;
+     still on the wrong side of the gate).
+     Supports optional 3D eye/target heights (y0, y1) to evaluate elevation
+     and raised platform occlusion. */
+  hasLOS(x0, z0, x1, z1, y0 = null, y1 = null) {
+    if (!this.D) return true;
+    const { W, H } = this.D;
     const dx = x1 - x0, dz = z1 - z0;
     const dist = Math.hypot(dx, dz);
-    const steps = Math.ceil(dist * 3);
+    if (dist === 0) return true;
+    const steps = Math.ceil(dist * 4);
     const hasDoorCheck = typeof this.isCellDoorClosed === 'function';
+    const cellOf = typeof this.cellOf === 'function'
+      ? (x, z) => this.cellOf(x, z)
+      : (x, z) => {
+          const cx = Math.round(x + W / 2 - 0.5), cy = Math.round(z + H / 2 - 0.5);
+          return (cx < 0 || cy < 0 || cx >= W || cy >= H) ? -1 : cy * W + cx;
+        };
+    const getGY = (x, z) => {
+      if (typeof this.groundY === 'function') return this.groundY(x, z);
+      return groundY(this.D, x, z);
+    };
+
+    const hasElev = !!(this.D && this.D.height);
+    const startY = (y0 != null) ? y0 : (hasElev ? getGY(x0, z0) + 0.6 : 0.6);
+    const endY   = (y1 != null) ? y1 : (hasElev ? getGY(x1, z1) + 0.5 : 0.5);
+    const dy = endY - startY;
+
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
-      const c = this.cellOf(x0 + dx * t, z0 + dz * t);
+      const wx = x0 + dx * t;
+      const wz = z0 + dz * t;
+      const c = cellOf(wx, wz);
       if (c < 0) return false;
       /* A pool is not a wall. Sight used to break on any non-FLOOR tile, so
          nothing could see — or shoot — across a mere; with flyers now hovering
@@ -850,6 +1008,15 @@ export const pathfindingMethods = {
       const sight = this.D.sightBlockers || this.D.solidProps;
       if (sight && sight[c]) return false;
       if (hasDoorCheck && this.isCellDoorClosed(c)) return false;
+
+      // 3D elevation check: raised floor tiers, podiums, or ledges
+      if (hasElev) {
+        const rayY = startY + dy * t;
+        const terrainY = getGY(wx, wz);
+        if (rayY <= terrainY + 0.15) {
+          return false;
+        }
+      }
     }
     return true;
   },
@@ -863,8 +1030,7 @@ export const pathfindingMethods = {
     if (!e || !e.ent || !e.ent.grp) return;
     const targetAngle = Math.atan2(tx - e.x, tz - e.z);
     let delta = targetAngle - e.ent.grp.rotation.y;
-    while (delta > Math.PI) delta -= Math.PI * 2;
-    while (delta < -Math.PI) delta += Math.PI * 2;
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));   // wrap to [-π, π]; finite in one step
     if (Math.abs(delta) > 0.12) {
       e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
     }
@@ -933,15 +1099,19 @@ export const pathfindingMethods = {
       const k = Math.min(1, tw.t / tw.dur);
       const nx = tw.fromX + (tw.toX - tw.fromX) * k;
       const nz = tw.fromZ + (tw.toZ - tw.fromZ) * k;
-      if (!this.blockedForEntity(nx, nz, e, TIGHT_R)) { e.x = nx; e.z = nz; }
+      /* Each frame's sample was tested on its own, so a glide that met a
+         wall or a shut gate simply skipped the frames inside it and landed on
+         the far side — a teleport through the obstacle. The glide ends where
+         it is blocked instead. */
+      if (this.blockedForEntity(nx, nz, e, TIGHT_R)) { e._posTween = null; return false; }
+      e.x = nx; e.z = nz;
       if (k >= 1) e._posTween = null;
       /* Reflect tween velocity so facing follows the glide. */
       const velX = (tw.toX - tw.fromX), velZ = (tw.toZ - tw.fromZ);
       if (e.ent && e.ent.grp && (velX || velZ)) {
         const targetAngle = Math.atan2(velX, velZ);
         let delta = targetAngle - e.ent.grp.rotation.y;
-        while (delta > Math.PI) delta -= Math.PI * 2;
-        while (delta < -Math.PI) delta += Math.PI * 2;
+        delta = Math.atan2(Math.sin(delta), Math.cos(delta));   // wrap to [-π, π]; finite in one step
         if (Math.abs(delta) > 0.12) e.ent.grp.rotation.y += delta * Math.min(1, dt * 8);
       }
       return true; /* still moving */
@@ -1149,8 +1319,7 @@ export const pathfindingMethods = {
       /* Use actual velocity direction — robust against path-target flips. */
       const targetAngle = Math.atan2(velX, velZ);
       let delta = targetAngle - e.ent.grp.rotation.y;
-      while (delta > Math.PI) delta -= Math.PI * 2;
-      while (delta < -Math.PI) delta += Math.PI * 2;
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta));   // wrap to [-π, π]; finite in one step
       /* Hysteresis: ignore tiny angular changes (< 0.12 rad ≈ 7°) so the
          sprite doesn't quiver near axis boundaries. Large turns ease in
          over a few frames via the dt*8 lerp. */
@@ -1573,6 +1742,11 @@ export const pathfindingMethods = {
     const { W, H, grid } = this.D;
     const solid = this.D.solidProps;
     if (cell >= 0 && cell < grid.length && grid[cell] === FLOOR && (!solid || !solid[cell])) return cell;
+    /* A shut gate's cell is floor, but it is a threshold, not a place to
+       stand: as a path goal it is pointless and as a relocation target (the
+       out-of-bounds rescue) it drops a body INTO the doorway, which unseals
+       the room beyond for aggro. Look past it to the next real floor cell. */
+    const hasDoorCheck = typeof this.isCellDoorClosed === 'function';
     const cx = (cell >= 0 && cell < grid.length) ? (cell % W) : Math.floor(W / 2);
     const cy = (cell >= 0 && cell < grid.length) ? Math.floor(cell / W) : Math.floor(H / 2);
     const maxR = (cell >= 0 && cell < grid.length) ? rad : Math.max(rad, Math.max(W, H));
@@ -1583,7 +1757,9 @@ export const pathfindingMethods = {
           const nx = cx + ox, ny = cy + oy;
           if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
           const nc = ny * W + nx;
-          if (grid[nc] === FLOOR && (!solid || !solid[nc])) return nc;
+          if (grid[nc] !== FLOOR || (solid && solid[nc])) continue;
+          if (hasDoorCheck && this.isCellDoorClosed(nc)) continue;
+          return nc;
         }
       }
     }

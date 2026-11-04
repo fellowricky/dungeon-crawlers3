@@ -3,8 +3,19 @@
  */
 import * as THREE from 'three';
 import { mulberry32 } from '../dungeon/dungeon_generator.js';
+import { cutawayPatch } from './wall_cutaway.js';
+
+const _headlessCtx = new Proxy({
+  getImageData: (x, y, w = 1, h = 1) => ({ data: new Uint8Array(w * h * 4) }),
+  createImageData: (w = 1, h = 1) => ({ data: new Uint8Array(w * h * 4) }),
+  createLinearGradient: () => ({ addColorStop: () => {} }),
+  createRadialGradient: () => ({ addColorStop: () => {} })
+}, { get(t, p) { return p in t ? t[p] : () => {}; } });
 
 function makeCanvas(sz, h){
+  if (typeof document === 'undefined') {
+    return [{ width: sz, height: h || sz, getContext: () => _headlessCtx }, _headlessCtx];
+  }
   const c = document.createElement('canvas');
   c.width = sz; c.height = h || sz;
   return [c, c.getContext('2d')];
@@ -122,28 +133,118 @@ function makeAtlasTex(kind){ /* kind 0 = flagstone, 1 = masonry blocks */
 }
 
 /* ---------------- Texture Generators ---------------- */
-function makeStoneTex(){
-  const [cv,g] = makeCanvas(256);
-  g.fillStyle='#c9c9c9'; g.fillRect(0,0,256,256);
-  for(let i=0;i<2600;i++){
-    const v = 170 + texRand()*110 | 0;
-    g.fillStyle = 'rgba('+v+','+v+','+v+',0.16)';
-    g.fillRect(texRand()*256, texRand()*256, 1+texRand()*3.4, 1+texRand()*3.4);
+/* Ashlar for matStone (columns, sarcophagi, graves, plinths, door posts).
+   The old canvas was a near-white field plus grit, so a theme tint painted
+   every prop one flat colour and the bump (scale 0.008) never caught light.
+
+   Courses are large on purpose. A pillar's box UV stretches this whole image
+   across a ~0.7 × 1.9 block, so a horizontal mark has to be ~18px wide here
+   before it survives as one world texel. Coffin UVs are closer to world
+   scale (about 0.5), and the same joints still read there. Colour stays light
+   and only slightly warm or cool so the per-instance stone tint still leads.
+
+   The first stone generators burned a fixed number of texRand() calls. Wood,
+   grass and the atlases continue that same generator, so those calls are
+   drained and this field is hashed on its own. */
+const STONE_RAND_DRAIN = 5080;
+const STONE_BUMP_RAND_DRAIN = 4000;
+
+export function paintStoneField(S = 256) {
+  const rgba = new Uint8ClampedArray(S * S * 4);
+  const height = new Uint8Array(S * S);
+  const COLS = 3, ROWS = 5;
+  const mortX = Math.max(8, Math.round(S * 0.072));
+  const mortY = Math.max(4, Math.round(S * 0.034));
+  const stagger = Math.floor(S / COLS / 2);
+  const clamp = v => Math.max(0, Math.min(255, v));
+  for (let y = 0; y < S; y++) {
+    const row = Math.min(ROWS - 1, Math.floor(y * ROWS / S));
+    const rowY0 = Math.floor(row * S / ROWS);
+    const ly = y - rowY0;
+    const cellH = Math.floor((row + 1) * S / ROWS) - rowY0;
+    for (let x = 0; x < S; x++) {
+      let xx = x + ((row & 1) ? stagger : 0);
+      if (xx >= S) xx -= S;
+      const col = Math.min(COLS - 1, Math.floor(xx * COLS / S));
+      const colX0 = Math.floor(col * S / COLS);
+      const lx = xx - colX0;
+      const cellW = Math.floor((col + 1) * S / COLS) - colX0;
+      const joint = lx < mortX || ly < mortY;
+      const n = hash2(col + 3, row + 1, 2);
+      let tone = (0.52 + n * 0.46) * (0.84 + hash2(col >> 1, row >> 1, 4) * 0.28);
+      if (row === 1 || row === 3) tone *= 0.9;
+      const warm = hash2(col, row, 3) * 2 - 1;
+      const chipRoll = hash2(col, row, 5);
+      let chip = false;
+      if (chipRoll > 0.58) {
+        const cx = hash2(col, row, 6) < 0.5 ? 0 : cellW;
+        const cy = hash2(col, row, 7) < 0.5 ? 0 : cellH;
+        const rad = cellW * (0.24 + hash2(col, row, 8) * 0.2);
+        if (Math.hypot(lx - cx, ly - cy) < rad) chip = true;
+      }
+      const crack = hash2(col, row, 9) > 0.78 &&
+        Math.abs(lx / cellW - ly / cellH - (hash2(col, row, 10) - 0.5) * 0.45) < 0.05;
+      const pit = !joint && hash2(x >> 4, y >> 4, 11) > 0.88;
+      let r = tone * 236 + warm * 18;
+      let g = tone * 228;
+      let b = tone * 220 - warm * 16;
+      if (joint) { r *= 0.30; g *= 0.27; b *= 0.24; }
+      else if (chip || crack) { r *= 0.58; g *= 0.54; b *= 0.50; }
+      else if (pit) { r *= 0.8; g *= 0.78; b *= 0.76; }
+      if (!joint && !chip && hash2(x >> 4, y >> 4, 13) > 0.96) {
+        r += 26; g += 24; b += 20;
+      }
+      if (joint && hash2(x >> 3, y >> 3, 14) > 0.88) { g += 14; b += 6; }
+      const o = (y * S + x) * 4;
+      rgba[o] = clamp(r); rgba[o + 1] = clamp(g); rgba[o + 2] = clamp(b); rgba[o + 3] = 255;
+      let H = 188 + tone * 52;
+      if (chip || crack) H = 88;
+      else if (pit) H = Math.min(H, 132);
+      if (joint) H = 22;
+      else {
+        const dist = Math.min(lx, ly, cellW - 1 - lx, cellH - 1 - ly);
+        if (dist < 6) H = 22 + (H - 22) * (dist / 6);
+        if (!chip && !crack) {
+          const cx = lx / cellW - 0.5, cy = ly / cellH - 0.5;
+          H += Math.max(0, 1 - Math.hypot(cx * 2, cy * 2)) * 18;
+        }
+      }
+      if ((row === 1 || row === 3) && !joint) H -= 14;
+      height[y * S + x] = clamp(H);
+    }
   }
-  for(let i=0;i<420;i++){
-    g.fillStyle = 'rgba(40,40,48,'+(0.05+texRand()*0.10).toFixed(3)+')';
-    g.fillRect(texRand()*256, texRand()*256, 1+texRand()*2, 1+texRand()*2);
+  return { rgba, height };
+}
+
+function uploadStone(pixels, color) {
+  const S = Math.round(Math.sqrt(pixels.length / (color ? 4 : 1)));
+  const [cv, g] = makeCanvas(S);
+  const img = g.createImageData(S, S);
+  const d = img.data;
+  if (color) d.set(pixels);
+  else for (let i = 0; i < pixels.length; i++) {
+    const o = i * 4, v = pixels[i];
+    d[o] = d[o + 1] = d[o + 2] = v; d[o + 3] = 255;
   }
-  g.strokeStyle='rgba(30,30,36,0.20)'; g.lineWidth=1;
-  for(let i=0;i<7;i++){
-    let x=texRand()*256, y=texRand()*256;
-    g.beginPath(); g.moveTo(x,y);
-    for(let s=0;s<6;s++){ x+=(texRand()-0.5)*46; y+=(texRand()-0.5)*46; g.lineTo(x,y); }
-    g.stroke();
-  }
+  g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(cv);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping; t.colorSpace=THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.anisotropy = 8;
+  t.colorSpace = color ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.needsUpdate = true;
   return t;
+}
+
+function makeStoneTex(){
+  for (let i = 0; i < STONE_RAND_DRAIN; i++) texRand();
+  return uploadStone(paintStoneField(256).rgba, true);
+}
+
+function makeStoneBumpTex(){
+  for (let i = 0; i < STONE_BUMP_RAND_DRAIN; i++) texRand();
+  return uploadStone(paintStoneField(256).height, false);
 }
 
 function makeCrackTex(){
@@ -212,13 +313,122 @@ function makeSwirlTex(){
   return srgbTex(cv);
 }
 
-function makeShaftTex(){
-  const [cv,g] = makeCanvas(128,256);
-  const grad = g.createLinearGradient(0,0,0,256);
-  grad.addColorStop(0,'rgba(255,255,255,0.8)');
-  grad.addColorStop(1,'rgba(255,255,255,0.0)');
-  g.fillStyle = grad; g.fillRect(0,0,128,256);
-  return srgbTex(cv);
+function makeMistTex(){
+  const [cv, g] = makeCanvas(256, 256);
+  g.clearRect(0, 0, 256, 256);
+  const imgData = g.createImageData(256, 256);
+  const d = imgData.data;
+  for (let y = 0; y < 256; y++) {
+    const ny = (y - 128) / 128;
+    for (let x = 0; x < 256; x++) {
+      const nx = (x - 128) / 128;
+      const dist = Math.sqrt(nx * nx + ny * ny);
+      if (dist >= 1.0) continue;
+      const radialMask = Math.cos(dist * Math.PI * 0.5);
+      const envelope = radialMask * radialMask;
+
+      const n1 = Math.sin(nx * 4.2 + ny * 3.1) * Math.cos(ny * 5.4 - nx * 2.2);
+      const n2 = Math.sin(nx * 8.5 - ny * 7.2) * 0.5;
+      const n3 = Math.cos(nx * 15.0 + ny * 14.0) * 0.25;
+      const noise = (n1 + n2 + n3 + 1.75) / 3.5;
+
+      const alpha = Math.max(0, Math.min(255, Math.round(envelope * noise * 220)));
+      const idx = (y * 256 + x) * 4;
+      d[idx]     = 255;
+      d[idx + 1] = 255;
+      d[idx + 2] = 255;
+      d[idx + 3] = alpha;
+    }
+  }
+  g.putImageData(imgData, 0, 0);
+  const tex = srgbTex(cv);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function makeGrassTex(){
+  const [cv, g] = makeCanvas(256, 256);
+  g.fillStyle = '#44662d';
+  g.fillRect(0, 0, 256, 256);
+
+  const turfTones = ['#3b5a26', '#4e7233', '#59823a', '#345021', '#669242', '#2f461e'];
+  for (let i = 0; i < 400; i++) {
+    const x = texRand() * 256, y = texRand() * 256;
+    const r = 3 + texRand() * 9;
+    g.fillStyle = turfTones[(texRand() * turfTones.length) | 0];
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  for (let i = 0; i < 600; i++) {
+    const x = texRand() * 256, y = texRand() * 256;
+    const bladeH = 2.5 + texRand() * 4.5;
+    g.strokeStyle = (texRand() < 0.65) ? '#72a048' : '#283c18';
+    g.lineWidth = 1.0;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + (texRand() - 0.5) * 2.0, y - bladeH);
+    g.stroke();
+  }
+
+  for (let i = 0; i < 35; i++) {
+    const x = texRand() * 256, y = texRand() * 256;
+    g.fillStyle = (texRand() < 0.6) ? '#d4df7a' : '#f0e698';
+    g.fillRect(x, y, 1.5, 1.5);
+  }
+
+  const tex = srgbTex(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function makeCliffRockTex(){
+  const [cv, g] = makeCanvas(256, 256);
+  // Earthy stratified bedrock base matching HD-2D natural rock strata
+  g.fillStyle = '#635848';
+  g.fillRect(0, 0, 256, 256);
+
+  // Horizontal sediment strata bands (layered natural rock shelves)
+  const bands = 8;
+  const bandH = 256 / bands;
+  for (let b = 0; b < bands; b++) {
+    const y0 = b * bandH;
+    const tone = (b % 2 === 0) ? '#746754' : '#574d3f';
+    g.fillStyle = tone;
+    g.fillRect(0, y0, 256, bandH);
+
+    // Weathered horizontal clefts / stratification lines
+    g.fillStyle = 'rgba(26, 22, 17, 0.45)';
+    g.fillRect(0, y0 + bandH - 2, 256, 2.5);
+
+    // Staggered vertical stone joints / fractures
+    const numJoints = 3 + (texRand() * 3 | 0);
+    for (let j = 0; j < numJoints; j++) {
+      const jx = (j * (256 / numJoints) + texRand() * 24) % 256;
+      g.fillRect(jx, y0, 2.5, bandH);
+    }
+  }
+
+  // Tactile rock grain, pebble flecks, and quartz flecks
+  for (let i = 0; i < 900; i++) {
+    const rx = texRand() * 256, ry = texRand() * 256;
+    const s = 1.2 + texRand() * 2.2;
+    g.fillStyle = texRand() > 0.55 ? 'rgba(205, 198, 175, 0.22)' : 'rgba(30, 26, 20, 0.28)';
+    g.fillRect(rx, ry, s, s);
+  }
+
+  // Subtle mossy green dusting along top edge of strata bands
+  for (let b = 0; b < bands; b++) {
+    const y0 = b * bandH;
+    g.fillStyle = 'rgba(72, 92, 42, 0.25)';
+    g.fillRect(0, y0, 256, 3.5);
+  }
+
+  const tex = srgbTex(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
 }
 
 function makeGlowTex(){
@@ -481,21 +691,20 @@ function makeRegimentalBannerTex(){
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-function makeSwampGrassTex(){
+/* `stops` root -> tip; `veins` [dark, light] blade strokes. The default is the
+   living marsh green; makeDeadGrassTex passes boneyard's dry straw. */
+function makeSwampGrassTex(stops = ['#1c2414', '#2b381b', '#445628', '#5e7235', '#788842'],
+                           veins = ['rgba(18, 26, 12, 0.45)', 'rgba(130, 150, 75, 0.22)']){
   const [cv, g] = makeCanvas(128, 256);
   // Root to tip gradient: deep peat brown-green at roots -> rich olive marsh green -> weathered reed tips
   const grad = g.createLinearGradient(0, 256, 0, 0);
-  grad.addColorStop(0.0, '#1c2414');
-  grad.addColorStop(0.20, '#2b381b');
-  grad.addColorStop(0.55, '#445628');
-  grad.addColorStop(0.85, '#5e7235');
-  grad.addColorStop(1.0, '#788842');
+  [0.0, 0.20, 0.55, 0.85, 1.0].forEach((t, i) => grad.addColorStop(t, stops[i]));
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 256);
 
   // Subtle reed vertical blade veins
   for (let x = 3; x < 128; x += 5) {
-    g.strokeStyle = (x % 10 === 0) ? 'rgba(18, 26, 12, 0.45)' : 'rgba(130, 150, 75, 0.22)';
+    g.strokeStyle = (x % 10 === 0) ? veins[0] : veins[1];
     g.lineWidth = 1.4;
     g.beginPath();
     g.moveTo(x, 0);
@@ -505,18 +714,84 @@ function makeSwampGrassTex(){
   return srgbTex(cv);
 }
 
+function makeIvyTex(){
+  const [cv, g] = makeCanvas(128, 256);
+  g.clearRect(0, 0, 128, 256);
+  // Main woody vine stems
+  g.strokeStyle = '#382a1a';
+  g.lineWidth = 2.4;
+  g.beginPath();
+  let vx = 64;
+  g.moveTo(vx, 0);
+  for(let y=12; y<=256; y+=18){
+    vx += (texRand() - 0.5) * 16;
+    g.lineTo(vx, y);
+  }
+  g.stroke();
+
+  // Secondary wandering branches
+  g.strokeStyle = '#483622';
+  g.lineWidth = 1.5;
+  for(let b=0; b<4; b++){
+    let bx = 28 + texRand() * 72, by = texRand() * 110;
+    g.beginPath(); g.moveTo(bx, by);
+    for(let s=0; s<5; s++){
+      bx += (texRand() - 0.45) * 20;
+      by += 14 + texRand() * 16;
+      g.lineTo(bx, by);
+    }
+    g.stroke();
+  }
+
+  // Clustered ivy leaves
+  const leafColors = ['#2c4f24', '#3c6a30', '#4d823c', '#20401a', '#5a9446', '#6eaa52'];
+  for(let i=0; i<80; i++){
+    const lx = 12 + texRand() * 104;
+    const ly = texRand() * 240;
+    const sz = 3.5 + texRand() * 6.0;
+    g.fillStyle = leafColors[(texRand() * leafColors.length) | 0];
+    g.beginPath();
+    g.ellipse(lx, ly, sz, sz * 1.35, (texRand() - 0.5) * 1.8, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = 'rgba(155, 205, 135, 0.45)';
+    g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(lx, ly - sz*0.7); g.lineTo(lx, ly + sz*0.7); g.stroke();
+  }
+  return srgbTex(cv);
+}
+
 export const TEX = {
-  stone: makeStoneTex(), crack: makeCrackTex(), rune: makeRuneTex(), swirl: makeSwirlTex(),
-  shaft: makeShaftTex(), glow: makeGlowTex(), blot: makeBlotTex(), wood: makeWoodTex(),
+  stone: makeStoneTex(), stoneBump: makeStoneBumpTex(), crack: makeCrackTex(), rune: makeRuneTex(), swirl: makeSwirlTex(),
+  mist: makeMistTex(), shaft: makeMistTex(), glow: makeGlowTex(), blot: makeBlotTex(), wood: makeWoodTex(),
+  grass: makeGrassTex(), cliffRock: makeCliffRockTex(),
   rug: makeRugTex(), magicCircle: makeMagicCircleTex(), tapestry: makeTapestryTex(),
   goldSeal: makeGoldSealTex(), necroCircle: makeNecroCircleTex(), sporeCircle: makeSporeCircleTex(),
   campRing: makeCampRingTex(), regimentalBanner: makeRegimentalBannerTex(),
   metal: makeMetalTex(), ceramic: makeCeramicTex(), bone: makeBoneTex(), ice: makeIceTex(),
-  web: makeWebTex(), swampGrass: makeSwampGrassTex()
+  web: makeWebTex(), swampGrass: makeSwampGrassTex(), ivy: makeIvyTex(),
+  /* boneyard: grey-brown roots to bleached straw tips, a hint of olive left mid-blade */
+  deadGrass: makeSwampGrassTex(['#1c1912', '#2c281d', '#4a4532', '#655c44', '#7e745c'],
+                               ['rgba(22, 19, 13, 0.45)', 'rgba(150, 140, 110, 0.22)'])
 };
 
 /* ---------------- Material Kit ---------------- */
-export const matStone = new THREE.MeshStandardMaterial({map:TEX.stone, roughness:0.92, metalness:0.02});
+export const matIvy = new THREE.MeshStandardMaterial({
+  map: TEX.ivy,
+  transparent: true,
+  alphaTest: 0.18,
+  roughness: 0.82,
+  metalness: 0.0,
+  side: THREE.DoubleSide
+});
+export const matStone = new THREE.MeshStandardMaterial({
+  map: TEX.stone,
+  bumpMap: TEX.stoneBump,
+  /* Joints in the ashlar sit ~160 levels under the face. Around 2.4 is
+     enough for that step to read as a cut, without sparkling the dome. */
+  bumpScale: 2.4,
+  roughness: 0.88,
+  metalness: 0.02
+});
 export const matWood = new THREE.MeshStandardMaterial({map:TEX.wood, roughness:0.82, metalness:0.04});
 export const matMetal = new THREE.MeshStandardMaterial({map:TEX.metal, roughness:0.35, metalness:0.85});
 export const matCeramic = new THREE.MeshStandardMaterial({map:TEX.ceramic, roughness:0.52, metalness:0.08});
@@ -528,6 +803,7 @@ export const matSconce = new THREE.MeshStandardMaterial({map:TEX.metal, roughnes
 export const matGoldInlay = new THREE.MeshStandardMaterial({map:TEX.goldSeal, roughness:0.25, metalness:0.85});
 export const matGoldBullion = new THREE.MeshStandardMaterial({map:TEX.goldSeal, color:0xffd24d, roughness:0.22, metalness:0.90});
 export const matSwampGrass = new THREE.MeshStandardMaterial({map:TEX.swampGrass, roughness:0.92, metalness:0.0, side:THREE.DoubleSide});
+export const matDeadGrass = new THREE.MeshStandardMaterial({map:TEX.deadGrass, roughness:0.95, metalness:0.0, side:THREE.DoubleSide});
 export const matNecroCircle = new THREE.MeshBasicMaterial({map:TEX.necroCircle, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
 matNecroCircle.toneMapped = false;
 export const matSporeCircle = new THREE.MeshBasicMaterial({map:TEX.sporeCircle, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide});
@@ -556,6 +832,9 @@ export function atlasPatch(mat){
 #endif
 #ifdef USE_BUMPMAP
   vBumpMapUv = vBumpMapUv * 0.5 + aUvO;
+#endif
+#ifdef USE_NORMALMAP
+  vNormalMapUv = vNormalMapUv * 0.5 + aUvO;
 #endif`);
 
     const lumChunk = `
@@ -637,27 +916,55 @@ vec3 getLuminanceNormal(vec2 uv, vec3 eye_pos, vec3 surf_norm, float bScale, flo
   return mat;
 }
 
+/* XY gain on the depth-built tangent normals. At 1 the light barely leaves
+   the surface: a wall texel sits about 20 levels off flat, a prop texel about
+   6. The depth image is not sampled again. This gain is how that relief
+   reaches the light. Props take more because their maps are gentler. */
+export const TILE_NORMAL_SCALE = 2.5;
+export const PROP_NORMAL_SCALE = 4;
+
 /* ---------------- Pixel-art tile atlases ----------------
    Baked 2x2 atlases (tools/build_tile_atlas.py) that stand in for the
    procedural flagstone/masonry above on a per-theme basis. Same layout, so the
    instanced `aUvO` quadrant picking and the per-cell theme tint are unchanged;
-   only the map/bumpMap swap. Themes with no entry keep the procedural look. */
+   only the map/bumpMap swap. A theme may also name a tangent normal. That
+   replaces the luminance bump for that slot (the atlas shader prefers
+   USE_NORMALMAP), so the two do not stack. Themes with no entry keep the
+   procedural look. */
 const PIXEL_TILES = {
   ancient: { floor:'./art/tiles/ancient_floor.png', floorBump:0.975,
              wall:'./art/tiles/ancient_wall.png',   wallBump:0.75,
-             cap:'./art/tiles/ancient_cap.png',    capBump:0.65 },
+             cap:'./art/tiles/ancient_cap.png',    capBump:0.65,
+             wallNormal:'./art/tiles/ancient_wall_normal.png',
+             capNormal:'./art/tiles/ancient_cap_normal.png',
+             normalScale:TILE_NORMAL_SCALE },
   molten:  { floor:'./art/tiles/molten_floor.png',  floorBump:0.975,
              wall:'./art/tiles/molten_wall.png',    wallBump:0.75,
-             cap:'./art/tiles/molten_cap.png',     capBump:0.65 },
+             cap:'./art/tiles/molten_cap.png',     capBump:0.65,
+             wallNormal:'./art/tiles/molten_wall_normal.png',
+             capNormal:'./art/tiles/molten_cap_normal.png',
+             normalScale:TILE_NORMAL_SCALE },
   frost:   { floor:'./art/tiles/frost_floor.png',   floorBump:0.975,
              wall:'./art/tiles/frost_wall.png',     wallBump:0.75,
-             cap:'./art/tiles/frost_cap.png',      capBump:0.65 },
+             cap:'./art/tiles/frost_cap.png',      capBump:0.65,
+             wallNormal:'./art/tiles/frost_wall_normal.png',
+             capNormal:'./art/tiles/frost_cap_normal.png',
+             normalScale:TILE_NORMAL_SCALE },
   grim:    { floor:'./art/tiles/grim_floor.png',    floorBump:0.975,
              wall:'./art/tiles/grim_wall.png',      wallBump:0.75,
-             cap:'./art/tiles/grim_cap.png',       capBump:0.65 },
+             cap:'./art/tiles/grim_cap.png',       capBump:0.65,
+             /* PBRFusion 4 depth, Sobel normal, OpenGL +Y, snapped onto the
+                32px grid. Floor passes smear the tile art, so floors stay on
+                the luminance bump. */
+             wallNormal:'./art/tiles/grim_wall_normal.png',
+             capNormal:'./art/tiles/grim_cap_normal.png',
+             normalScale:TILE_NORMAL_SCALE },
   verdant: { floor:'./art/tiles/verdant_floor.png', floorBump:0.975,
              wall:'./art/tiles/verdant_wall.png',   wallBump:0.75,
-             cap:'./art/tiles/verdant_cap.png',    capBump:0.65 }
+             cap:'./art/tiles/verdant_cap.png',    capBump:0.65,
+             wallNormal:'./art/tiles/verdant_wall_normal.png',
+             capNormal:'./art/tiles/verdant_cap_normal.png',
+             normalScale:TILE_NORMAL_SCALE }
 };
 const _pixelTexCache = {};
 function pixelTex(url, isBump){
@@ -679,6 +986,24 @@ function pixelTex(url, isBump){
 let tileOverride = null;
 export function setTileOverride(o){ tileOverride = o; }
 
+/* A tangent normal replaces the albedo luminance bump. Clearing it on a
+   theme that has none matters: floor, wall and cap are shared materials.
+   loadDataNormal is the same linear nearest map, for prop sidecars. */
+export function loadDataNormal(url){
+  return pixelTex(url, true);
+}
+
+function setSlotNormal(mat, url, scale){
+  const next = url ? pixelTex(url, true) : null;
+  if(mat.normalMap !== next){
+    mat.normalMap = next;
+    mat.needsUpdate = true;
+  }
+  /* Scale still applies when the same map is already on the shared material,
+     otherwise a hotter gain never lands on a theme that was already showing. */
+  if(next && scale != null) mat.normalScale.set(scale, scale);
+}
+
 /** Point the shared floor/wall materials at a theme's pixel atlas, if it has
  *  one. Called from buildScene before the level is assembled. */
 export function applyTileTheme(themeKey){
@@ -692,6 +1017,7 @@ export function applyTileTheme(themeKey){
     matFloor.bumpMap = FLAGTEX.bump;
     matFloor.bumpScale = 1.35;
   }
+  setSlotNormal(matFloor, P.floorNormal, P.normalScale);
   if(P.wall){
     matWall.map = pixelTex(P.wall);
     matWall.bumpMap = pixelTex(P.wall.replace('.png','_bump.png'), true);
@@ -701,6 +1027,7 @@ export function applyTileTheme(themeKey){
     matWall.bumpMap = MASONTEX.bump;
     matWall.bumpScale = 0.8;
   }
+  setSlotNormal(matWall, P.wallNormal, P.normalScale);
   /* Wall tops read as the same masonry as the wall sides. They need their own
      atlas rather than sharing matWall's: wall atlases are baked with --stack 2
      to keep tiles square on a 2-unit-tall wall face, and a cap is a flat slab
@@ -715,6 +1042,10 @@ export function applyTileTheme(themeKey){
     matWallCap.bumpMap = MASONTEX.bump;
     matWallCap.bumpScale = 0.8;
   }
+  setSlotNormal(matWallCap, P.capNormal, P.normalScale);
+  matStone.map = TEX.stone;
+  matStone.bumpMap = TEX.stoneBump;
+  matStone.bumpScale = 0.012;
   if(tileOverride){
     for(const [slot, mat] of [['floor',matFloor], ['wall',matWall], ['cap',matWallCap]]){
       const o = tileOverride[slot];
@@ -722,6 +1053,7 @@ export function applyTileTheme(themeKey){
       mat.map = o.map;
       if(o.bump) mat.bumpMap = o.bump;
       if(o.bumpScale != null) mat.bumpScale = (slot === 'floor' ? o.bumpScale * 1.5 : o.bumpScale);
+      setSlotNormal(mat, o.normal || null, o.normalScale);
     }
   }
 }
@@ -736,7 +1068,139 @@ export const matCloth = new THREE.MeshLambertMaterial({side:THREE.DoubleSide});
 export const matIce   = new THREE.MeshStandardMaterial({roughness:0.16, metalness:0.02, transparent:true, opacity:0.88});
 export const matMoss  = new THREE.MeshLambertMaterial();
 export const matBark  = new THREE.MeshStandardMaterial({map:TEX.wood, roughness:0.88, metalness:0.04});
-export const matGrass = new THREE.MeshStandardMaterial({map:TEX.stone, color:0x8ba67a, roughness:0.95, metalness:0});
+export const matGrass = new THREE.MeshStandardMaterial({map:TEX.grass, color:0xa2bf86, roughness:0.92, metalness:0});
+matGrass.onBeforeCompile = (shader) => {
+  shader.uniforms.uCliffRockMap = { value: TEX.cliffRock };
+  shader.vertexShader = shader.vertexShader.replace(
+    '#include <common>',
+    `#include <common>
+     varying vec3 vWorldNormal;
+     varying vec3 vWorldPos;`
+  ).replace(
+    '#include <worldpos_vertex>',
+    `#include <worldpos_vertex>
+     vWorldNormal = normalize(mat3(modelMatrix) * normal);
+     vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;`
+  );
+
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <common>',
+    `#include <common>
+     uniform sampler2D uCliffRockMap;
+     varying vec3 vWorldNormal;
+     varying vec3 vWorldPos;`
+  ).replace(
+    '#include <map_fragment>',
+    `#ifdef USE_MAP
+       vec4 grassTex = texture2D(map, vMapUv);
+       // World-space coordinates for natural horizontal rock strata on cliff faces
+       vec2 rockUv = vec2((vWorldPos.x + vWorldPos.z) * 0.75, vWorldPos.y * 1.35);
+       vec4 rockTex = texture2D(uCliffRockMap, rockUv);
+
+       // Top horizontal faces (normal.y near 1.0) stay lush green turf.
+       // Vertical cliff sides and risers (normal.y near 0.0) display natural rock strata.
+       float cliffFactor = 1.0 - smoothstep(0.40, 0.78, abs(vWorldNormal.y));
+       // Warm earthy stone tone matching HD-2D diorama references
+       vec4 stoneTone = rockTex * vec4(1.06, 1.02, 0.94, 1.0);
+       vec4 diffuseTex = mix(grassTex, stoneTone, cliffFactor);
+       diffuseColor *= diffuseTex;
+     #endif`
+  );
+};
+matGrass.customProgramCacheKey = () => 'grass_cliff_rock_strata';
+
+/* Overland ground baked from tiles (themes with `groundTiles`, e.g. holdfast's
+   dirt road): ONE texture covering the whole map, sampled on top faces by
+   world XZ, so the floor boxes' own UVs, rotations and stair treads don't
+   matter. Cliff sides keep matGrass's rock strata.
+   The uniforms are shared objects: setGroundTiles swaps the texture and the
+   map rectangle per floor without recompiling the shader. */
+/* Shown until a floor's bake lands: flat muted turf, so the first frames read
+   as grass rather than black. */
+const GROUND_TILES_FALLBACK = new THREE.DataTexture(new Uint8Array([88, 104, 62, 255]), 1, 1);
+GROUND_TILES_FALLBACK.colorSpace = THREE.SRGBColorSpace;
+GROUND_TILES_FALLBACK.needsUpdate = true;
+/* Cliff sides: the DCSS stony-earth tile the road is made of, one tile per
+   world unit, graded like the bake and shaded down as a bank in shadow. The
+   procedural strata (TEX.cliffRock) read as striped brick here: in world
+   space its eight bands repeat every ~0.09 tiles, and without the biome tint
+   it shows in raw orange. */
+const GROUND_SIDE_URL = './art/ground/grass/grass_full.png';
+const groundTileUniforms = {
+  uGroundSide:  { value: GROUND_TILES_FALLBACK },          // loaded on first use (setGroundTiles)
+  uGroundTiles: { value: GROUND_TILES_FALLBACK },
+  uGroundRect:  { value: new THREE.Vector4(0, 0, 1, 1) },  // x0, z0, width, depth in world units
+  uGroundGrade: { value: new THREE.Vector2(1, 1) }          // saturation, brightness (theme groundTiles)
+};
+export const matGroundTiles = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0 });
+matGroundTiles.onBeforeCompile = (shader) => {
+  shader.uniforms.uGroundSide = groundTileUniforms.uGroundSide;
+  shader.uniforms.uGroundTiles = groundTileUniforms.uGroundTiles;
+  shader.uniforms.uGroundRect = groundTileUniforms.uGroundRect;
+  shader.uniforms.uGroundGrade = groundTileUniforms.uGroundGrade;
+  shader.vertexShader = shader.vertexShader.replace(
+    '#include <common>',
+    `#include <common>
+     varying vec3 vGtNormal;
+     varying vec3 vGtPos;`
+  ).replace(
+    '#include <worldpos_vertex>',
+    `#include <worldpos_vertex>
+     {
+       vec4 gp = vec4(transformed, 1.0);
+       vec3 gn = normal;
+       #ifdef USE_INSTANCING
+         gp = instanceMatrix * gp;
+         gn = mat3(instanceMatrix) * gn;
+       #endif
+       vGtPos = (modelMatrix * gp).xyz;
+       vGtNormal = normalize(mat3(modelMatrix) * gn);
+     }`
+  );
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <common>',
+    `#include <common>
+     uniform sampler2D uGroundSide;
+     uniform sampler2D uGroundTiles;
+     uniform vec4 uGroundRect;
+     uniform vec2 uGroundGrade;
+     varying vec3 vGtNormal;
+     varying vec3 vGtPos;`
+  ).replace(
+    '#include <map_fragment>',
+    `{
+       vec2 gUv = (vGtPos.xz - uGroundRect.xy) / uGroundRect.zw;
+       vec4 groundTex = texture2D(uGroundTiles, gUv);
+       /* banks: stony earth, a tile per world unit, graded like the bake
+          (saturate + brightness) and darkened as ground under an overhang */
+       vec4 side = texture2D(uGroundSide, vec2(vGtPos.x + vGtPos.z, -vGtPos.y));
+       float sl = dot(side.rgb, vec3(0.299, 0.587, 0.114));
+       side.rgb = mix(vec3(sl), side.rgb, uGroundGrade.x) * uGroundGrade.y * 0.68;
+       float cliffFactor = 1.0 - smoothstep(0.40, 0.78, abs(vGtNormal.y));
+       diffuseColor *= mix(groundTex, side, cliffFactor);
+     }`
+  );
+};
+matGroundTiles.customProgramCacheKey = () => 'ground_tiles_world_xz_earth_banks';
+
+/** Point matGroundTiles at a baked ground texture covering the map rectangle
+ *  starting at world (x0, z0), `w` × `d` units. `tex` null = the flat fallback
+ *  (used while a bake is in flight). The previous bake is disposed. */
+export function setGroundTiles(tex, x0, z0, w, d, grade = null) {
+  const next = tex || GROUND_TILES_FALLBACK;
+  const old = groundTileUniforms.uGroundTiles.value;
+  if (old && old !== next && old !== GROUND_TILES_FALLBACK) old.dispose();
+  groundTileUniforms.uGroundTiles.value = next;
+  if (grade) groundTileUniforms.uGroundGrade.value.set(grade.sat ?? 1, grade.bright ?? 1);
+  if (groundTileUniforms.uGroundSide.value === GROUND_TILES_FALLBACK) {
+    const side = new THREE.TextureLoader().load(GROUND_SIDE_URL);
+    side.wrapS = side.wrapT = THREE.RepeatWrapping;
+    side.magFilter = THREE.NearestFilter;
+    side.colorSpace = THREE.SRGBColorSpace;
+    groundTileUniforms.uGroundSide.value = side;
+  }
+  groundTileUniforms.uGroundRect.value.set(x0, z0, w, d);
+}
 export const matLeaf  = new THREE.MeshStandardMaterial({map:TEX.swirl, roughness:0.75, metalness:0.02});
 export const matCrackD = new THREE.MeshBasicMaterial({map:TEX.crack, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false});
 matCrackD.toneMapped = false;
@@ -744,8 +1208,212 @@ export const matRune  = new THREE.MeshBasicMaterial({map:TEX.rune, transparent:t
 matRune.toneMapped = false;
 export const matPortal= new THREE.MeshBasicMaterial({map:TEX.swirl, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false});
 matPortal.toneMapped = false;
-export const matShaft = new THREE.MeshBasicMaterial({map:TEX.shaft, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide, opacity:0.13});
-matShaft.toneMapped = false;
+/* ── fog vs terrain height ──
+   Both fog layers are flat sheets. Where the ground rises through one (a
+   raised tier, a dais, the foot of a wall) the sheet used to slice the
+   geometry along a hard line. Each level now bakes a small height field —
+   the walkable surface per cell, walls standing a little above their floor,
+   lightly blurred — and the fog thins out as the ground beneath a fragment
+   climbs toward the sheet. The same field is read on the CPU so a unit's
+   legs fog by the same amount the sheet shows around them. */
+const FOG_H_MIN = -2, FOG_H_RANGE = 6;          // byte encoding: y = r * RANGE + MIN
+export const FOG_FADE = 0.1;                    // fog thins over the last this-much of clearance (sheets sit 0.16+ up)
+export const fogHeightUniforms = {
+  tFogH: { value: null },
+  uFogHSize: { value: new THREE.Vector2(1, 1) },
+  uFogHOn: { value: 0 }
+};
+let _fogField = null;
+
+/** heights: Float32Array W*H of ground y per cell (already blurred). */
+export function setFogHeightField(W, H, heights) {
+  const data = new Uint8Array(W * H * 4);
+  for (let i = 0; i < W * H; i++) {
+    const r = Math.max(0, Math.min(255, Math.round((heights[i] - FOG_H_MIN) / FOG_H_RANGE * 255)));
+    data[i * 4] = r; data[i * 4 + 1] = r; data[i * 4 + 2] = r; data[i * 4 + 3] = 255;
+  }
+  const old = fogHeightUniforms.tFogH.value;
+  const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  fogHeightUniforms.tFogH.value = tex;
+  fogHeightUniforms.uFogHSize.value.set(W, H);
+  fogHeightUniforms.uFogHOn.value = 1;
+  if (old) old.dispose();
+  /* keep the quantised values, so the CPU reads what the GPU reads */
+  const q = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) q[i] = data[i * 4] / 255 * FOG_H_RANGE + FOG_H_MIN;
+  _fogField = { W, H, h: q };
+}
+
+/** Ground height under world (x, z), bilinear like the texture; null off-map. */
+export function fogGroundAt(x, z) {
+  const f = _fogField;
+  if (!f) return null;
+  const u = x + f.W / 2 - 0.5, v = z + f.H / 2 - 0.5;   // texel-centre space
+  if (u < -0.5 || v < -0.5 || u > f.W - 0.5 || v > f.H - 0.5) return null;
+  const x0 = Math.max(0, Math.min(f.W - 1, Math.floor(u))), y0 = Math.max(0, Math.min(f.H - 1, Math.floor(v)));
+  const x1 = Math.min(f.W - 1, x0 + 1), y1 = Math.min(f.H - 1, y0 + 1);
+  const tx = Math.max(0, Math.min(1, u - x0)), ty = Math.max(0, Math.min(1, v - y0));
+  const a = f.h[y0 * f.W + x0], b = f.h[y0 * f.W + x1], c = f.h[y1 * f.W + x0], d = f.h[y1 * f.W + x1];
+  return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+}
+
+/** How much of a fog sheet at height `sheetY` survives over world (x, z). */
+export function fogClearance(x, z, sheetY) {
+  const g = fogGroundAt(x, z);
+  if (g === null) return 1;
+  const t = Math.max(0, Math.min(1, (sheetY - g) / FOG_FADE));
+  return t * t * (3 - 2 * t);
+}
+
+const FOG_H_GLSL = `
+      uniform sampler2D tFogH;
+      uniform vec2 uFogHSize;
+      uniform float uFogHOn;
+      float fogClearance(vec3 wp) {
+        if (uFogHOn < 0.5) return 1.0;
+        vec2 uv = (wp.xz + uFogHSize * 0.5) / uFogHSize;
+        if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 1.0;
+        float g = texture2D(tFogH, uv).r * ${FOG_H_RANGE.toFixed(1)} + (${FOG_H_MIN.toFixed(1)});
+        return smoothstep(0.0, ${FOG_FADE.toFixed(2)}, wp.y - g);
+      }
+`;
+
+export function createMistMaterial(color = 0xdde8d0, opacity = 0.35) {
+  const c = new THREE.Color(color);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: c },
+      uOpacity: { value: opacity },
+      uTime: { value: 0 },
+      tMap: { value: TEX.mist },
+      ...fogHeightUniforms
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vWorld;
+      void main() {
+        vUv = uv;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorld = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      uniform float uTime;
+      uniform sampler2D tMap;
+      varying vec2 vUv;
+      varying vec3 vWorld;
+      ${FOG_H_GLSL}
+
+      void main() {
+        // Two non-commensurate scrolling UV layers for fluid organic mist drift
+        vec2 uv1 = vUv * 1.15 + vec2(uTime * 0.018, uTime * 0.009);
+        vec2 uv2 = vUv * 1.65 - vec2(uTime * 0.013, -uTime * 0.016);
+        float a1 = texture2D(tMap, uv1).a;
+        float a2 = texture2D(tMap, uv2).a;
+        float mist = a1 * 0.58 + a2 * 0.42;
+
+        // Smooth radial edge falloff so plane boundaries dissolve seamlessly
+        float dist = length(vUv - 0.5) * 2.0;
+        float edge = smoothstep(1.0, 0.40, dist);
+
+        float a = mist * edge * uOpacity * fogClearance(vWorld);
+        if (a <= 0.002) discard;
+
+        vec3 col = uColor * (0.92 + 0.18 * mist);
+        gl_FragColor = vec4(col, a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    side: THREE.DoubleSide
+  });
+  mat.toneMapped = false;
+  Object.defineProperty(mat, 'color', {
+    get() { return this.uniforms.uColor.value; },
+    set(v) { this.uniforms.uColor.value.set(v); }
+  });
+  Object.defineProperty(mat, 'opacity', {
+    get() { return this.uniforms.uOpacity.value; },
+    set(v) { this.uniforms.uOpacity.value = v; }
+  });
+  return mat;
+}
+export const matMist = createMistMaterial(0xdde8d0, 0.35);
+export const matShaft = matMist;
+export function createGodRayMaterial(color = 0xfff0cc, opacity = 0.36) {
+  const c = new THREE.Color(color);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: c },
+      uOpacity: { value: opacity },
+      uTime: { value: 0 }
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+      void main() {
+        vUv = uv;
+        vNormal = normalize(normalMatrix * normal);
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        vViewPosition = -mvPos.xyz;
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      uniform float uTime;
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vViewPosition;
+
+      void main() {
+        // Vertical envelope: 0.0 at base, peak mid-air, smooth fade to 0.0 at top
+        float vertEnv = sin(clamp(vUv.y, 0.0, 1.0) * 3.14159);
+        vertEnv = pow(vertEnv, 0.70);
+
+        // Crepuscular ray streamers undulating around the cone circumference
+        float ray1 = sin(vUv.x * 25.13 + uTime * 0.14) * 0.5 + 0.5;
+        float ray2 = cos(vUv.x * 43.98 - uTime * 0.19) * 0.5 + 0.5;
+        float rayStreamers = 0.52 + 0.48 * (ray1 * 0.6 + ray2 * 0.4);
+
+        // View-angle limb darkening / Fresnel so cone edges dissolve into thin air
+        vec3 normal = normalize(vNormal);
+        vec3 viewDir = normalize(vViewPosition);
+        float rim = 1.0 - abs(dot(normal, viewDir));
+        rim = smoothstep(0.0, 0.55, rim);
+
+        float a = vertEnv * rayStreamers * rim * uOpacity;
+        if (a < 0.001) discard;
+
+        vec3 col = uColor * (1.15 + 0.35 * rayStreamers);
+        gl_FragColor = vec4(col, a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide
+  });
+  mat.toneMapped = false;
+  Object.defineProperty(mat, 'color', {
+    get() { return this.uniforms.uColor.value; },
+    set(v) { this.uniforms.uColor.value.set(v); }
+  });
+  Object.defineProperty(mat, 'opacity', {
+    get() { return this.uniforms.uOpacity.value; },
+    set(v) { this.uniforms.uOpacity.value = v; }
+  });
+  return mat;
+}
 export const matSkirt = new THREE.MeshBasicMaterial({map:TEX.glow, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.5});
 matSkirt.toneMapped = false;
 export const matRuneSeal = new THREE.MeshBasicMaterial({map:TEX.rune, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.55});
@@ -973,14 +1641,17 @@ export const fogPlaneMat = new THREE.ShaderMaterial({
     uColor: { value: new THREE.Color(0xdde4db) },
     uDensity: { value: 0.24 },
     uSpeed: { value: 0.035 },
-    uScale: { value: 0.12 }
+    uScale: { value: 0.12 },
+    ...fogHeightUniforms
   },
   vertexShader: `
     varying vec2 vWorldPos;
+    varying float vWorldY;
     varying vec2 vUv;
     void main(){
       vec4 wp = modelMatrix * vec4(position, 1.0);
       vWorldPos = wp.xz;
+      vWorldY = wp.y;
       vUv = uv;
       gl_Position = projectionMatrix * viewMatrix * wp;
     }
@@ -988,9 +1659,11 @@ export const fogPlaneMat = new THREE.ShaderMaterial({
   fragmentShader: `
     precision highp float;
     varying vec2 vWorldPos;
+    varying float vWorldY;
     varying vec2 vUv;
     uniform float uTime, uDensity, uSpeed, uScale;
     uniform vec3 uColor;
+    ${FOG_H_GLSL}
 
     float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
     float vnoise(vec2 p){
@@ -1034,7 +1707,7 @@ export const fogPlaneMat = new THREE.ShaderMaterial({
       float edgeY = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.92, vUv.y);
       float edgeFade = edgeX * edgeY;
 
-      float alpha = patchMask * uDensity * wisps * edgeFade;
+      float alpha = patchMask * uDensity * wisps * edgeFade * fogClearance(vec3(vWorldPos.x, vWorldY, vWorldPos.y));
       if (alpha < 0.003) discard;
       gl_FragColor = vec4(uColor, alpha);
     }
@@ -1054,7 +1727,8 @@ export const POST = (()=>{
     void main(){
       vec3 c = texture2D(tS, vUv).rgb;
       float l = dot(c, vec3(0.299, 0.587, 0.114));
-      gl_FragColor = vec4(c * smoothstep(0.58, 0.95, l), 1.0);
+      // Tightly targeted bloom threshold: characters & props stay clean, only high emissives bloom
+      gl_FragColor = vec4(c * smoothstep(0.75, 1.10, l), 1.0);
     }`, depthTest:false, depthWrite:false });
   const blur = new THREE.ShaderMaterial({ uniforms:{ tS:{value:null}, uDir:{value:new THREE.Vector2(1,0)}, uRes:{value:new THREE.Vector2(1,1)} }, vertexShader:V, fragmentShader:`
     varying vec2 vUv; uniform sampler2D tS; uniform vec2 uDir, uRes;
@@ -1067,27 +1741,138 @@ export const POST = (()=>{
     }`, depthTest:false, depthWrite:false });
   const fin = new THREE.ShaderMaterial({ uniforms:{
       tS:{value:null}, tB:{value:null}, uRes:{value:new THREE.Vector2(1,1)},
-      uTime:{value:0}, uBloom:{value:0.9}, uTilt:{value:1.0}, uGrain:{value:1.0} }, vertexShader:V, fragmentShader:`
-    varying vec2 vUv; uniform sampler2D tS, tB; uniform vec2 uRes; uniform float uTime, uBloom, uTilt, uGrain;
+      uTime:{value:0}, uBloom:{value:0.65}, uTilt:{value:1.0}, uGrain:{value:1.0},
+      uCombatFocus:{value:0.0},
+      uFocusA:{value:new THREE.Vector2(0.5, 0.48)},
+      uFocusB:{value:new THREE.Vector2(0.5, 0.48)},
+      uFocusRadius:{value:0.24},
+      uSunScreen:{value:new THREE.Vector2(0.85, 1.25)},
+      uSunDir:{value:new THREE.Vector2(0.35, 0.93)},
+      uGodRayIntensity:{value:0.0},
+      uGodRayColor:{value:new THREE.Color(0xfff4db)} }, vertexShader:V, fragmentShader:`
+    varying vec2 vUv; uniform sampler2D tS, tB; uniform vec2 uRes;
+    uniform float uTime, uBloom, uTilt, uGrain, uCombatFocus, uFocusRadius, uGodRayIntensity;
+    uniform vec2 uFocusA, uFocusB, uSunScreen, uSunDir;
+    uniform vec3 uGodRayColor;
     void main(){
       vec2 px = 1.0 / uRes;
       vec3 col = texture2D(tS, vUv).rgb;
-      float band = smoothstep(0.15, 0.52, abs(vUv.y - 0.5)) * uTilt;
-      float r = band * 3.4;
-      vec3 b = col * 0.4;
-      b += texture2D(tS, vUv + vec2( px.x*r,  px.y*r*0.6)).rgb * 0.15;
-      b += texture2D(tS, vUv + vec2(-px.x*r,  px.y*r*0.6)).rgb * 0.15;
-      b += texture2D(tS, vUv + vec2( px.x*r, -px.y*r*0.6)).rgb * 0.15;
-      b += texture2D(tS, vUv + vec2(-px.x*r, -px.y*r*0.6)).rgb * 0.15;
-      col = mix(col, b, min(1.0, band));
+
+      // 1. Tilt-Shift & Dynamic Action Depth of Field
+      float aspect = uRes.x / max(1.0, uRes.y);
+      vec2 aspectVec = vec2(aspect, 1.0);
+
+      // Baseline exploration tilt-shift: focal horizontal band across the party plane
+      float dLinear = abs(vUv.y - 0.48);
+      float exploreBand = smoothstep(0.08, 0.42, dLinear);
+
+      // Dynamic Combat Action Focus:
+      // Capsule connecting Action Taker (A) to Action Receiver (B).
+      // Both actors, plus the entire attack trajectory / spell beam flying between them, remain in sharp focus.
+      vec2 p = vUv * aspectVec;
+      vec2 focA = uFocusA * aspectVec;
+      vec2 focB = uFocusB * aspectVec;
+      vec2 ab = focB - focA;
+      float lenSq = dot(ab, ab);
+      float t = lenSq > 0.00001 ? clamp(dot(p - focA, ab) / lenSq, 0.0, 1.0) : 0.0;
+      vec2 closest = focA + t * ab;
+      float dAction = length(p - closest);
+
+      // Inside uFocusRadius: 100% razor-sharp focus (blur = 0). Outside: lush cinematic bokeh.
+      float actionBand = smoothstep(uFocusRadius, uFocusRadius + 0.22, dAction);
+
+      // In combat, both the active actor and target unit (plus the action line between them)
+      // are guaranteed 100% razor-sharp clarity without background tilt bleed.
+      float combatBand = mix(exploreBand, actionBand, uCombatFocus);
+      float band = (uCombatFocus > 0.01 ? min(combatBand, actionBand) : exploreBand) * uTilt;
+
+      // In combat, max bokeh is significantly stronger (12.0px) to isolate the clash and eliminate visual clutter
+      float maxBokeh = mix(5.8, 12.0, uCombatFocus);
+      float r = band * maxBokeh;
+
+      // 12-point dual-ring Poisson disc with chromatic dispersion for clean optical lens bokeh
+      vec3 b = vec3(0.0);
+      vec2 taps[12];
+      taps[0]  = vec2( 0.000,  1.000);
+      taps[1]  = vec2( 0.866,  0.500);
+      taps[2]  = vec2( 0.866, -0.500);
+      taps[3]  = vec2( 0.000, -1.000);
+      taps[4]  = vec2(-0.866, -0.500);
+      taps[5]  = vec2(-0.866,  0.500);
+      taps[6]  = vec2( 0.500,  0.289);
+      taps[7]  = vec2( 0.000,  0.577);
+      taps[8]  = vec2(-0.500,  0.289);
+      taps[9]  = vec2(-0.500, -0.289);
+      taps[10] = vec2( 0.000, -0.577);
+      taps[11] = vec2( 0.500, -0.289);
+
+      float totalW = 0.0;
+      for(int i = 0; i < 12; i++){
+        float rad = (i < 6) ? 1.0 : 0.55;
+        vec2 off = vec2(taps[i].x, taps[i].y * 0.72) * rad * px * r;
+        b.r += texture2D(tS, vUv + off * 1.035).r;
+        b.g += texture2D(tS, vUv + off).g;
+        b.b += texture2D(tS, vUv + off * 0.965).b;
+        totalW += 1.0;
+      }
+      b /= totalW;
+      col = mix(col, b, min(1.0, band * 1.15));
+
+      // 2. High-precision Bloom (controlled intensity, never blows out sprites)
       col += texture2D(tB, vUv).rgb * uBloom;
+
+      // 2b. Procedural Atmospheric Forest Canopy Sunbeams
+      // Rays stream directly from the direction of the sun (-uSunDir) towards the map.
+      // Point of emanation is pushed far off-camera (14+ screen units) so the source hub is never visible.
+      // Ray emission is directionally confined strictly towards the map, eliminating full-sphere starbursts.
+      if (uGodRayIntensity > 0.001) {
+        vec2 toPixel = vUv - uSunScreen;
+        float rayDist = length(toPixel);
+        vec2 rayDir = toPixel / max(0.0001, rayDist);
+
+        // Main axis streaming forward from the sun towards the map
+        vec2 forwardDir = -uSunDir;
+        float forwardAlignment = dot(rayDir, forwardDir);
+
+        // Directional cone: rays ONLY project forward towards the map, never into empty sky or backwards
+        float coneMask = smoothstep(0.70, 0.96, forwardAlignment);
+
+        if (coneMask > 0.001) {
+          // Angle relative to central forward axis
+          float rayAngle = atan(rayDir.y * forwardDir.x - rayDir.x * forwardDir.y, forwardAlignment);
+
+          // Harmonic streamers scaled for distant virtual sun
+          float beam1 = sin(rayAngle * 70.0 + uTime * 0.06) * 0.5 + 0.5;
+          float beam2 = sin(rayAngle * 115.0 - uTime * 0.04 + 1.3) * 0.5 + 0.5;
+          float beam3 = cos(rayAngle * 35.0 + uTime * 0.02 + 2.8) * 0.5 + 0.5;
+          float beamStreamers = smoothstep(0.40, 0.88, beam1 * 0.45 + beam2 * 0.35 + beam3 * 0.35);
+
+          // Soft canopy height distribution: strongest through the upper/mid atmosphere over the trees
+          float canopyFade = smoothstep(0.04, 0.72, vUv.y);
+
+          // Distance fade to blend softly across the terrain
+          float distFade = smoothstep(22.0, 6.0, rayDist);
+
+          float godRays = beamStreamers * coneMask * canopyFade * distFade * uGodRayIntensity;
+          col += uGodRayColor * (godRays * 0.30);
+        }
+      }
+
+      // 3. Cinematic Color Grading & Contrast
       float lum = dot(col, vec3(0.299, 0.587, 0.114));
-      col = mix(col, col * vec3(0.90, 0.95, 1.03), (1.0 - smoothstep(0.0, 0.45, lum)) * 0.25);
-      col = mix(col, col * vec3(1.04, 0.98, 0.92), smoothstep(0.40, 1.0, lum) * 0.20);
-      col = mix(vec3(lum), col, 0.88);
-      col = (col - 0.5) * 1.02 + 0.50;
-      float vg = smoothstep(1.35, 0.5, length(vUv - 0.5) * 1.55);
-      col *= mix(0.85, 1.02, vg);
+      col = mix(col, col * vec3(0.90, 0.95, 1.04), (1.0 - smoothstep(0.0, 0.45, lum)) * 0.25);
+      col = mix(col, col * vec3(1.05, 0.98, 0.91), smoothstep(0.40, 1.0, lum) * 0.22);
+      col = mix(vec3(lum), col, 0.92);
+      col = (col - 0.5) * 1.05 + 0.50;
+
+      // 4. Aspect-Corrected Deep HD-2D Vignette
+      vec2 vigP = (vUv - 0.5) * vec2(aspect * 0.82, 1.0);
+      float dVig = length(vigP);
+      float vg = smoothstep(0.95, 0.38, dVig * 1.25);
+      col *= mix(0.50, 1.0, vg);
+      col = mix(col * vec3(0.84, 0.88, 0.98), col, vg);
+
+      // 5. Film grain
       float gr = fract(sin(dot(gl_FragCoord.xy + mod(uTime,10.0)*37.0, vec2(12.9898,78.233))) * 43758.5453);
       col += (gr - 0.5) * 0.012 * uGrain;
       col = pow(max(col, 0.0), vec3(0.4545));
@@ -1096,3 +1881,479 @@ export const POST = (()=>{
   return { qcam, sThresh:mkScene(thresh), sBlur:mkScene(blur), sFinal:mkScene(fin),
            thresh, blur, fin, rtScene:null, rtA:null, rtB:null, w:0, h:0, enabled:true };
 })();
+
+/* Scenery that can stand between the camera and the party dissolves around
+   the bodies behind it — see wall_cutaway.js. Tree themes built from GLB
+   models patch their own materials where the models are instanced. */
+for (const m of [matWall, matWallCap, matBark, matLeaf]) cutawayPatch(m);
+
+/* ── scatter prop world blending ─────────────────────────────────────────────
+   3D scatter props (GLB imports and procedural props alike) used to stand out
+   from the terrain for four reasons:
+   1. Raw AI-generated GLB textures carry bright baked top-down highlights and
+      un-tinted albedos (0.60–0.90), while the terrain is triple-multiplied
+      into a rich, dark range (~0.05–0.18 linear).
+   2. Upward-facing prop normals under a high directional sun + sky hemisphere
+      receive ~4–5x irradiance, pushing highlights past the 0.75 bloom threshold.
+   3. Cold/out-of-palette prop textures (e.g. cyan-blue vine mounds in a warm
+      olive forest) lacked biome color harmonization and ground-contact AO.
+   4. The floor's DARK_CUE multiply sheet (sprite_lighting.js) only shaded flat
+      floor tiles at y=0.012, leaving props on dim/dark tiles unshaded.
+
+   `propBlendPatch` chains onto any lit prop material and harmonizes its albedo,
+   grounds its base into the turf/floor via `tFogH`, applies `DARK_CUE` from
+   `tPropCue`, and rolls off outgoing highlights below the bloom threshold.
+   Live-tunable from the console via `window.__propBlend`.
+
+   The same patch snaps prop textures onto the floor's pixel grid. A floor tile
+   is 32 texels across one world unit (see tools/build_tile_atlas.py). Photo
+   GLBs and the 256px procedural canvases are far finer than that, so each
+   sample is taken at the world cell of size 1/perUnit and at the mip whose
+   texel matches that cell. Flat canvases (stone, metal, cloth) also get a
+   per-cell value step, because a snapped near-white gradient is still one
+   colour. `window.__propPixel` tunes it live: `.on = 0` restores smooth
+   sampling, `.perUnit` is the grid (32 matches the floors). */
+export const PROP_BLEND = {
+  albedoScale: 0.70,          // base diffuse multiplier so props sit in the terrain's reflectance range
+  highlightCompress: 1.05,    // soft-knee compression of baked white/yellow AI texture highlights
+  biomeMix: 0.25,             // how strongly prop colours harmonize toward the current biome's palette
+  groundAoStrength: 0.44,     // contact ambient occlusion darkening at the base of the prop
+  groundAoHeight: 0.36,       // world height over which the base contact AO fades out
+  groundTintMix: 0.36,        // how much of the floor/turf colour creeps up the base of the prop
+  groundTintHeight: 0.28,     // world height over which the ground colour blend fades out
+  topShade: 0.24,             // extra upward-normal dampening so flat tops don't blow out under high sun
+  maxLum: 0.64,               // soft-shoulder outgoing-light ceiling (stays cleanly under the 0.75 bloom threshold)
+  cueFollow: 1.0              // 1.0 = props in dim/dark tiles take the same DARK_CUE shading as the floor
+};
+
+/* World-locked pixel grid for prop albedo. perUnit 32 matches the floor tiles. */
+export const PROP_PIXEL = {
+  on: 1,
+  perUnit: 32,
+  grain: 1                 // scales each material's own propPixelGrain
+};
+if (typeof window !== 'undefined') {
+  window.__propBlend = PROP_BLEND;
+  window.__propPixel = PROP_PIXEL;
+}
+
+const PROP_CUE_FALLBACK = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+PROP_CUE_FALLBACK.needsUpdate = true;
+
+export const propBlendUniforms = {
+  ...fogHeightUniforms,
+  uPropBiomeTint:     { value: new THREE.Color(1, 1, 1) },
+  uPropGroundColor:   { value: new THREE.Color(0x3a4d2c) },
+  tPropCue:           { value: PROP_CUE_FALLBACK },
+  uPropCueSize:       { value: new THREE.Vector2(1, 1) },
+  uPropCueDim:        { value: new THREE.Vector3(0.86, 0.88, 0.94) },
+  uPropCueDark:       { value: new THREE.Vector3(0.52, 0.58, 0.80) },
+  uPropCueStrength:   { value: 0 },
+  uPropAlbedoScale:       { get value() { return PROP_BLEND.albedoScale; } },
+  uPropHighlightCompress: { get value() { return PROP_BLEND.highlightCompress; } },
+  uPropBiomeMix:          { get value() { return PROP_BLEND.biomeMix; } },
+  uPropGroundAo:          { get value() { return PROP_BLEND.groundAoStrength; } },
+  uPropGroundAoH:         { get value() { return PROP_BLEND.groundAoHeight; } },
+  uPropGroundTintMix:     { get value() { return PROP_BLEND.groundTintMix; } },
+  uPropGroundTintH:       { get value() { return PROP_BLEND.groundTintHeight; } },
+  uPropTopShade:          { get value() { return PROP_BLEND.topShade; } },
+  uPropMaxLum:            { get value() { return PROP_BLEND.maxLum; } },
+  uPropCueFollow:         { get value() { return PROP_BLEND.cueFollow; } },
+  uPropPixelOn:           { get value() { return PROP_PIXEL.on; } },
+  uPropPixelPerUnit:      { get value() { return PROP_PIXEL.perUnit; } }
+};
+
+const _pbGround = new THREE.Color();
+const _pbWall = new THREE.Color();
+const _pbGrassTint = new THREE.Color(0x6c8c4e);
+
+/** Update the biome palette and ground contact colours for `propBlendPatch`. */
+export function applyPropTheme(TH) {
+  if (!TH) return;
+  _pbGround.set(TH.floor != null ? TH.floor : 0x586252);
+  if (TH.overland && (!TH.groundMat || TH.groundMat === 'grass') && !TH.groundTiles) {
+    /* Overland grass floors multiply TEX.grass * matGrass.color * TH.floor;
+       match that deeper turf tone so the base blend roots seamlessly. */
+    _pbGround.multiply(_pbGrassTint);
+  }
+  propBlendUniforms.uPropGroundColor.value.copy(_pbGround);
+
+  _pbWall.set(TH.wall != null ? TH.wall : (TH.pillar != null ? TH.pillar : 0x52565c));
+  const tint = propBlendUniforms.uPropBiomeTint.value;
+  tint.copy(_pbGround).lerp(_pbWall, 0.35);
+  const lum = 0.2126 * tint.r + 0.7152 * tint.g + 0.0722 * tint.b;
+  if (lum > 1e-4) tint.multiplyScalar(1 / lum);
+  tint.r = Math.max(0.62, Math.min(1.32, tint.r));
+  tint.g = Math.max(0.62, Math.min(1.32, tint.g));
+  tint.b = Math.max(0.62, Math.min(1.32, tint.b));
+}
+
+/** Share the floor's DARK_CUE texture (sprite_lighting.js) with all patched props. */
+export function setPropCueState(tex, w, h, dim, dark, strength) {
+  propBlendUniforms.tPropCue.value = tex || PROP_CUE_FALLBACK;
+  propBlendUniforms.uPropCueSize.value.set(Math.max(1, w || 1), Math.max(1, h || 1));
+  if (dim) propBlendUniforms.uPropCueDim.value.set(dim[0], dim[1], dim[2]);
+  if (dark) propBlendUniforms.uPropCueDark.value.set(dark[0], dark[1], dark[2]);
+  propBlendUniforms.uPropCueStrength.value = tex ? (strength || 0) : 0;
+}
+
+const PROP_BLEND_VERT_PARS = `
+varying vec3 vPropWorldPos;
+varying float vPropWorldUp;
+varying vec3 vPropOrigin;
+`;
+
+const PROP_BLEND_VERT_BODY = `
+{
+  vec4 pbPos = vec4(transformed, 1.0);
+  vec3 pbNorm = objectNormal;
+  #ifdef USE_INSTANCING
+    pbPos = instanceMatrix * pbPos;
+    pbNorm = mat3(instanceMatrix) * pbNorm;
+  #endif
+  vPropWorldPos = (modelMatrix * pbPos).xyz;
+  vec3 pbWorldNorm = mat3(modelMatrix) * pbNorm;
+  float pbLen = length(pbWorldNorm);
+  vPropWorldUp = pbLen > 0.0001 ? (pbWorldNorm.y / pbLen) : 0.0;
+  vec4 pbOrigin = vec4(0.0, 0.0, 0.0, 1.0);
+  #ifdef USE_INSTANCING
+    pbOrigin = instanceMatrix * pbOrigin;
+  #endif
+  vPropOrigin = (modelMatrix * pbOrigin).xyz;
+}
+`;
+
+const PROP_BLEND_FRAG_PARS = `
+varying vec3 vPropWorldPos;
+varying float vPropWorldUp;
+varying vec3 vPropOrigin;
+uniform float uPropUvJitter;
+uniform sampler2D tFogH;
+uniform vec2 uFogHSize;
+uniform float uFogHOn;
+uniform vec3 uPropBiomeTint;
+uniform vec3 uPropGroundColor;
+uniform sampler2D tPropCue;
+uniform vec2 uPropCueSize;
+uniform vec3 uPropCueDim;
+uniform vec3 uPropCueDark;
+uniform float uPropCueStrength;
+uniform float uPropAlbedoScale;
+uniform float uPropHighlightCompress;
+uniform float uPropBiomeMix;
+uniform float uPropGroundAo;
+uniform float uPropGroundAoH;
+uniform float uPropGroundTintMix;
+uniform float uPropGroundTintH;
+uniform float uPropTopShade;
+uniform float uPropMaxLum;
+uniform float uPropCueFollow;
+uniform float uPropPixelOn;
+uniform float uPropPixelPerUnit;
+uniform float uPropPixelGrain;
+
+float propGroundHeight(vec3 wp) {
+  if (uFogHOn < 0.5) return 0.0;
+  vec2 uv = (wp.xz + uFogHSize * 0.5) / uFogHSize;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) return 0.0;
+  return texture2D(tFogH, uv).r * ${FOG_H_RANGE.toFixed(1)} + (${FOG_H_MIN.toFixed(1)});
+}
+
+/* UV of the world-pixel that contains this fragment. Derivatives are passed
+   in (dFdx of a function argument is 0 on some GPUs). */
+/* One shift per prop, from the instance origin, so two columns cut from the
+   same ashlar do not show the same crop. Constant across the mesh, so the
+   world-pixel snap below still lands on texel centres. */
+vec2 propStoneOffset() {
+  vec3 o = vPropOrigin;
+  float h1 = fract(sin(dot(o.xz, vec2(127.1, 311.7))) * 43758.5453);
+  float h2 = fract(sin(dot(o.zy, vec2(269.5, 183.3))) * 43758.5453);
+  return vec2(h1, h2) * uPropUvJitter;
+}
+
+vec2 propPixelUvFrom(vec2 uv, vec2 dxU, vec2 dyU, vec3 dxW, vec3 dyW) {
+  uv += propStoneOffset();
+  float target = 1.0 / uPropPixelPerUnit;
+  vec3 snapped = (floor(vPropWorldPos / target) + 0.5) * target;
+  vec3 delta = snapped - vPropWorldPos;
+  float a00 = dot(dxW, dxW);
+  float a01 = dot(dxW, dyW);
+  float a11 = dot(dyW, dyW);
+  float det = a00 * a11 - a01 * a01;
+  if (abs(det) < 1e-12) return uv;
+  float invDet = 1.0 / det;
+  float b0 = dot(dxW, delta);
+  float b1 = dot(dyW, delta);
+  vec2 st = clamp(vec2((a11 * b0 - a01 * b1) * invDet, (a00 * b1 - a01 * b0) * invDet), vec2(-4.0), vec2(4.0));
+  return uv + dxU * st.x + dyU * st.y;
+}
+
+float propPixelLodFrom(vec2 dxU, vec2 dyU, vec3 dxW, vec3 dyW, float texW) {
+  float worldSpan = max(length(dxW), length(dyW));
+  float uvSpan = max(length(dxU), length(dyU));
+  if (worldSpan < 1e-6 || uvSpan < 1e-8) return 0.0;
+  float uvStep = (uvSpan / worldSpan) / uPropPixelPerUnit;
+  return clamp(log2(max(uvStep * texW, 1.0)), 0.0, 10.0);
+}
+
+vec4 propPixelTex(sampler2D tex, vec2 uv, vec2 dxU, vec2 dyU, vec3 dxW, vec3 dyW) {
+  if (uPropPixelOn < 0.5 || uPropPixelPerUnit < 1.0) return texture2D(tex, uv);
+  vec2 q = propPixelUvFrom(uv, dxU, dyU, dxW, dyW);
+  float lod = propPixelLodFrom(dxU, dyU, dxW, dyW, float(textureSize(tex, 0).x));
+  /* Alpha-tested cards (leaves, ivy) lose their cutout if the mip averages
+     them with empty texels. Two mips finer keeps the holes, still chunky. */
+  #ifdef USE_ALPHATEST
+    lod = max(0.0, lod - 2.0);
+  #endif
+  lod = floor(lod);
+  vec2 size = max(vec2(textureSize(tex, 0)) / exp2(lod), vec2(1.0));
+  q = (floor(q * size) + 0.5) / size;
+  return textureLod(tex, q, lod);
+}
+`;
+
+const PROP_BLEND_COLOR_BODY = `
+{
+  // 1. De-light baked AI highlights & normalize albedo into terrain reflectance range
+  float pbLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+  if (pbLum > 0.0001) {
+    float pbComp = (pbLum * uPropAlbedoScale) / (1.0 + pbLum * uPropHighlightCompress);
+    diffuseColor.rgb *= pbComp / pbLum;
+    pbLum = pbComp;
+  }
+
+  // 2. Dampen upward-facing normals where AI textures bake white top-lighting & sun hits hardest
+  float pbTop = smoothstep(0.35, 0.95, vPropWorldUp);
+  diffuseColor.rgb *= (1.0 - pbTop * uPropTopShade);
+  pbLum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+
+  // 3. Biome palette harmonization (shifts out-of-palette blues/greys toward the biome's chromaticity)
+  vec3 pbTintTarget = mix(diffuseColor.rgb * uPropBiomeTint, uPropBiomeTint * pbLum, 0.42);
+  diffuseColor.rgb = mix(diffuseColor.rgb, pbTintTarget, uPropBiomeMix);
+
+  // 4. Ground-contact color blend & ambient occlusion (roots props into the turf/floor beneath them)
+  float pbGroundY = propGroundHeight(vPropWorldPos);
+  float pbH = max(0.0, vPropWorldPos.y - pbGroundY);
+  float pbTintFactor = (1.0 - smoothstep(0.0, max(0.01, uPropGroundTintH), pbH)) * uPropGroundTintMix;
+  diffuseColor.rgb = mix(diffuseColor.rgb, uPropGroundColor * 0.65, pbTintFactor);
+  float pbAo = mix(1.0 - uPropGroundAo, 1.0, smoothstep(0.0, max(0.01, uPropGroundAoH), pbH));
+  diffuseColor.rgb *= pbAo;
+}
+`;
+
+const PROP_BLEND_OUTGOING_BODY = `
+{
+  // 5. Match the floor's DARK_CUE in dim and dark tiles so props don't glow in shadow
+  if (uPropCueStrength > 0.001) {
+    vec2 pbCueUv = (vPropWorldPos.xz + uPropCueSize * 0.5) / uPropCueSize;
+    if (pbCueUv.x >= 0.0 && pbCueUv.y >= 0.0 && pbCueUv.x <= 1.0 && pbCueUv.y <= 1.0) {
+      float pbCa = texture2D(tPropCue, pbCueUv).r;
+      vec3 pbCt = pbCa < 0.5 ? mix(vec3(1.0), uPropCueDim, pbCa / 0.5) : mix(uPropCueDim, uPropCueDark, (pbCa - 0.5) / 0.5);
+      float pbH = max(0.0, vPropWorldPos.y - propGroundHeight(vPropWorldPos));
+      float pbCueFade = smoothstep(0.01, 0.05, pbH);
+      outgoingLight *= mix(vec3(1.0), pbCt, uPropCueStrength * uPropCueFollow * pbCueFade);
+    }
+  }
+
+  // 6. Soft-shoulder highlight roll-off so sunlit props never cross the 0.75 bloom threshold
+  float pbOutLum = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
+  if (pbOutLum > 0.0001 && uPropMaxLum > 0.01) {
+    float pbTargetLum = pbOutLum / (1.0 + pbOutLum / uPropMaxLum);
+    outgoingLight *= pbTargetLum / pbOutLum;
+  }
+}
+`;
+
+const PROP_PIXEL_GRAIN_BODY = `
+{
+  // Flat procedural colours (stone, metal, cloth) have no pixels of their own.
+  // One value step per world cell is the fleck the floor tiles get from art.
+  if (uPropPixelGrain > 0.001 && uPropPixelOn > 0.5 && uPropPixelPerUnit > 1.0) {
+    vec3 pbCell = floor(vPropWorldPos * uPropPixelPerUnit);
+    float pbHash = fract(sin(dot(pbCell, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+    diffuseColor.rgb *= mix(1.0 - uPropPixelGrain, 1.0 + uPropPixelGrain, pbHash);
+  }
+}
+`;
+
+const PROP_PIXEL_MAP = `
+#ifdef USE_MAP
+	vec4 sampledDiffuseColor = propPixelTex( map, vMapUv, dFdx( vMapUv ), dFdy( vMapUv ), dFdx( vPropWorldPos ), dFdy( vPropWorldPos ) );
+	#ifdef DECODE_VIDEO_TEXTURE
+		sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );
+	#endif
+	diffuseColor *= sampledDiffuseColor;
+#endif
+`;
+
+function pixelNormalMaps() {
+  const sample = 'propPixelTex( normalMap, vNormalMapUv, dFdx( vNormalMapUv ), dFdy( vNormalMapUv ), dFdx( vPropWorldPos ), dFdy( vPropWorldPos ) )';
+  return THREE.ShaderChunk.normal_fragment_maps.split('texture2D( normalMap, vNormalMapUv )').join(sample);
+}
+
+function pixelBumpPars() {
+  const src = THREE.ShaderChunk.bumpmap_pars_fragment;
+  return src.replace(
+    /float Hll = bumpScale \* texture2D\( bumpMap, vBumpMapUv \)\.x;[\s\S]*?return vec2\( dBx, dBy \);/,
+    `float Hll;
+		float dBx;
+		float dBy;
+		if (uPropPixelOn < 0.5 || uPropPixelPerUnit < 1.0) {
+			Hll = bumpScale * texture2D( bumpMap, vBumpMapUv ).x;
+			dBx = bumpScale * texture2D( bumpMap, vBumpMapUv + dSTdx ).x - Hll;
+			dBy = bumpScale * texture2D( bumpMap, vBumpMapUv + dSTdy ).x - Hll;
+		} else {
+			vec3 pbDxW = dFdx( vPropWorldPos );
+			vec3 pbDyW = dFdy( vPropWorldPos );
+			vec2 pbUv = propPixelUvFrom( vBumpMapUv, dSTdx, dSTdy, pbDxW, pbDyW );
+			float pbLod = floor( propPixelLodFrom( dSTdx, dSTdy, pbDxW, pbDyW, float( textureSize( bumpMap, 0 ).x ) ) );
+			vec2 pbSize = max( vec2( textureSize( bumpMap, 0 ) ) / exp2( pbLod ), vec2( 1.0 ) );
+			pbUv = ( floor( pbUv * pbSize ) + 0.5 ) / pbSize;
+			float pbTarget = 1.0 / uPropPixelPerUnit;
+			vec2 pbStepX = dSTdx * ( pbTarget / max( length( pbDxW ), 1e-5 ) );
+			vec2 pbStepY = dSTdy * ( pbTarget / max( length( pbDyW ), 1e-5 ) );
+			Hll = bumpScale * textureLod( bumpMap, pbUv, pbLod ).x;
+			dBx = bumpScale * textureLod( bumpMap, pbUv + pbStepX, pbLod ).x - Hll;
+			dBy = bumpScale * textureLod( bumpMap, pbUv + pbStepY, pbLod ).x - Hll;
+		}
+		return vec2( dBx, dBy );`
+  );
+}
+
+function pixelAo() {
+  const sample = 'propPixelTex( aoMap, vAoMapUv, dFdx( vAoMapUv ), dFdy( vAoMapUv ), dFdx( vPropWorldPos ), dFdy( vPropWorldPos ) )';
+  return THREE.ShaderChunk.aomap_fragment.replace('texture2D( aoMap, vAoMapUv )', sample);
+}
+
+function pixelEmissive() {
+  const sample = 'propPixelTex( emissiveMap, vEmissiveMapUv, dFdx( vEmissiveMapUv ), dFdy( vEmissiveMapUv ), dFdx( vPropWorldPos ), dFdy( vPropWorldPos ) )';
+  return THREE.ShaderChunk.emissivemap_fragment.replace('texture2D( emissiveMap, vEmissiveMapUv )', sample);
+}
+
+function propPixelizeFragment(src) {
+  let out = src;
+  if (out.includes('#include <map_fragment>')) out = out.replace('#include <map_fragment>', PROP_PIXEL_MAP);
+  if (out.includes('#include <normal_fragment_maps>')) out = out.replace('#include <normal_fragment_maps>', pixelNormalMaps());
+  if (out.includes('#include <bumpmap_pars_fragment>')) out = out.replace('#include <bumpmap_pars_fragment>', pixelBumpPars());
+  if (out.includes('#include <aomap_fragment>')) out = out.replace('#include <aomap_fragment>', pixelAo());
+  if (out.includes('#include <emissivemap_fragment>')) out = out.replace('#include <emissivemap_fragment>', pixelEmissive());
+  return out;
+}
+
+/**
+ * Patch a lit prop material so its albedo, ground contact, biome tint,
+ * darkness-cue response, and highlight roll-off match the surrounding world,
+ * and so its textures sit on the same world pixel grid as the floor tiles.
+ * Chained after any existing `onBeforeCompile` and safe to call alongside `cutawayPatch`.
+ *
+ * `userData.propPixelOnly` snaps and grains without the blend (matIce is also
+ * a floor option). `userData.propPixelGrain` is the flat-colour value step.
+ */
+export function propBlendPatch(mat) {
+  if (Array.isArray(mat)) { mat.forEach(propBlendPatch); return mat; }
+  if (!mat || (mat.userData && mat.userData.propBlend)) return mat;
+  if (!(mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial ||
+        mat.isMeshLambertMaterial || mat.isMeshPhongMaterial || mat.isMeshToonMaterial ||
+        mat.isMeshBasicMaterial)) return mat;
+  const prev = mat.onBeforeCompile;
+  const baseKey = mat.customProgramCacheKey();
+  const pixelOnly = !!(mat.userData && mat.userData.propPixelOnly);
+  mat.onBeforeCompile = function (sh, renderer) {
+    if (prev) prev.call(this, sh, renderer);
+    Object.assign(sh.uniforms, propBlendUniforms);
+    sh.uniforms.uPropPixelGrain = {
+      get value() {
+        const g = (mat.userData && mat.userData.propPixelGrain) || 0;
+        return g * PROP_PIXEL.grain;
+      }
+    };
+    sh.uniforms.uPropUvJitter = {
+      get value() { return (mat.userData && mat.userData.propUvJitter) || 0; }
+    };
+    const colorBody = PROP_PIXEL_GRAIN_BODY + (pixelOnly ? '' : PROP_BLEND_COLOR_BODY);
+    const outgoing = pixelOnly ? '#include <opaque_fragment>' : (PROP_BLEND_OUTGOING_BODY + '\n#include <opaque_fragment>');
+    /* An unlit (MeshBasicMaterial) prop never runs beginnormal_vertex, so it
+       has no objectNormal — the program fails to compile and the prop drops
+       out. Its raw normal attribute is the same vector before skin/morph. */
+    const vertBody = mat.isMeshBasicMaterial
+      ? PROP_BLEND_VERT_BODY.replace('vec3 pbNorm = objectNormal;', 'vec3 pbNorm = normal;')
+      : PROP_BLEND_VERT_BODY;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\n' + PROP_BLEND_VERT_PARS)
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n' + vertBody);
+    sh.fragmentShader = propPixelizeFragment(sh.fragmentShader
+      .replace('#include <common>', '#include <common>\n' + PROP_BLEND_FRAG_PARS)
+      .replace('#include <color_fragment>', '#include <color_fragment>\n' + colorBody)
+      .replace('#include <opaque_fragment>', outgoing));
+  };
+  mat.customProgramCacheKey = () => baseKey + '|prop_blend|prop_pixel' + (pixelOnly ? '|pixel_only' : '');
+  if (!mat.userData) mat.userData = {};
+  mat.userData.propBlend = true;
+  mat.needsUpdate = true;
+  return mat;
+}
+
+/* Grain is the value step on canvases that read as one colour. Stone's
+   courses are in the canvas now, so its grain is only a fleck: a 0.13 step
+   was washing the joints back out. propUvJitter shifts that repeat per prop.
+   Patterned maps (rug, tapestry, gold, web, ivy) already have contrast, so
+   they only snap. matIce stays pixel-only: it is also the optional ice floor. */
+const PROP_PIXEL_MATERIALS = [
+  [matStone, 0.05],
+  [matWood, 0.08],
+  [matBark, 0.08],
+  [matBoneStone, 0.12],
+  [matCeramic, 0.10],
+  [matMoss, 0.12],
+  [matIvy, 0],
+  [matSwampGrass, 0.06],
+  [matLeaf, 0.06],
+  [matMetal, 0.12],
+  [matSconce, 0.12],
+  [matTrim, 0.12],
+  [matCloth, 0.14],
+  [matIce, 0.08, true],
+  [matGlacialIce, 0.08],
+  [matRug, 0],
+  [matTapestry, 0],
+  [matCampRing, 0],
+  [matRegimentalBanner, 0],
+  [matGoldInlay, 0],
+  [matGoldBullion, 0],
+  [matBiolum, 0.10],
+  [matWeb, 0]
+];
+for (const [m, grain, pixelOnly] of PROP_PIXEL_MATERIALS) {
+  if (!m.userData) m.userData = {};
+  m.userData.propPixelGrain = grain;
+  if (pixelOnly) m.userData.propPixelOnly = true;
+  propBlendPatch(m);
+}
+matStone.userData.propUvJitter = 1;
+
+/* Painted canvases with real edges get the same depth-built tangent normal
+   as the dungeon walls. Stone is the exception that stays on its bump: the
+   ashlar height is authored next to the colour, and a generated normal of a
+   flat field smeared. Bone, ceramic and ice are still too even for one.
+   Lambert and unlit materials do not sample a normal map. */
+function attachProcNormal(mat, file) {
+  if (!mat || !mat.normalScale) return;
+  const tex = loadDataNormal(`./art/proc_normals/${file}.png`);
+  const src = mat.map;
+  if (src) { tex.wrapS = src.wrapS; tex.wrapT = src.wrapT; }
+  mat.normalMap = tex;
+  mat.normalScale.set(TILE_NORMAL_SCALE, TILE_NORMAL_SCALE);
+  mat.needsUpdate = true;
+}
+attachProcNormal(matWood, 'wood');
+attachProcNormal(matBark, 'wood');
+attachProcNormal(matMetal, 'metal');
+attachProcNormal(matSconce, 'metal');
+attachProcNormal(matRug, 'rug');
+attachProcNormal(matGoldInlay, 'goldSeal');
+attachProcNormal(matGoldBullion, 'goldSeal');
+attachProcNormal(matIvy, 'ivy');
+attachProcNormal(matCampRing, 'campRing');
+attachProcNormal(matLeaf, 'swirl');
+attachProcNormal(matSwampGrass, 'swampGrass');
+attachProcNormal(matDeadGrass, 'swampGrass');   // same blades, same relief

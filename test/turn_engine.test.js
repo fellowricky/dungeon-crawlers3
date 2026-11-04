@@ -87,9 +87,9 @@ describe('turn_engine — speed → cells', () => {
     // Normal: 6 cells
     expect(turnEngineMethods.cellsForSpeed(hero)).toBe(6);
 
-    // Hasted: speedMul 1.4 -> floor(6 * 1.4) = 8 cells
+    // Hasted: speedMul 2 (5e doubles speed) -> 12 cells
     applyEffect(hero, 'hasted', { duration: 10 });
-    expect(turnEngineMethods.cellsForSpeed(hero)).toBe(8);
+    expect(turnEngineMethods.cellsForSpeed(hero)).toBe(12);
 
     // Entangled / slowed: speedMul 0.5 -> floor(6 * 0.5) = 3 cells
     const slowedHero = { data: { raceKey: 'human', speedFt: 30 }, effects: {} };

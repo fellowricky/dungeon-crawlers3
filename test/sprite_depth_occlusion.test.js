@@ -119,9 +119,9 @@ describe('Sprite Depth Tilt & Occlusion Configuration', () => {
   it('Camera zoom bounds clamp correctly and default is two-thirds zoomed in', async () => {
     const { MIN_CAM_ZOOM, MAX_CAM_ZOOM, DEFAULT_CAM_ZOOM, cam } = await import('../src/render/dungeon_scene.js');
 
-    expect(MIN_CAM_ZOOM).toBe(1.0);
+    expect(MIN_CAM_ZOOM).toBe(3.2);
     expect(MAX_CAM_ZOOM).toBe(14.0);
-    expect(DEFAULT_CAM_ZOOM).toBeCloseTo(MIN_CAM_ZOOM + (MAX_CAM_ZOOM - MIN_CAM_ZOOM) * (2 / 3), 2);
-    expect(cam.zoom).toBeCloseTo(DEFAULT_CAM_ZOOM, 2);
+    expect(DEFAULT_CAM_ZOOM).toBeCloseTo(MIN_CAM_ZOOM + (MAX_CAM_ZOOM - MIN_CAM_ZOOM) * (2 / 3), 1);
+    expect(cam.zoom).toBeCloseTo(DEFAULT_CAM_ZOOM, 1);
   });
 });

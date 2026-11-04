@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { generateQuests, generateSequelQuest } from '../src/game/quests.js';
+import { generateQuests, generateSequelQuest, questSize } from '../src/game/quests.js';
 import { normalizeQuest, phaseNeedsChoice, onQuestCompleted, getSequelOffers, updateQuestTracker } from '../src/game/quest_events.js';
 import { MONSTERS_BY_ID, MONSTERS_ALL, dungeonMonsterIds, getThemeForMonster } from '../src/game/srd.js';
 
@@ -105,10 +105,11 @@ describe('Quest System Data Layer', () => {
     for (let trial = 0; trial < 60; trial++) {
       const qs = generateQuests(6, 6, { levelOffsets: [-1, 1, 0, 0, 0, 0] });
       boards++;
-      const tenFloor = qs.filter(q => q.floors >= 10);
+      // "10-floor" = dungeon size 10; floors now also count the travel days.
+      const tenFloor = qs.filter(q => questSize(q) >= 10);
       if (tenFloor.length) tenFloorBoards++;
       for (const q of qs) {
-        if (q.isLegendaryReward) expect(q.floors).toBe(10);
+        if (q.isLegendaryReward) expect(questSize(q)).toBe(10);
       }
       if (qs.some(q => q.isLegendaryReward)) legendaryBoards++;
     }
@@ -122,7 +123,7 @@ describe('Quest System Data Layer', () => {
     let sawForcedBoard = false;
     for (let trial = 0; trial < 40 && !sawForcedBoard; trial++) {
       const qs = generateQuests(6, 6, { levelOffsets: [-1, 1, 0, 0, 0, 0], legendaryPity: 99 });
-      const tenFloor = qs.filter(q => q.floors >= 10);
+      const tenFloor = qs.filter(q => questSize(q) >= 10);
       if (!tenFloor.length) continue;
       sawForcedBoard = true;
       // exactly the hardest 10-floor quest must carry the pity legendary
@@ -135,7 +136,7 @@ describe('Quest System Data Layer', () => {
     for (let trial = 0; trial < 10; trial++) {
       const qs = generateQuests(6, 6, { levelOffsets: [-1, 1, 0, 0, 0, 0], legendaryPity: 0 });
       for (const q of qs) {
-        if (q.floors < 10) expect(q.isLegendaryReward).toBe(false);
+        if (questSize(q) < 10) expect(q.isLegendaryReward).toBe(false);
       }
     }
   });
@@ -151,7 +152,7 @@ describe('Quest System Data Layer', () => {
   it('should handle quest chain lifecycle correctly', () => {
     const game = { questChains: { active: [], log: [] }, saveGame() {}, heroes: [] };
     const [q1] = generateQuests(3, 1);
-    q1.floors = 8; // ensure legendary-eligible (10 floors for part III)
+    q1.dungeonSize = 8; // ensure legendary-eligible (size 10 for part III)
     onQuestCompleted(game, q1);
     
     expect(game.questChains.active.length).toBe(1);
@@ -168,7 +169,8 @@ describe('Quest System Data Layer', () => {
     expect(s1.chain.part).toBe(2);
     expect(s1.chain.baseSeed).toBe(entry.baseSeed);
     expect(s1.level).toBeGreaterThanOrEqual(q1.level);
-    expect(s1.floors).toBe(Math.min(10, q1.floors + 2));
+    expect(questSize(s1)).toBe(Math.min(10, questSize(q1) + 2));
+    expect(s1.floors).toBe(s1.route.legs.length + s1.dungeonFloors);
     expect(s1.phases.length).toBeGreaterThanOrEqual(1);
     expect(s1.name.includes('Part II')).toBe(true);
     expect(s1.embarkText.includes('{')).toBe(false);

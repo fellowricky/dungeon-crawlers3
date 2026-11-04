@@ -38,6 +38,9 @@ describe('Spells Registry', () => {
         expect(Array.isArray(pool)).toBe(true);
         for (const spellKey of pool) {
           expect(SPELLS[spellKey]).toBeDefined();
+          /* The one cantrip a pick can buy is a passive (Light): it is never
+             cast, so it needs no slot level. */
+          if (SPELLS[spellKey].passive) continue;
           expect(SPELLS[spellKey].level).toBeGreaterThanOrEqual(1);
           expect(SPELLS[spellKey].cantrip).toBeFalsy();
         }

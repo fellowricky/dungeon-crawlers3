@@ -68,4 +68,23 @@ describe('Camera Initialization & Snapping', () => {
       game.updateCameraDirector(1 / 30, game.heroes);
     }).not.toThrow();
   });
+
+  it('game.updateCameraDirector frames exploration by the screen box and heads for the exploration zoom', async () => {
+    const { game } = await import('../src/game/game.js');
+    const scene = await import('../src/render/dungeon_scene.js');
+    const { camTarget, cam, exploreZoom, setCamZoom } = scene;
+    game.engine = { camTarget, updateCam: () => {} };
+    game.combat = false;
+    game.heroes = [
+      { x: 0, z: 0, data: { hp: 10, maxHp: 10 } },
+      { x: 1, z: 1, data: { hp: 10, maxHp: 10 } }
+    ];
+    game.monsters = [];
+    setCamZoom(6);
+    for (let i = 0; i < 90; i++) game.updateCameraDirector(1 / 30, game.heroes);
+    expect(scene.camMode).toBe('explore');   // read live: the binding, not a copy
+    expect(cam.zoom).toBeGreaterThan(6);
+    expect(cam.zoom).toBeLessThanOrEqual(exploreZoom + 1e-6);
+    expect(camTarget.y).toBe(0);
+  });
 });

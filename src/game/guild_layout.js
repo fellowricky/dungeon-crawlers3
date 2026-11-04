@@ -126,11 +126,6 @@ export const STRUCTURES = [
     heroSlots: [{ dx: -2.2, dz: 4.6 }]
   },
   {
-    id: 'crypt', facility: 'crypt', kind: 'crypt', opens: 'facility',
-    name: 'The Crypt', x: 14, z: -24, w: 12, d: 7,
-    heroSlots: [{ dx: 0, dz: 4.4 }]
-  },
-  {
     id: 'war_room', facility: 'war_room', kind: 'hall', opens: 'facility',
     name: 'The War Room', x: 30, z: -24, w: 13, d: 7,
     heroSlots: [{ dx: -1.8, dz: 4.4 }, { dx: 1.8, dz: 4.4 }]
@@ -141,11 +136,6 @@ export const STRUCTURES = [
     id: 'living_quarters', facility: 'living_quarters', kind: 'quarters', opens: 'roster',
     name: 'Living Quarters', x: -30, z: -6, w: 13, d: 8,
     heroSlots: [{ dx: -2.8, dz: 4.8 }, { dx: 0, dz: 5.2 }, { dx: 2.8, dz: 4.8 }]
-  },
-  {
-    id: 'infirmary', facility: 'infirmary', kind: 'hall', opens: 'facility',
-    name: 'The Infirmary', x: -14, z: -6, w: 13, d: 7,
-    heroSlots: [{ dx: 0, dz: 4.4 }]
   },
   {
     id: 'armory', facility: 'armory', kind: 'hall', opens: 'facility',

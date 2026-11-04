@@ -18,17 +18,28 @@
  * Integrated into game.js — all data, logic, and UI lives here.
  */
 import { SKILLS, mod, d as die, roll as d20roll, spawnMonster, dungeonMonsterIds, makeHero, createWolfCompanion, recalc, grantXp } from './srd.js';
+import { perceptionAdv } from './light_rules.js';
+
+/* A skill check's d20. Perception made in dim light or darkness rolls at
+   disadvantage (docs/LIGHT_IDEAS.md 3; Dungeon Delver ignores it). */
+function skillD20(h, skill) {
+  const a = die(20);
+  if (skill !== 'perception' || perceptionAdv(h) >= 0) return a;
+  return Math.min(a, die(20));
+}
 
 import { iconHtml } from './icons.js';
 import { featSkillBonus } from './features.js';
 import { rollItem, addToInventory } from './items.js';
 import { log, updateResources, updatePartyFrames } from './ui.js';
 import { partyShortRest } from './rest.js';
-import { applyEffect, clearEffectsByTag, EFFECTS, ROUND_SECONDS } from './conditions.js';
+import { applyEffect, clearEffectsByTag, EFFECTS, ROUND_SECONDS, wholeRounds } from './conditions.js';
 import { recoverSlots, totalSlots, restoreCharges } from './features.js';
 import { playNarration, queueNarration, narrationId, playSfx, isNarrationActive } from './audio.js';
 import { trackGold, trackLoot } from './run_stats.js';
 import { getSetting } from './settings.js';
+import { firstRunTip } from './help_ui.js';
+import { whenCardsIdle } from './tutorial.js';
 import { recolorPixels, isCharacterLayer,
          LAYER_ORDER, buildLayerPaths, layerTint } from './appearance.js';
 
@@ -92,12 +103,14 @@ const SCALABLE = new Set(['item', 'gold', 'potion', 'heal', 'tempHp', 'xp']);
  * top of the next fight; whatever is left of it is wiped when that fight ends.
  * See conditions.js. */
 const BUFF_EFFECTS = {
-  raging: 30, hasted: 20, shielded: 15, sacredWeapon: 20,
-  inspired: 30, bearTotem: 25, remarkableAthlete: 30
+  raging: 30, hasted: 24, shielded: 18, sacredWeapon: 24,
+  inspired: 30, bearTotem: 30, remarkableAthlete: 30
 };
 
-/** Duration in 5e seconds → the round count shown to the player. */
-const asRounds = (sec) => Math.max(1, Math.round(sec / ROUND_SECONDS));
+/** Duration in 5e seconds → the round count shown to the player. Uses the
+ *  same round-up rule applyEffect enforces, so the label never disagrees
+ *  with what the player actually gets. */
+const asRounds = (sec) => wholeRounds(sec);
 
 /* Debuffs applicable by the 'debuff'/'poison'/'frighten'/'curse' failEffects,
  * mapped to their EFFECTS key and default floor-long duration (null = floor). */
@@ -1436,7 +1449,7 @@ const CHALLENGES = [
 
   /* -- Athletics -- */
   {
-    name: 'Collapsing Pillar', type: 'room', reward: { kind: 'buffEffect', buffKey: 'hasted', buffTargets: 'party', buffDuration: 20 },
+    name: 'Collapsing Pillar', type: 'room', reward: { kind: 'buffEffect', buffKey: 'hasted', buffTargets: 'party', buffDuration: 24 },
     desc: 'A cracked pillar groans over a narrow gap. Bracing it could let the whole party dash through before it falls.',
     approaches: [
       { tier: 'safe', skill: 'perception', label: 'Time the groans',
@@ -1487,7 +1500,7 @@ const CHALLENGES = [
     ]
   },
   {
-    name: 'Collapsing Stair', type: 'room', reward: { kind: 'buffEffect', buffKey: 'hasted', buffTargets: 'party', buffDuration: 25 },
+    name: 'Collapsing Stair', type: 'room', reward: { kind: 'buffEffect', buffKey: 'hasted', buffTargets: 'party', buffDuration: 30 },
     desc: 'A grand stair is shedding steps as it falls. Sprinting it grants a rush of speed — if you don\'t fall.',
     approaches: [
       { tier: 'safe', skill: 'perception', label: 'Find sound treads',
@@ -1583,7 +1596,7 @@ const CHALLENGES = [
       { tier: 'risky', skill: 'arcana', label: 'Bask in the tear', party: true, failEffect: 'debuff',
         win: 'The party drinks deep — every spell and ability brims full!',
         lose: 'Raw magic sears your minds.',
-        fail: { debuff: 'baned', debuffTargets: 'party', debuffDuration: 40 } }
+        fail: { debuff: 'baned', debuffTargets: 'party', debuffDuration: 42 } }
     ]
   },
   {
@@ -1613,7 +1626,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'arcana', label: 'Read a chapter aloud',
         win: 'Power thrums through you — experience burns itself into memory.',
         lose: 'The words writhe — your stomach turns.', failEffect: 'debuff',
-        fail: { debuff: 'frightened', debuffDuration: 20 } },
+        fail: { debuff: 'frightened', debuffDuration: 24 } },
       { tier: 'risky', skill: 'arcana', label: 'Devour the book', party: true, failEffect: 'debuff',
         win: 'The party absorbs the tome entire — a flood of hard-won insight!',
         lose: 'Forbidden knowledge scourges your minds.',
@@ -1640,7 +1653,7 @@ const CHALLENGES = [
     ]
   },
   {
-    name: 'Battle Standard', type: 'room', reward: { kind: 'buffEffect', buffKey: 'raging', buffTargets: 'party', buffDuration: 25 },
+    name: 'Battle Standard', type: 'room', reward: { kind: 'buffEffect', buffKey: 'raging', buffTargets: 'party', buffDuration: 30 },
     desc: 'A tattered banner stands in a forgotten rallying point. Raising it might stir old battle-fury.',
     approaches: [
       { tier: 'safe', skill: 'history', label: 'Identify the legion',
@@ -1667,7 +1680,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'investigation', label: 'Reconstruct the death',
         win: 'You piece together the last moments — the boss\'s nature is laid bare.',
         lose: 'The scene was staged; you can\'t trust it.', failEffect: 'debuff',
-        fail: { debuff: 'frightened', debuffDuration: 15 } }
+        fail: { debuff: 'frightened', debuffDuration: 18 } }
     ]
   },
   {
@@ -1699,7 +1712,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'nature', label: 'Harvest the right crop',
         win: 'You pick only the benign heads — a potent party salve.',
         lose: 'You bruise the wrong heads — spores puff out.', failEffect: 'poison',
-        fail: { debuff: 'poisoned', dotDmg: 1, debuffDuration: 20 } },
+        fail: { debuff: 'poisoned', dotDmg: 1, debuffDuration: 24 } },
       { tier: 'risky', skill: 'nature', label: 'Wring the whole carpet', party: true, failEffect: 'poison',
         win: 'You harvest it all — enough nectar to drench the party in healing!',
         lose: 'A cloud of crimson spores chokes everyone.',
@@ -1719,13 +1732,13 @@ const CHALLENGES = [
       { tier: 'risky', skill: 'nature', label: 'Invoke the grove\'s spirit', party: true, failEffect: 'debuff',
         win: 'The grove blazes — every debuff scourged, the party inspired!',
         lose: 'The spirit is offended — it saps your vigor.',
-        fail: { debuff: 'weakened', debuffTargets: 'party', debuffDuration: 20 } }
+        fail: { debuff: 'weakened', debuffTargets: 'party', debuffDuration: 24 } }
     ]
   },
 
   /* -- Religion -- */
   {
-    name: 'Dedicated Offering', type: 'room', reward: { kind: 'buffEffect', buffKey: 'sacredWeapon', buffTargets: 'party', buffDuration: 25 },
+    name: 'Dedicated Offering', type: 'room', reward: { kind: 'buffEffect', buffKey: 'sacredWeapon', buffTargets: 'party', buffDuration: 30 },
     desc: 'An altar waits for an offering of blood or gold. A proper dedication could consecrate your blades.',
     approaches: [
       { tier: 'safe', skill: 'religion', label: 'Leave a token',
@@ -1805,7 +1818,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'insight', label: 'Spot the lie he wants to tell',
         win: 'You feed him the lie he\'s aching to tell — and learn the boss\'s weakness.',
         lose: 'He reads YOU instead — and grins.', failEffect: 'debuff',
-        fail: { debuff: 'baned', debuffDuration: 20 } }
+        fail: { debuff: 'baned', debuffDuration: 24 } }
     ]
   },
   {
@@ -1833,7 +1846,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'medicine', label: 'Proper triage',
         win: 'You clean, stitch, and dose — the party is healed AND cleansed.',
         lose: 'The kit\'s poultice was tainted.', failEffect: 'poison',
-        fail: { debuff: 'poisoned', dotDmg: 1, debuffTargets: 'party', debuffDuration: 20 } }
+        fail: { debuff: 'poisoned', dotDmg: 1, debuffTargets: 'party', debuffDuration: 24 } }
     ]
   },
   {
@@ -1846,13 +1859,13 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'medicine', label: 'Open the corpse',
         win: 'The plague\'s signature is unmistakable — the boss\'s nature is clear.',
         lose: 'A spray of infected blood catches you.', failEffect: 'poison',
-        fail: { debuff: 'poisoned', dotDmg: 2, debuffDuration: 25 } }
+        fail: { debuff: 'poisoned', dotDmg: 2, debuffDuration: 30 } }
     ]
   },
 
   /* -- Perception -- */
   {
-    name: 'Sniper\'s Nest', type: 'room', reward: { kind: 'buffEffect', buffKey: 'bearTotem', buffTargets: 'party', buffDuration: 25 },
+    name: 'Sniper\'s Nest', type: 'room', reward: { kind: 'buffEffect', buffKey: 'bearTotem', buffTargets: 'party', buffDuration: 30 },
     desc: 'An old sniper\'s roost overlooks the next hall. The vantage hardens you to what\'s coming.',
     approaches: [
       { tier: 'safe', skill: 'investigation', label: 'Check the roost',
@@ -1973,7 +1986,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'intimidation', label: 'Demand the box',
         win: 'You shout the old warlord\'s name — the tribute is yours.',
         lose: 'Your voice cracks — the statue\'s gaze frightens you.', failEffect: 'frighten',
-        fail: { debuff: 'frightened', debuffDuration: 20 } },
+        fail: { debuff: 'frightened', debuffDuration: 24 } },
       { tier: 'risky', skill: 'intimidation', label: 'Claim the warlord\'s name', party: true, failEffect: 'frighten',
         win: 'Five voices bellow the name — the strongbox and more are yours!',
         lose: 'The name does not take — dread fills the chamber.',
@@ -1981,7 +1994,7 @@ const CHALLENGES = [
     ]
   },
   {
-    name: 'Break the Line', type: 'room', reward: { kind: 'buffEffect', buffKey: 'raging', buffTargets: 'party', buffDuration: 25 },
+    name: 'Break the Line', type: 'room', reward: { kind: 'buffEffect', buffKey: 'raging', buffTargets: 'party', buffDuration: 30 },
     desc: 'A shield-wall of old constructs blocks the way. A roaring charge could shatter their nerve before a blade is drawn.',
     approaches: [
       { tier: 'safe', skill: 'history', label: 'Find the weak file',
@@ -2008,11 +2021,11 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'performance', label: 'Play a piece',
         win: 'Your tune wins — the bard gifts you a verse of hard-won experience.',
         lose: 'You fumble a phrase — the bard jeers.', failEffect: 'debuff',
-        fail: { debuff: 'baned', debuffDuration: 20 } },
+        fail: { debuff: 'baned', debuffDuration: 24 } },
       { tier: 'risky', skill: 'performance', label: 'A full ensemble', party: true, failEffect: 'debuff',
         win: 'The party plays as one — the bard is moved to teach you everything!',
         lose: 'A cacophony — the bard\'s criticism cuts deep.',
-        fail: { debuff: 'baned', debuffTargets: 'party', debuffDuration: 25 } }
+        fail: { debuff: 'baned', debuffTargets: 'party', debuffDuration: 30 } }
     ]
   },
   {
@@ -2025,7 +2038,7 @@ const CHALLENGES = [
       { tier: 'standard', skill: 'performance', label: 'Harmonize',
         win: 'You weave the melody into a balm — the party heals.',
         lose: 'You nod off mid-phrase; everyone wakes groggy.', failEffect: 'debuff',
-        fail: { debuff: 'slowed', debuffTargets: 'party', debuffDuration: 15 } }
+        fail: { debuff: 'slowed', debuffTargets: 'party', debuffDuration: 18 } }
     ]
   },
 
@@ -2067,7 +2080,7 @@ const CHALLENGES = [
 
   /* -- Camp (expanding the now-wired camp pool) -- */
   {
-    name: 'Tavern Tales', type: 'camp', reward: { kind: 'buffEffect', buffKey: 'inspired', buffTargets: 'party', buffDuration: 40 },
+    name: 'Tavern Tales', type: 'camp', reward: { kind: 'buffEffect', buffKey: 'inspired', buffTargets: 'party', buffDuration: 42 },
     desc: 'Around the merchant\'s fire, a traveling bard offers a tale for a tale. A good story could lift spirits before you descend.',
     approaches: [
       { tier: 'safe', skill: 'history', label: 'Recall an old legend',
@@ -2704,7 +2717,10 @@ export function fireChallenge(game, challenge) {
   _phase = 'choose';
   _activeChallenge = { game, challenge, approaches };
 
-  showChoosePhase(_activeChallenge);
+  /* The first-time card is read before the challenge appears, not over it. */
+  firstRunTip('skillChallenge');
+  const shown = _activeChallenge;
+  whenCardsIdle(() => { if (_activeChallenge === shown) showChoosePhase(shown); });
 }
 
 /**
@@ -2735,7 +2751,7 @@ function resolveApproach(state, apprIdx, chosenHero) {
     const needed = Math.ceil(alive.length / 2);
     const rolls = alive.map(h => {
       const bonus = skillBonus(game, h, appr.skill) + momentum;
-      const d20 = die(20);
+      const d20 = skillD20(h, appr.skill);
       const total = d20 + bonus;
       const ok = d20 === 20 ? true : d20 === 1 ? false : total >= dc;
       return { hero: h, name: h.data.name, d20, bonus, total, ok };
@@ -2748,7 +2764,7 @@ function resolveApproach(state, apprIdx, chosenHero) {
     const hero = chosenHero || appr.heroes[0]?.hero;
     if (!hero) { _phase = 'choose'; return; }
     const bonus = skillBonus(game, hero, appr.skill) + momentum;
-    const d20 = die(20);
+    const d20 = skillD20(hero, appr.skill);
     const total = d20 + bonus;
     const isCrit = d20 === 20;
     const isCritFail = d20 === 1;
@@ -3555,7 +3571,7 @@ export const CHALLENGES_DYNAMIC = [
   {
     key: 'shrine',
     name: 'Ancient Shrine', type: 'room',
-    reward: { kind: 'buffEffect', buffKey: 'shielded', buffTargets: 'party', buffDuration: 25 },
+    reward: { kind: 'buffEffect', buffKey: 'shielded', buffTargets: 'party', buffDuration: 30 },
     desc: 'A weathered shrine hums with old power. The correct rites might amplify its blessing before you rest.',
     approaches: [
       { tier: 'safe', skill: 'religion', label: 'Offer a quiet prayer',

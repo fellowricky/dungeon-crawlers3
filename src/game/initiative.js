@@ -19,10 +19,13 @@
  * Mixed onto Game.prototype in game.js.
  */
 import { mod } from './srd.js';
+import { canSee } from './light_rules.js';
 import { ROUND_SECONDS, clearCombatEffects } from './conditions.js';
+import { featInitiativeBonus } from './features.js';
 import { Trace } from './ai_trace.js';
 import { Motion, describeActor } from './motion_debug.js';
 import { beginTurnFx } from './fx_clock.js';
+import { actionAnimBusy } from './turn_engine.js';
 import { firstRunTip } from './help_ui.js';
 
 /* Seconds each combatant holds the spotlight before the turn passes.
@@ -43,7 +46,7 @@ const rollD20 = () => 1 + Math.floor(Math.random() * 20);
 
 /** Initiative modifier: heroes use DEX; monsters derive theirs from speed. */
 function initMod(e) {
-  if (e._side === 'hero') return mod((e.data.effStats && e.data.effStats.dex) || 10);
+  if (e._side === 'hero') return mod((e.data.effStats && e.data.effStats.dex) || 10) + featInitiativeBonus(e.data);   // Alert: +5
   const spd = (e.data && e.data.speed) || 3;
   return Math.max(-3, Math.min(5, Math.round(spd - 3)));   // nimble = higher
 }
@@ -74,7 +77,12 @@ export const initiativeMethods = {
   _initParticipants() {
     const parts = [];
     for (const h of this.heroes) if (h.data.hp > 0) { h._side = 'hero'; parts.push(h); }
-    for (const m of this.monsters) if (m.active && m.data.hp > 0) { m._side = 'mon'; parts.push(m); }
+    for (const m of this.monsters) if (m.active && m.data.hp > 0) {
+      /* A dominated creature keeps its turn but is not a hostile: 'ally' so
+         `engaged` below cannot be held open by the party's own thrall. */
+      m._side = (typeof this.isDominated === 'function' && this.isDominated(m)) ? 'ally' : 'mon';
+      parts.push(m);
+    }
     return parts;
   },
 
@@ -109,6 +117,13 @@ export const initiativeMethods = {
        the actor then does upgrades it. See fx_clock.js. */
     beginTurnFx();
     this.initiative._turnAge = 0;
+    if (this._camDir) {
+      this._camDir.subject = null;
+      this._camDir.subjectUntil = 0;
+    }
+    if (typeof globalThis.clearCombatActionFocus === 'function') {
+      globalThis.clearCombatActionFocus();
+    }
     if (this.clearPendingMove) this.clearPendingMove();
     if (this.cancelAttackTargeting) this.cancelAttackTargeting();
     if (this.cancelSpellTargeting) this.cancelSpellTargeting();
@@ -134,6 +149,7 @@ export const initiativeMethods = {
       a._bonusLeveled = false;
       a._actionSurged = false;
       a._pendingAttacks = 0;
+      a._castQueued = false;
       /* Tactical turn-engine budgets (turn_engine.js). Additive only — these
          fields are dormant until Phase 1 gates movement on moveLeft / canMove.
          Dash adds to moveLeft; everything else spends these flags. */
@@ -147,6 +163,8 @@ export const initiativeMethods = {
       /* Process initiative-driven monster auras according to 5e SRD rules */
       if (this.processTurnAuras) this.processTurnAuras(a);
       if (this.processTurnZones) this.processTurnZones(a);
+      /* Spells that keep acting each round (Spiritual Weapon, Call Lightning…) */
+      if (this.processTurnSustained) this.processTurnSustained(a);
     }
     this.fxUpdateInitTracker();
   },
@@ -154,6 +172,22 @@ export const initiativeMethods = {
   _rollInitiative(parts) {
     firstRunTip('initiative');
     for (const e of parts) { e._init = rollD20() + initMod(e); e._initTb = Math.random(); }
+    /* Surprise from the dark (docs/LIGHT_IDEAS.md 6): whoever no enemy can see
+       when the fight opens gets +5 — monsters lurking in an unlit room get
+       the jump on a party without light, and a party creeping in the dark
+       gets the jump on them. */
+    const isMon = e => !!(this.monsters && this.monsters.includes(e));
+    const hidden = { heroes: 0, monsters: 0 };
+    for (const e of parts) {
+      const foes = parts.filter(o => isMon(o) !== isMon(e) && o.data && o.data.hp > 0);
+      if (foes.length && !foes.some(o => canSee(o, e))) {
+        e._init += 5;
+        if (this.D && this.D.timeOfDay === 'night') e._init += 2;   // 48: night ambushes bite harder
+        hidden[isMon(e) ? 'monsters' : 'heroes']++;
+      }
+    }
+    if (hidden.monsters && this.fxLog) this.fxLog('🌑 Something moves in the dark — the enemy strikes first!', 'crit');
+    if (hidden.heroes && this.fxLog) this.fxLog('🌑 The party slips out of the dark and takes them by surprise!', 'crit');
     parts.sort((a, b) => b._init - a._init || initMod(b) - initMod(a) || b._initTb - a._initTb);
     this.initiative.order = parts;
     this.initiative.idx = 0;
@@ -207,6 +241,16 @@ export const initiativeMethods = {
   _advanceTurn() {
     const o = this.initiative.order;
     if (!o.length) { this.initiative.active = false; return; }
+    /* Time Stop: the caster gets 1d4+1 turns in a row while everyone else is
+       frozen. No clock advance either — no time passes for anyone else. */
+    const cur = o[this.initiative.idx];
+    if (cur && cur._timeStopTurns > 0 && cur.data && cur.data.hp > 0) {
+      cur._timeStopTurns--;
+      this.fxLog(`⏳ Time stands still — ${cur.data.name} acts again (${cur._timeStopTurns} more).`, 'sys');
+      this.initiative.timer = TURN_TIME;
+      this._beginTurn();
+      return;
+    }
     /* One spotlight has been spent — bank its share of the round before the
        next actor's effects are ticked, so durations burn down in rounds. */
     this._advanceCombatClock();
@@ -244,6 +288,9 @@ export const initiativeMethods = {
    * a rest, not on a fight.
    */
   _endCombatEffects() {
+    /* Before the effect sweep wipes 'dominated' and hands the creature back
+       its own will next to a party that just won. */
+    if (typeof this.resolveDominatedAtCombatEnd === 'function') this.resolveDominatedAtCombatEnd();
     const seen = new Set();
     let cleared = 0;
     for (const e of this.initiative.order) {
@@ -253,7 +300,7 @@ export const initiativeMethods = {
       cleared += clearCombatEffects(e);
       /* Per-fight bookkeeping that predates the EFFECTS registry and so isn't
          reachable from clearCombatEffects. */
-      if (e._side === 'mon') { e.burn = null; e.cutWordsUntil = 0; e._noRegenUntil = 0; }
+      if (e._side === 'mon' || e._side === 'ally') { e.burn = null; e.cutWordsUntil = 0; e._noRegenUntil = 0; }
       this.fxStatusTray(e);
     }
     for (const h of this.heroes) {
@@ -267,6 +314,10 @@ export const initiativeMethods = {
     }
     /* Concentration can't outlive the spells it was holding up. */
     for (const h of this.heroes) if (h.conc && this.breakConcentration) this.breakConcentration(h, 'the fight ended');
+    for (const h of this.heroes) { h.sustained = null; h._timeStopTurns = 0; }
+    /* A creature still banished when the fight ends comes back (5e: it
+       returns when the spell ends) — asleep, to be met again. */
+    for (const m of this.monsters || []) if (m._banished) { this.returnBanished(m); m.active = false; m._threat = null; }
 
     if (cleared) {
       this.fxLog(`— the fight ends; ${cleared} lingering effect${cleared > 1 ? 's fade' : ' fades'} —`, 'sys');
@@ -285,6 +336,10 @@ export const initiativeMethods = {
   },
 
   updateInitiative(dt) {
+    /* The boss intro owns the screen: no roll-off may start under it. It is
+       armed in the same frame, just before this runs, so without this the dice
+       landed on top of the opening shot. The roll happens when it ends. */
+    if (this.bossCutscene) return;
     const parts = this._initParticipants();
     const engaged = parts.some(e => e._side === 'mon');
 
@@ -370,6 +425,9 @@ export const initiativeMethods = {
        only the projectile pool was consulted and composite animations were
        invisible to this check entirely. */
     if (presenting || (cur && cur._pendingAttacks > 0)) return;
+    /* A hero's cast or swing plays to its last frame before the spotlight
+       moves on (combat.js heroCombat's busy gate holds the hero meanwhile). */
+    if (cur && actionAnimBusy(cur, this)) return;
 
     /* Paced turn advance for AI actors (monsters or auto-mode heroes): the actor
        has acted, stopped moving, resolved its multi-attacks — and `presenting`

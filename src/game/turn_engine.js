@@ -24,6 +24,7 @@ import { FLOOR, POOL, CHOKEPOINT_COST, COMBAT_MOVE_BOOST, HERO_ATTACK_CD, MONSTE
 import { canFly } from './pathfinding.js';
 import { RACES } from './srd.js';
 import { getEffectMods, applyEffect, hasEffect, ROUND_SECONDS } from './conditions.js';
+import { hasFeat } from './features.js';
 import { Motion } from './motion_debug.js';
 
 /* ── Tunables ──────────────────────────────────────────────────────── */
@@ -144,6 +145,29 @@ export function strikeInterval(firstStrikeDelaySec) {
 export function attackAnimDelay(actor) {
   const anim = actor && actor.ent && actor.ent.anim;
   return anim && typeof anim.attackImpactDelay === 'function' ? (anim.attackImpactDelay() || 0) : 0;
+}
+
+/**
+ * Seconds of `actor`'s action animation (a spellcast, a swing) still to play;
+ * 0 when none is playing, or when the actor has no animator (headless).
+ *
+ * An action animation plays out before the actor does anything else: it does
+ * not walk off mid-cast, and a bonus action and its action never animate on
+ * top of each other — the second starts when the first has finished.
+ */
+export function actionAnimRemaining(actor) {
+  const anim = actor && actor.ent && actor.ent.anim;
+  if (!anim || typeof anim.attackRemaining !== 'function') return 0;
+  const left = anim.attackRemaining();
+  return left > 0 ? left : 0;
+}
+
+/** True while `actor`'s action animation is still playing. */
+export function actionAnimBusy(actor, game = null) {
+  if (actionAnimRemaining(actor) > 0) return true;
+  if (actor && actor._pendingAttacks > 0) return true;
+  if (game && typeof game.fxActionBusy === 'function' && game.fxActionBusy(actor)) return true;
+  return false;
 }
 
 /**
@@ -349,6 +373,54 @@ export function validateCommand(cmd, budgets) {
 /* ── Mixin: instance methods on Game.prototype ────────────────────── */
 export const turnEngineMethods = {
   /**
+   * The one plan for a manual move, shared by the hover preview and the
+   * confirming click so the two cannot disagree. It slices the path with the
+   * SAME accounting moveStep spends: PHB alternating diagonals continuing from
+   * the actor's diagCount, difficult terrain doubling a straight step, and a
+   * step allowed while any budget is left before it. Counting every square as
+   * 5 ft, as the preview used to, parked the hero a square short of the arrow
+   * as soon as the route had two diagonals in it.
+   *
+   * `targetCell` is resolved to floor the same way for both callers.
+   * Returns null when there is nowhere to go, else
+   *   { goalCell, targetCell, path, costFt, fullCostFt, inBudget }
+   * where `goalCell` is where the budget runs out, `targetCell` the resolved
+   * square aimed at, and `path` the budget-limited walk for setEntityPath.
+   */
+  planManualMove(e, targetCell) {
+    if (!e || !this.D || targetCell < 0) return null;
+    const goal = typeof this.nearFloorCell === 'function' ? this.nearFloorCell(targetCell, 3) : targetCell;
+    if (goal < 0) return null;
+    const start = this.cellOf(e.x, e.z);
+    if (start < 0 || goal === start) return null;
+    const rawPath = this.findPath(start, goal, { mover: e });
+    if (!rawPath || rawPath.length < 2) return null;
+    const W = this.D.W;
+    const budget = e.moveLeft != null ? e.moveLeft : this.cellsForSpeed(e);
+    let left = budget, diag = e.diagCount | 0, full = 0, spent = 0, last = 0;
+    for (let k = 1; k < rawPath.length; k++) {
+      const from = rawPath[k - 1], to = rawPath[k];
+      const dx = Math.sign((to % W) - (from % W));
+      const dy = Math.sign(Math.floor(to / W) - Math.floor(from / W));
+      const isDiff = typeof this.isDifficultTerrain === 'function' && this.isDifficultTerrain(to, e);
+      const s = stepCost(dx, dy, diag, isDiff ? 2 : 1);
+      diag = s.diagCount;
+      full += s.cost;
+      if (left > 0) { spent += Math.min(s.cost, left); left -= s.cost; last = k; }
+    }
+    if (last < 1) return null;
+    const path = rawPath.slice(0, last + 1);
+    return {
+      goalCell: path[path.length - 1],
+      targetCell: goal,
+      path,
+      costFt: Math.round(spent * 5),
+      fullCostFt: Math.round(full * 5),
+      inBudget: full <= budget
+    };
+  },
+
+  /**
    * Movement budget in cells for one entity this turn.
    *   Heroes: floor(speedFt / 5) × effect-speedMul (5 ft = 1 grid tile)
    *   Monsters: data.speedCells (default 6) × effect-speedMul
@@ -438,6 +510,10 @@ export const turnEngineMethods = {
     e.reactionUsed = false;
     e.diagCount = 0;
     e.disengageActive = false;
+    /* feat bookkeeping: GWM's crit/kill trigger, Mobile's melee targets */
+    e._lastHitCrit = false;
+    e._lastHitKilled = false;
+    e._meleeTargets = null;
     e.attacksLeft = null;
     e.attackActionCommitted = false;
   },
@@ -735,14 +811,21 @@ export const turnEngineMethods = {
    */
   oaHostiles(e) {
     const isHero = (e._side === 'hero') || (this.heroes && this.heroes.includes(e));
-    const pool = isHero
-      ? (this.monsters || []).filter(m => m.active && m.data && m.data.hp > 0 && !m.data.ranged)
+    const dominated = (m) => typeof this.isDominated === 'function' && this.isDominated(m);
+    const hostileMons = () => (this.monsters || []).filter(m => m.active && m.data && m.data.hp > 0 && !m.data.ranged && !dominated(m));
+    /* A dominated creature is threatened by the other monsters, not by the
+       party it is fighting for; the party is threatened only by real hostiles. */
+    const pool = isHero ? hostileMons()
+      : dominated(e) ? hostileMons()
       : (this.heroes || []).filter(h => h.data && h.data.hp > 0 && this._hasMeleeProfile(h));
+    /* Mobile: a creature you hit in melee this turn gets no opportunity attack */
+    const mobile = isHero && e.data && hasFeat(e.data, 'mobile') && e._meleeTargets;
     const out = [];
     for (const o of pool) {
       if (o === e || o.reactionUsed) continue;
       if (getEffectMods(o).incapacitated) continue;
       if (hasEffect(o, 'charmed') || hasEffect(o, 'frightened')) continue;
+      if (mobile && e._meleeTargets.has(o)) continue;
       out.push({ entity: o, threatened: this.threatenedCells(o) });
     }
     return out;
@@ -763,17 +846,20 @@ export const turnEngineMethods = {
   resolveOpportunityAttacks(mover, fromCell, toCell) {
     if (!mover || fromCell === toCell) return;
     if (!this.initiative || !this.initiative.active) return;
-    if (mover.disengageActive) return;
     if (!mover.data || mover.data.hp <= 0) return;
+    /* Disengage suppresses opportunity attacks — except from a Sentinel. */
+    let hostiles = this.oaHostiles(mover);
+    if (mover.disengageActive) hostiles = hostiles.filter(o => o.entity.data && hasFeat(o.entity.data, 'sentinel'));
+    if (!hostiles.length) return;
 
-    const provoked = provokesOA(this.oaHostiles(mover), fromCell, toCell);
+    const provoked = provokesOA(hostiles, fromCell, toCell);
     for (const o of provoked) {
       if (mover.data.hp <= 0) break;
       o.reactionUsed = true;
       this.fxLog(`⚔️ ${o.data.name} takes an opportunity attack at ${mover.data.name}!`, 'sys');
       if (o._side === 'hero' || (this.heroes && this.heroes.includes(o))) {
         this.heroAttackRoll(o, mover, this.heroes.filter(x => x.data.hp > 0),
-          { profile: o.data.weaponProfile || o.data.lastProfile });
+          { profile: o.data.weaponProfile || o.data.lastProfile, opportunity: true });   // Sentinel roots on a hit
       } else {
         this.monsterAttack(o, mover);
       }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { GuildManager, FACILITY_DEFINITIONS, getApothecaryBrewOutput } from '../src/game/guild.js';
+import { GuildManager, FACILITY_DEFINITIONS, getApothecaryBrewOutput, storedHeroCap, trainingFloorsForGain } from '../src/game/guild.js';
 
 describe('GuildManager', () => {
   let fakeGame;
@@ -70,25 +70,58 @@ describe('GuildManager', () => {
     expect(fakeGame.potions.heal).toBe(2);
   });
 
-  it('dispatches catch-up training XP to assigned idle heroes and respects party level cap', () => {
-    guild.upgradeFacility('training_grounds'); // Level 1 (6% rate)
-    guild.assignHero('Arthur', 'training_grounds');
+  it('unlocks drinkable potion recipes as the Apothecary levels', () => {
+    guild.upgradeFacility('apothecary');
+    const lvl1 = guild.listBrewRecipes();
+    expect(lvl1.some(r => r.baseKey === 'Potion of Healing' && r.unlocked)).toBe(true);
+    expect(lvl1.some(r => r.baseKey === 'Potion of Inspiration' && r.unlocked)).toBe(true);
+    expect(lvl1.some(r => r.baseKey === 'Potion of Foresight' && !r.unlocked)).toBe(true);
+    expect(lvl1.some(r => r.baseKey === 'Potion of Greater Healing' && !r.unlocked)).toBe(true);
+    expect(lvl1.every(r => r.thrown !== true)).toBe(true);
 
-    fakeGame.heroes = [
-      { data: { name: 'Active1', level: 3 } },
-      { data: { name: 'Active2', level: 3 } }
-    ];
+    guild.facilityLevels.apothecary = 4;
+    const lvl4 = guild.listBrewRecipes();
+    expect(lvl4.some(r => r.baseKey === 'Potion of Greater Healing' && r.unlocked)).toBe(true);
+  });
 
-    // Arthur is level 1 with 0 XP. Active party is level 3.
-    guild.dispatchDungeonXp(500); // 6% of 500 = 30 XP
-    expect(fakeGame.storedHeroes[0].xp).toBe(30);
+  it('brews the selected still recipe over floors, scaled by still level and alchemist INT', () => {
+    guild.upgradeFacility('apothecary');
+    guild.assignHero('Arthur', 'apothecary');
+    fakeGame.inventory = [];
 
-    // If Arthur is already at party level (Level 3), he gains 0 XP
-    fakeGame.storedHeroes[0].level = 3;
-    fakeGame.storedHeroes[0].xp = 900;
-    guild.dispatchDungeonXp(500);
-    expect(fakeGame.storedHeroes[0].xp).toBe(900); // capped, no increase
-    expect(fakeGame.storedHeroes[0].level).toBe(3);
+    expect(guild.setBrewRecipe('Potion of Foresight').ok).toBe(false);
+    expect(guild.setBrewRecipe('Potion of Inspiration').ok).toBe(true);
+    expect(guild.apothecaryRecipe).toBe('Potion of Inspiration');
+    expect(guild.apothecaryFloors).toBe(0);
+
+    const preview = guild.getStillPreview();
+    expect(preview.duration).toBeGreaterThanOrEqual(4);
+    for (let i = 0; i < preview.duration - 1; i++) guild.onFloorCleared();
+    expect(fakeGame.inventory).toHaveLength(0);
+
+    guild.onFloorCleared();
+    expect(fakeGame.inventory.length).toBeGreaterThanOrEqual(1);
+    expect(fakeGame.inventory[0].buffKey).toBe('inspired');
+  });
+
+  it('buys yard gear, assigns a hero, and raises that ability over floors', () => {
+    guild.upgradeFacility('training_grounds');
+    fakeGame.storedHeroes[0].stats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+
+    const buy = guild.buyTrainingGear('pell');
+    expect(buy.ok).toBe(true);
+    expect(guild.trainingStations).toHaveLength(1);
+    expect(guild.assignToStation(buy.id, 'Arthur').ok).toBe(true);
+
+    const needed = trainingFloorsForGain(10, 1);
+    for (let i = 0; i < needed - 1; i++) guild.onFloorCleared();
+    expect(fakeGame.storedHeroes[0].stats.str).toBe(10);
+    guild.onFloorCleared();
+    expect(fakeGame.storedHeroes[0].stats.str).toBe(11);
+
+    const up = guild.upgradeTrainingGear(buy.id);
+    expect(up.ok).toBe(true);
+    expect(guild.trainingStations[0].level).toBe(2);
   });
 
   it('serializes and deserializes guild state correctly', () => {
@@ -218,6 +251,20 @@ describe('GuildManager — Armory', () => {
   it('is exposed as a real facility so it shows up in the guild UI', () => {
     expect(FACILITY_DEFINITIONS.armory).toBeDefined();
     expect(FACILITY_DEFINITIONS.armory.getEffectText(3)).toMatch(/\d+/);
+  });
+
+  it('does not take a worker assignment', () => {
+    expect(FACILITY_DEFINITIONS.armory.assignable).toBe(false);
+    guild.facilityLevels.armory = 1;
+    fakeGame.storedHeroes = [{ name: 'Quartermaster' }];
+    expect(guild.assignHero('Quartermaster', 'armory')).toBe(false);
+    expect(guild.getAssignedHeroes('armory')).toEqual([]);
+  });
+
+  it('clears a leftover Armory job on load', () => {
+    guild.deserialize({ heroAssignments: { Nyx: 'armory', Arthur: 'blacksmith' } });
+    expect(guild.heroAssignments.Nyx).toBeUndefined();
+    expect(guild.heroAssignments.Arthur).toBe('blacksmith');
   });
 });
 
@@ -350,6 +397,14 @@ describe('GuildManager — Enchanter Spire', () => {
     guild.facilityLevels.enchanter = 1;
   });
 
+  it('previews dust yield from rarity before destroying the item', () => {
+    const preview = guild.getDisenchantPreview({ rarity: 'rare' });
+    expect(preview.dust).toBe(13); // 12 × 1.10 at Enchanter 1
+    expect(preview.essencePool).toEqual(['fire', 'frost', 'lightning']);
+    guild.facilityLevels.enchanter = 5;
+    expect(guild.getDisenchantPreview({ rarity: 'common' }).dust).toBe(5);
+  });
+
   it('disenchants gear into Arcane Dust and Essences', () => {
     const rareSword = { name: 'Rare Blade', slot: 'weapon', rarity: 'rare' };
     fakeGame.inventory.push(rareSword);
@@ -366,18 +421,23 @@ describe('GuildManager — Enchanter Spire', () => {
     guild.essences.dust = 50;
     guild.essences.fire = 10;
 
-    const craftRes = guild.craftRune('rune_flame');
+    const craftRes = guild.craftRune('flame_1');
     expect(craftRes.ok).toBe(true);
-    expect(guild.craftedRunes).toHaveLength(1);
+    const rune = fakeGame.inventory.find(i => i && i.slot === 'rune');
+    expect(rune).toBeDefined();
+    expect(rune.runeKey).toBe('flame_1');
 
-    const sword = { name: 'Broadsword', slot: 'weapon', kind: 'weapon' };
+    const sword = { name: 'Broadsword', slot: 'weapon', kind: 'weapon', rarity: 'common', color: '#b4b0a4' };
     fakeGame.inventory.push(sword);
 
-    const applyRes = guild.applyRuneToItem(sword, guild.craftedRunes[0].id);
+    const applyRes = guild.applyRuneToItem(sword, rune);
     expect(applyRes.ok).toBe(true);
-    expect(sword.inscribedRune).toBeDefined();
-    expect(sword.inscribedRune.runeKey).toBe('rune_flame');
-    expect(guild.craftedRunes).toHaveLength(0);
+    expect(sword.inscribedRunes).toHaveLength(1);
+    expect(sword.inscribedRunes[0].runeKey).toBe('flame_1');
+    expect(sword.rarity).toBe('uncommon');
+    expect(fakeGame.inventory.find(i => i && i.slot === 'rune')).toBeUndefined();
+
+    expect(guild.craftRune('flame_3').ok).toBe(false);
   });
 });
 
@@ -439,6 +499,24 @@ describe('GuildManager — War Room & Blacksmith Salvage', () => {
     expect(craftRes.finalPS).toBeGreaterThan(0);
   });
 
+  it('lists melee bases under weapon and can pin one', () => {
+    const melee = guild.listCraftBases('weapon');
+    const ranged = guild.listCraftBases('ranged');
+    expect(melee.some(b => b.name === 'Longsword')).toBe(true);
+    expect(melee.some(b => b.name === 'Longbow')).toBe(false);
+    expect(ranged.some(b => b.name === 'Longbow')).toBe(true);
+
+    guild.materials.iron = 40;
+    guild.materials.leather = 40;
+    const res = guild.craftEquipment('weapon', 30, 'Longsword');
+    expect(res.ok).toBe(true);
+    expect(res.item.baseKey).toBe('Longsword');
+    expect(res.item.slot).toBe('weapon');
+
+    const bad = guild.craftEquipment('weapon', 30, 'Longbow');
+    expect(bad.ok).toBe(false);
+  });
+
   it('bulk salvages unlocked gear by PS score while protecting locked and higher PS gear', () => {
     const lowSword = { name: 'Rusty Dagger', slot: 'weapon', baseKey: 'Dagger', rarity: 'common' }; // low PS
     const lockedLowBoots = { name: 'Old Boots', slot: 'boots', baseKey: 'Boots', rarity: 'common', locked: true }; // locked
@@ -457,6 +535,68 @@ describe('GuildManager — War Room & Blacksmith Salvage', () => {
     expect(fakeGame.inventory).toContain(highPlate); // higher PS kept
     expect(fakeGame.inventory).toContain(potion); // potions kept
     expect(guild.materials.iron).toBeGreaterThan(0);
+  });
+
+  it('never scraps dyes, consumables or kits — only weapons, armor and accessories', () => {
+    const ring = { name: 'Copper Ring', slot: 'ring', rarity: 'common' };
+    const dye = { name: 'Crimson Dye', slot: 'dye', dyeColor: '#c00', rarity: 'common', qty: 3 };
+    const scroll = { name: 'Scroll of Fireball', slot: 'trinket', scroll: true, spellKey: 'fireball', qty: 2 };
+    const brew = { name: 'Potion of Speed', slot: 'trinket', potion: true, buffKey: 'haste' };
+    const kit = { name: "Healer's Kit", slot: 'kit', rarity: 'common' };
+
+    fakeGame.inventory = [ring, dye, scroll, brew, kit];
+    const res = guild.salvageByPowerScore(1000);
+
+    expect(res.count).toBe(1);
+    expect(fakeGame.inventory).toEqual([dye, scroll, brew, kit]);
+    expect(guild.salvageItem(dye).ok).toBe(false);
+    expect(guild.salvageItem(scroll).ok).toBe(false);
+    expect(fakeGame.inventory).toContain(dye);
+  });
+});
+
+/* ── Living Quarters: stored-hero bunks ──────────────────────────────── */
+describe('GuildManager — Living Quarters bunks', () => {
+  let fakeGame, guild;
+
+  beforeEach(() => {
+    fakeGame = { gold: 10000, storedHeroes: [], saveGame: () => {} };
+    guild = new GuildManager(fakeGame);
+    fakeGame.guild = guild;
+  });
+
+  it('default quarters (level 1) hold 8 stored heroes', () => {
+    expect(guild.getFacilityLevel('living_quarters')).toBe(1);
+    expect(storedHeroCap(1)).toBe(8);
+    expect(guild.getStoredHeroCap()).toBe(8);
+    expect(guild.canStoreHero()).toBe(true);
+  });
+
+  it('scales 6 + 2 per level', () => {
+    expect(storedHeroCap(0)).toBe(6);
+    expect(storedHeroCap(5)).toBe(16);
+    expect(storedHeroCap(10)).toBe(26);
+    guild.facilityLevels.living_quarters = 5;
+    expect(guild.getStoredHeroCap()).toBe(16);
+  });
+
+  it('effect text uses the same cap formula', () => {
+    expect(FACILITY_DEFINITIONS.living_quarters.getEffectText(1)).toMatch(/Max Stored Heroes: 8/);
+    expect(FACILITY_DEFINITIONS.living_quarters.getEffectText(10)).toMatch(/Max Stored Heroes: 26/);
+  });
+
+  it('free slots count storedHeroes against the cap', () => {
+    fakeGame.storedHeroes = Array.from({ length: 8 }, (_, i) => ({ name: `H${i}` }));
+    expect(guild.getStoredHeroFreeSlots()).toBe(0);
+    expect(guild.canStoreHero()).toBe(false);
+  });
+
+  it('over-cap reports zero free slots without trimming the bench', () => {
+    fakeGame.storedHeroes = Array.from({ length: 12 }, (_, i) => ({ name: `H${i}` }));
+    expect(guild.getStoredHeroCap()).toBe(8);
+    expect(guild.getStoredHeroFreeSlots()).toBe(0);
+    expect(guild.canStoreHero()).toBe(false);
+    expect(fakeGame.storedHeroes).toHaveLength(12);
   });
 });
 

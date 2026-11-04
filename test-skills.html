@@ -14,7 +14,7 @@
         height: 100vh;
         user-select: none;
       }
-      canvas { display: block; width: 100vw; height: 100vh; cursor: grab; }
+      canvas { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; cursor: grab; }
       canvas:active { cursor: grabbing; }
 
       #toolbar {
@@ -134,10 +134,18 @@
       <label><input type="checkbox" id="loop-cb" checked> Loop</label>
       <label>Interval <input type="range" id="interval" min="1" max="10" value="4" step="0.5"> <span id="interval-val">4.0s</span></label>
       <label><input type="checkbox" id="skip-travel-cb" title="Instantly show the impact, no flight"> Instant impact</label>
+      <label><input type="checkbox" id="area-cb" checked title="Outline the spell's real area of effect on the floor"> Hit area</label>
       <label><input type="checkbox" id="sfx-cb" checked> 🔊 Sound</label>
 
       <div class="sep"></div>
 
+      <label for="level-select" title="The caster's level: Eldritch Blast throws more bolts as it rises">Lv</label>
+      <select id="level-select">
+        <option value="1" selected>1</option>
+        <option value="5">5</option>
+        <option value="11">11</option>
+        <option value="17">17</option>
+      </select>
       <label for="attacker-select">Caster:</label>
       <select id="attacker-select">
         <option value="wizard" selected>Wizard</option>
@@ -150,22 +158,24 @@
 
       <label for="target-select">Target:</label>
       <select id="target-select">
-        <option value="dummy" selected>Training Dummy</option>
-        <option value="goblin">Goblin</option>
-        <option value="skeleton">Skeleton</option>
+        <option value="hobgoblin-ironback" selected>Red-Banner Ironback</option>
+        <option value="dummy">Training Dummy</option>
         <option value="orc">Orc Berserker</option>
         <option value="great-orb-of-eyes">Great Orb of Eyes</option>
+      </select>
+      <label for="status-select" title="Put a status on the targets to review its aura on their real sprites">Status:</label>
+      <select id="status-select"><option value="" selected>none</option></select>
+      <label for="targets-select" title="Extra targets of the same kind beside the first, to see area and multi-target spells land">×</label>
+      <select id="targets-select">
+        <option value="1" selected>1</option>
+        <option value="3">3</option>
       </select>
 
       <div class="sep"></div>
 
       <label for="theme-select">Theme:</label>
-      <select id="theme-select">
-        <option value="ancient" selected>Ancient Stone</option>
-        <option value="necropolis">Crypt</option>
-        <option value="inferno">Inferno</option>
-        <option value="overgrown">Overgrown</option>
-      </select>
+      <select id="theme-select"></select>
+      <button id="reroll-btn" class="secondary" title="Forge a new layout in this theme">🎲 New layout</button>
 
       <label for="cam-preset">View:</label>
       <select id="cam-preset">
@@ -216,9 +226,6 @@
         <div class="row" style="margin-top:8px;">
           <label>SFX <input type="range" id="sfx-vol" min="0" max="1" step="0.05" /> <span id="sfx-vol-val">0.80</span></label>
           <button id="test-sound" class="secondary" title="Play the impact SFX at current volume">Test</button>
-        </div>
-        <div class="row">
-          <label>Music <input type="range" id="music-vol" min="0" max="1" step="0.05" /> <span id="music-vol-val">0.50</span></label>
         </div>
       </div>
 

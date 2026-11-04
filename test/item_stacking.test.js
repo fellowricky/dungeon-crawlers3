@@ -83,7 +83,13 @@ describe('inventory methods on stacks', () => {
     g.afterGearChange = () => {};
     return g;
   };
-  const wizard = () => makeHero('Sariel', 'human', 'wizard', { str: 8, dex: 15, con: 12, int: 15, wis: 13, cha: 10 });
+  /* Heroes start with a torch in the trinket slot; these tests are about
+     scroll stacks, so begin with the slot empty. */
+  const wizard = () => {
+    const d = makeHero('Sariel', 'human', 'wizard', { str: 8, dex: 15, con: 12, int: 15, wis: 13, cha: 10 });
+    delete d.equipment.trinket;
+    return d;
+  };
 
   it('equipping from a stack of scrolls takes one and leaves the stack', () => {
     const g = game();

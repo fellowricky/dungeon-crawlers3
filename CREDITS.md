@@ -11,6 +11,7 @@ and respect the license policy in the "Adding New Assets" section.
 | Source | License | Notes |
 |---|---|---|
 | **Dungeon Forge** by Majid Manzarpour | MIT | Base framework |
+| **pixelfx** by Patch (with Hugo Duprez) | MIT | `src/vendor/pixelfx/` — the effect core plus the status, holy, shadow, nature, pickups and arcane effects behind Blight and the status auras (`src/render/status_auras.js`), drawn live in game (`src/render/pixelfx_live.js`); `src/render/pfx/storm_cloud.js`, `status_sleep.js`, `beam.js`, `missile.js`, `magic_missile.js` and `wisp.js` are modified copies of its `lightning/storm-cloud`, `status/sleep`, `arcane/arcane-beam`, `arcane/arcane-missiles`, `projectiles/magic-missile` and `critters/wisp`; the holy and flame pillars are vendored as-is. License + notices alongside |
 | **Universal LPC Spritesheet Character Generator** | GPL-3.0 | `lpc_repo/` — used to assemble the hero spritesheets in `public/lpc/` |
 | All other project code | MIT | See `LICENSE` |
 
@@ -23,7 +24,10 @@ and respect the license policy in the "Adding New Assets" section.
   `public/art/tiles/` (floor/wall atlases baked from DCSS dungeon tiles by
   `tools/build_tile_atlas.py`), `public/art/ground/` (the `dirt_*` grass/dirt
   fringe set, autotiled for the guild compound terrain by
-  `src/render/guild_ground.js`)
+  `src/render/guild_ground.js`), `public/art/ground/grass/` (the `grass_*`
+  turf/track set, autotiled into the holdfast overland road by the same file),
+  `public/art/ground/cobble/` (`cobble_blood_1_old`-`7_old`, renamed `cobble_0`-`6`: the
+  boneyard's cobbled road)
 - **Source:** https://github.com/crawl/crawl
 - **License:** CC0 1.0 Universal
   - Verified in `Sprites/Dungeon Crawl Stone Soup Full/LICENSE.txt`
@@ -52,6 +56,26 @@ and respect the license policy in the "Adding New Assets" section.
 - **License:** CC0 1.0 Universal
 - **Use:** Available for future integration — 8-64 frame image sequences
   for spell impacts, auras, and projectiles. Extract with 7-Zip when ready.
+
+---
+
+## Art — MIT (attribution required, commercial OK)
+
+### pixelfx by Patch
+- **Paths:** `public/fx/spells/pfx_*.png` (sheets rendered from the library and
+  packed by `scripts/pixelfx_import.py`; each `vfx_animations.json` sheet entry
+  names its source effect in `source`)
+- **Source:** https://github.com/patch-gg/pixelfx
+- **License:** MIT — Copyright (c) 2026 Patch, Copyright (c) 2026 Hugo Duprez.
+  Parts adapt Sprite Fusion's pixel art VFX (Hugo Duprez, MIT) and Hollow
+  Crown (rehan-remade, MIT). The library's "Patch Pixel" gallery font is not
+  MIT and is not used here.
+- **Use:** Spell VFX sprite sheets — Fireball's bolt (`fire/fireball`) and
+  blast (`explosions/big-explosion`, first 1.3 s); Cone of Cold's cone
+  (`ice/frost-breath`) and per-target freeze (`ice/freeze`); Call Lightning
+  (`lightning/lightning-strike`), Ray of Frost (`ice/ice-shatter`), Burning Hands (`fire/fire-breath`, widened to the spell's cone), Arms of Hadar (`shadow/shadow-tendrils`), Bane (`shadow/hex-sigil` in the blood palette), Sacred Flame (`holy/blessing` + `shadow/shadow-flames`, in the holy palette), Ice Storm (`arcane/star-fall` in the ice palette, three layered),
+  Sleep (`arcane/rune-circle` + `status/sleep`), Blight
+  (`shadow/curse`), and the live Call Lightning cloud (`lightning/storm-cloud`).
 
 ---
 
@@ -87,6 +111,16 @@ and respect the license policy in the "Adding New Assets" section.
 
 ---
 
+## Audio — original music
+
+### Title theme, by Aboda
+- **Path:** `public/music/Title Screen.mp3`
+- **Use:** main-menu theme (loops on the title screen, save-slot picker and
+  party setup). Composed for Dungeon Crawlers; credited in the in-game
+  credits block.
+
+---
+
 ## Audio — custom itch.io licenses (attribution appreciated, commercial OK)
 
 ### Castle Tales — Free 30 Pixel Fantasy RPG Tracks, by alkakrab
@@ -103,6 +137,9 @@ and respect the license policy in the "Adding New Assets" section.
 - **License:** "Royalty-free! You can use this in your projects, commercial
   or otherwise, credit is not mandatory but appreciated. The asset is not to
   be up for resale or redistribution."
+
+`Spells/Spell Charge *.wav` are not from that pack: they are synthesized by
+`tools/sfx/make_spell_charge.py`, original to this project.
 
 **⚠️ REDISTRIBUTION WARNING:** the TomMusic terms forbid redistribution.
 Shipping the `.wav` files inside a *game build* is the intended use and is

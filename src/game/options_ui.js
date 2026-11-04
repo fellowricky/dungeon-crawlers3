@@ -80,7 +80,7 @@ const OPTION_GROUPS = [
   },
   {
     title: '🎥 Camera',
-    note: 'The camera hands control straight back for three seconds after you drag, orbit or scroll.',
+    note: 'The camera leaves you in control for seven seconds after you drag, orbit or scroll, then takes over again. Exploring and fighting each remember their own zoom and tilt.',
     rows: [
       { key: 'cameraAutoFrame', label: 'Auto-frame the fight',
         hint: 'Pull back far enough to show the enemies as well as the party. Never crops a hero to fit a monster.' },
@@ -90,6 +90,10 @@ const OPTION_GROUPS = [
         hint: 'When scenery sits between the camera and the party, swing a quarter turn around it.' },
       { key: 'cameraActionRotate', label: 'Cinematic action angles',
         hint: 'Turn to dynamic angles during combat to clearly view clashes from the side rather than stacked behind sprites.' },
+      { key: 'cameraWallCutaway', label: 'See through walls',
+        hint: 'Dissolve walls and trees standing between the camera and a hero, so the camera can stay low. Off, it tilts up over them instead.' },
+      { key: 'cameraExploreOrbit', label: 'Gentle orbit while exploring',
+        hint: 'Slowly sway the camera a little to either side while the party explores. Holds still while you point at something, and settles when a fight starts.' },
     ]
   },
 ];

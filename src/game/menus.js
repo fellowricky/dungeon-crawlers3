@@ -19,13 +19,14 @@ import { iconHtml } from './icons.js';
 import {
   SLOTS, SLOT_LABEL, slotsFor, bonusText, perkText, ilvlText,
   RARITIES, getBaseStatsText, migrateItem, previewBonuses, effectiveIlvl, itemCategory,
-  itemPoints, compareItemStats, weaponTags, itemReqText, bonusLabel, qtyOf
+  itemPoints, compareItemStats, weaponTags, itemReqText, bonusLabel, qtyOf,
+  isRune, runeFitsItem
 } from './items.js';
 import { drawHeroPortrait } from './sprite_animator.js';
 import { refreshWorldMapPanel } from './worldmap.js';
 import { DYEABLE_SLOTS } from './inventory.js';
 import { EFFECTS } from './conditions.js';
-import { SPELLS } from './spells.js';
+import { SPELLS, activeDancingLights, clearDancingLights } from './spells.js';
 import { BESTIARY_UNLOCK } from './constants.js';
 import { openOptions } from './options_ui.js';
 import { openHelp } from './help_ui.js';
@@ -180,6 +181,48 @@ function closeMenu(){
   if(G.state==='worldmap') refreshWorldMapPanel();
 }
 function hideTooltip(){ const t = $('cs-tooltip'); if(t) t.style.display = 'none'; }
+
+function disenchantYieldHTML(preview){
+  if (!preview) return '';
+  const dust = `+${preview.dust} dust`;
+  const ess = preview.essencePool
+    ? `+1 ${preview.essencePool.join(' / ')} essence`
+    : 'no essence';
+  return `<div class="tt-yield">Disenchant · ${dust} · ${ess}</div>`;
+}
+export { hideTooltip as hideItemTooltip };
+
+function ensureTooltip(){
+  let tip = $('cs-tooltip');
+  if (tip) return tip;
+  tip = document.createElement('div');
+  tip.id = 'cs-tooltip';
+  document.body.appendChild(tip);
+  return tip;
+}
+
+/** Bag-item hover. Pass `{ compare:true }` for the party-screen two-card view. */
+export function bindItemHoverTooltip(el, getItem, opts = {}){
+  if (!el) return;
+  el.addEventListener('mouseenter', () => {
+    const it = typeof getItem === 'function' ? getItem() : getItem;
+    if (!it) return;
+    const tip = ensureTooltip();
+    const hero = G?.heroes?.find(h => h && !h.companion)?.data;
+    const compare = opts.compare === true && hero;
+    tip.classList.toggle('compact', !compare);
+    let html = compare
+      ? compareTooltipHTML(it, hero)
+      : itemTipBlock(it, '', it.color || '#cfd8dc', hero?.level);
+    if (opts.disenchant && G?.guild && typeof G.guild.getDisenchantPreview === 'function') {
+      html += disenchantYieldHTML(G.guild.getDisenchantPreview(it));
+    }
+    tip.innerHTML = html;
+    tip.style.display = 'block';
+  });
+  el.addEventListener('mousemove', e => positionTooltip(e));
+  el.addEventListener('mouseleave', hideTooltip);
+}
 
 /* ---------------- rendering ---------------- */
 function render(){
@@ -396,7 +439,7 @@ function equipHTML(){
           <input type="checkbox" id="eq-hide-helm"${d.visual && d.visual.hideHelm ? ' checked' : ''}>
           <span>Hide this hero's hat</span>
         </label>
-        <div class="eq-hint">Click an equipped item to remove · Double-click or drag bag items to equip.</div>
+        <div class="eq-hint">Click an equipped item to remove · Double-click or drag bag items to equip · Drag a rune onto gear to inscribe it.</div>
       </div>
       ${statsPanelHTML(d)}
       ${activeEffectsHTML(d)}
@@ -420,7 +463,7 @@ function equipHTML(){
 }
 
 function inlineComparisonHTML(hero, item) {
-  if (!hero || !item || item.slot === 'dye') return '';
+  if (!hero || !item || item.slot === 'dye' || isRune(item)) return '';
   const opts = slotsFor(item.slot);
   if (!opts || !opts.length) return '';
   const equippedList = opts.map(s => hero.equipment?.[s]).filter(Boolean);
@@ -477,6 +520,19 @@ function detailHTML(d){
           <span class="dye-swatch" style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;margin-left:6px;background:${selItem.dyeColor};border:1px solid rgba(255,255,255,0.35)"></span></div>
         <div class="id-slot">Dye — ${cap(selItem.rarity)}${qtyLine(selItem)}</div>
         <div class="id-bonus">Drag onto an equipped item to recolor it (helm, armor, weapon, shield, gloves, amulet, boots).</div>
+        <div class="id-actions">
+          <button id="id-lock">${isLocked ? '🔒 Locked' : '🔓 Lock'}</button>
+          ${sellButtons(selItem, isLocked)}
+        </div>
+      </div>`;
+  }
+  if(isRune(selItem)){
+    const onto = selItem.runeSlotType === 'weapon' ? 'a weapon' : 'armor, helm, gloves, boots, or a shield';
+    return `<div class="item-detail">
+        <div class="id-name" style="color:${selItem.color}">${itemIconHTML(selItem.icon)} ${selItem.name}</div>
+        <div class="id-slot">Rune — ${onto}${qtyLine(selItem)}</div>
+        <div class="id-bonus">${selItem.desc || 'Inscribe onto gear.'}</div>
+        <div class="id-hint">Drag onto a matching piece of gear (equipped or in the bag) to inscribe it.</div>
         <div class="id-actions">
           <button id="id-lock">${isLocked ? '🔒 Locked' : '🔓 Lock'}</button>
           ${sellButtons(selItem, isLocked)}
@@ -626,8 +682,10 @@ const EFFECT_ICONS = {
   poisoned:'🤢', paralyzed:'🌀', stunned:'💫', restrained:'🕸️',
   slowed:'⏳', burning:'🔥', prone:'🛌', deafened:'🔇',
   incapacitated:'✖️', unconscious:'💤', weakenedDmg:'🥀', baned:'📉',
-  faerieFire:'🧚', hexMarked:'🔮', huntersMarked:'🎯',
-  bloodlust:'🩸', patientDefense:'🛡️'
+  faerieFire:'🧚', guided:'✦', hexMarked:'🔮', huntersMarked:'🎯',
+  bloodlust:'🩸', patientDefense:'🛡️',
+  silenced:'🤫', warded:'🔰', crusadersMantle:'✝️', dominated:'🧠',
+  blessed:'🙏', dashing:'💨', regenerating:'🌿', mirrorImages:'🪞', polymorphed:'🐑', banished:'🌀'
 };
 
 function buildMechanicsLine(def) {
@@ -741,6 +799,10 @@ function wireEquip(){
     el.addEventListener('dblclick', ()=>{
       const it = G.inventory[+el.dataset.i];
       if(!it) return;
+      if(isRune(it)){
+        flashNotice('Drag the rune onto a piece of gear to inscribe it.');
+        return;
+      }
       const r = G.equipItem(G.heroes[selHero].data, it);
       if(r.ok){ selItem = null; render(); }
       else if(r.reason){ flashNotice(r.reason); }
@@ -762,6 +824,27 @@ function wireEquip(){
     });
     el.addEventListener('mousemove', e=>positionTooltip(e));
     el.addEventListener('mouseleave', hideTooltip);
+    el.addEventListener('dragover', e=>{
+      if(!dragCtx || dragCtx.kind!=='bag') return;
+      const rune = G.inventory[dragCtx.index];
+      const target = G.inventory[+el.dataset.i];
+      if(!isRune(rune) || !target || target === rune) return;
+      if(runeFitsItem(rune, target)){
+        e.preventDefault(); e.dataTransfer.dropEffect='move';
+        el.classList.add('drop-valid');
+      }
+    });
+    el.addEventListener('dragleave', ()=> el.classList.remove('drop-valid','drop-invalid'));
+    el.addEventListener('drop', e=>{
+      e.preventDefault();
+      el.classList.remove('drop-valid','drop-invalid');
+      if(!dragCtx || dragCtx.kind!=='bag') return;
+      const rune = G.inventory[dragCtx.index];
+      const target = G.inventory[+el.dataset.i];
+      if(!isRune(rune) || !target || target === rune) return;
+      const r = G.applyRuneToBagItem(target, rune);
+      if(r.ok){ selItem = null; render(); } else if(r.reason) flashNotice(r.reason);
+    });
   });
 
   /* per-hero cosmetic: hide the headgear sprite without unequipping it */
@@ -869,7 +952,7 @@ function wireDetail(){
    slot-resolution + exclusion rules so the drop highlight matches reality. */
 function slotAcceptsItem(slotKey, item, hero){
   if(!item) return false;
-  if(item.slot==='dye') return false; /* dyes apply via drag, never equip */
+  if(item.slot==='dye' || isRune(item)) return false; /* dyes/runes apply via drag, never equip */
   let candidates = slotsFor(item.slot);
   if(item.slot==='weapon' && item.light) candidates = candidates.concat(['offhand']); /* Two-Weapon Fighting */
   if(!candidates.includes(slotKey)) return false;
@@ -894,6 +977,10 @@ function wireSlotDrop(el){
         /* dye onto an equipped, tintable piece of gear */
         candidate = DYEABLE_SLOTS.has(slotKey);
         valid = candidate && !!hero.equipment[slotKey];
+      } else if(item && isRune(item)){
+        const worn = hero.equipment[slotKey];
+        candidate = !!worn && runeFitsItem(item, worn);
+        valid = candidate;
       } else if(item){
         candidate = slotsFor(item.slot).includes(slotKey) || (item.slot==='weapon' && item.light && slotKey==='offhand');
         valid = candidate && slotAcceptsItem(slotKey, item, hero);
@@ -920,7 +1007,9 @@ function wireSlotDrop(el){
       if(!item) return;
       const r = item.slot==='dye'
         ? G.applyDye(hero, slotKey, item)
-        : G.equipItem(hero, item, slotKey);
+        : isRune(item)
+          ? G.applyRuneToSlot(hero, slotKey, item)
+          : G.equipItem(hero, item, slotKey);
       if(r.ok){ selItem = null; render(); } else if(r.reason) flashNotice(r.reason);
     } else if(dragCtx.kind==='slot'){
       const r = G.moveEquipmentSlot(hero, dragCtx.slot, slotKey);
@@ -934,7 +1023,7 @@ function wirePortraitDrop(portrait){
   portrait.addEventListener('dragover', e=>{
     if(dragCtx && dragCtx.kind==='bag'){
       const item = G.inventory[dragCtx.index];
-      if(item && item.slot!=='dye' && canEquip(G.heroes[selHero].data, item)){
+      if(item && item.slot!=='dye' && !isRune(item) && canEquip(G.heroes[selHero].data, item)){
         e.preventDefault(); e.dataTransfer.dropEffect='move'; portrait.classList.add('drop-target');
       }
     }
@@ -1154,6 +1243,15 @@ export function compareTooltipHTML(item, hero){
           <span style="display:inline-block;width:12px;height:12px;vertical-align:middle;margin-left:5px;background:${item.dyeColor};border:1px solid rgba(255,255,255,0.35)"></span></div>
         <div class="tt-sub">Dye \u00b7 ${cap(item.rarity)}</div>
         <div class="tt-primary">Drag onto equipped gear to recolor it.</div>
+      </div>`;
+  }
+  if(isRune(item)){
+    const onto = item.runeSlotType === 'weapon' ? 'weapons' : 'armor, helm, gloves, boots, or a shield';
+    return `
+      <div class="tt-card">
+        <div class="tt-name" style="color:${item.color}">${itemIconHTML(item.icon)} ${item.name}</div>
+        <div class="tt-sub">Rune \u00b7 ${onto}</div>
+        <div class="tt-primary">${item.desc || 'Drag onto matching gear to inscribe it.'}</div>
       </div>`;
   }
   const opts = slotsFor(item.slot);
@@ -1376,6 +1474,24 @@ function skillsHTML(){
     </div>`;
   }
 
+  /* Dancing Lights is cast from here, out of combat: the spell menu only
+     exists during a fight. Only a hero who took the cantrip sees the card. */
+  let dancingLightsHTML = '';
+  if ((d.knownSpells || []).includes('dancingLights')) {
+    const hero = (G.heroes || []).find(h => h.data === d);
+    const up = !!(hero && activeDancingLights(hero));
+    const canCast = !!(hero && hero.ent && G.state === 'crawl' && !G.isCombatActive());
+    const note = up ? 'Three gold wisps are following you until the floor ends.'
+      : G.isCombatActive() ? 'Not during a fight.'
+      : canCast ? 'Three gold wisps of dim light follow you until the floor ends.'
+      : 'Only on a dungeon floor.';
+    dancingLightsHTML = `<div class="sk-subclass chosen" style="margin-top:10px;">
+      <h3>✨ Dancing Lights <i>${note}</i></h3>
+      <button class="dancing-lights-btn" data-dancinglights="${up ? 'dismiss' : 'cast'}" ${up || canCast ? '' : 'disabled'} style="margin-top:8px; padding:8px 14px; border:1px solid #ffd23c; cursor:${up || canCast ? 'pointer' : 'not-allowed'}; opacity:${up || canCast ? 1 : 0.5};">${up ? 'Dismiss' : 'Cast'}</button>
+    </div>`;
+  }
+
+
   return `
     <div class="sk-head">
       <div class="sk-hero">
@@ -1394,6 +1510,7 @@ function skillsHTML(){
     ${choicesHTML}
     ${wildShapeFormHTML}
     ${familiarChoiceHTML}
+    ${dancingLightsHTML}
     <div class="sk-cols">
       <div class="sk-build">
         <h3>${cls.label} Path</h3>
@@ -1442,6 +1559,18 @@ function wireSkills(){
   });
   main.querySelectorAll('.fam-form-card').forEach(b=>{
     b.addEventListener('click', ()=>{ d.familiarChoice = b.dataset.famchoice; render(); });
+  });
+  main.querySelectorAll('.dancing-lights-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const hero = (G.heroes || []).find(h => h.data === d);
+      if (!hero) return;
+      if (b.dataset.dancinglights === 'dismiss') clearDancingLights(hero);
+      else {
+        const sp = SPELLS.dancingLights;
+        G.fxWithSpellCharge(hero, sp.color, () => sp.cast(G, hero));
+      }
+      render();
+    });
   });
   main.querySelectorAll('.fc-opt').forEach(b=>{
     b.addEventListener('click', ()=>{

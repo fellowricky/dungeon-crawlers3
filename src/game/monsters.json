@@ -889,7 +889,7 @@
     "heal": 2,
     "effect": {
      "key": "wounded",
-     "dur": 4,
+     "dur": 6,
      "dotDmg": 2
     },
     "sprite": "drain_red_1",
@@ -981,7 +981,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 1
     },
@@ -1167,7 +1167,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -1890,7 +1890,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "aoe": 1.8,
     "every": 4,
@@ -2069,7 +2069,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "aoe": 1.8,
     "every": 4,
@@ -2158,14 +2158,13 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
   ],
   "dungeons": [
    "molten",
-   "verdant",
    "forest",
    "ashfield",
    "snowfield"
@@ -2272,7 +2271,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -2528,9 +2527,7 @@
     "color": 12558432
    }
   ],
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "flipX": true
  },
  {
@@ -2706,7 +2703,7 @@
     },
     "effect": {
      "key": "paralyzed",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "sprite": "silenced",
@@ -2834,7 +2831,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4,
+     "dur": 6,
      "repeatSave": true
     },
     "sprite": "cloud_gloom_new",
@@ -2923,7 +2920,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -2932,7 +2929,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "snowfield"
   ]
@@ -3012,7 +3008,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -3131,7 +3127,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -3157,7 +3153,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -3378,8 +3373,7 @@
   ],
   "attacksPerTurn": 2,
   "dungeons": [
-   "molten",
-   "verdant"
+   "molten"
   ],
   "flipX": true
  },
@@ -3614,7 +3608,7 @@
     "dmgType": "poison",
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "cloud_poison_0",
     "color": 5025356
@@ -3629,7 +3623,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -3753,7 +3747,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "sporewood"
@@ -3839,7 +3832,6 @@
   ],
   "rngRange": 5,
   "dungeons": [
-   "verdant",
    "forest"
   ],
   "flipX": true
@@ -3928,7 +3920,6 @@
   "rngRange": 5,
   "attacksPerTurn": 2,
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -4032,7 +4023,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "snowfield"
   ]
  },
@@ -4119,7 +4109,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -4421,7 +4410,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "cloud_poison_0",
     "color": 5025356
@@ -4612,7 +4601,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -4744,7 +4733,6 @@
   ],
   "rngRange": 5,
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -4836,7 +4824,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "grim",
-   "verdant",
    "snowfield"
   ],
   "flipX": true
@@ -4910,7 +4897,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "ashfield",
    "snowfield"
   ],
@@ -5013,7 +4999,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "ashfield",
    "snowfield"
   ],
@@ -5098,7 +5083,6 @@
   "attacksPerTurn": 3,
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -5193,7 +5177,6 @@
   "attacksPerTurn": 3,
   "dungeons": [
    "molten",
-   "verdant",
    "snowfield"
   ]
  },
@@ -5602,7 +5585,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "flipX": true
@@ -5712,7 +5694,7 @@
     },
     "effect": {
      "key": "paralyzed",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "sprite": "silenced",
@@ -5825,7 +5807,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -5835,8 +5817,7 @@
   ],
   "dungeons": [
    "frost",
-   "grim",
-   "verdant"
+   "grim"
   ]
  },
  {
@@ -6011,7 +5992,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -6116,7 +6096,7 @@
     "dmgType": "acid",
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 3
     },
@@ -6308,7 +6288,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "cloud_poison_0",
     "color": 5025356
@@ -6324,7 +6304,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 4,
+     "dur": 6,
      "repeatSave": true
     },
     "sprite": "net_trap",
@@ -6337,9 +6317,7 @@
   ],
   "rngRange": 5,
   "attacksPerTurn": 2,
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "flipX": true
  },
  {
@@ -6417,7 +6395,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 4
     },
@@ -6426,7 +6404,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -6525,7 +6502,6 @@
   "attacksPerTurn": 3,
   "dungeons": [
    "molten",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -6640,8 +6616,7 @@
    }
   ],
   "dungeons": [
-   "grim",
-   "verdant"
+   "grim"
   ],
   "flipX": true
  },
@@ -6757,7 +6732,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "mire",
    "sporewood",
    "moor"
@@ -6969,7 +6943,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "cloud_poison_0",
     "color": 5025356
@@ -7208,7 +7182,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -7301,7 +7274,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -7390,8 +7362,7 @@
   "regen": 10,
   "attacksPerTurn": 3,
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ]
  },
  {
@@ -7465,7 +7436,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -7576,7 +7546,6 @@
    "ancient",
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -7801,9 +7770,7 @@
    ]
   },
   "attacksPerTurn": 2,
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "flipX": true
  },
  {
@@ -7990,7 +7957,6 @@
    "ancient",
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -8121,7 +8087,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "frost",
-   "verdant",
    "ashfield"
   ]
  },
@@ -8214,8 +8179,7 @@
    "moor",
    "mire",
    "ruinfield",
-   "ashfield",
-   "verdant"
+   "ashfield"
   ]
  },
  {
@@ -8483,8 +8447,7 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "ancient",
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -8718,7 +8681,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 10
+     "dur": 12
     },
     "sprite": "flame_0"
    }
@@ -8864,7 +8827,7 @@
     },
     "effect": {
      "key": "stunned",
-     "dur": 4,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -9342,9 +9305,7 @@
    }
   ],
   "attacksPerTurn": 3,
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "wyvern",
@@ -9442,8 +9403,7 @@
   "dungeons": [
    "molten",
    "ancient",
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -9555,7 +9515,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "sprite": "cloud_gloom_new",
@@ -9842,7 +9802,7 @@
     },
     "effect": {
      "key": "blinded",
-     "dur": 4
+     "dur": 6
     },
     "aoe": 2.5,
     "every": 5,
@@ -9970,7 +9930,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 4
     },
@@ -9987,7 +9947,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 4
     },
@@ -10016,8 +9976,7 @@
   ],
   "attacksPerTurn": 2,
   "dungeons": [
-   "molten",
-   "verdant"
+   "molten"
   ],
   "flipX": true
  },
@@ -10103,7 +10062,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 5
     },
@@ -10126,8 +10085,7 @@
    }
   ],
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ]
  },
  {
@@ -10239,7 +10197,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -10795,7 +10753,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "molten",
-   "verdant",
    "snowfield"
   ]
  },
@@ -10881,8 +10838,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "attacksPerTurn": 3,
   "abilities": [
@@ -11005,8 +10961,7 @@
   },
   "dungeons": [
    "ancient",
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -11098,7 +11053,7 @@
     },
     "effect": {
      "key": "stunned",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "cloud_calc_dust_0",
     "color": 10518624
@@ -11113,7 +11068,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "ashfield",
    "snowfield"
   ]
@@ -11266,7 +11220,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -11429,7 +11383,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -11646,8 +11600,7 @@
   },
   "attacksPerTurn": 3,
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ]
  },
  {
@@ -11736,7 +11689,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 3
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12615744
@@ -11745,8 +11698,7 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "molten",
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "colorBalance": {
    "shadows": {
@@ -12036,7 +11988,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8
+     "dur": 12
     },
     "aoe": 2.5,
     "every": 4,
@@ -12161,8 +12113,7 @@
   "attacksPerTurn": 5,
   "dungeons": [
    "molten",
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "abilities": [
    {
@@ -12175,7 +12126,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -12192,7 +12143,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 8
     },
@@ -12805,8 +12756,7 @@
    ]
   },
   "dungeons": [
-   "grim",
-   "verdant"
+   "grim"
   ],
   "abilities": [
    {
@@ -13048,7 +12998,7 @@
     "heal": 2,
     "effect": {
      "key": "wounded",
-     "dur": 4,
+     "dur": 6,
      "dotDmg": 2
     },
     "sprite": "drain_red_1",
@@ -13686,7 +13636,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 1
     },
@@ -14149,7 +14099,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -14199,7 +14148,7 @@
     "dmgType": "cold",
     "effect": {
      "key": "slowed",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "frost_0",
     "color": 8377599
@@ -14288,7 +14237,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -14517,7 +14465,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -14644,7 +14591,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -14946,7 +14892,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -15081,7 +15026,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -15089,9 +15034,7 @@
     "color": 12558432
    }
   ],
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "flipX": true
  },
  {
@@ -15170,7 +15113,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -15257,7 +15199,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -15334,7 +15275,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -15417,7 +15357,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "ashfield",
    "snowfield"
@@ -15429,7 +15368,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -15526,7 +15465,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -15537,7 +15475,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -15628,7 +15566,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "ashfield",
    "snowfield"
@@ -15640,7 +15577,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -15828,8 +15765,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -15894,8 +15830,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ],
   "flipX": true
  },
@@ -15962,8 +15897,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -16306,8 +16240,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "abilities": [
    {
@@ -16407,8 +16340,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "abilities": [
    {
@@ -16513,8 +16445,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "abilities": [
    {
@@ -16647,7 +16578,6 @@
   "dungeons": [
    "ancient",
    "molten",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -16874,7 +16804,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -17014,7 +16943,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -17141,7 +17069,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -17275,7 +17202,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "enlarged",
-     "dur": 10
+     "dur": 12
     },
     "sprite": "gold_sparkles_1"
    }
@@ -17380,7 +17307,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "enlarged",
-     "dur": 10
+     "dur": 12
     },
     "sprite": "gold_sparkles_1"
    }
@@ -17485,7 +17412,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "enlarged",
-     "dur": 10
+     "dur": 12
     },
     "sprite": "gold_sparkles_1"
    }
@@ -17626,8 +17553,7 @@
   },
   "dungeons": [
    "ancient",
-   "grim",
-   "verdant"
+   "grim"
   ],
   "flipX": true
  },
@@ -17716,7 +17642,6 @@
   "dungeons": [
    "ancient",
    "grim",
-   "verdant",
    "ashfield"
   ],
   "flipX": true
@@ -17805,7 +17730,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -17911,9 +17835,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "abilities": [
    {
     "key": "bite",
@@ -18010,7 +17932,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -18102,7 +18024,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 4
     },
@@ -18111,7 +18033,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -18205,7 +18126,6 @@
    }
   ],
   "dungeons": [
-   "verdant",
    "snowfield"
   ]
  },
@@ -18287,7 +18207,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "abilities": [
@@ -18307,7 +18226,7 @@
     "dmgType": "piercing",
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -18382,7 +18301,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "abilities": [
@@ -18396,7 +18314,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -18477,7 +18395,6 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "flipX": true
@@ -18550,8 +18467,7 @@
    "frost",
    "holdfast",
    "ashfield",
-   "snowfield",
-   "verdant"
+   "snowfield"
   ]
  },
  {
@@ -18717,7 +18633,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -18821,7 +18736,6 @@
   },
   "dungeons": [
    "grim",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -18929,7 +18843,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -19022,7 +18935,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -19114,7 +19026,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -19209,8 +19120,7 @@
   "attacksPerTurn": 3,
   "dungeons": [
    "ancient",
-   "frost",
-   "verdant"
+   "frost"
   ],
   "regen": 10
  },
@@ -19294,7 +19204,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "ashfield"
   ],
   "regen": 10,
@@ -20275,7 +20184,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -20390,7 +20298,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -21284,9 +21191,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "golden-dragon",
@@ -21440,7 +21345,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -22151,7 +22056,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8
+     "dur": 12
     },
     "aoe": 2.5,
     "every": 4,
@@ -22583,9 +22488,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "abilities": [
    {
     "key": "poison-breath",
@@ -22787,7 +22690,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "sporewood"
@@ -22897,7 +22799,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -23251,7 +23152,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -23571,7 +23472,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -23666,7 +23567,7 @@
     "color": 10181046,
     "effect": {
      "key": "frightened",
-     "dur": 4
+     "dur": 6
     }
    }
   ],
@@ -24083,7 +23984,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4
+     "dur": 6
     },
     "aoe": 2.2,
     "every": 6,
@@ -24240,7 +24141,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "every": 4,
@@ -24341,7 +24242,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "cloud_gloom_new",
     "color": 6959232
@@ -24473,7 +24374,7 @@
     },
     "effect": {
      "key": "charmed",
-     "dur": 8
+     "dur": 12
     },
     "every": 4,
     "sprite": "cloud_gloom_new",
@@ -24601,7 +24502,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "flame_0"
    },
@@ -24729,7 +24630,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "cloud_gloom_new",
     "color": 6959232
@@ -24850,7 +24751,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 5
+     "dur": 6
     },
     "aoe": 2.6,
     "every": 6,
@@ -24867,7 +24768,7 @@
     },
     "effect": {
      "key": "weakenedDmg",
-     "dur": 8
+     "dur": 12
     },
     "every": 4,
     "sprite": "cloud_gloom_new",
@@ -24883,7 +24784,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4,
+     "dur": 6,
      "repeatSave": true
     },
     "sprite": "cloud_gloom_new",
@@ -25299,7 +25200,6 @@
   "dungeons": [
    "ancient",
    "molten",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -25391,7 +25291,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "cloud_gloom_new",
     "color": 12615872
@@ -25406,7 +25306,7 @@
     },
     "effect": {
      "key": "charmed",
-     "dur": 8
+     "dur": 12
     },
     "aoe": 3,
     "every": 5,
@@ -25417,8 +25317,7 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "molten",
-   "frost",
-   "verdant"
+   "frost"
   ],
   "colorBalance": {
    "shadows": {
@@ -25594,7 +25493,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -25861,9 +25760,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "swarm": true
  },
  {
@@ -25940,9 +25837,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "swarm": true
  },
  {
@@ -26035,7 +25930,6 @@
   "rngRange": 5,
   "attacksPerTurn": 2,
   "dungeons": [
-   "verdant",
    "forest"
   ]
  },
@@ -26563,7 +26457,7 @@
     },
     "effect": {
      "key": "incapacitated",
-     "dur": 3
+     "dur": 6
     },
     "aoe": 2.2,
     "every": 5,
@@ -26580,7 +26474,7 @@
     },
     "effect": {
      "key": "blinded",
-     "dur": 4
+     "dur": 6
     },
     "aoe": 2.8,
     "sprite": "cloud_black_smoke",
@@ -26787,7 +26681,7 @@
     "dmgType": "bludgeoning",
     "effect": {
      "key": "stunned",
-     "dur": 4,
+     "dur": 6,
      "repeatSave": true
     },
     "sprite": "rock_0",
@@ -26899,7 +26793,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 3
     },
@@ -27006,7 +26900,7 @@
     },
     "effect": {
      "key": "paralyzed",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "sprite": "silenced",
@@ -27023,7 +26917,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -27142,7 +27036,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 4,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -27154,7 +27048,6 @@
   "dungeons": [
    "ancient",
    "grim",
-   "verdant",
    "sporewood"
   ]
  },
@@ -28430,7 +28323,6 @@
   "dungeons": [
    "molten",
    "ancient",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -28441,7 +28333,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -28540,7 +28432,6 @@
    "molten",
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -28551,7 +28442,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -28648,7 +28539,6 @@
   },
   "dungeons": [
    "molten",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -28659,7 +28549,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -28756,7 +28646,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 5
+     "dur": 6
     },
     "aoe": 2.8,
     "every": 4,
@@ -28779,7 +28669,6 @@
    "molten",
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -28869,7 +28758,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -29008,8 +28896,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -29073,7 +28960,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest"
   ]
  },
@@ -29137,9 +29023,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "spriggan-druid",
@@ -29204,7 +29088,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest"
   ]
  },
@@ -29268,9 +29151,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "spriggan-rider",
@@ -29333,7 +29214,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest"
   ]
  },
@@ -29419,9 +29299,7 @@
    }
   ],
   "attacksPerTurn": 2,
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "gazer",
@@ -29568,7 +29446,7 @@
     },
     "effect": {
      "key": "slowed",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "magic_bolt_1",
     "color": 11570431
@@ -29842,8 +29720,7 @@
   },
   "dungeons": [
    "molten",
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -29908,8 +29785,7 @@
   },
   "dungeons": [
    "frost",
-   "grim",
-   "verdant"
+   "grim"
   ],
   "flipX": true
  },
@@ -29975,8 +29851,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "flipX": true
  },
@@ -30041,7 +29916,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -30181,7 +30055,6 @@
   "dungeons": [
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -30258,7 +30131,6 @@
    "ancient",
    "molten",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -30343,7 +30215,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 3
+     "dur": 6
     },
     "sprite": "cloud_gloom_new",
     "color": 10181046
@@ -30371,7 +30243,6 @@
   ],
   "attacksPerTurn": 2,
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -30458,7 +30329,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor"
   ],
@@ -30526,9 +30396,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "vine-stalker",
@@ -30591,7 +30459,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest"
   ],
   "flipX": true
@@ -30656,9 +30523,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "orc-whelp",
@@ -30722,7 +30587,6 @@
   },
   "dungeons": [
    "molten",
-   "verdant",
    "forest",
    "ashfield",
    "snowfield"
@@ -30734,7 +30598,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -30848,7 +30712,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -30930,7 +30794,6 @@
   "dungeons": [
    "molten",
    "ancient",
-   "verdant",
    "forest",
    "snowfield"
   ],
@@ -31016,8 +30879,7 @@
    ]
   },
   "dungeons": [
-   "grim",
-   "verdant"
+   "grim"
   ],
   "flipX": true
  },
@@ -31104,8 +30966,7 @@
   "attacksPerTurn": 2,
   "dungeons": [
    "ancient",
-   "grim",
-   "verdant"
+   "grim"
   ],
   "flipX": true
  },
@@ -31182,7 +31043,7 @@
     },
     "effect": {
      "key": "blinded",
-     "dur": 5
+     "dur": 6
     },
     "aoe": 2.8,
     "every": 4,
@@ -31466,7 +31327,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -31578,9 +31439,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "abilities": [
    {
     "key": "poison-breath",
@@ -31611,7 +31470,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -31751,7 +31610,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -31907,7 +31766,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32063,7 +31922,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32205,7 +32064,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32360,7 +32219,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32497,7 +32356,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32637,7 +32496,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32773,7 +32632,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -32885,9 +32744,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "abilities": [
    {
     "key": "poison-breath",
@@ -32918,7 +32775,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -33058,7 +32915,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -33218,7 +33075,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -33378,7 +33235,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -33523,7 +33380,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -33682,7 +33539,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -34956,7 +34813,6 @@
   },
   "dungeons": [
    "ancient",
-   "verdant",
    "mire",
    "frost"
   ],
@@ -35617,7 +35473,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -35720,8 +35576,7 @@
   },
   "dungeons": [
    "ancient",
-   "frost",
-   "verdant"
+   "frost"
   ],
   "flipX": true
  },
@@ -35808,8 +35663,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -35897,8 +35751,7 @@
   },
   "dungeons": [
    "molten",
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -35994,8 +35847,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ],
   "abilities": [
    {
@@ -36008,7 +35860,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -37313,9 +37165,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "abilities": [
    {
     "key": "intoxicating-touch",
@@ -37410,7 +37260,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -37433,7 +37282,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -37538,7 +37387,6 @@
    "molten",
    "ancient",
    "frost",
-   "verdant",
    "ashfield",
    "snowfield"
   ]
@@ -37621,7 +37469,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "packTactics": true,
@@ -37824,8 +37671,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "abilities": [
    {
@@ -37838,7 +37684,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 5
     },
@@ -37912,7 +37758,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -38081,7 +37926,6 @@
   "dungeons": [
    "ancient",
    "frost",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -38318,9 +38162,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "abilities": [
    {
     "key": "constrict",
@@ -38332,7 +38174,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 2
     },
@@ -38403,9 +38245,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "unicorn",
@@ -38504,7 +38344,6 @@
   },
   "dungeons": [
    "ancient",
-   "verdant",
    "forest"
   ],
   "magicResistance": true,
@@ -38525,7 +38364,7 @@
     "dmgType": "piercing",
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -38651,8 +38490,7 @@
    ]
   },
   "dungeons": [
-   "molten",
-   "verdant"
+   "molten"
   ],
   "magicResistance": true
  },
@@ -38752,9 +38590,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "magicResistance": true
  },
  {
@@ -39046,7 +38882,7 @@
     "dmgType": "piercing",
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -39187,7 +39023,6 @@
   },
   "dungeons": [
    "ancient",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -39271,7 +39106,6 @@
   },
   "dungeons": [
    "ancient",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -39348,8 +39182,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ],
   "bloodFrenzy": true
  },
@@ -39420,8 +39253,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ],
   "bloodFrenzy": true
  },
@@ -39490,7 +39322,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "abilities": [
@@ -39504,7 +39335,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -39583,7 +39414,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "snowfield"
   ],
   "abilities": [
@@ -39597,7 +39427,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -39668,8 +39498,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ],
   "abilities": [
    {
@@ -39682,7 +39511,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -39755,8 +39584,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ]
  },
  {
@@ -39821,9 +39649,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ]
+  "dungeons": []
  },
  {
   "id": "giant-elk",
@@ -39891,7 +39717,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -39919,7 +39744,7 @@
     "dmgType": "bludgeoning",
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -39999,7 +39824,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -40088,8 +39912,7 @@
    ]
   },
   "dungeons": [
-   "molten",
-   "verdant"
+   "molten"
   ],
   "packTactics": true
  },
@@ -40157,7 +39980,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "snowfield"
   ],
   "abilities": [
@@ -40177,7 +39999,7 @@
     "dmgType": "slashing",
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -40334,7 +40156,7 @@
     "dmgType": "bludgeoning",
     "effect": {
      "key": "prone",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12558432
@@ -40404,7 +40226,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "holdfast",
    "boneyard",
    "ruinfield",
@@ -40419,7 +40240,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1"
    }
@@ -40501,7 +40322,6 @@
    ]
   },
   "dungeons": [
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -40522,7 +40342,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true,
      "dotDmg": 3
     },
@@ -40604,9 +40424,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "swarm": true
  },
  {
@@ -40682,9 +40500,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "swarm": true,
   "abilities": [
    {
@@ -40869,9 +40685,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "swarm": true
  },
  {
@@ -40948,9 +40762,7 @@
     }
    ]
   },
-  "dungeons": [
-   "verdant"
-  ],
+  "dungeons": [],
   "swarm": true
  },
  {
@@ -41036,7 +40848,6 @@
   },
   "dungeons": [
    "molten",
-   "verdant",
    "ruinfield",
    "ashfield",
    "frost"
@@ -41387,8 +41198,7 @@
    ]
   },
   "dungeons": [
-   "ancient",
-   "verdant"
+   "ancient"
   ]
  },
  {
@@ -41487,7 +41297,6 @@
   },
   "dungeons": [
    "grim",
-   "verdant",
    "forest",
    "moor",
    "mire",
@@ -41508,7 +41317,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 3.2,
@@ -41836,8 +41645,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ],
   "bloodFrenzy": true
  },
@@ -41915,8 +41723,7 @@
    ]
   },
   "dungeons": [
-   "frost",
-   "verdant"
+   "frost"
   ]
  },
  {
@@ -42074,7 +41881,6 @@
   },
   "dungeons": [
    "frost",
-   "verdant",
    "moor"
   ],
   "abilities": [
@@ -42088,7 +41894,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 8,
+     "dur": 12,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -42388,7 +42194,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 3,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2,
@@ -42516,7 +42322,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12173737
@@ -42737,7 +42543,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -42750,7 +42556,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -43289,7 +43095,7 @@
     },
     "effect": {
      "key": "baned",
-     "dur": 5
+     "dur": 6
     },
     "aoe": 2.5,
     "magic": true,
@@ -43422,7 +43228,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "cloud_neg_1",
     "color": 13672703
@@ -44033,7 +43839,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -44656,7 +44462,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -44669,7 +44475,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -45044,7 +44850,7 @@
     "dmgType": "cold",
     "effect": {
      "key": "slowed",
-     "dur": 4
+     "dur": 6
     },
     "aoe": 2.2,
     "magic": true,
@@ -45385,7 +45191,7 @@
     "dmgType": "cold",
     "effect": {
      "key": "slowed",
-     "dur": 3
+     "dur": 6
     },
     "aoe": 2.8,
     "sprite": "icicle_0",
@@ -45724,7 +45530,7 @@
     },
     "effect": {
      "key": "baned",
-     "dur": 5
+     "dur": 6
     },
     "aoe": 2.5,
     "magic": true,
@@ -45849,7 +45655,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12173737
@@ -46065,7 +45871,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -46078,7 +45884,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -46501,7 +46307,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12167337
@@ -46618,7 +46424,7 @@
     },
     "effect": {
      "key": "slowed",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.4,
@@ -46739,7 +46545,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 3,
@@ -46752,7 +46558,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16737792
@@ -47085,7 +46891,7 @@
     },
     "effect": {
      "key": "weakenedDmg",
-     "dur": 3,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2,
@@ -47207,7 +47013,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 10127986
@@ -47322,7 +47128,7 @@
     "chance": 0.35,
     "effect": {
      "key": "wounded",
-     "dur": 3
+     "dur": 6
     },
     "sprite": "sandblast_1",
     "color": 11546672
@@ -47450,7 +47256,7 @@
     "dmgType": "bludgeoning",
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "aoe": 3,
     "sprite": "sandblast_2",
@@ -47462,7 +47268,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "enlarged",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_2",
     "color": 12872234
@@ -47572,7 +47378,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 3
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 11546672
@@ -47797,7 +47603,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 3,
@@ -47924,7 +47730,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 13154202
@@ -48039,7 +47845,7 @@
     "chance": 0.35,
     "effect": {
      "key": "wounded",
-     "dur": 3
+     "dur": 6
     },
     "sprite": "sandblast_1",
     "color": 11546672
@@ -48161,7 +47967,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 4,
@@ -48174,7 +47980,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "hasted",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_3",
     "color": 11546672
@@ -48282,7 +48088,7 @@
     "trigger": "onKill",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 9083506
@@ -48530,7 +48336,7 @@
     },
     "effect": {
      "key": "blinded",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 3,
@@ -48676,7 +48482,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12106944
@@ -48687,7 +48493,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "raging",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "gold_sparkles_1",
     "color": 16728096
@@ -48808,7 +48614,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2,
@@ -48941,7 +48747,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 4,
@@ -48974,7 +48780,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "giantStrength",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "gold_sparkles_1",
     "color": 13214282
@@ -49185,7 +48991,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "net_trap",
     "color": 12564256
@@ -49431,7 +49237,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "sandblast_0",
     "color": 12173737
@@ -49647,7 +49453,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.8,
@@ -49660,7 +49466,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 4
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -50140,7 +49946,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "raging",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "drain_red_1",
     "color": 11549242
@@ -50273,7 +50079,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 5
+     "dur": 6
     },
     "aoe": 2.5,
     "magic": true,
@@ -50630,7 +50436,7 @@
     },
     "effect": {
      "key": "weakenedDmg",
-     "dur": 8
+     "dur": 12
     },
     "magic": true,
     "sprite": "drain_red_1",
@@ -50851,7 +50657,7 @@
     },
     "effect": {
      "key": "paralyzed",
-     "dur": 3
+     "dur": 6
     },
     "sprite": "cloud_neg_1",
     "color": 8019112
@@ -50976,7 +50782,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 10
+     "dur": 12
     },
     "save": {
      "ab": "dex",
@@ -51207,7 +51013,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "cloud_neg_1",
     "color": 7236195
@@ -51714,7 +51520,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 10
+     "dur": 12
     },
     "save": {
      "ab": "dex",
@@ -52165,7 +51971,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 3,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 3,
@@ -52427,7 +52233,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 10
+     "dur": 12
     },
     "save": {
      "ab": "wis",
@@ -52435,7 +52241,7 @@
     },
     "effect": {
      "key": "frightened",
-     "dur": 3,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 3,
@@ -53029,7 +52835,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "cloud_calc_dust_0",
     "color": 9296592
@@ -53168,7 +52974,7 @@
     },
     "effect": {
      "key": "poisoned",
-     "dur": 8
+     "dur": 12
     },
     "aoe": 1.8,
     "sprite": "cloud_calc_dust_0",
@@ -53180,7 +52986,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -53541,7 +53347,7 @@
     },
     "effect": {
      "key": "restrained",
-     "dur": 3,
+     "dur": 6,
      "repeatSave": true
     },
     "aoe": 2.4,
@@ -53691,7 +53497,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "rock_0",
     "color": 5918280
@@ -53805,7 +53611,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "enlarged",
-     "dur": 8
+     "dur": 12
     },
     "sprite": "gold_sparkles_1",
     "color": 11048512
@@ -53913,7 +53719,7 @@
     "maxUses": 2,
     "buff": {
      "key": "enlarged",
-     "dur": 10
+     "dur": 12
     },
     "sprite": "gold_sparkles_1",
     "color": 11048512
@@ -53937,7 +53743,7 @@
     "aoe": 2.8,
     "effect": {
      "key": "restrained",
-     "dur": 2,
+     "dur": 6,
      "repeatSave": true
     },
     "sprite": "net_trap",
@@ -53949,7 +53755,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -54419,7 +54225,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "rock_0",
     "color": 14208956
@@ -54529,7 +54335,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "cloud_calc_dust_0",
     "color": 14208956
@@ -54666,7 +54472,7 @@
     },
     "effect": {
      "key": "prone",
-     "dur": 2
+     "dur": 6
     },
     "sprite": "cloud_calc_dust_0",
     "color": 14208956
@@ -54677,7 +54483,7 @@
     "trigger": "onBloodied",
     "buff": {
      "key": "bloodlust",
-     "dur": 5
+     "dur": 6
     },
     "sprite": "gold_sparkles_1",
     "color": 16746496
@@ -54741,5 +54547,6597 @@
    }
   },
   "sprite": "sprites/WhiteMother/Idle/white_mother_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "old-growth-sapling",
+  "name": "Old Growth Sapling",
+  "cr": 3,
+  "ac": 16,
+  "hp": [
+   9,
+   10,
+   9
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   8,
+   4
+  ],
+  "xp": 700,
+  "color": 5999674,
+  "speed": 2.5,
+  "speedFt": 25,
+  "type": "plant",
+  "size": "large",
+  "theme": "Fey",
+  "threat": 36,
+  "tags": [
+   "plant",
+   "tree",
+   "oldgrowth"
+  ],
+  "effStats": {
+   "str": 18,
+   "dex": 8,
+   "con": 17,
+   "int": 6,
+   "wis": 12,
+   "cha": 6
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "root-catch",
+    "label": "Root Catch",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "str",
+     "dc": 14
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 12,
+     "repeatSave": true
+    },
+    "sprite": "cloud_magic_trail_1",
+    "color": 5025616
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 11
+   },
+   "resist": [
+    "piercing"
+   ],
+   "immune": [],
+   "vulnerable": [
+    "fire"
+   ],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned",
+    "unconscious"
+   ],
+   "languages": "understands Sylvan and Druidic but does not speak",
+   "traits": [
+    {
+     "name": "Young",
+     "desc": "Only three metres. It is the smallest thing in this wood and it is still twice your height."
+    },
+    {
+     "name": "Heartwood",
+     "desc": "Vulnerable to fire. Resistant to piercing. Immune to being blinded, deafened, frightened, paralyzed, poisoned, stunned or put to sleep - it is a tree, and none of that means anything to a tree."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Limb",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage, and the target must succeed on a DC 14 Strength save or be caught in its roots (restrained; repeat the save each round)."
+    }
+   ]
+  },
+  "scale": 0.366,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/OldGrowthSapling/Idle/old_growth_sapling_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/OldGrowthSapling/Attack/old_growth_sapling_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/OldGrowthSapling/Idle/old_growth_sapling_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "old-growth-thornlobber",
+  "name": "Old Growth Thornlobber",
+  "cr": 3,
+  "ac": 15,
+  "hp": [
+   9,
+   8,
+   9
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   8,
+   4
+  ],
+  "xp": 700,
+  "color": 14209988,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "plant",
+  "size": "large",
+  "theme": "Fey",
+  "threat": 35,
+  "tags": [
+   "plant",
+   "tree",
+   "oldgrowth"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 12,
+   "con": 16,
+   "int": 6,
+   "wis": 13,
+   "cha": 5
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 10,
+  "rangedDmgType": "piercing",
+  "abilities": [
+   {
+    "key": "splinter",
+    "label": "Splinter",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "con",
+     "dc": 14
+    },
+    "effect": {
+     "key": "wounded",
+     "dur": 12
+    },
+    "sprite": "needle_2",
+    "color": 14275260
+   },
+   {
+    "key": "seed-storm",
+    "label": "Seed Storm",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 2,
+    "save": {
+     "ab": "dex",
+     "dc": 14,
+     "half": true
+    },
+    "dice": [
+     3,
+     6,
+     0
+    ],
+    "dmgType": "piercing",
+    "aoe": 2.2,
+    "sprite": "needle_4",
+    "color": 14275260
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 11
+   },
+   "resist": [
+    "piercing"
+   ],
+   "immune": [],
+   "vulnerable": [
+    "fire"
+   ],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned",
+    "unconscious"
+   ],
+   "languages": "understands Sylvan and Druidic but does not speak",
+   "traits": [
+    {
+     "name": "Grows Them, Then Throws Them",
+     "desc": "Seed pods the size of a fist, thrown hard enough to bury."
+    },
+    {
+     "name": "Heartwood",
+     "desc": "Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Seed Pod",
+     "desc": "Ranged Weapon Attack: +6 to hit, range 50/100 ft., one target. Hit: 13 (2d8 + 4) piercing damage, and the target must succeed on a DC 14 Constitution save or be left bleeding (wounded) for two rounds."
+    },
+    {
+     "name": "Seed Storm (2/day)",
+     "desc": "It shakes its whole crown at the party. Each creature within 10 ft. of the point it chooses must make a DC 14 Dexterity save, taking 10 (3d6) piercing damage on a failure or half on a success."
+    }
+   ]
+  },
+  "scale": 0.365,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/OldGrowthThornlobber/Idle/old_growth_thornlobber_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/OldGrowthThornlobber/Attack/old_growth_thornlobber_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/OldGrowthThornlobber/Idle/old_growth_thornlobber_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "old-growth-heartwood",
+  "name": "Old Growth Heartwood",
+  "cr": 3,
+  "ac": 15,
+  "hp": [
+   8,
+   10,
+   8
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 700,
+  "color": 9416826,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "plant",
+  "size": "large",
+  "theme": "Fey",
+  "threat": 40,
+  "tags": [
+   "plant",
+   "tree",
+   "oldgrowth",
+   "caster",
+   "spellcaster"
+  ],
+  "effStats": {
+   "str": 14,
+   "dex": 10,
+   "con": 16,
+   "int": 10,
+   "wis": 17,
+   "cha": 12
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 10,
+  "cantripClass": "druid",
+  "rangedDmgType": "force",
+  "abilities": [
+   {
+    "key": "the-floor-objects",
+    "spell": "entangle",
+    "label": "The Floor Objects",
+    "trigger": "cycle",
+    "every": 3,
+    "save": {
+     "ab": "dex",
+     "dc": 15,
+     "half": true
+    },
+    "dice": [
+     3,
+     8,
+     0
+    ],
+    "dmgType": "bludgeoning",
+    "effect": {
+     "key": "restrained",
+     "dur": 12,
+     "repeatSave": true
+    },
+    "aoe": 3.0,
+    "magic": true,
+    "sprite": "cloud_magic_trail_2",
+    "color": 5025616
+   },
+   {
+    "key": "greenmend",
+    "spell": "cureWounds",
+    "label": "Greenmend",
+    "trigger": "cycle",
+    "every": 5,
+    "heal": [
+     3,
+     8,
+     6
+    ],
+    "aoe": 3.0,
+    "magic": true,
+    "sprite": "gold_sparkles_2",
+    "color": 9418618
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "nature": 4
+   },
+   "senses": {
+    "passivePerception": 13
+   },
+   "resist": [
+    "piercing"
+   ],
+   "immune": [],
+   "vulnerable": [
+    "fire"
+   ],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned",
+    "unconscious"
+   ],
+   "languages": "understands Sylvan and Druidic but does not speak",
+   "traits": [
+    {
+     "name": "The Wood Remembers",
+     "desc": "It does not cast so much as ask, and the whole forest answers at once."
+    },
+    {
+     "name": "Heartwood",
+     "desc": "Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Frond Lash",
+     "desc": "Ranged Spell Attack: +6 to hit, range 50 ft., one target. Hit: 10 (2d6 + 3) force damage."
+    },
+    {
+     "name": "The Floor Objects (recharge 3 rounds)",
+     "desc": "Roots heave up in a 15-ft. radius. Each creature there must make a DC 15 Dexterity save, taking 13 (3d8) bludgeoning damage and being restrained on a failure (repeat the save each round), or half damage on a success."
+    },
+    {
+     "name": "Greenmend (recharge 5 rounds)",
+     "desc": "Every plant within 15 ft. of it regains 19 (3d8 + 6) hit points."
+    }
+   ]
+  },
+  "scale": 0.369,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/OldGrowthHeartwood/Idle/old_growth_heartwood_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/OldGrowthHeartwood/Attack/old_growth_heartwood_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/OldGrowthHeartwood/Idle/old_growth_heartwood_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "old-growth-bulwark",
+  "name": "Old Growth Bulwark",
+  "cr": 3,
+  "ac": 19,
+  "hp": [
+   12,
+   10,
+   12
+  ],
+  "atk": 5,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 700,
+  "color": 7032366,
+  "speed": 1.0,
+  "speedFt": 10,
+  "type": "plant",
+  "size": "huge",
+  "theme": "Fey",
+  "threat": 38,
+  "tags": [
+   "plant",
+   "tree",
+   "oldgrowth",
+   "tank"
+  ],
+  "effStats": {
+   "str": 20,
+   "dex": 4,
+   "con": 20,
+   "int": 4,
+   "wis": 10,
+   "cha": 4
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "crush",
+    "label": "Crush",
+    "trigger": "onHit",
+    "chance": 0.35,
+    "save": {
+     "ab": "str",
+     "dc": 15
+    },
+    "effect": {
+     "key": "prone",
+     "dur": 6
+    },
+    "sprite": "rock_0",
+    "color": 7031598
+   },
+   {
+    "key": "settle",
+    "label": "Settle",
+    "trigger": "onBloodied",
+    "buff": {
+     "key": "barkskin",
+     "dur": 24
+    },
+    "sprite": "cloud_calc_dust_2",
+    "color": 7031598
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [
+    "piercing"
+   ],
+   "immune": [],
+   "vulnerable": [
+    "fire"
+   ],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned",
+    "unconscious"
+   ],
+   "languages": "understands Sylvan and Druidic but does not speak",
+   "traits": [
+    {
+     "name": "Shaped Like A Stump",
+     "desc": "Wider than it is tall. It was cut down a long time ago and disagreed."
+    },
+    {
+     "name": "Barely Moves",
+     "desc": "Speed 10 ft. Going around it is always an option and it has never minded."
+    },
+    {
+     "name": "Heartwood",
+     "desc": "Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Slam",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 10 ft., one target. Hit: 10 (2d6 + 3) bludgeoning damage, and the target must succeed on a DC 15 Strength save or be knocked prone."
+    }
+   ]
+  },
+  "scale": 0.4,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/OldGrowthBulwark/Idle/old_growth_bulwark_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/OldGrowthBulwark/Attack/old_growth_bulwark_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/OldGrowthBulwark/Idle/old_growth_bulwark_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "old-growth-stalker",
+  "name": "Old Growth Stalker",
+  "cr": 3,
+  "ac": 16,
+  "hp": [
+   8,
+   10,
+   8
+  ],
+  "atk": 7,
+  "dmg": [
+   2,
+   8,
+   5
+  ],
+  "xp": 700,
+  "color": 2830122,
+  "speed": 4.5,
+  "speedFt": 45,
+  "type": "plant",
+  "size": "huge",
+  "theme": "Fey",
+  "threat": 42,
+  "tags": [
+   "plant",
+   "tree",
+   "oldgrowth",
+   "elite"
+  ],
+  "effStats": {
+   "str": 19,
+   "dex": 16,
+   "con": 15,
+   "int": 7,
+   "wis": 14,
+   "cha": 6
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "long-reach",
+    "label": "Long Reach",
+    "trigger": "cycle",
+    "every": 3,
+    "range": 5,
+    "minRange": 2,
+    "save": {
+     "ab": "str",
+     "dc": 15
+    },
+    "dice": [
+     1,
+     8,
+     0
+    ],
+    "dmgType": "bludgeoning",
+    "pull": 3,
+    "beam": "chain",
+    "beamColor": 2830122,
+    "beamDur": 0.5,
+    "sprite": "cloud_magic_trail_0",
+    "color": 2830122
+   },
+   {
+    "key": "holds-still",
+    "label": "Holds Still",
+    "trigger": "onBloodied",
+    "buff": {
+     "key": "invisible"
+    },
+    "sprite": "cloud_grey_smoke",
+    "color": 2830122
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "stealth": 7
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 14
+   },
+   "resist": [
+    "piercing"
+   ],
+   "immune": [],
+   "vulnerable": [
+    "fire"
+   ],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned",
+    "unconscious"
+   ],
+   "languages": "understands Sylvan and Druidic but does not speak",
+   "traits": [
+    {
+     "name": "Spindly And Black-Barked",
+     "desc": "Too tall, too thin, too fast, and it holds still when you look directly at it."
+    },
+    {
+     "name": "Holds Still",
+     "desc": "When first bloodied it stops moving entirely and is lost among the trunks until it strikes again."
+    },
+    {
+     "name": "Heartwood",
+     "desc": "Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "The stalker makes two claw attacks."
+    },
+    {
+     "name": "Claw",
+     "desc": "Melee Weapon Attack: +7 to hit, reach 15 ft., one target. Hit: 14 (2d8 + 5) slashing damage."
+    },
+    {
+     "name": "Long Reach (recharge 3 rounds)",
+     "desc": "One creature within 25 ft. must succeed on a DC 15 Strength save or take 4 (1d8) bludgeoning damage and be dragged 15 ft. toward it."
+    }
+   ]
+  },
+  "scale": 0.482,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/OldGrowthStalker/Idle/old_growth_stalker_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/OldGrowthStalker/Attack/old_growth_stalker_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/OldGrowthStalker/Idle/old_growth_stalker_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "old-growth-elder",
+  "name": "The Elder",
+  "cr": 4,
+  "ac": 18,
+  "hp": [
+   12,
+   10,
+   24
+  ],
+  "atk": 7,
+  "dmg": [
+   3,
+   8,
+   5
+  ],
+  "xp": 1100,
+  "color": 5204526,
+  "speed": 1.5,
+  "speedFt": 15,
+  "type": "plant",
+  "size": "huge",
+  "theme": "Fey",
+  "threat": 60,
+  "tags": [
+   "plant",
+   "tree",
+   "oldgrowth"
+  ],
+  "effStats": {
+   "str": 22,
+   "dex": 6,
+   "con": 21,
+   "int": 12,
+   "wis": 16,
+   "cha": 12
+  },
+  "saves": {
+   "con": 7,
+   "wis": 5
+  },
+  "dungeons": [],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "the-grove-closes",
+    "spell": "entangle",
+    "label": "The Grove Closes",
+    "trigger": "cycle",
+    "every": 3,
+    "save": {
+     "ab": "str",
+     "dc": 16
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 24,
+     "repeatSave": true
+    },
+    "aoe": 3.4,
+    "magic": true,
+    "sprite": "cloud_magic_trail_3",
+    "color": 5205294
+   },
+   {
+    "key": "fell-swing",
+    "label": "Fell Swing",
+    "trigger": "cycle",
+    "every": 4,
+    "save": {
+     "ab": "dex",
+     "dc": 16,
+     "half": true
+    },
+    "dice": [
+     4,
+     8,
+     0
+    ],
+    "dmgType": "bludgeoning",
+    "aoe": 3.0,
+    "sprite": "rock_0_new",
+    "color": 7031598
+   },
+   {
+    "key": "deep-roots",
+    "label": "Deep Roots",
+    "trigger": "onBloodied",
+    "heal": [
+     5,
+     8,
+     10
+    ],
+    "sprite": "gold_sparkles_3",
+    "color": 9418618
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "perception": 5
+   },
+   "senses": {
+    "passivePerception": 15
+   },
+   "resist": [
+    "piercing"
+   ],
+   "immune": [],
+   "vulnerable": [
+    "fire"
+   ],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned",
+    "unconscious"
+   ],
+   "languages": "understands Sylvan and Druidic but does not speak",
+   "traits": [
+    {
+     "name": "Three Times A Man's Height",
+     "desc": "The room was not built to hold it. It got in by being here first."
+    },
+    {
+     "name": "Slow To Decide",
+     "desc": "It has been considering this for eleven years and has now finished."
+    },
+    {
+     "name": "Deep Roots",
+     "desc": "When first bloodied it drives its roots down and regains 32 (5d8 + 10) hit points."
+    },
+    {
+     "name": "Heartwood",
+     "desc": "Vulnerable to fire, resistant to piercing, immune to every condition a tree would not notice."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Bough",
+     "desc": "Melee Weapon Attack: +7 to hit, reach 15 ft., one target. Hit: 18 (3d8 + 5) bludgeoning damage."
+    },
+    {
+     "name": "The Grove Closes (recharge 3 rounds)",
+     "desc": "Every creature within 20 ft. must succeed on a DC 16 Strength save or be held by the roots (restrained; repeat the save each round)."
+    },
+    {
+     "name": "Fell Swing (recharge 4 rounds)",
+     "desc": "Each creature within 15 ft. must make a DC 16 Dexterity save, taking 18 (4d8) bludgeoning damage on a failure or half on a success."
+    }
+   ]
+  },
+  "scale": 0.853,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/OldGrowthElder/Idle/old_growth_elder_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/OldGrowthElder/Attack/old_growth_elder_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/OldGrowthElder/Idle/old_growth_elder_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blackbog-redcap",
+  "name": "Blackbog Redcap",
+  "cr": 2,
+  "ac": 13,
+  "hp": [
+   6,
+   8,
+   6
+  ],
+  "atk": 5,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 450,
+  "color": 10691614,
+  "speed": 3.5,
+  "speedFt": 35,
+  "type": "fey",
+  "size": "small",
+  "theme": "Fey",
+  "threat": 29,
+  "tags": [
+   "fey",
+   "redcap",
+   "blackbog"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 13,
+   "con": 14,
+   "int": 8,
+   "wis": 10,
+   "cha": 9
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "wet-the-cap",
+    "label": "Wet The Cap",
+    "trigger": "onKill",
+    "buff": {
+     "key": "bloodlust",
+     "dur": 18
+    },
+    "sprite": "drain_red_1",
+    "color": 10691614
+   },
+   {
+    "key": "sickle-gash",
+    "label": "Sickle Gash",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "con",
+     "dc": 13
+    },
+    "effect": {
+     "key": "wounded",
+     "dur": 12
+    },
+    "sprite": "kny_slash_1",
+    "color": 10691614
+   },
+   {
+    "key": "iron-boots",
+    "label": "Iron Boots",
+    "trigger": "cycle",
+    "every": 4,
+    "range": 1.6,
+    "save": {
+     "ab": "dex",
+     "dc": 13
+    },
+    "dice": [
+     1,
+     8,
+     3
+    ],
+    "dmgType": "bludgeoning",
+    "effect": {
+     "key": "prone",
+     "dur": 6
+    },
+    "sprite": "kny_dust_0",
+    "color": 3881530
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "perception": 2
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 12
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "poisoned"
+   ],
+   "languages": "Sylvan, Common",
+   "traits": [
+    {
+     "name": "Iron Boots",
+     "desc": "The boots are the only thing it owns that it did not steal. They are too big, and it does not care, and you will hear them coming."
+    },
+    {
+     "name": "Wet The Cap",
+     "desc": "When it kills a creature it soaks its cap in the blood and goes berserk for three rounds. The cap has to stay wet. That is the whole of its religion."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Sickle",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) slashing damage, and the target must succeed on a DC 13 Constitution save or bleed (wounded) for two rounds."
+    },
+    {
+     "name": "Iron Boots (recharge 4 rounds)",
+     "desc": "It stamps on a creature within 5 ft., which must succeed on a DC 13 Dexterity save or take 7 (1d8 + 3) bludgeoning damage and be knocked prone."
+    }
+   ]
+  },
+  "scale": 0.18,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BlackbogRedcap/Idle/blackbog_redcap_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BlackbogRedcap/Attack/blackbog_redcap_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BlackbogRedcap/Idle/blackbog_redcap_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blackbog-blight-fairy",
+  "name": "Blight Fairy",
+  "cr": 2,
+  "ac": 14,
+  "hp": [
+   5,
+   6,
+   5
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 450,
+  "color": 13218666,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "fey",
+  "size": "tiny",
+  "theme": "Fey",
+  "threat": 27,
+  "tags": [
+   "fey",
+   "fairy",
+   "blackbog",
+   "flying"
+  ],
+  "effStats": {
+   "str": 6,
+   "dex": 18,
+   "con": 10,
+   "int": 11,
+   "wis": 13,
+   "cha": 12
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 9,
+  "rangedDmgType": "poison",
+  "abilities": [
+   {
+    "key": "blight-thorn",
+    "label": "Blight Thorn",
+    "trigger": "onHit",
+    "chance": 0.35,
+    "save": {
+     "ab": "con",
+     "dc": 13
+    },
+    "effect": {
+     "key": "poisoned",
+     "dur": 12
+    },
+    "sprite": "poison_arrow_0",
+    "color": 8965978
+   },
+   {
+    "key": "spore-burst",
+    "spell": "rayOfSickness",
+    "label": "Spore Burst",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 1,
+    "save": {
+     "ab": "con",
+     "dc": 13,
+     "half": true
+    },
+    "dice": [
+     2,
+     6,
+     0
+    ],
+    "dmgType": "poison",
+    "effect": {
+     "key": "poisoned",
+     "dur": 12
+    },
+    "aoe": 2.0,
+    "magic": true,
+    "sprite": "cloud_poison_2",
+    "color": 8965978
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "stealth": 6
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 11
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "poisoned"
+   ],
+   "languages": "Sylvan, Common",
+   "traits": [
+    {
+     "name": "Hovers",
+     "desc": "Fly 40 ft. It never lands, and it crosses the bog water without a thought."
+    },
+    {
+     "name": "Fed On",
+     "desc": "It was a fairy once. The bog has been feeding on it for a long time and it is now mostly bog."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Thorn",
+     "desc": "Ranged Weapon Attack: +6 to hit, range 45/90 ft., one target. Hit: 10 (2d6 + 3) poison damage, and the target must succeed on a DC 13 Constitution save or be poisoned for two rounds."
+    },
+    {
+     "name": "Spore Burst (1/day)",
+     "desc": "It shakes its rotten wings over the party. Each creature within 10 ft. must make a DC 13 Constitution save, taking 7 (2d6) poison damage and being poisoned for two rounds on a failure, or half damage on a success."
+    }
+   ]
+  },
+  "scale": 0.117,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BlackbogBlightFairy/Idle/blackbog_blight_fairy_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BlackbogBlightFairy/Attack/blackbog_blight_fairy_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BlackbogBlightFairy/Idle/blackbog_blight_fairy_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blackbog-daughter",
+  "name": "The Blackbog Daughter",
+  "cr": 2,
+  "ac": 13,
+  "hp": [
+   5,
+   8,
+   5
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   10,
+   2
+  ],
+  "xp": 450,
+  "color": 12177344,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "fey",
+  "size": "medium",
+  "theme": "Fey",
+  "threat": 30,
+  "tags": [
+   "fey",
+   "hag",
+   "blackbog",
+   "caster",
+   "spellcaster"
+  ],
+  "effStats": {
+   "str": 10,
+   "dex": 12,
+   "con": 12,
+   "int": 13,
+   "wis": 14,
+   "cha": 17
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 10,
+  "cantripClass": "warlock",
+  "rangedDmgType": "necrotic",
+  "abilities": [
+   {
+    "key": "sweet-word",
+    "spell": "hideousLaughter",
+    "label": "Sweet Word",
+    "trigger": "cycle",
+    "every": 4,
+    "save": {
+     "ab": "wis",
+     "dc": 14
+    },
+    "effect": {
+     "key": "charmed",
+     "dur": 12
+    },
+    "magic": true,
+    "sprite": "cloud_gloom_new",
+    "color": 12177344
+   },
+   {
+    "key": "bog-hands",
+    "spell": "entangle",
+    "label": "Bog Hands",
+    "trigger": "cycle",
+    "every": 3,
+    "save": {
+     "ab": "str",
+     "dc": 13
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 12,
+     "repeatSave": true
+    },
+    "aoe": 2.8,
+    "magic": true,
+    "sprite": "cloud_calc_dust_0",
+    "color": 5204538
+   },
+   {
+    "key": "under-the-water",
+    "spell": "mistyStep",
+    "label": "Under The Water",
+    "trigger": "cycle",
+    "every": 5,
+    "minRange": 0,
+    "range": 2,
+    "blink": {
+     "range": 4
+    },
+    "magic": true,
+    "sprite": "cloud_rain_1",
+    "color": 12177344
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "deception": 7,
+    "insight": 4
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 12
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "poisoned"
+   ],
+   "languages": "Sylvan, Common",
+   "traits": [
+    {
+     "name": "Wearing Her Glamour",
+     "desc": "She is the youngest hag and the only one who bothers. From the front she is a drowned girl in a white shift. The teeth give it away, and then the hands."
+    },
+    {
+     "name": "Speaks To It First",
+     "desc": "She asks the bog for things and the bog has never once refused her."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Drowning Light",
+     "desc": "Ranged Spell Attack: +5 to hit, range 50 ft., one target. Hit: 7 (1d10 + 2) necrotic damage."
+    },
+    {
+     "name": "Sweet Word (recharge 4 rounds)",
+     "desc": "One creature within 30 ft. must succeed on a DC 14 Wisdom save or be charmed for two rounds."
+    },
+    {
+     "name": "Bog Hands (recharge 3 rounds)",
+     "desc": "Hands rise from the ground in a 15-ft. radius. Each creature there must succeed on a DC 13 Strength save or be restrained (repeat the save each round)."
+    },
+    {
+     "name": "Under The Water (recharge 5 rounds)",
+     "desc": "When something gets within reach of her she steps down into water that is not there and comes up 20 ft. away, without provoking."
+    }
+   ]
+  },
+  "scale": 0.244,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BlackbogDaughter/Idle/blackbog_daughter_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BlackbogDaughter/Attack/blackbog_daughter_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BlackbogDaughter/Idle/blackbog_daughter_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blackbog-toad",
+  "name": "The Grandmother's Toad",
+  "cr": 2,
+  "ac": 14,
+  "hp": [
+   9,
+   8,
+   9
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   10,
+   2
+  ],
+  "xp": 450,
+  "color": 5598015,
+  "speed": 1.0,
+  "speedFt": 10,
+  "type": "fey",
+  "size": "large",
+  "theme": "Fey",
+  "threat": 28,
+  "tags": [
+   "fey",
+   "toad",
+   "blackbog",
+   "tank"
+  ],
+  "effStats": {
+   "str": 17,
+   "dex": 6,
+   "con": 18,
+   "int": 3,
+   "wis": 10,
+   "cha": 4
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "swallow-whole",
+    "label": "Swallow Whole",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "str",
+     "dc": 14
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 12,
+     "repeatSave": true
+    },
+    "sprite": "acid_venom",
+    "color": 5599033
+   },
+   {
+    "key": "sticky-tongue",
+    "label": "Sticky Tongue",
+    "trigger": "cycle",
+    "every": 3,
+    "range": 5,
+    "minRange": 2,
+    "save": {
+     "ab": "str",
+     "dc": 14
+    },
+    "dice": [
+     1,
+     6,
+     0
+    ],
+    "dmgType": "bludgeoning",
+    "pull": 3,
+    "beam": "chain",
+    "beamColor": 14524319,
+    "beamDur": 0.5,
+    "sprite": "acid_venom",
+    "color": 14524319
+   },
+   {
+    "key": "toxic-hide",
+    "label": "Toxic Hide",
+    "trigger": "aura",
+    "every": 3,
+    "save": {
+     "ab": "con",
+     "dc": 13
+    },
+    "effect": {
+     "key": "poisoned",
+     "dur": 12
+    },
+    "aoe": 1.6,
+    "sprite": "cloud_poison_0",
+    "color": 5025356
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "poisoned"
+   ],
+   "languages": "Sylvan, Common",
+   "traits": [
+    {
+     "name": "Hers",
+     "desc": "The rings through its lip are the Grandmother's. She feeds it. It has never had to hunt and it is enormous."
+    },
+    {
+     "name": "Does Not Chase",
+     "desc": "Speed 10 ft. It has not left this pool in years. Going around it is always an option; its hide is not."
+    },
+    {
+     "name": "Toxic Hide",
+     "desc": "A creature that ends its turn within 5 ft. of the toad must succeed on a DC 13 Constitution save or be poisoned for two rounds."
+    },
+    {
+     "name": "Sticky Tongue (recharge 3 rounds)",
+     "desc": "One creature within 25 ft. must succeed on a DC 14 Strength save or take 3 (1d6) bludgeoning damage and be hauled 15 ft. toward the toad's mouth."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Tongue",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 10 ft., one target. Hit: 7 (1d10 + 2) bludgeoning damage, and the target must succeed on a DC 14 Strength save or be swallowed (restrained; repeat the save each round)."
+    }
+   ]
+  },
+  "scale": 0.47,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BlackbogToad/Idle/blackbog_toad_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BlackbogToad/Attack/blackbog_toad_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BlackbogToad/Idle/blackbog_toad_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blackbog-hound",
+  "name": "Blackbog Hound",
+  "cr": 2,
+  "ac": 14,
+  "hp": [
+   7,
+   8,
+   7
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   6,
+   4
+  ],
+  "xp": 450,
+  "color": 5598015,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "fey",
+  "size": "large",
+  "theme": "Fey",
+  "threat": 31,
+  "tags": [
+   "fey",
+   "hound",
+   "blackbog",
+   "elite"
+  ],
+  "effStats": {
+   "str": 17,
+   "dex": 15,
+   "con": 15,
+   "int": 4,
+   "wis": 13,
+   "cha": 6
+  },
+  "saves": {},
+  "dungeons": [
+   "verdant",
+   "sporewood",
+   "forest"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "baying",
+    "label": "Baying",
+    "trigger": "cycle",
+    "every": 4,
+    "save": {
+     "ab": "wis",
+     "dc": 13
+    },
+    "effect": {
+     "key": "frightened",
+     "dur": 12
+    },
+    "aoe": 2.6,
+    "sprite": "cloud_grey_smoke",
+    "color": 8092539
+   },
+   {
+    "key": "worry",
+    "label": "Worry",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "str",
+     "dc": 13
+    },
+    "effect": {
+     "key": "prone",
+     "dur": 6
+    },
+    "sprite": "kny_claw_0",
+    "color": 8092539
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "perception": 5
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 15
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "poisoned"
+   ],
+   "languages": "Sylvan, Common",
+   "traits": [
+    {
+     "name": "Kept Hungry",
+     "desc": "The hags do not feed it. That is the point of it."
+    },
+    {
+     "name": "Baying",
+     "desc": "Its howl carries the bog in it. Each creature within 15 ft. must succeed on a DC 13 Wisdom save or be frightened for two rounds."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "The hound bites twice."
+    },
+    {
+     "name": "Bite",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) piercing damage, and the target must succeed on a DC 13 Strength save or be knocked prone."
+    }
+   ]
+  },
+  "scale": 0.408,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BlackbogHound/Idle/blackbog_hound_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BlackbogHound/Attack/blackbog_hound_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BlackbogHound/Idle/blackbog_hound_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blackbog-grandmother",
+  "name": "The Blackbog Grandmother",
+  "cr": 3,
+  "ac": 16,
+  "hp": [
+   8,
+   10,
+   8
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   8,
+   4
+  ],
+  "xp": 700,
+  "color": 14262811,
+  "speed": 2.5,
+  "speedFt": 25,
+  "type": "fey",
+  "size": "large",
+  "theme": "Fey",
+  "threat": 40,
+  "tags": [
+   "fey",
+   "hag",
+   "blackbog",
+   "caster",
+   "spellcaster"
+  ],
+  "effStats": {
+   "str": 18,
+   "dex": 10,
+   "con": 16,
+   "int": 14,
+   "wis": 16,
+   "cha": 18
+  },
+  "saves": {
+   "wis": 5,
+   "cha": 6
+  },
+  "dungeons": [],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 8,
+  "cantripClass": "warlock",
+  "rangedDmgType": "necrotic",
+  "abilities": [
+   {
+    "key": "the-old-curse",
+    "spell": "bestowCurse",
+    "label": "The Old Curse",
+    "trigger": "cycle",
+    "every": 4,
+    "save": {
+     "ab": "wis",
+     "dc": 15
+    },
+    "effect": {
+     "key": "hexMarked",
+     "dur": 24
+    },
+    "magic": true,
+    "sprite": "cloud_gloom_new",
+    "color": 10181046
+   },
+   {
+    "key": "drowning-word",
+    "spell": "blight",
+    "label": "Drowning Word",
+    "trigger": "cycle",
+    "every": 3,
+    "save": {
+     "ab": "con",
+     "dc": 15,
+     "half": true
+    },
+    "dice": [
+     3,
+     8,
+     0
+    ],
+    "dmgType": "poison",
+    "aoe": 3.0,
+    "magic": true,
+    "sprite": "cloud_poison_1",
+    "color": 5025356
+   },
+   {
+    "key": "she-calls-them-back",
+    "label": "She Calls Them Back",
+    "trigger": "onBloodied",
+    "buff": {
+     "key": "bloodlust",
+     "dur": 12
+    },
+    "aoe": 3.4,
+    "sprite": "gold_sparkles_1",
+    "color": 14262811
+   }
+  ],
+  "statblock": {
+   "source": "verdant",
+   "prof": 2,
+   "skills": {
+    "deception": 6,
+    "arcana": 4,
+    "perception": 5
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 15
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "poisoned"
+   ],
+   "languages": "Sylvan, Common",
+   "traits": [
+    {
+     "name": "Breastplate Of Rings",
+     "desc": "Stolen gold wedding rings, hundreds of them, wired into a plate. She can tell you about any one of them."
+    },
+    {
+     "name": "The Oldest Thing In The Bog",
+     "desc": "The others are hers in the way the bog is hers, which is to say completely."
+    },
+    {
+     "name": "She Calls Them Back",
+     "desc": "When first bloodied, every ally within 20 ft. is driven into a frenzy (bloodlust) for two rounds."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Skull Staff",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 13 (2d8 + 4) bludgeoning damage."
+    },
+    {
+     "name": "Drowning Light",
+     "desc": "Ranged Spell Attack: +6 to hit, range 40 ft., one target. Hit: 13 (2d8 + 4) necrotic damage."
+    },
+    {
+     "name": "The Old Curse (recharge 4 rounds)",
+     "desc": "One creature she can see must succeed on a DC 15 Wisdom save or be cursed (hexed) for four rounds."
+    },
+    {
+     "name": "Drowning Word (recharge 3 rounds)",
+     "desc": "Each creature within 15 ft. must make a DC 15 Constitution save, taking 13 (3d8) poison damage on a failure or half on a success, as their lungs fill with bog water."
+    }
+   ]
+  },
+  "scale": 0.366,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BlackbogGrandmother/Idle/blackbog_grandmother_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BlackbogGrandmother/Attack/blackbog_grandmother_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BlackbogGrandmother/Idle/blackbog_grandmother_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "blood-hawk",
+  "name": "Blood Hawk",
+  "cr": 0.125,
+  "ac": 12,
+  "hp": [
+   2,
+   6,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   4,
+   2
+  ],
+  "xp": 25,
+  "color": 10365474,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "beast",
+  "size": "tiny",
+  "theme": "Beasts",
+  "threat": 11,
+  "tags": [
+   "beast",
+   "bird",
+   "flying"
+  ],
+  "effStats": {
+   "str": 6,
+   "dex": 14,
+   "con": 10,
+   "int": 3,
+   "wis": 14,
+   "cha": 5
+  },
+  "saves": {},
+  "dungeons": [
+   "moor",
+   "forest",
+   "mire",
+   "holdfast",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield"
+  ],
+  "flipX": true,
+  "packTactics": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "perception": 4
+   },
+   "senses": {
+    "passivePerception": 14
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Pack Tactics",
+     "desc": "Advantage on an attack when an ally is next to the target."
+    },
+    {
+     "name": "Keen Sight",
+     "desc": "It sees the party long before the party sees it."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Beak",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.153,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BloodHawk/Idle/blood_hawk_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BloodHawk/Attack/blood_hawk_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BloodHawk/Idle/blood_hawk_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "crawling-claw",
+  "name": "Crawling Claw",
+  "cr": 0,
+  "ac": 12,
+  "hp": [
+   2,
+   4,
+   0
+  ],
+  "atk": 3,
+  "dmg": [
+   1,
+   4,
+   1
+  ],
+  "xp": 10,
+  "color": 9083522,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "undead",
+  "size": "tiny",
+  "theme": "Undead",
+  "threat": 8,
+  "tags": [
+   "undead",
+   "claw"
+  ],
+  "effStats": {
+   "str": 13,
+   "dex": 14,
+   "con": 11,
+   "int": 5,
+   "wis": 10,
+   "cha": 4
+  },
+  "saves": {},
+  "dungeons": [
+   "boneyard",
+   "moor",
+   "mire",
+   "ruinfield"
+  ],
+  "flipX": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "blindsight": 30,
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [
+    "poison"
+   ],
+   "vulnerable": [],
+   "condImmune": [
+    "charmed",
+    "exhaustion",
+    "poisoned"
+   ],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Turn Immunity",
+     "desc": "Whatever hand this was, the rest of the body is not coming back for it."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Claw",
+     "desc": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 3 (1d4 + 1) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.122,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/CrawlingClaw/Idle/crawling_claw_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/CrawlingClaw/Attack/crawling_claw_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/CrawlingClaw/Idle/crawling_claw_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "mastiff",
+  "name": "Mastiff",
+  "cr": 0.125,
+  "ac": 12,
+  "hp": [
+   1,
+   8,
+   1
+  ],
+  "atk": 3,
+  "dmg": [
+   1,
+   6,
+   1
+  ],
+  "xp": 25,
+  "color": 12155454,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "beast",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 11,
+  "tags": [
+   "beast",
+   "dog",
+   "bandit"
+  ],
+  "effStats": {
+   "str": 13,
+   "dex": 14,
+   "con": 12,
+   "int": 3,
+   "wis": 12,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "drag-down",
+    "label": "Drag Down",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "str",
+     "dc": 11
+    },
+    "effect": {
+     "key": "prone",
+     "dur": 6
+    },
+    "sprite": "sandblast_0",
+    "color": 12558432
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "perception": 3
+   },
+   "senses": {
+    "passivePerception": 13
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Drag Down",
+     "desc": "A bitten creature must succeed on a DC 11 Strength save or be knocked prone."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Bite",
+     "desc": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.213,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Mastiff/Idle/mastiff_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Mastiff/Attack/mastiff_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Mastiff/Idle/mastiff_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-cutthroat",
+  "name": "Bandit Cutthroat",
+  "cr": 0.125,
+  "ac": 12,
+  "hp": [
+   2,
+   6,
+   1
+  ],
+  "atk": 3,
+  "dmg": [
+   1,
+   6,
+   1
+  ],
+  "xp": 25,
+  "color": 7031347,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 11,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 12,
+   "con": 12,
+   "int": 10,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "packTactics": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Pack Tactics",
+     "desc": "Advantage on an attack when an ally is next to the target."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Short Sword",
+     "desc": "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.278,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditCutthroat/Idle/bandit_cutthroat_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditCutthroat/Attack/bandit_cutthroat_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditCutthroat/Idle/bandit_cutthroat_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-archer",
+  "name": "Bandit Archer",
+  "cr": 0.125,
+  "ac": 12,
+  "hp": [
+   2,
+   6,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 25,
+  "color": 6056762,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 11,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 14,
+   "con": 12,
+   "int": 10,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 8,
+  "rangedDmgType": "piercing",
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Shortbow",
+     "desc": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.25,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditArcher/Idle/bandit_archer_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditArcher/Attack/bandit_archer_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditArcher/Idle/bandit_archer_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bullywug",
+  "name": "Bullywug",
+  "cr": 0.125,
+  "ac": 12,
+  "hp": [
+   2,
+   8,
+   0
+  ],
+  "atk": 3,
+  "dmg": [
+   1,
+   6,
+   1
+  ],
+  "xp": 25,
+  "color": 7240250,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 11,
+  "tags": [
+   "humanoid",
+   "bullywug",
+   "amphibious"
+  ],
+  "effStats": {
+   "str": 12,
+   "dex": 12,
+   "con": 13,
+   "int": 7,
+   "wis": 10,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "packTactics": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "stealth": 3
+   },
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Bullywug",
+   "traits": [
+    {
+     "name": "Swamp Born",
+     "desc": "Bullywugs breathe air and water alike and are never in a hurry on dry land."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Spear",
+     "desc": "Melee Weapon Attack: +3 to hit, reach 10 ft., one target. Hit: 4 (1d6 + 1) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.285,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Bullywug/Idle/bullywug_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Bullywug/Attack/bullywug_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Bullywug/Idle/bullywug_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bullywug-blowgunner",
+  "name": "Bullywug Blowgunner",
+  "cr": 0.125,
+  "ac": 11,
+  "hp": [
+   2,
+   6,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   4,
+   2
+  ],
+  "xp": 25,
+  "color": 8026682,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 11,
+  "tags": [
+   "humanoid",
+   "bullywug",
+   "amphibious"
+  ],
+  "effStats": {
+   "str": 12,
+   "dex": 14,
+   "con": 13,
+   "int": 7,
+   "wis": 10,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 6,
+  "rangedDmgType": "poison",
+  "abilities": [
+   {
+    "key": "thorn-dart",
+    "label": "Thorn Dart",
+    "trigger": "onHit",
+    "chance": 0.35,
+    "save": {
+     "ab": "con",
+     "dc": 10
+    },
+    "effect": {
+     "key": "poisoned",
+     "dur": 6
+    },
+    "sprite": "poison_arrow_0",
+    "color": 8965978
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Bullywug",
+   "traits": [
+    {
+     "name": "Swamp Born",
+     "desc": "Bullywugs breathe air and water alike and are never in a hurry on dry land."
+    },
+    {
+     "name": "Thorn Darts",
+     "desc": "A hit target must make a DC 10 Constitution save or be poisoned for a round."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Blowgun",
+     "desc": "Ranged Weapon Attack: +4 to hit, range 60/240 ft., one target. Hit: 4 (1d4 + 2) poison damage."
+    }
+   ]
+  },
+  "scale": 0.319,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BullywugBlowgunner/Idle/bullywug_blowgunner_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BullywugBlowgunner/Attack/bullywug_blowgunner_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BullywugBlowgunner/Idle/bullywug_blowgunner_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "axe-beak",
+  "name": "Axe Beak",
+  "cr": 0.25,
+  "ac": 11,
+  "hp": [
+   2,
+   10,
+   2
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   8,
+   2
+  ],
+  "xp": 50,
+  "color": 9205080,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "beast",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 12,
+  "tags": [
+   "beast",
+   "bird"
+  ],
+  "effStats": {
+   "str": 14,
+   "dex": 12,
+   "con": 12,
+   "int": 2,
+   "wis": 10,
+   "cha": 5
+  },
+  "saves": {},
+  "dungeons": [
+   "moor",
+   "holdfast",
+   "ruinfield",
+   "ashfield"
+  ],
+  "flipX": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Runner",
+     "desc": "It cannot fly, and it does not need to."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Beak",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.296,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/AxeBeak/Idle/axe_beak_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/AxeBeak/Attack/axe_beak_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/AxeBeak/Idle/axe_beak_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-crossbowman",
+  "name": "Bandit Crossbowman",
+  "cr": 0.25,
+  "ac": 13,
+  "hp": [
+   2,
+   8,
+   2
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   10,
+   1
+  ],
+  "xp": 50,
+  "color": 5914672,
+  "speed": 2.5,
+  "speedFt": 25,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 12,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "dwarf"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 13,
+   "con": 14,
+   "int": 10,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 8,
+  "rangedDmgType": "piercing",
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [
+    "poison"
+   ],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Dwarvish",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Dwarven Resilience",
+     "desc": "Resistance to poison damage."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Heavy Crossbow",
+     "desc": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 6 (1d10 + 1) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.207,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditCrossbowman/Idle/bandit_crossbowman_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditCrossbowman/Attack/bandit_crossbowman_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditCrossbowman/Idle/bandit_crossbowman_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-bruiser",
+  "name": "Bandit Bruiser",
+  "cr": 0.25,
+  "ac": 11,
+  "hp": [
+   2,
+   10,
+   2
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   8,
+   2
+  ],
+  "xp": 50,
+  "color": 7240298,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 12,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "half-orc"
+  ],
+  "effStats": {
+   "str": 15,
+   "dex": 12,
+   "con": 14,
+   "int": 8,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "aggressive",
+    "label": "Aggressive",
+    "trigger": "onKill",
+    "buff": {
+     "key": "bloodlust",
+     "dur": 6
+    },
+    "sprite": "gold_sparkles_1"
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Orc",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Relentless",
+     "desc": "It gets meaner every time someone near it drops."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Spiked Club",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.336,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditBruiser/Idle/bandit_bruiser_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditBruiser/Attack/bandit_bruiser_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditBruiser/Idle/bandit_bruiser_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "jackalwere",
+  "name": "Jackalwere",
+  "cr": 0.25,
+  "ac": 12,
+  "hp": [
+   3,
+   6,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 50,
+  "color": 10189390,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 12,
+  "tags": [
+   "humanoid",
+   "shapechanger",
+   "jackal"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 15,
+   "con": 11,
+   "int": 13,
+   "wis": 11,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "ruinfield",
+   "moor",
+   "boneyard",
+   "ashfield"
+  ],
+  "flipX": true,
+  "packTactics": true,
+  "abilities": [
+   {
+    "key": "sleep-gaze",
+    "label": "Sleep Gaze",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "range": 3,
+    "save": {
+     "ab": "wis",
+     "dc": 10
+    },
+    "effect": {
+     "key": "unconscious",
+     "dur": 6,
+     "repeatSave": true
+    },
+    "sprite": "cloud_magic_trail_1",
+    "color": 11189196
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "deception": 4,
+    "stealth": 4
+   },
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Sleep Gaze",
+     "desc": "Once per fight, a creature it stares down must make a DC 10 Wisdom save or fall asleep."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Scimitar",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.239,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Jackalwere/Idle/jackalwere_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Jackalwere/Attack/jackalwere_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Jackalwere/Idle/jackalwere_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "firenewt-warrior",
+  "name": "Firenewt Warrior",
+  "cr": 0.25,
+  "ac": 14,
+  "hp": [
+   3,
+   6,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 50,
+  "color": 13784362,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Elemental",
+  "threat": 12,
+  "tags": [
+   "humanoid",
+   "firenewt"
+  ],
+  "effStats": {
+   "str": 10,
+   "dex": 13,
+   "con": 12,
+   "int": 7,
+   "wis": 11,
+   "cha": 8
+  },
+  "saves": {},
+  "dungeons": [
+   "ashfield",
+   "ruinfield"
+  ],
+  "flipX": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [
+    "fire"
+   ],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Draconic",
+   "traits": [
+    {
+     "name": "Fire-Born",
+     "desc": "Resistance to fire; it swims in lava pools that would cook anyone else."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Scimitar",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.297,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/FirenewtWarrior/Idle/firenewt_warrior_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/FirenewtWarrior/Attack/firenewt_warrior_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/FirenewtWarrior/Idle/firenewt_warrior_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "gas-spore",
+  "name": "Gas Spore",
+  "cr": 0.25,
+  "ac": 8,
+  "hp": [
+   2,
+   6,
+   0
+  ],
+  "atk": 2,
+  "dmg": [
+   1,
+   4,
+   0
+  ],
+  "xp": 50,
+  "color": 12103066,
+  "speed": 1.0,
+  "speedFt": 10,
+  "type": "plant",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 12,
+  "tags": [
+   "plant",
+   "fungus",
+   "flying"
+  ],
+  "effStats": {
+   "str": 5,
+   "dex": 1,
+   "con": 3,
+   "int": 1,
+   "wis": 1,
+   "cha": 1
+  },
+  "saves": {},
+  "dungeons": [
+   "sporewood",
+   "forest",
+   "mire"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "death-burst",
+    "label": "Death Burst",
+    "trigger": "onDeath",
+    "save": {
+     "ab": "con",
+     "dc": 11,
+     "half": true
+    },
+    "dice": [
+     3,
+     6,
+     0
+    ],
+    "dmgType": "poison",
+    "aoe": 2.2,
+    "sprite": "cloud_poison_0",
+    "color": 5025356
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "blindsight": 30,
+    "passivePerception": 5
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [
+    "blinded",
+    "deafened",
+    "frightened",
+    "paralyzed",
+    "prone"
+   ],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Death Burst",
+     "desc": "When it dies it bursts: DC 11 Constitution save, 10 (3d6) poison on a fail, half on a success."
+    },
+    {
+     "name": "Floating",
+     "desc": "It drifts. It is not dangerous until somebody hits it."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Touch",
+     "desc": "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 2 (1d4) poison damage."
+    }
+   ]
+  },
+  "scale": 0.311,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/GasSpore/Idle/gas_spore_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/GasSpore/Attack/gas_spore_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/GasSpore/Idle/gas_spore_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bullywug-croaker",
+  "name": "Bullywug Croaker",
+  "cr": 0.25,
+  "ac": 11,
+  "hp": [
+   2,
+   8,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 50,
+  "color": 6978116,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 12,
+  "tags": [
+   "humanoid",
+   "bullywug",
+   "amphibious",
+   "caster"
+  ],
+  "effStats": {
+   "str": 12,
+   "dex": 12,
+   "con": 13,
+   "int": 7,
+   "wis": 13,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 6,
+  "rangedDmgType": "poison",
+  "cantripClass": "druid",
+  "abilities": [
+   {
+    "key": "bog-chant",
+    "spell": "cureWounds",
+    "label": "Bog Chant",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 2,
+    "heal": [
+     1,
+     8,
+     2
+    ],
+    "aoe": 3,
+    "magic": true,
+    "sprite": "gold_sparkles_2",
+    "color": 9418618
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Bullywug",
+   "traits": [
+    {
+     "name": "Swamp Born",
+     "desc": "Bullywugs breathe air and water alike and are never in a hurry on dry land."
+    },
+    {
+     "name": "Bog Chant",
+     "desc": "Twice per fight its croaking knits the wounds of nearby bullywugs (1d8 + 2)."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Swamp Gas",
+     "desc": "Ranged Weapon Attack: +4 to hit, range 60/240 ft., one target. Hit: 5 (1d6 + 2) poison damage."
+    }
+   ]
+  },
+  "scale": 0.249,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BullywugCroaker/Idle/bullywug_croaker_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BullywugCroaker/Attack/bullywug_croaker_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BullywugCroaker/Idle/bullywug_croaker_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-shieldman",
+  "name": "Bandit Shieldman",
+  "cr": 0.5,
+  "ac": 15,
+  "hp": [
+   3,
+   8,
+   3
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 100,
+  "color": 6967872,
+  "speed": 2.5,
+  "speedFt": 25,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 19,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "dwarf",
+   "tank"
+  ],
+  "effStats": {
+   "str": 14,
+   "dex": 12,
+   "con": 15,
+   "int": 10,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [
+    "poison"
+   ],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Dwarvish",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Shield Wall",
+     "desc": "Round shield and a stubborn temperament: hard to get past."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Hand Axe",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.209,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditShieldman/Idle/bandit_shieldman_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditShieldman/Attack/bandit_shieldman_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditShieldman/Idle/bandit_shieldman_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-hedge-mage",
+  "name": "Bandit Hedge Mage",
+  "cr": 0.5,
+  "ac": 11,
+  "hp": [
+   3,
+   6,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   10,
+   0
+  ],
+  "xp": 100,
+  "color": 6965870,
+  "speed": 2.5,
+  "speedFt": 25,
+  "type": "humanoid",
+  "size": "small",
+  "theme": "Beasts",
+  "threat": 19,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "gnome",
+   "caster"
+  ],
+  "effStats": {
+   "str": 8,
+   "dex": 12,
+   "con": 12,
+   "int": 15,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 8,
+  "rangedDmgType": "force",
+  "cantripClass": "wizard",
+  "abilities": [
+   {
+    "key": "dazzle",
+    "label": "Dazzle",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 1,
+    "save": {
+     "ab": "wis",
+     "dc": 11
+    },
+    "effect": {
+     "key": "blinded",
+     "dur": 6,
+     "repeatSave": true
+    },
+    "aoe": 2,
+    "magic": true,
+    "sprite": "cloud_magic_trail_1",
+    "color": 11189196
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Gnomish",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Gnome Cunning",
+     "desc": "Advantage on Int, Wis and Cha saves against magic."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Arcane Bolt",
+     "desc": "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d10) force damage."
+    }
+   ]
+  },
+  "scale": 0.189,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditHedgeMage/Idle/bandit_hedge_mage_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditHedgeMage/Attack/bandit_hedge_mage_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditHedgeMage/Idle/bandit_hedge_mage_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-poacher",
+  "name": "Bandit Poacher",
+  "cr": 0.5,
+  "ac": 13,
+  "hp": [
+   3,
+   8,
+   0
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   8,
+   2
+  ],
+  "xp": 100,
+  "color": 5135926,
+  "speed": 3.5,
+  "speedFt": 35,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 19,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "elf"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 16,
+   "con": 12,
+   "int": 10,
+   "wis": 13,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "forest",
+   "moor",
+   "mire",
+   "holdfast",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 9,
+  "rangedDmgType": "piercing",
+  "abilities": [
+   {
+    "key": "snare",
+    "label": "Snare",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "save": {
+     "ab": "str",
+     "dc": 11
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 6,
+     "repeatSave": true
+    },
+    "sprite": "net_trap",
+    "color": 12558432
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "stealth": 5,
+    "survival": 3
+   },
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 13
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Elvish",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Snare",
+     "desc": "Once per fight it springs a rabbit snare on a target: DC 11 Strength save or restrained."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Longbow",
+     "desc": "Ranged Weapon Attack: +5 to hit, range 90/360 ft., one target. Hit: 6 (1d8 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.236,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditPoacher/Idle/bandit_poacher_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditPoacher/Attack/bandit_poacher_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditPoacher/Idle/bandit_poacher_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-hedge-priest",
+  "name": "Bandit Hedge Priest",
+  "cr": 0.5,
+  "ac": 13,
+  "hp": [
+   3,
+   8,
+   2
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 100,
+  "color": 6974054,
+  "speed": 2.5,
+  "speedFt": 25,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 19,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "caster",
+   "healer"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 12,
+   "con": 13,
+   "int": 10,
+   "wis": 14,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "cure-wounds",
+    "spell": "cureWounds",
+    "label": "Cure Wounds",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 2,
+    "heal": [
+     1,
+     8,
+     2
+    ],
+    "aoe": 3,
+    "magic": true,
+    "sprite": "gold_sparkles_2",
+    "color": 15784056
+   },
+   {
+    "key": "bane",
+    "spell": "bane",
+    "label": "Bane",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 1,
+    "save": {
+     "ab": "cha",
+     "dc": 11
+    },
+    "effect": {
+     "key": "baned",
+     "dur": 6
+    },
+    "aoe": 2.5,
+    "magic": true,
+    "sprite": "cloud_neg_1",
+    "color": 13672703
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Defrocked",
+     "desc": "He kept the prayers when they took the robe. Twice a fight he patches the gang up."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Mace",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.262,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditHedgePriest/Idle/bandit_hedge_priest_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditHedgePriest/Attack/bandit_hedge_priest_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditHedgePriest/Idle/bandit_hedge_priest_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "quickling",
+  "name": "Quickling",
+  "cr": 0.5,
+  "ac": 15,
+  "hp": [
+   4,
+   6,
+   0
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   4,
+   2
+  ],
+  "xp": 100,
+  "color": 9083530,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "fey",
+  "size": "tiny",
+  "theme": "Fey",
+  "threat": 19,
+  "tags": [
+   "fey",
+   "quickling"
+  ],
+  "effStats": {
+   "str": 4,
+   "dex": 20,
+   "con": 10,
+   "int": 10,
+   "wis": 12,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "forest",
+   "moor",
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "blurred-movement",
+    "label": "Blurred Movement",
+    "trigger": "cycle",
+    "every": 3,
+    "blink": {
+     "range": 3
+    },
+    "sprite": "cloud_tloc_energy",
+    "color": 9421032
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "stealth": 7
+   },
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Sylvan",
+   "traits": [
+    {
+     "name": "Blurred Movement",
+     "desc": "It is somewhere else every few seconds. Usually behind you."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "It makes 2 dagger attacks."
+    },
+    {
+     "name": "Dagger",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 4 (1d4 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.142,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Quickling/Idle/quickling_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Quickling/Attack/quickling_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Quickling/Idle/quickling_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "fire-snake",
+  "name": "Fire Snake",
+  "cr": 0.5,
+  "ac": 14,
+  "hp": [
+   4,
+   8,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 100,
+  "color": 14701086,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "elemental",
+  "size": "medium",
+  "theme": "Elemental",
+  "threat": 19,
+  "tags": [
+   "elemental",
+   "fire",
+   "snake"
+  ],
+  "effStats": {
+   "str": 12,
+   "dex": 14,
+   "con": 11,
+   "int": 7,
+   "wis": 10,
+   "cha": 8
+  },
+  "saves": {},
+  "dungeons": [
+   "ashfield",
+   "ruinfield"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "heated-body",
+    "label": "Heated Body",
+    "trigger": "onDamaged",
+    "chance": 1,
+    "dice": [
+     1,
+     6,
+     0
+    ],
+    "dmgType": "fire",
+    "sprite": "cloud_fire_1",
+    "color": 16742960
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [
+    "bludgeoning",
+    "piercing",
+    "slashing"
+   ],
+   "immune": [
+    "fire"
+   ],
+   "vulnerable": [
+    "cold"
+   ],
+   "condImmune": [],
+   "languages": "understands Ignan",
+   "traits": [
+    {
+     "name": "Heated Body",
+     "desc": "Touching or hitting it in melee burns: 3 (1d6) fire damage."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Bite",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.205,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/FireSnake/Idle/fire_snake_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/FireSnake/Attack/fire_snake_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/FireSnake/Idle/fire_snake_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bullywug-shellback",
+  "name": "Bullywug Shellback",
+  "cr": 0.5,
+  "ac": 15,
+  "hp": [
+   3,
+   10,
+   0
+  ],
+  "atk": 4,
+  "dmg": [
+   1,
+   8,
+   2
+  ],
+  "xp": 100,
+  "color": 6188598,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 19,
+  "tags": [
+   "humanoid",
+   "bullywug",
+   "amphibious",
+   "tank"
+  ],
+  "effStats": {
+   "str": 14,
+   "dex": 12,
+   "con": 15,
+   "int": 7,
+   "wis": 10,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Bullywug",
+   "traits": [
+    {
+     "name": "Swamp Born",
+     "desc": "Bullywugs breathe air and water alike and are never in a hurry on dry land."
+    },
+    {
+     "name": "Turtle Shell",
+     "desc": "A snapping-turtle shell on one arm and a smaller one on its head."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Club",
+     "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.294,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BullywugShellback/Idle/bullywug_shellback_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BullywugShellback/Attack/bullywug_shellback_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BullywugShellback/Idle/bullywug_shellback_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-duelist",
+  "name": "Bandit Duelist",
+  "cr": 1,
+  "ac": 15,
+  "hp": [
+   5,
+   8,
+   5
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 200,
+  "color": 3026486,
+  "speed": 3.5,
+  "speedFt": 35,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 28,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "elf"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 16,
+   "con": 12,
+   "int": 10,
+   "wis": 10,
+   "cha": 14
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "riposte",
+    "label": "Riposte",
+    "trigger": "onDamaged",
+    "chance": 0.3,
+    "dice": [
+     1,
+     8,
+     0
+    ],
+    "dmgType": "piercing",
+    "sprite": "sandblast_1",
+    "color": 11546672
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Elvish",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Riposte",
+     "desc": "Sometimes the answer to a sword is a faster one: 1d8 back at whoever hit it."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "It makes 2 rapier attacks."
+    },
+    {
+     "name": "Rapier",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.264,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditDuelist/Idle/bandit_duelist_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditDuelist/Attack/bandit_duelist_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditDuelist/Idle/bandit_duelist_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-hexer",
+  "name": "Bandit Hexer",
+  "cr": 1,
+  "ac": 12,
+  "hp": [
+   5,
+   8,
+   0
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   10,
+   0
+  ],
+  "xp": 200,
+  "color": 8006186,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 28,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "tiefling",
+   "caster"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 12,
+   "con": 12,
+   "int": 10,
+   "wis": 10,
+   "cha": 15
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "ranged": true,
+  "rngRange": 9,
+  "rangedDmgType": "force",
+  "cantripClass": "warlock",
+  "abilities": [
+   {
+    "key": "hex",
+    "label": "Hex",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 2,
+    "save": {
+     "ab": "wis",
+     "dc": 12
+    },
+    "dice": [
+     1,
+     6,
+     0
+    ],
+    "dmgType": "necrotic",
+    "effect": {
+     "key": "hexMarked",
+     "dur": 12
+    },
+    "magic": true,
+    "sprite": "drain_red_1",
+    "color": 11570506
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [
+    "fire"
+   ],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Infernal",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Hellish Heritage",
+     "desc": "Resistance to fire."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Eldritch Blast",
+     "desc": "Ranged Weapon Attack: +5 to hit, range 90/360 ft., one target. Hit: 5 (1d10) force damage."
+    }
+   ]
+  },
+  "scale": 0.227,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditHexer/Idle/bandit_hexer_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditHexer/Attack/bandit_hexer_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditHexer/Idle/bandit_hexer_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bullywug-frog-rider",
+  "name": "Bullywug Frog Rider",
+  "cr": 1,
+  "ac": 13,
+  "hp": [
+   5,
+   10,
+   0
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 200,
+  "color": 7240238,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "humanoid",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 28,
+  "tags": [
+   "humanoid",
+   "bullywug",
+   "amphibious",
+   "mounted"
+  ],
+  "effStats": {
+   "str": 15,
+   "dex": 12,
+   "con": 14,
+   "int": 7,
+   "wis": 10,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "swallow",
+    "label": "Tongue Grab",
+    "trigger": "onHit",
+    "chance": 0.3,
+    "save": {
+     "ab": "str",
+     "dc": 12
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 6,
+     "repeatSave": true,
+     "dotDmg": 2
+    },
+    "sprite": "net_trap",
+    "color": 12558432
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Bullywug",
+   "traits": [
+    {
+     "name": "Swamp Born",
+     "desc": "Bullywugs breathe air and water alike and are never in a hurry on dry land."
+    },
+    {
+     "name": "Mounted",
+     "desc": "The rider spears; the frog grabs whatever the spear missed."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "It makes 2 spear and tongue attacks."
+    },
+    {
+     "name": "Spear and Tongue",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.333,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BullywugFrogRider/Idle/bullywug_frog_rider_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BullywugFrogRider/Attack/bullywug_frog_rider_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BullywugFrogRider/Idle/bullywug_frog_rider_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "berserker",
+  "name": "Berserker",
+  "cr": 1,
+  "ac": 13,
+  "hp": [
+   5,
+   8,
+   5
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   12,
+   3
+  ],
+  "xp": 200,
+  "color": 10503722,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 28,
+  "tags": [
+   "humanoid",
+   "raider"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 12,
+   "con": 16,
+   "int": 9,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "boneyard",
+   "ruinfield",
+   "snowfield"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "berserk",
+    "label": "Reckless",
+    "trigger": "onBloodied",
+    "buff": {
+     "key": "bloodlust",
+     "dur": 12
+    },
+    "sprite": "flame_0"
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Reckless",
+     "desc": "Bloodied, it stops caring about its own guard."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Greataxe",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 9 (1d12 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.317,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Berserker/Idle/berserker_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Berserker/Attack/berserker_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Berserker/Idle/berserker_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "leucrotta",
+  "name": "Leucrotta",
+  "cr": 1,
+  "ac": 14,
+  "hp": [
+   5,
+   8,
+   5
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   10,
+   3
+  ],
+  "xp": 200,
+  "color": 9077368,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "monstrosity",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 28,
+  "tags": [
+   "monstrosity",
+   "leucrotta"
+  ],
+  "effStats": {
+   "str": 18,
+   "dex": 14,
+   "con": 15,
+   "int": 9,
+   "wis": 12,
+   "cha": 6
+  },
+  "saves": {},
+  "dungeons": [
+   "moor",
+   "holdfast",
+   "boneyard",
+   "ruinfield",
+   "ashfield"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "mimicry",
+    "label": "Mimicry",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "range": 6,
+    "save": {
+     "ab": "wis",
+     "dc": 11
+    },
+    "effect": {
+     "key": "charmed",
+     "dur": 6,
+     "repeatSave": true
+    },
+    "sprite": "cloud_magic_trail_1",
+    "color": 11189196
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 13
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Abyssal, Common",
+   "traits": [
+    {
+     "name": "Mimicry",
+     "desc": "It calls in the voice of someone you trust. Once per fight: DC 11 Wisdom save or charmed."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Bite",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 8 (1d10 + 3) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.383,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Leucrotta/Idle/leucrotta_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Leucrotta/Attack/leucrotta_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Leucrotta/Idle/leucrotta_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "yeti",
+  "name": "Yeti",
+  "cr": 1,
+  "ac": 12,
+  "hp": [
+   5,
+   8,
+   5
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   10,
+   3
+  ],
+  "xp": 200,
+  "color": 15265522,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "monstrosity",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 28,
+  "tags": [
+   "monstrosity",
+   "yeti"
+  ],
+  "effStats": {
+   "str": 18,
+   "dex": 13,
+   "con": 16,
+   "int": 8,
+   "wis": 12,
+   "cha": 7
+  },
+  "saves": {},
+  "dungeons": [
+   "snowfield",
+   "moor"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "chilling-gaze",
+    "label": "Chilling Gaze",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "range": 3,
+    "save": {
+     "ab": "con",
+     "dc": 12
+    },
+    "effect": {
+     "key": "slowed",
+     "dur": 12
+    },
+    "sprite": "frost_0",
+    "color": 8377599
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 13
+   },
+   "resist": [],
+   "immune": [
+    "cold"
+   ],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Yeti",
+   "traits": [
+    {
+     "name": "Fear of Fire",
+     "desc": "Not that it shows it."
+    },
+    {
+     "name": "Chilling Gaze",
+     "desc": "Once per fight: DC 12 Constitution save or slowed by the cold."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Claw",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 8 (1d10 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.352,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Yeti/Idle/yeti_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Yeti/Attack/yeti_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Yeti/Idle/yeti_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-sellsword",
+  "name": "Bandit Sellsword",
+  "cr": 2,
+  "ac": 16,
+  "hp": [
+   6,
+   8,
+   6
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   10,
+   3
+  ],
+  "xp": 450,
+  "color": 9067054,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Draconic",
+  "threat": 33,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "dragonborn"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 12,
+   "con": 14,
+   "int": 10,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "breath",
+    "label": "Fire Breath",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 1,
+    "save": {
+     "ab": "dex",
+     "dc": 12,
+     "half": true
+    },
+    "dice": [
+     2,
+     6,
+     0
+    ],
+    "dmgType": "fire",
+    "aoe": 2.2,
+    "sprite": "cloud_fire_1",
+    "color": 16742960
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [
+    "fire"
+   ],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Draconic",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Breath Weapon",
+     "desc": "Once per fight: 2d6 fire in a short blast, DC 12 Dexterity for half."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Halberd",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 10 ft., one target. Hit: 8 (1d10 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.281,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditSellsword/Idle/bandit_sellsword_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditSellsword/Attack/bandit_sellsword_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditSellsword/Idle/bandit_sellsword_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-captain",
+  "name": "Bandit Captain",
+  "cr": 2,
+  "ac": 15,
+  "hp": [
+   7,
+   8,
+   7
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 450,
+  "color": 4862502,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 33,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "leader"
+  ],
+  "effStats": {
+   "str": 15,
+   "dex": 16,
+   "con": 12,
+   "int": 10,
+   "wis": 10,
+   "cha": 14
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "last-stand",
+    "label": "Last Stand",
+    "trigger": "onBloodied",
+    "buff": {
+     "key": "bloodlust",
+     "dur": 12
+    },
+    "sprite": "gold_sparkles_1"
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Parry",
+     "desc": "He has been in a lot of fights. Bloodied, he fights like it."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "It makes 2 longsword attacks."
+    },
+    {
+     "name": "Longsword",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.227,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditCaptain/Idle/bandit_captain_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditCaptain/Attack/bandit_captain_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditCaptain/Idle/bandit_captain_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "revenant",
+  "name": "Revenant",
+  "cr": 2,
+  "ac": 13,
+  "hp": [
+   6,
+   8,
+   6
+  ],
+  "atk": 5,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 450,
+  "color": 5660750,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "undead",
+  "size": "medium",
+  "theme": "Undead",
+  "threat": 33,
+  "tags": [
+   "undead",
+   "revenant"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 12,
+   "con": 16,
+   "int": 10,
+   "wis": 12,
+   "cha": 14
+  },
+  "saves": {},
+  "dungeons": [
+   "boneyard",
+   "moor",
+   "mire",
+   "holdfast",
+   "ruinfield"
+  ],
+  "flipX": true,
+  "regen": 3,
+  "abilities": [
+   {
+    "key": "vengeful-glare",
+    "label": "Vengeful Glare",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "range": 3,
+    "save": {
+     "ab": "wis",
+     "dc": 12
+    },
+    "effect": {
+     "key": "frightened",
+     "dur": 6,
+     "repeatSave": true
+    },
+    "sprite": "cloud_gloom_new",
+    "color": 10181046
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 13
+   },
+   "resist": [
+    "necrotic",
+    "psychic"
+   ],
+   "immune": [
+    "poison"
+   ],
+   "vulnerable": [],
+   "condImmune": [
+    "charmed",
+    "frightened",
+    "paralyzed",
+    "poisoned",
+    "stunned"
+   ],
+   "languages": "the languages it knew in life",
+   "traits": [
+    {
+     "name": "Regeneration",
+     "desc": "It regains 3 hit points at the start of its turn."
+    },
+    {
+     "name": "Rejuvenation",
+     "desc": "It is looking for one particular person. You are in the way."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Longsword",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 10 (2d6 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.239,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Revenant/Idle/revenant_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Revenant/Attack/revenant_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Revenant/Idle/revenant_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "peryton",
+  "name": "Peryton",
+  "cr": 2,
+  "ac": 13,
+  "hp": [
+   6,
+   8,
+   6
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   8,
+   3
+  ],
+  "xp": 450,
+  "color": 3033668,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "monstrosity",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 33,
+  "tags": [
+   "monstrosity",
+   "peryton",
+   "flying"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 12,
+   "con": 13,
+   "int": 9,
+   "wis": 12,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "moor",
+   "forest",
+   "ruinfield",
+   "snowfield"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "dive-attack",
+    "label": "Dive Attack",
+    "trigger": "onHit",
+    "chance": 0.35,
+    "dice": [
+     2,
+     6,
+     0
+    ],
+    "dmgType": "piercing",
+    "sprite": "sandblast_0",
+    "color": 12558432
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {
+    "perception": 5
+   },
+   "senses": {
+    "passivePerception": 15
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "understands Common",
+   "traits": [
+    {
+     "name": "Dive Attack",
+     "desc": "Sometimes it comes out of the sky antlers-first: +2d6 piercing."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Gore",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) piercing damage."
+    }
+   ]
+  },
+  "scale": 0.299,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Peryton/Idle/peryton_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Peryton/Attack/peryton_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Peryton/Idle/peryton_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "nightmare",
+  "name": "Nightmare",
+  "cr": 2,
+  "ac": 13,
+  "hp": [
+   6,
+   10,
+   6
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   8,
+   3
+  ],
+  "xp": 450,
+  "color": 1972762,
+  "speed": 5.0,
+  "speedFt": 50,
+  "type": "fiend",
+  "size": "large",
+  "theme": "Fiendish",
+  "threat": 33,
+  "tags": [
+   "fiend",
+   "nightmare",
+   "horse"
+  ],
+  "effStats": {
+   "str": 18,
+   "dex": 15,
+   "con": 16,
+   "int": 10,
+   "wis": 13,
+   "cha": 15
+  },
+  "saves": {},
+  "dungeons": [
+   "ashfield",
+   "moor",
+   "boneyard"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "burning-hooves",
+    "label": "Burning Hooves",
+    "trigger": "onHit",
+    "chance": 1,
+    "dice": [
+     1,
+     6,
+     0
+    ],
+    "dmgType": "fire",
+    "sprite": "cloud_fire_1",
+    "color": 16742960
+   },
+   {
+    "key": "illumination",
+    "label": "Illumination",
+    "trigger": "aura",
+    "fxOnly": true,
+    "aoe": 1.8,
+    "every": 2,
+    "sprite": "heataura_0",
+    "color": 16756314
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [
+    "fire"
+   ],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "understands Abyssal, Common, Infernal",
+   "traits": [
+    {
+     "name": "Burning Hooves",
+     "desc": "Every kick also burns: +1d6 fire."
+    },
+    {
+     "name": "Illumination",
+     "desc": "Its mane lights the field around it."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Hooves",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.312,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Nightmare/Idle/nightmare_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Nightmare/Attack/nightmare_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Nightmare/Idle/nightmare_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "phase-panther",
+  "name": "Phase Panther",
+  "cr": 2,
+  "ac": 13,
+  "hp": [
+   6,
+   8,
+   6
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   6,
+   2
+  ],
+  "xp": 450,
+  "color": 2238526,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "monstrosity",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 33,
+  "tags": [
+   "monstrosity",
+   "panther"
+  ],
+  "effStats": {
+   "str": 16,
+   "dex": 15,
+   "con": 14,
+   "int": 6,
+   "wis": 12,
+   "cha": 8
+  },
+  "saves": {},
+  "dungeons": [
+   "forest",
+   "moor",
+   "ruinfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "phase-shift",
+    "label": "Phase Shift",
+    "trigger": "cycle",
+    "every": 4,
+    "blink": {
+     "range": 3
+    },
+    "sprite": "cloud_tloc_energy",
+    "color": 9421032
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 11
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Displacement",
+     "desc": "It is never quite where it appears to be, and every so often it simply is not."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "It makes 2 tentacle attacks."
+    },
+    {
+     "name": "Tentacle",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 10 ft., one target. Hit: 5 (1d6 + 2) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.334,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/PhasePanther/Idle/phase_panther_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/PhasePanther/Attack/phase_panther_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/PhasePanther/Idle/phase_panther_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "bandit-queen",
+  "name": "Bandit Queen",
+  "cr": 3,
+  "ac": 15,
+  "hp": [
+   8,
+   8,
+   8
+  ],
+  "atk": 6,
+  "dmg": [
+   1,
+   8,
+   3
+  ],
+  "xp": 700,
+  "color": 10362402,
+  "speed": 3.5,
+  "speedFt": 35,
+  "type": "humanoid",
+  "size": "medium",
+  "theme": "Beasts",
+  "threat": 40,
+  "tags": [
+   "humanoid",
+   "bandit",
+   "outlaw",
+   "half-elf",
+   "leader"
+  ],
+  "effStats": {
+   "str": 11,
+   "dex": 17,
+   "con": 12,
+   "int": 10,
+   "wis": 10,
+   "cha": 16
+  },
+  "saves": {},
+  "dungeons": [
+   "holdfast",
+   "moor",
+   "forest",
+   "mire",
+   "boneyard",
+   "ruinfield",
+   "ashfield",
+   "snowfield",
+   "sporewood"
+  ],
+  "flipX": true,
+  "attacksPerTurn": 2,
+  "abilities": [
+   {
+    "key": "flourish",
+    "label": "Flourish",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 2,
+    "save": {
+     "ab": "dex",
+     "dc": 13,
+     "half": true
+    },
+    "dice": [
+     2,
+     6,
+     3
+    ],
+    "dmgType": "slashing",
+    "aoe": 1.8,
+    "sprite": "sandblast_1",
+    "color": 11546672
+   },
+   {
+    "key": "last-stand",
+    "label": "Not Today",
+    "trigger": "onBloodied",
+    "buff": {
+     "key": "bloodlust",
+     "dur": 12
+    },
+    "sprite": "gold_sparkles_1"
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "passivePerception": 10
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Common, Elvish",
+   "traits": [
+    {
+     "name": "Red Neckerchief",
+     "desc": "Every member of the gang wears the same faded red scarf. It is the only uniform they have and the only oath most of them have kept."
+    },
+    {
+     "name": "Flourish",
+     "desc": "Twice a fight both sabres go round in a ring: 2d6+3 slashing, DC 13 Dexterity for half."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Multiattack",
+     "desc": "It makes 2 sabre attacks."
+    },
+    {
+     "name": "Sabre",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.225,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/BanditQueen/Idle/bandit_queen_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/BanditQueen/Attack/bandit_queen_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/BanditQueen/Idle/bandit_queen_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "banshee",
+  "name": "Banshee",
+  "cr": 3,
+  "ac": 12,
+  "hp": [
+   8,
+   8,
+   0
+  ],
+  "atk": 5,
+  "dmg": [
+   2,
+   6,
+   2
+  ],
+  "xp": 700,
+  "color": 13163750,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "undead",
+  "size": "medium",
+  "theme": "Undead",
+  "threat": 40,
+  "tags": [
+   "undead",
+   "incorporeal",
+   "flying"
+  ],
+  "effStats": {
+   "str": 1,
+   "dex": 14,
+   "con": 10,
+   "int": 12,
+   "wis": 11,
+   "cha": 17
+  },
+  "saves": {},
+  "dungeons": [
+   "boneyard",
+   "moor",
+   "mire",
+   "ruinfield",
+   "snowfield"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "wail",
+    "label": "Wail",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "save": {
+     "ab": "con",
+     "dc": 13,
+     "half": true
+    },
+    "dice": [
+     3,
+     6,
+     0
+    ],
+    "dmgType": "psychic",
+    "aoe": 3,
+    "effect": {
+     "key": "frightened",
+     "dur": 6
+    },
+    "magic": true,
+    "sprite": "cloud_neg_1",
+    "color": 13672703
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 10
+   },
+   "resist": [
+    "acid",
+    "fire",
+    "lightning",
+    "thunder",
+    "bludgeoning",
+    "piercing",
+    "slashing"
+   ],
+   "immune": [
+    "cold",
+    "necrotic",
+    "poison"
+   ],
+   "vulnerable": [],
+   "condImmune": [
+    "charmed",
+    "exhaustion",
+    "frightened",
+    "grappled",
+    "paralyzed",
+    "petrified",
+    "poisoned",
+    "prone",
+    "restrained"
+   ],
+   "languages": "the languages it knew in life",
+   "traits": [
+    {
+     "name": "Incorporeal",
+     "desc": "Resistant to most things that are not magic, fire or radiance."
+    },
+    {
+     "name": "Wail",
+     "desc": "Once per fight: 3d6 psychic to everything near her, DC 13 Constitution for half, and frightened."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Corrupting Touch",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 9 (2d6 + 2) necrotic damage."
+    }
+   ]
+  },
+  "scale": 0.267,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Banshee/Idle/banshee_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Banshee/Attack/banshee_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Banshee/Idle/banshee_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "dullahan",
+  "name": "Dullahan",
+  "cr": 3,
+  "ac": 16,
+  "hp": [
+   8,
+   10,
+   8
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 700,
+  "color": 1975328,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "undead",
+  "size": "medium",
+  "theme": "Undead",
+  "threat": 40,
+  "tags": [
+   "undead",
+   "headless"
+  ],
+  "effStats": {
+   "str": 17,
+   "dex": 14,
+   "con": 16,
+   "int": 12,
+   "wis": 14,
+   "cha": 16
+  },
+  "saves": {},
+  "dungeons": [
+   "boneyard",
+   "moor",
+   "forest",
+   "holdfast"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "headless-gaze",
+    "label": "Headless Gaze",
+    "trigger": "cycle",
+    "every": 3,
+    "maxUses": 2,
+    "save": {
+     "ab": "wis",
+     "dc": 13
+    },
+    "effect": {
+     "key": "frightened",
+     "dur": 6,
+     "repeatSave": true
+    },
+    "aoe": 2.5,
+    "sprite": "cloud_gloom_new",
+    "color": 6740800
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "blindsight": 60,
+    "passivePerception": 12
+   },
+   "resist": [
+    "necrotic"
+   ],
+   "immune": [
+    "poison"
+   ],
+   "vulnerable": [],
+   "condImmune": [
+    "frightened",
+    "poisoned",
+    "exhaustion"
+   ],
+   "languages": "Common",
+   "traits": [
+    {
+     "name": "Headless Gaze",
+     "desc": "It holds its head up and looks at you with it. Twice a fight: DC 13 Wisdom or frightened."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Spine Whip",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 10 (2d6 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.222,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Dullahan/Idle/dullahan_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Dullahan/Attack/dullahan_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Dullahan/Idle/dullahan_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "catoblepas",
+  "name": "Catoblepas",
+  "cr": 3,
+  "ac": 14,
+  "hp": [
+   8,
+   10,
+   8
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   6,
+   3
+  ],
+  "xp": 700,
+  "color": 7235682,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "monstrosity",
+  "size": "large",
+  "theme": "Beasts",
+  "threat": 40,
+  "tags": [
+   "monstrosity",
+   "catoblepas",
+   "tank"
+  ],
+  "effStats": {
+   "str": 19,
+   "dex": 7,
+   "con": 18,
+   "int": 3,
+   "wis": 14,
+   "cha": 8
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "boneyard",
+   "sporewood"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "death-ray",
+    "label": "Death Ray",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "range": 6,
+    "save": {
+     "ab": "con",
+     "dc": 13,
+     "half": true
+    },
+    "dice": [
+     4,
+     8,
+     0
+    ],
+    "dmgType": "necrotic",
+    "magic": true,
+    "sprite": "drain_red_1",
+    "color": 8019112
+   },
+   {
+    "key": "stench",
+    "label": "Stench",
+    "trigger": "aura",
+    "save": {
+     "ab": "con",
+     "dc": 12
+    },
+    "effect": {
+     "key": "poisoned",
+     "dur": 6
+    },
+    "aoe": 1.8,
+    "every": 4,
+    "sprite": "cloud_poison_0",
+    "color": 5025356
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 12
+   },
+   "resist": [],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Stench",
+     "desc": "Standing next to it risks being poisoned."
+    },
+    {
+     "name": "Death Ray",
+     "desc": "Once per fight its eyes open: 4d8 necrotic, DC 13 Constitution for half."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Tail",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 10 ft., one target. Hit: 10 (2d6 + 3) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.379,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Catoblepas/Idle/catoblepas_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Catoblepas/Attack/catoblepas_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Catoblepas/Idle/catoblepas_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "abominable-yeti",
+  "name": "Abominable Yeti",
+  "cr": 3,
+  "ac": 15,
+  "hp": [
+   9,
+   10,
+   9
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   6,
+   4
+  ],
+  "xp": 700,
+  "color": 14477038,
+  "speed": 4.0,
+  "speedFt": 40,
+  "type": "monstrosity",
+  "size": "huge",
+  "theme": "Beasts",
+  "threat": 42,
+  "tags": [
+   "monstrosity",
+   "yeti"
+  ],
+  "effStats": {
+   "str": 22,
+   "dex": 10,
+   "con": 20,
+   "int": 9,
+   "wis": 13,
+   "cha": 9
+  },
+  "saves": {},
+  "dungeons": [
+   "snowfield"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "cold-breath",
+    "label": "Cold Breath",
+    "trigger": "cycle",
+    "every": 4,
+    "maxUses": 1,
+    "save": {
+     "ab": "con",
+     "dc": 13,
+     "half": true
+    },
+    "dice": [
+     4,
+     6,
+     0
+    ],
+    "dmgType": "cold",
+    "aoe": 3,
+    "effect": {
+     "key": "slowed",
+     "dur": 6
+    },
+    "sprite": "icicle_0",
+    "color": 8377599
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 14
+   },
+   "resist": [],
+   "immune": [
+    "cold"
+   ],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "Yeti",
+   "traits": [
+    {
+     "name": "Cold Breath",
+     "desc": "Once per fight: 4d6 cold in a cone, DC 13 Constitution for half, and slowed."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Claw",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.45,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/AbominableYeti/Idle/abominable_yeti_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/AbominableYeti/Attack/abominable_yeti_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/AbominableYeti/Idle/abominable_yeti_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "froghemoth",
+  "name": "Froghemoth",
+  "cr": 3,
+  "ac": 14,
+  "hp": [
+   9,
+   10,
+   9
+  ],
+  "atk": 6,
+  "dmg": [
+   2,
+   8,
+   3
+  ],
+  "xp": 700,
+  "color": 6199866,
+  "speed": 2.0,
+  "speedFt": 20,
+  "type": "monstrosity",
+  "size": "huge",
+  "theme": "Beasts",
+  "threat": 42,
+  "tags": [
+   "monstrosity",
+   "froghemoth",
+   "amphibious"
+  ],
+  "effStats": {
+   "str": 23,
+   "dex": 13,
+   "con": 20,
+   "int": 2,
+   "wis": 12,
+   "cha": 5
+  },
+  "saves": {},
+  "dungeons": [
+   "mire",
+   "sporewood"
+  ],
+  "flipX": true,
+  "abilities": [
+   {
+    "key": "constrict",
+    "label": "Constrict",
+    "trigger": "onHit",
+    "chance": 0.35,
+    "save": {
+     "ab": "str",
+     "dc": 13
+    },
+    "effect": {
+     "key": "restrained",
+     "dur": 12,
+     "repeatSave": true,
+     "dotDmg": 3
+    },
+    "sprite": "net_trap",
+    "color": 12558432
+   }
+  ],
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "darkvision": 60,
+    "passivePerception": 11
+   },
+   "resist": [
+    "fire",
+    "lightning"
+   ],
+   "immune": [],
+   "vulnerable": [],
+   "condImmune": [],
+   "languages": "—",
+   "traits": [
+    {
+     "name": "Amphibious",
+     "desc": "It lives at the bottom of the mire. It comes up when something is worth eating."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Tentacle",
+     "desc": "Melee Weapon Attack: +6 to hit, reach 15 ft., one target. Hit: 12 (2d8 + 3) bludgeoning damage."
+    }
+   ]
+  },
+  "scale": 0.584,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/Froghemoth/Idle/froghemoth_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/Froghemoth/Attack/froghemoth_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/Froghemoth/Idle/froghemoth_idle_spritesheet_192x192.png"
+ },
+ {
+  "id": "helmed-horror",
+  "name": "Helmed Horror",
+  "cr": 1,
+  "ac": 16,
+  "hp": [
+   5,
+   10,
+   0
+  ],
+  "atk": 5,
+  "dmg": [
+   1,
+   8,
+   3
+  ],
+  "xp": 200,
+  "color": 6178352,
+  "speed": 3.0,
+  "speedFt": 30,
+  "type": "construct",
+  "size": "medium",
+  "theme": "Elemental",
+  "threat": 28,
+  "tags": [
+   "construct",
+   "animated-armor",
+   "tank"
+  ],
+  "effStats": {
+   "str": 18,
+   "dex": 13,
+   "con": 16,
+   "int": 10,
+   "wis": 10,
+   "cha": 10
+  },
+  "saves": {},
+  "dungeons": [
+   "ruinfield",
+   "holdfast",
+   "boneyard",
+   "ashfield"
+  ],
+  "flipX": true,
+  "magicResistance": true,
+  "statblock": {
+   "source": "overland",
+   "prof": 2,
+   "skills": {},
+   "senses": {
+    "blindsight": 60,
+    "passivePerception": 14
+   },
+   "resist": [
+    "bludgeoning",
+    "piercing",
+    "slashing"
+   ],
+   "immune": [
+    "force",
+    "necrotic",
+    "poison"
+   ],
+   "vulnerable": [],
+   "condImmune": [
+    "blinded",
+    "charmed",
+    "deafened",
+    "exhaustion",
+    "frightened",
+    "paralyzed",
+    "petrified",
+    "poisoned",
+    "stunned"
+   ],
+   "languages": "understands the languages of its creator",
+   "traits": [
+    {
+     "name": "Magic Resistance",
+     "desc": "Advantage on saving throws against spells and other magical effects."
+    },
+    {
+     "name": "Empty",
+     "desc": "There is nobody inside. There has not been for a long time."
+    }
+   ],
+   "actions": [
+    {
+     "name": "Longsword",
+     "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) slashing damage."
+    }
+   ]
+  },
+  "scale": 0.275,
+  "animations": {
+   "idle": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 8,
+    "loop": true,
+    "sprite": "sprites/HelmedHorror/Idle/helmed_horror_idle_spritesheet_192x192.png"
+   },
+   "attack": {
+    "frameWidth": 192,
+    "frameHeight": 192,
+    "cols": 19,
+    "rows": 1,
+    "fps": 12,
+    "loop": false,
+    "sprite": "sprites/HelmedHorror/Attack/helmed_horror_attack_spritesheet_192x192.png"
+   }
+  },
+  "sprite": "sprites/HelmedHorror/Idle/helmed_horror_idle_spritesheet_192x192.png"
  }
 ]

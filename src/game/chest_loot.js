@@ -1,5 +1,5 @@
 import { roll, subclassOf } from './srd.js';
-import { rollChestLoot, addToInventory } from './items.js';
+import { rollChestLoot, rollItem, addToInventory } from './items.js';
 import { log, updateResources } from './ui.js';
 import { refreshMenus } from './menus.js';
 import { onChestLooted } from './quest_events.js';
@@ -8,6 +8,7 @@ import { playSfx } from './audio.js';
 import { playNixieEffect } from '../render/nixie_vfx.js';
 import { firstRunTip } from './help_ui.js';
 import { revealItems, cancelItemReveal } from './item_reveal.js';
+import { isTutorialGearChest, tutorialGearChest } from './tutorial.js';
 
 /* Chests open in the world: the lid swings back on the model itself
    (3d/generic/chest_anim.glb — rattle, beat, slow creak, settle) and the haul
@@ -41,8 +42,20 @@ export function lootChest(chest, at = null) {
   firstRunTip('chest');
 
   const gold = rollChestGold();
-  const potion = rollChestPotion();
-  const items = rollChestLoot(_g.activeQuest ? _g.activeQuest.level : _g.dungeonLevel, Math.random, _g.questFloor || 0);
+  /* The tutorial's first chest is fixed: one class-fit upgrade per hero, for
+     the equip card that follows it (tutorial.js). */
+  const gearChest = isTutorialGearChest(_g);
+  const potion = gearChest ? 'heal' : rollChestPotion();
+  const items = gearChest
+    ? tutorialGearChest(_g, rollItem)
+    : rollChestLoot(_g.activeQuest ? _g.activeQuest.level : _g.dungeonLevel, Math.random, _g.questFloor || 0);
+  /* a chest in an unlit room hides richer treasure (docs/LIGHT_IDEAS.md 44) */
+  const room = !gearChest && _g.D && _g.D.rooms && chest.roomId != null ? _g.D.rooms[chest.roomId] : null;
+  if (room && room.dark) {
+    const extra = rollChestLoot(_g.activeQuest ? _g.activeQuest.level : _g.dungeonLevel, Math.random, _g.questFloor || 0);
+    if (extra && extra.length) items.push(extra[0]);
+    if (_g.fxLog) _g.fxLog('🌑 The dark room kept its treasure well hidden — there is more here.', 'treasure');
+  }
 
   playSfx('chestOpen', { volume: 0.8 });
   let delay = 0;
@@ -62,11 +75,11 @@ export function lootChest(chest, at = null) {
   if (delay > 0) {
     const t = setTimeout(() => {
       _pending = _pending.filter(x => x !== t);
-      applyLoot(gold, potion, items);
+      applyLoot(gold, potion, items, gearChest);
     }, delay);
     _pending.push(t);
   } else {
-    applyLoot(gold, potion, items);
+    applyLoot(gold, potion, items, gearChest);
   }
 }
 
@@ -86,7 +99,7 @@ function rollChestPotion() {
   return (_g.dungeonLevel >= 3 && Math.random() < 0.4) ? 'greater' : 'heal';
 }
 
-function applyLoot(gold, potion, items) {
+function applyLoot(gold, potion, items, gearChest = false) {
   if (!_g) return;
   _g.gold += gold;
   trackGold(_g, gold);
@@ -106,4 +119,5 @@ function applyLoot(gold, potion, items) {
   if (potion) log(`  \u{21B3} a ${potion === 'greater' ? 'Greater Healing' : 'Healing'} Potion.`, 'treasure');
   for (const it of items) log(`  \u{21B3} ${it.name}!`, 'treasure');
   revealItems(items);   // rare-or-better finds get a card; the rest just flowed through the feed
+  if (gearChest) firstRunTip('equipGear');
 }

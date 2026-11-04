@@ -104,8 +104,10 @@ function play(game, steps = 600) {
   return n;
 }
 
+let initMod;
 beforeEach(async () => {
   mod = await import('../src/game/boss_cutscene.js');
+  initMod = await import('../src/game/initiative.js');
   ({ camTarget } = await import('../src/render/dungeon_scene.js'));
   ({ CAM_BODY_HEIGHT } = await import('../src/game/camera_director.js'));
 });
@@ -142,6 +144,18 @@ describe('Boss intro cutscene', () => {
 
     const dead = makeGame({ bossHp: 0 });
     expect(mod.checkBossCutscene(dead)).toBe(false);
+  });
+
+  it('also arms when the boss room wakes before the party steps in, so initiative cannot beat it', () => {
+    const woke = makeGame();
+    woke.visitedRooms = { 3: false };
+    woke.monsters[1].active = true;          // an escort saw the party from the corridor
+    expect(mod.checkBossCutscene(woke)).toBe(true);
+
+    /* ...and while it plays, no roll-off starts under it */
+    const { initiativeMethods } = initMod;
+    const g = { bossCutscene: woke.bossCutscene, _initParticipants() { throw new Error('rolled under the intro'); } };
+    expect(() => initiativeMethods.updateInitiative.call(g, 1 / 60)).not.toThrow();
   });
 
   it('never cuts away from a fight already in progress', () => {

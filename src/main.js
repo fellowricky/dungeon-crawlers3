@@ -11,7 +11,8 @@ import {
 import {
   renderer, scene, cam, camTarget, updateCam, buildScene, liveUpdate, applyReveal,
   tick, lights, meshes, fx, standaloneRooms, setYawPitch, shakeCamera, isAnimating,
-  triggerHitStop, triggerSlowMo, finishAnim, floorCellStart, floorCellCount
+  triggerHitStop, triggerSlowMo, finishAnim, floorCellStart, floorCellCount, setTorchLit,
+  setLatePropsHook
 } from './render/dungeon_scene.js';
 import { POST } from './render/dungeon_materials.js';
 import { initAssetPack } from './game/asset_pack.js';
@@ -67,8 +68,15 @@ function applyObjectVis(){
   for(const cat in OBJ_MESHES)
     for(const k of OBJ_MESHES[cat])
       if(meshes[k]) meshes[k].visible = objVis[cat];
+  for(const k in meshes)
+    if(k.startsWith('model_') && meshes[k]) meshes[k].visible = objVis.props;
   if(fx.parts) fx.parts.visible = objVis.particles;
-  const comb = (m, layerOn)=>{ m.userData.layerVisible = layerOn; m.visible = layerOn && m.userData.fogVisible !== false; };
+  const comb = (m, layerOn)=>{
+    if(!m) return;
+    if(!m.userData) m.userData = {};
+    m.userData.layerVisible = layerOn;
+    m.visible = layerOn && m.userData.fogVisible !== false;
+  };
   for(const m of fx.shafts) comb(m, objVis.particles);
   for(const m of fx.liquids) comb(m, objVis.liquids);
   for(const sp of fx.spinners) comb(sp.m, objVis.props);
@@ -116,11 +124,19 @@ function forgeOverland(seed, opts = {}){
     mapW: opts.mapW || 0,
     mapH: opts.mapH || 0,
     zones: opts.zones || 0,
+    layout: opts.layout || null,   // 'ribbon' = long narrow journey map (overland_prologue.js)
+    river: opts.river,             // true/false forces a theme's oc.river; unset = its chance
     threatMult: opts.threatMult || 1
   };
   const d = generateDungeon(seed, params);
   presentDungeon(d, opts.animate === true);
 }
+
+/* Models that finish loading after a level was built are added late (see
+   buildScene); re-run the fog so the ones in unseen rooms hide at once. */
+setLatePropsHook(() => {
+  if (game && game.D && typeof game.recalculateFog === 'function') game.recalculateFog(game);
+});
 
 function presentDungeon(d, animate){
   buildScene(d);
@@ -130,9 +146,13 @@ function presentDungeon(d, animate){
   if(el.dname) el.dname.textContent = d.name;
   const st = d.stats;
   if(el.dsub){
+    const weatherInfo = (TH.overland && d.timeOfDay && d.weather)
+      ? ' \u00b7 <span style="opacity:0.85">' + d.timeOfDay + ' \u00b7 ' + d.weather + '</span>'
+      : '';
     el.dsub.innerHTML = 'seed ' + d.seed +
       ' \u00b7 <span style="color:var(--ember)">' + TH.label.toLowerCase() + '</span>' +
       ' \u00b7 ' + (TH.overland ? 'overland' : 'floor ' + ((d.seed % 9) + 2)) +
+      weatherInfo +
       ' \u00b7 ' + (d.valid ? '<span class="ok">connected \u2713</span>' : '<span class="bad">unresolved</span>') +
       (st.attempts > 1 ? ' \u00b7 reroll \u00d7' + (st.attempts-1) : '');
   }
@@ -165,11 +185,11 @@ const ENGINE = {
   getLights: () => lights,
   getStandalone: () => standaloneRooms,
   getParticles: () => fx.parts,
+  setTorchLit,
   reforge(seed, roomCount, themeKey, animate=false, threatMult=1, level=1, opts = {}){
-    showLoadingScreen({
-      title: opts.title || 'FORGING LEVEL',
-      subtitle: opts.subtitle || 'Sculpting corridors and preparing encounters...'
-    });
+    /* The curtain is already up. _loadFloor shows it and yields a paint before
+       calling here. A second show used to zero the march and replace the
+       quest title with "FORGING LEVEL" on the same turn the floor was built. */
     forgeThreatMult = threatMult;
     forgeLevel = level;
     forgeOpts = opts || {};
@@ -182,10 +202,6 @@ const ENGINE = {
        the floor you're standing on, not snap back to the level-1 curve. */
   },
   reforgeOverland(seed, opts = {}){
-    showLoadingScreen({
-      title: opts.title || opts.name || 'TRAVELING OVERLAND',
-      subtitle: opts.subtitle || 'Mapping path and preparing wilderness...'
-    });
     forgeOverland(seed, opts);
   },
   triggerHitStop(frames = 3) {

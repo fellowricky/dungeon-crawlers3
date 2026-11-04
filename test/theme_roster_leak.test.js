@@ -64,7 +64,10 @@ describe('dungeon roster is authoritative for spawns', () => {
   it('does not list the dryad as a grim-dungeon creature', () => {
     /* The reported symptom, pinned to its data source. */
     expect(dungeonMonsterIds('grim')).not.toContain('dryad');
-    expect(dungeonMonsterIds('verdant')).toContain('dryad');
+    /* Verdant fields only its purpose-built animated sets now (Sept 2026);
+       the static dryad keeps its overland keys but is off the dungeon list. */
+    expect(dungeonMonsterIds('verdant')).not.toContain('dryad');
+    expect(MONSTERS_ALL.find(m => m.id === 'dryad').dungeons).toContain('forest');
   });
 });
 

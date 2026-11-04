@@ -19,6 +19,54 @@ const ANIM_META = {
 
 const DIRS = { up: 0, left: 1, down: 2, right: 3 };
 
+/**
+ * Facing hysteresis, as an angle (radians) a direction must pass the boundary
+ * by before the sprite changes facing.
+ *
+ * Facing is picked from the body's heading RELATIVE TO THE CAMERA, so a
+ * camera that turns changes it even for a body that never moved. The quarter
+ * turns are far past any band; the exploration orbit (camera_director.js,
+ * CAM_ORBIT_AMPLITUDE) is not — it sways the camera +/-18 degrees, and with
+ * no band every resting hero near a boundary flipped facing on every swing.
+ *
+ * MOVE is a light band for a body that is walking or striking, where the
+ * facing must follow the heading promptly; it also stops the old jitter of a
+ * hero walking a near-diagonal. REST is wider than the orbit's sway, so a
+ * standing body flips at most once and then holds.
+ */
+export const FACING_BAND_MOVE = 0.1;    // ~6 deg, the old |dx| < 0.1 deadzone
+export const FACING_BAND_REST = 0.35;   // ~20 deg
+
+/**
+ * Four-way facing with hysteresis: stay on the current axis (left/right vs
+ * up/down) until the other axis wins by `band`. At 45 deg +/- t the axis
+ * components differ by sqrt(2)*sin(t), which is the margin compared.
+ */
+export function pickFacing(cur, dx, dz, band = FACING_BAND_MOVE) {
+  const len = Math.hypot(dx, dz);
+  if (len < 0.05) return cur;
+  const ax = Math.abs(dx) / len, az = Math.abs(dz) / len;
+  const need = Math.SQRT2 * Math.sin(band);
+  const horiz = (cur === 'left' || cur === 'right')
+    ? !(az - ax > need)
+    : (ax - az > need);
+  if (horiz) return dx > 0 ? 'right' : 'left';
+  return dz > 0 ? 'down' : 'up';
+}
+
+/**
+ * Two-way facing (sprites that only flip left/right) with hysteresis: true
+ * means facing +x. The facing changes only once the heading is `band` past
+ * straight-at-the-camera on the other side.
+ */
+export function pickFlip(cur, dx, dz, band = FACING_BAND_MOVE) {
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-6) return cur;
+  const ux = dx / len, s = Math.sin(band);
+  if (cur == null) return ux > 0;
+  return cur ? !(ux < -s) : (ux > s);
+}
+
 const imageCache = {};
 function loadImage(src, quiet = false) {
   if (imageCache[src]) return Promise.resolve(imageCache[src]);
@@ -97,17 +145,69 @@ export function configureSpriteMaterial(mat, options = {}) {
   const forwardBias = options.forwardBias !== undefined ? options.forwardBias : 0.08;
   const oldOnBeforeCompile = mat.onBeforeCompile;
 
+  /* Scene light, sampled per unit by render/sprite_lighting.js: the colour
+     falling on the screen-left and screen-right of the body, blended across
+     the quad. SpriteMaterial is unlit, so without this a body in a dark
+     corner shows at its full PNG brightness. Both stay white on anything the
+     sampler never visits (VFX sheets, ghosts, overlays), which is a no-op.
+     Fog is the ground mist at the unit's feet (rgb = mist colour, a = how
+     thick), faded out up the body over `fogTop` world units, so the legs
+     stand IN the mist instead of the whole card sitting on top of it. */
+  if (!mat.userData) mat.userData = {};
+  if (!mat.userData.sprLit) {
+    mat.userData.sprLit = {
+      L: { value: new THREE.Vector3(1, 1, 1) },
+      R: { value: new THREE.Vector3(1, 1, 1) },
+      fog: { value: new THREE.Vector4(0, 0, 0, 0) },
+      fogTop: { value: 0.6 }
+    };
+  }
+  const lit = mat.userData.sprLit;
+  /* A cast or hit pose (game/sprite_pose.js): x/y scale and skew, bending the
+     quad round its pivot so the feet stay planted. `dir` is the world heading
+     the skew leans along; viewMatrix turns it to screen space here, so it holds
+     however the camera swings. Rest is a no-op on every other sprite. */
+  if (!mat.userData.sprPose) {
+    mat.userData.sprPose = {
+      pose: { value: new THREE.Vector3(1, 1, 0) },
+      dir: { value: new THREE.Vector2(0, 0) }
+    };
+  }
+  const pose = mat.userData.sprPose;
+
   mat.onBeforeCompile = (shader, renderer) => {
     if (oldOnBeforeCompile) oldOnBeforeCompile(shader, renderer);
 
     shader.vertexShader = shader.vertexShader.replace(
+      'vec2 alignedPosition = ( position.xy - ( center - vec2( 0.5 ) ) ) * scale;',
+      `vec2 alignedPosition = ( position.xy - ( center - vec2( 0.5 ) ) ) * scale;
+      alignedPosition *= uSprPose.xy;
+      alignedPosition.x += uSprPose.z * ( viewMatrix * vec4( uSprPoseDir.x, 0.0, uSprPoseDir.y, 0.0 ) ).x * alignedPosition.y;`
+    ).replace(
       'mvPosition.xy += rotatedPosition;',
       `mvPosition.xy += rotatedPosition;
+      vSprSide = rotatedPosition.x / max(scale.x, 0.0001);
+      vSprH = rotatedPosition.y;
       float wallSlope = (abs(viewMatrix[1].y) > 0.0001) ? (viewMatrix[1].z / viewMatrix[1].y) : 0.0;
       float groundSlope = (abs(viewMatrix[2].y) > 0.0001) ? abs(viewMatrix[2].z / viewMatrix[2].y) : 0.0;
       float zOffset = (rotatedPosition.y >= 0.0) ? (rotatedPosition.y * wallSlope) : (-rotatedPosition.y * groundSlope);
       mvPosition.z += zOffset + ${forwardBias.toFixed(3)};`
-    );
+    ).replace('uniform vec2 center;', 'uniform vec2 center;\nuniform vec3 uSprPose;\nuniform vec2 uSprPoseDir;\nvarying float vSprSide;\nvarying float vSprH;');
+
+    if (!shader.uniforms || typeof shader.fragmentShader !== 'string') return;
+    shader.uniforms.uSprPose = pose.pose;
+    shader.uniforms.uSprPoseDir = pose.dir;
+    shader.uniforms.uSprLitL = lit.L;
+    shader.uniforms.uSprLitR = lit.R;
+    shader.uniforms.uSprFog = lit.fog;
+    shader.uniforms.uSprFogTop = lit.fogTop;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('uniform float opacity;', 'uniform float opacity;\nuniform vec3 uSprLitL;\nuniform vec3 uSprLitR;\nuniform vec4 uSprFog;\nuniform float uSprFogTop;\nvarying float vSprSide;\nvarying float vSprH;')
+      /* The body only fills the middle of its frame, so the blend runs across
+         that rather than the padded quad edge to edge. */
+      .replace('outgoingLight = diffuseColor.rgb;',
+        'outgoingLight = diffuseColor.rgb * mix(uSprLitL, uSprLitR, smoothstep(-0.22, 0.22, vSprSide));\n' +
+        'outgoingLight = mix(outgoingLight, uSprFog.rgb, uSprFog.a * (1.0 - smoothstep(0.0, uSprFogTop, vSprH)));');
   };
 
   mat.customProgramCacheKey = () => `depthTiltSprite_${forwardBias.toFixed(3)}`;
@@ -302,6 +402,20 @@ export class HeroSprite {
     return this.isAttackState() && this.animating;
   }
 
+  /** A spellcast mid-play: nothing may replace it until its last frame. */
+  isCasting() {
+    return this.state === 'spellcast' && this.animating && !this._dying;
+  }
+
+  /** Seconds left of the action animation now playing (plus one queued
+   *  behind a cast); 0 when none is. */
+  attackRemaining() {
+    if (!this.isPlayingAttack()) return 0;
+    const meta = ANIM_META[this.state];
+    const left = meta ? Math.max(0, meta.cols / meta.speed - this.time) : 0;
+    return left + (this._queued ? this.attackDuration(this._queued) : 0);
+  }
+
   resolveAttackAction(profile = null) {
     if (profile) {
       if (profile.source === 'cantrip' || profile.cantripScale) return 'spellcast';
@@ -338,6 +452,14 @@ export class HeroSprite {
       action = this.resolveAttackAction();
     }
     const isAtk = this.isAttackState(action);
+    /* A cast plays to its last frame. Walking, idling or a flinch never cut
+       it short; another action waits its turn and starts when the cast ends
+       (update). The combat side already sequences actions, so this queue is
+       the backstop, not the scheduler. */
+    if (this.isCasting()) {
+      if (isAtk) this._queued = action;
+      return;
+    }
     if (this.state === action && !force && !isAtk) return;
     this.state = action;
     this.time = 0;
@@ -355,18 +477,15 @@ export class HeroSprite {
     this.animating = true;
     this._dying = true;
     this._deathDone = false;
+    this._queued = null;
     this.dir = 'down'; // always face camera when falling
     if (!this.textures['hurt']) {
       this.loadState('hurt');
     }
   }
 
-  setDirection(dx, dz) {
-    if (Math.abs(dx) > Math.abs(dz)) {
-      this.dir = dx > 0 ? 'right' : 'left';
-    } else if (Math.abs(dz) > 0.05) {
-      this.dir = dz > 0 ? 'down' : 'up';
-    }
+  setDirection(dx, dz, band) {
+    this.dir = pickFacing(this.dir, dx, dz, band);
   }
 
   update(dt) {
@@ -409,8 +528,10 @@ export class HeroSprite {
         this.play('walk');
         return;
       } else if (this.isAttackState()) {
-        // Attack anim finished — return to walk
-        this.play('walk');
+        // Attack anim finished — play the action queued behind a cast, else return to walk
+        const next = this._queued;
+        this._queued = null;
+        this.play(next || 'walk', !!next);
         return;
       }
     }
@@ -487,6 +608,58 @@ export async function drawHeroPortrait(canvas, hero){
     if(isCharacterLayer(layer)) drawCharacterPortraitFrame(ctx, img, layerTint(layer, visual, equipment));
     else drawPortraitFrame(ctx, img, layerTint(layer, visual, equipment));
   }
+}
+
+/* Composed walk sheet for the loading-screen march. Same layers and tints as
+   the in-dungeon sprite. `rightRow` is the LPC row that faces screen-right.
+   Sheets are cached: a floor transition asks for the same heroes again, and
+   the image decode is the expensive part. */
+const walkSheetCache = new Map();
+
+export async function composeHeroWalkSheet(hero) {
+  if (!hero || typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+  const visual = hero.visual || {};
+  const equipment = hero.equipment || {};
+  const meta = ANIM_META.walk;
+  const paths = buildLayerPaths(visual, equipment);
+  const gear = [];
+  for (const k of Object.keys(equipment)) {
+    const it = equipment[k];
+    if (it) gear.push(k, it.id || '', it.visualColor || '', it.visualWeapon || '', it.visualTorso || '', it.visualHelm || '', it.visualShield || '');
+  }
+  const key = [
+    visual.gender, visual.skinColor, visual.hair, visual.hairColor,
+    visual.hairExtension, visual.hairExtColor, visual.eyeColor, visual.hornTint,
+    visual.hideHelm ? 'nohat' : '',
+    JSON.stringify(paths), gear.join(',')
+  ].join('|');
+  if (walkSheetCache.has(key)) return walkSheetCache.get(key);
+
+  const imgs = await Promise.all(LAYER_ORDER.map(async layer => {
+    if (!paths[layer]) return null;
+    const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/walk.png`);
+    return img ? { img, layer } : null;
+  }));
+  let cell = 64;
+  for (const entry of imgs) {
+    if (!entry) continue;
+    const fs = frameSizeOf(entry.img, meta);
+    if (fs > cell) cell = fs;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = meta.cols * cell;
+  canvas.height = meta.rows * cell;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  for (const entry of imgs) {
+    if (!entry) continue;
+    const tint = layerTint(entry.layer, visual, equipment);
+    const src = tint ? tintImage(entry.img, tint, isCharacterLayer(entry.layer)) : entry.img;
+    blitLayer(ctx, src, meta, cell, -1);
+  }
+  const sheet = { canvas, cell, cols: meta.cols, rows: meta.rows, rightRow: DIRS.right };
+  walkSheetCache.set(key, sheet);
+  return sheet;
 }
 
 /* ---------------- Wolf Sprite Animator ----------------
@@ -636,6 +809,18 @@ export class WolfSprite {
     return this.isAttackState() && (this.anims ? this.state === 'attack' : this.animating);
   }
 
+  /** Seconds left of the action animation now playing; 0 when none is (or
+   *  when the attack sheet loops and so never ends on its own). */
+  attackRemaining() {
+    if (!this.isPlayingAttack()) return 0;
+    if (this.anims) {
+      const t = this.atlasTextures.attack;
+      if (!t || t.cfg.loop) return 0;
+      return Math.max(0, this.attackDuration() - this.time);
+    }
+    return Math.max(0, 5 / 12 - this.time);
+  }
+
   attackDuration() {
     if (this.anims && this.atlasTextures.attack) {
       const cfg = this.atlasTextures.attack.cfg;
@@ -678,20 +863,18 @@ export class WolfSprite {
     this.updateUV();
   }
 
-  setDirection(dx, dz) {
+  setDirection(dx, dz, band) {
     if (this.anims) {
-      if (Math.abs(dx) < 0.1) return;
-      const flip = this.visual.flipX ? !(dx > 0) : (dx > 0);
+      /* Hysteresis runs on the heading, before the sheet's own mirroring. */
+      const inv = !!this.visual.flipX;
+      const right = pickFlip(this._atlasFlip == null ? null : (this._atlasFlip !== inv), dx, dz, band);
+      const flip = inv ? !right : right;
       if (flip === this._atlasFlip) return;
       this._atlasFlip = flip;
       this._applyAtlas();
       return;
     }
-    if (Math.abs(dx) > Math.abs(dz)) {
-      this.dir = dx > 0 ? 'right' : 'left';
-    } else if (Math.abs(dz) > 0.05) {
-      this.dir = dz > 0 ? 'down' : 'up';
-    }
+    this.dir = pickFacing(this.dir, dx, dz, band);
   }
 
   update(dt) {
@@ -873,10 +1056,11 @@ export class BeastSprite {
 
   playDeath() {}
 
-  setDirection(dx, dz) {
+  setDirection(dx, dz, band) {
     if (!this.anims) return;
-    if (Math.abs(dx) < 0.1) return;
-    const flip = this.flipX ? !(dx > 0) : (dx > 0);
+    const inv = !!this.flipX;
+    const right = pickFlip(this._flipX == null ? null : (this._flipX !== inv), dx, dz, band);
+    const flip = inv ? !right : right;
     if (flip === this._flipX) return;
     this._flipX = flip;
     this._apply();

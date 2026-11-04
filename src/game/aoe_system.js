@@ -7,6 +7,7 @@
  */
 
 import { roll } from './srd.js';
+import { addVirtualLight, removeVirtualLight } from './light_sources.js';
 import { spellDC } from './spells.js';
 import { applyEffect, hasEffect } from './conditions.js';
 import { groundY } from '../dungeon/elevation.js';
@@ -81,6 +82,23 @@ export class PersistentAoEZoneManager {
    * @param {number} radius Radius of effect in world units
    * @param {object} options Zone options (shape, movement, dur, saveAbility, damageType, etc.)
    */
+  /* Spell zones that shed light (docs/LIGHT_IDEAS.md 26, 27, 30): registered
+     as virtual lights that follow the zone and end with it. */
+  _zoneLights(zone) {
+    const fire = 0xff8a30;
+    if (zone.spellKey === 'moonbeam') return [addVirtualLight({ follow: zone, bright: 0, dim: Math.ceil(zone.radius) + 1, color: 0xcfe8ff })];
+    if (zone.spellKey === 'flamingSphere') return [addVirtualLight({ follow: zone, bright: 2, dim: 4, color: fire })];
+    if (zone.spellKey === 'wallOfFire') {
+      const out = [], n = Math.max(1, Math.round((zone.length || 2) / 2));
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        out.push(addVirtualLight({ x: zone.startX + (zone.endX - zone.startX) * t, z: zone.startZ + (zone.endZ - zone.startZ) * t, bright: 1, dim: 2, color: fire }));
+      }
+      return out;
+    }
+    return [];
+  }
+
   spawnZone(game, caster, spellKey, x, z, radius, options = {}) {
     const color = options.color || 0xffffff;
     const shape = options.shape || (options.cylinderBeam ? 'cylinder' : 'ground');
@@ -130,6 +148,7 @@ export class PersistentAoEZoneManager {
     if (!game.activeAoEZones) game.activeAoEZones = [];
     game.activeAoEZones.push(zone);
     this.zones.push(zone);
+    zone._lights = this._zoneLights(zone);
     return zone;
   }
 
@@ -152,6 +171,11 @@ export class PersistentAoEZoneManager {
    */
   removeZone(game, zone) {
     if (!zone) return;
+    /* A concentration "zone" that is only a live visual (Call Lightning's
+       storm cloud): fade it out with the spell. */
+    if (zone.liveFx) zone.liveFx.remove();
+    for (const L of zone._lights || []) removeVirtualLight(L);
+    zone._lights = [];
     if (game && game.activeAoEZones) {
       const idx = game.activeAoEZones.indexOf(zone);
       if (idx >= 0) game.activeAoEZones.splice(idx, 1);
@@ -253,6 +277,16 @@ export class PersistentAoEZoneManager {
             }
           }
         }
+      }
+
+      // 1b. Burning oil hurts anyone who starts a turn in it, friend or foe
+      if (zone.spellKey === 'oilFire' && actor.data && actor.data.hp > 0 && actor.active !== false
+          && isPointInAoEZone(actor.x, actor.z, zone) && !zone.savesThisTurn.has(actor)) {
+        zone.savesThisTurn.add(actor);
+        const dmg = roll(2, 4);
+        game.spellDamage(actor, dmg, zone.caster, false, { dmgType: 'fire' });
+        game.fxLog(`🔥 ${actor.data?.name || 'Someone'} burns in the oil fire! (${dmg} fire)`, 'crit');
+        continue;
       }
 
       // 2. If actor is an opposing creature starting its turn in the zone
@@ -361,7 +395,7 @@ export class PersistentAoEZoneManager {
 
       /* Entangle / web / grease are environmental: 5e they snare anyone who
          walks into the weeds, including allies. Other zones stay hostile-only. */
-      const envHazard = zone.spellKey === 'entangle' || zone.spellKey === 'web' || zone.spellKey === 'grease';
+      const envHazard = zone.spellKey === 'entangle' || zone.spellKey === 'web' || zone.spellKey === 'grease' || zone.spellKey === 'oilFire';
       const isOpposing = zone.caster && zone.caster._side !== actor._side;
       if (!envHazard && !isOpposing) continue;
 
@@ -396,6 +430,15 @@ export class PersistentAoEZoneManager {
               game.fxLog(`🌿 ${actor.data?.name || 'Foe'} pulls free from grasping vines (STR save)!`, 'roll');
             }
           }
+        }
+      } else if (zone.spellKey === 'oilFire') {
+        if (!zone.savesThisTurn) zone.savesThisTurn = new Set();
+        if (!zone.savesThisTurn.has(actor)) {
+          zone.savesThisTurn.add(actor);
+          const dmg = roll(2, 4);
+          game.spellDamage(actor, dmg, zone.caster, false, { dmgType: 'fire' });
+          game.fxLog(`🔥 ${actor.data?.name || 'Someone'} walks into the burning oil! (${dmg} fire)`, 'crit');
+          if (actor.data && actor.data.hp <= 0) break;
         }
       } else if (zone.spellKey === 'spikeGrowth') {
         // Spike Growth: 2d4 piercing damage per 5 ft moved (each cell entered)

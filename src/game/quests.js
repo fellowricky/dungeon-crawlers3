@@ -12,6 +12,7 @@ import {
   QUEST_EMBARK, QUEST_VICTORY, PHASE_RUMORS, ALLY_PERSONAS,
   CHAIN_SUBTITLES, CHAIN_EMBARK
 } from './quest_story.js';
+import { pickPin, planRoute, snapPin } from './world_regions.js';
 
 /* The five dungeon themes. This is the whole vocabulary for a *quest* theme —
    the overland biomes (moor, forest, mire, holdfast, boneyard, …) are floor
@@ -99,9 +100,8 @@ const STORY_TEMPLATES = {
   ]
 };
 
-// Preset spaced map coordinates so nodes never overlap.
-// 8 slots: 6 offered quests + up to 2 pinned chain sequels. Keep x <= 84
-// so node labels don't clip the right edge.
+// Fallback pin spots, used only if a theme has no reachable doorstep painted
+// on the world map (world_biomes.json). Normal pins come from pickPin.
 const MAP_POSITIONS = [
   { x: 22, y: 40 }, // West
   { x: 50, y: 28 }, // North
@@ -122,9 +122,46 @@ function shuffleArray(arr) {
   return newArr;
 }
 
+/**
+ * A quest's dungeon size: the 3-10 roll that legendary odds, reward rarity and
+ * hardness are keyed on. Before the painted world map this WAS q.floors. Now
+ * the travel days are added on top of the dungeon, so a far quest is a longer
+ * trip, not a bigger prize. Quests saved before routes fall back to q.floors.
+ */
+export function questSize(q) {
+  return q.dungeonSize || (q.floors | 0);
+}
+
+/** Dungeon floors a size buys: the old two-floor prologue (one on a size-3 quest) taken off. */
+export function dungeonFloorsFor(size) {
+  return size >= 4 ? size - 2 : size - 1;
+}
+
+/**
+ * Give a quest its road from the guild hub to its pin (world_regions.planRoute)
+ * and its floor count: one overland floor per day of travel, then the dungeon.
+ * Seeded from q.seed, so the same quest always walks the same road. A pin that
+ * can't be reached keeps the legacy prologue shape (floors = size).
+ */
+function routeQuest(q, size) {
+  q.dungeonSize = size;
+  q.dungeonFloors = dungeonFloorsFor(size);
+  const route = q.mapLocation
+    ? planRoute(q.mapLocation.x, q.mapLocation.y, q.theme, mulberry32(((q.seed | 0) ^ 0x5bd1e995) >>> 0))
+    : null;
+  if (route) {
+    q.route = route;
+    q.floors = route.days + q.dungeonFloors;
+  } else {
+    q.route = null;
+    q.floors = size;
+  }
+  return q;
+}
+
 /** Quest commitment score — used to rank "hardest" for the pity legendary. */
 export function questHardness(q) {
-  return (q.level || 1) * 2 + (q.floors || 1) * 3 + Math.max(0, (q.level || 1) - 1);
+  return (q.level || 1) * 2 + questSize(q) * 3 + Math.max(0, (q.level || 1) - 1);
 }
 
 /**
@@ -320,16 +357,16 @@ function rollQuestReward(itemLevel, floors, level, partyLevel, theme, forceLegen
 export function generateQuests(partyLevel, count = 3, opts = {}) {
   const quests = [];
   const themePool = shuffleArray(THEMES);
-  /* Skip map spots pinned by chain sequels so nodes never overlap. */
-  const excluded = opts.excludePositions || [];
-  let positions = MAP_POSITIONS.filter(p => !excluded.some(e => e && e.x === p.x && e.y === p.y));
-  if (positions.length === 0) positions = MAP_POSITIONS;
-  const locationPool = shuffleArray(positions);
+  /* Pins pinned by chain sequels count as taken, so nodes never overlap. */
+  const taken = (opts.excludePositions || []).filter(p => p && typeof p.x === 'number');
+  const locationPool = shuffleArray(MAP_POSITIONS);
   const pl = Math.max(1, partyLevel|0);
 
   for (let i = 0; i < count; i++) {
     const theme = themePool[i % themePool.length];
-    const mapPos = locationPool[i % locationPool.length];
+    /* The pin goes on painted doorstep ground for this theme (world_biomes.json). */
+    const mapPos = pickPin(theme, Math.random, taken) || locationPool[i % locationPool.length];
+    taken.push(mapPos);
 
     const place = FANTASY_NAMES[Math.floor(Math.random() * FANTASY_NAMES.length)];
     const locType = FANTASY_LOCATIONS[theme][Math.floor(Math.random() * FANTASY_LOCATIONS[theme].length)];
@@ -341,27 +378,23 @@ export function generateQuests(partyLevel, count = 3, opts = {}) {
       ? opts.levelOffsets[i]
       : Math.floor(Math.random() * 3) - 1;
     const level = Math.max(1, pl + offset); // clamps to 1 (at pl 1 the "below" quest is just level 1)
-    /* 3 is the floor: every quest opens with an overland prologue (1-2 floors,
-       see overland_prologue.js) and the last floor must stay a dungeon for the
-       final boss, so a 3-floor quest is the shortest shape that still works. */
-    const floors = 3 + Math.floor(Math.random() * 8); // 3 to 10 floors
+    /* Dungeon size 3-10 (the old floor roll). The floors themselves are the
+       travel days to the pin (1-4 overland floors, see routeQuest) plus the
+       dungeon this size buys (2-8). The last floor stays a dungeon for the boss. */
+    const size = 3 + Math.floor(Math.random() * 8);
 
     const seed = 1 + Math.floor(Math.random() * 888888);
 
     const itemLevel = level;
-    // Placeholder reward — finalized after we know the hardest quest
-    const rewardGold = Math.round((50 + 25 * level) * floors * (0.9 + Math.random() * 0.2));
-    const rewardXp = Math.round((getQuestXpBase() + getQuestXpCoeff() * level) * floors);
-
     const q = {
       id: `q_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`,
       name,
       theme,
       level,
-      floors,
+      floors: size,
       seed,
-      rewardGold,
-      rewardXp,
+      rewardGold: 0,
+      rewardXp: 0,
       rewardItem: null,
       itemLevel,
       description: '',
@@ -371,6 +404,11 @@ export function generateQuests(partyLevel, count = 3, opts = {}) {
       locType,
       chain: null
     };
+    routeQuest(q, size);
+    /* Every floor pays, overland days included. Placeholder reward item is
+       finalized after we know the hardest quest. */
+    q.rewardGold = Math.round((50 + 25 * level) * q.floors * (0.9 + Math.random() * 0.2));
+    q.rewardXp = Math.round((getQuestXpBase() + getQuestXpCoeff() * level) * q.floors);
     /* Seeded decoration so a resumed quest keeps identical story/phases. */
     decorateQuest(q, mulberry32(seed));
     quests.push(q);
@@ -385,7 +423,7 @@ export function generateQuests(partyLevel, count = 3, opts = {}) {
   if ((opts.legendaryPity | 0) >= LEGENDARY_PITY) {
     let best = -1;
     for (let i = 0; i < quests.length; i++) {
-      if (quests[i].floors < 10) continue;
+      if (questSize(quests[i]) < 10) continue;
       const s = questHardness(quests[i]);
       if (s > best) { best = s; pityIdx = i; }
     }
@@ -393,7 +431,7 @@ export function generateQuests(partyLevel, count = 3, opts = {}) {
 
   for (let i = 0; i < quests.length; i++) {
     const q = quests[i];
-    q.rewardItem = rollQuestReward(q.itemLevel, q.floors, q.level, pl, q.theme, i === pityIdx);
+    q.rewardItem = rollQuestReward(q.itemLevel, questSize(q), q.level, pl, q.theme, i === pityIdx);
     q.isLegendaryReward = q.rewardItem.rarity === 'legendary';
   }
 
@@ -411,23 +449,30 @@ export function generateSequelQuest(entry, partyLevel) {
   const rng = mulberry32(seed);
   const pl = Math.max(1, partyLevel | 0);
   const level = Math.max((entry.level || 1) + 1, pl);
-  const floors = Math.min(10, (entry.floors || 3) + 2);
+  /* entry.dungeonSize is the parent's size; entries saved before routes only
+     have floors, which was the same number then. */
+  const size = Math.min(10, (entry.dungeonSize || entry.floors || 3) + 2);
   const subtitle = pickRng(CHAIN_SUBTITLES[part] || CHAIN_SUBTITLES[2], rng);
-  const itemLevel = level + Math.floor(floors / 2);
+  const itemLevel = level + Math.floor(size / 2);
   const goldMult = part === 3 ? 1.5 : 1.15;
-  const mapPos = (entry.mapLocation && typeof entry.mapLocation.x === 'number' && typeof entry.mapLocation.y === 'number')
-    ? entry.mapLocation
-    : MAP_POSITIONS[seed % MAP_POSITIONS.length];
+  /* Belt and braces: an old save may hold a chain entry seeded from a story
+     mission, whose theme is an overland biome. Sequels are dungeons. */
+  const theme = asDungeonTheme(entry.theme, rng);
+  /* The sequel returns to the parent's pin. Pins saved before the painted
+     world map sat on fixed spots, so snap them onto this theme's doorstep. */
+  const saved = entry.mapLocation && typeof entry.mapLocation.x === 'number' && typeof entry.mapLocation.y === 'number'
+    ? entry.mapLocation : null;
+  const mapPos = (saved && snapPin(theme, saved.x, saved.y))
+    || pickPin(theme, mulberry32(seed + 1))
+    || MAP_POSITIONS[seed % MAP_POSITIONS.length];
 
   const q = {
     id: `q_chain_${entry.chainId}_${part}`,
     name: `${entry.arcTitle} — ${subtitle}`,
-    /* Belt and braces: an old save may hold a chain entry seeded from a story
-       mission, whose theme is an overland biome. Sequels are dungeons. */
-    theme: asDungeonTheme(entry.theme, rng),
-    level, floors, seed,
-    rewardGold: Math.round((50 + 25 * level) * floors * goldMult),
-    rewardXp: Math.round((getQuestXpBase() + getQuestXpCoeff() * level) * floors * (part === 3 ? 1.5 : 1)),
+    theme,
+    level, floors: size, seed,
+    rewardGold: 0,
+    rewardXp: 0,
     rewardItem: null,
     itemLevel,
     description: '',
@@ -440,6 +485,9 @@ export function generateSequelQuest(entry, partyLevel) {
       place: entry.place, locType: entry.locType, baseSeed: entry.baseSeed
     }
   };
+  routeQuest(q, size);
+  q.rewardGold = Math.round((50 + 25 * level) * q.floors * goldMult);
+  q.rewardXp = Math.round((getQuestXpBase() + getQuestXpCoeff() * level) * q.floors * (part === 3 ? 1.5 : 1));
   /* Sequels always carry at least one phase; the finale always foreshadows its boss. */
   decorateQuest(q, rng, { minPhases: 1, forceTypes: part === 3 ? ['foreshadow'] : null });
   q.embarkText = pickRng(CHAIN_EMBARK[part] || CHAIN_EMBARK[2], rng).replace(/\{place\}/g, entry.place);
@@ -447,10 +495,10 @@ export function generateSequelQuest(entry, partyLevel) {
 
   /* Escalating rewards: part 2 gets +20% legendary odds, part 3 is guaranteed.
      Only 10-floor dungeons can yield legendaries. */
-  const wantLeg = floors >= 10 && (part === 3 || rng() < Math.min(0.9, legendaryChance(floors, level, pl) + 0.20));
+  const wantLeg = size >= 10 && (part === 3 || rng() < Math.min(0.9, legendaryChance(size, level, pl) + 0.20));
   q.rewardItem = wantLeg
     ? rollLegendary(itemLevel, rng, { theme: q.theme })
-    : rollQuestReward(itemLevel, floors, level, pl, q.theme, false, rng);
+    : rollQuestReward(itemLevel, size, level, pl, q.theme, false, rng);
   q.isLegendaryReward = q.rewardItem.rarity === 'legendary';
   return q;
 }

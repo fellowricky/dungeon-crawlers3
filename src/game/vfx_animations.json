@@ -5,7 +5,8 @@
     "sorcerer": "chillTouch",
     "cleric": "sacredFlame",
     "druid": "produceFlame",
-    "warlock": "eldritchBlast"
+    "warlock": "eldritchBlast",
+    "artificer": "rayOfFrost"
   },
   "sheets": {
     "cantrip_fire_bolt": {
@@ -203,6 +204,270 @@
       "rows": 1,
       "frames": 34,
       "fps": 30
+    },
+    "pfx_fireball_bolt": {
+      "url": "fx/spells/pfx_fireball_bolt.png",
+      "cols": 3,
+      "rows": 6,
+      "frames": 18,
+      "fps": 21.43,
+      "w": 360,
+      "h": 336,
+      "fw": 120,
+      "fh": 56,
+      "pivot": [
+        0.8,
+        0.5
+      ],
+      "source": "pixelfx:fire/fireball"
+    },
+    "pfx_fireball_blast": {
+      "url": "fx/spells/pfx_fireball_blast.png",
+      "cols": 4,
+      "rows": 5,
+      "frames": 20,
+      "fps": 21.43,
+      "w": 1160,
+      "h": 1050,
+      "fw": 290,
+      "fh": 210,
+      "pivot": [
+        0.5138,
+        0.1619
+      ],
+      "once": true,
+      "source": "pixelfx:explosions/big-explosion"
+    },
+    "pfx_cone_of_cold_breath": {
+      "url": "fx/spells/pfx_cone_of_cold_breath.png",
+      "cols": 4,
+      "rows": 5,
+      "frames": 18,
+      "fps": 21.43,
+      "w": 652,
+      "h": 740,
+      "fw": 163,
+      "fh": 148,
+      "pivot": [
+        0,
+        0.5
+      ],
+      "source": "pixelfx:ice/frost-breath (spread 0.55 = the spell cone, margin 60, span crop)"
+    },
+    "pfx_cone_of_cold_freeze": {
+      "url": "fx/spells/pfx_cone_of_cold_freeze.png",
+      "cols": 5,
+      "rows": 7,
+      "frames": 31,
+      "fps": 21.43,
+      "w": 690,
+      "h": 784,
+      "fw": 138,
+      "fh": 112,
+      "pivot": [
+        0.5145,
+        0.1786
+      ],
+      "once": true,
+      "source": "pixelfx:ice/freeze (no actor; 0-1.2s + 2.45-3.3s)"
+    },
+    "pfx_call_lightning_strike": {
+      "url": "fx/spells/pfx_call_lightning_strike.png",
+      "cols": 5,
+      "rows": 5,
+      "frames": 24,
+      "fps": 21.43,
+      "w": 1175,
+      "h": 1320,
+      "fw": 235,
+      "fh": 264,
+      "pivot": [
+        0.4979,
+        0.1364
+      ],
+      "once": true,
+      "source": "pixelfx:lightning/lightning-strike (0.3-1.9s)"
+    },
+    "pfx_ice_storm_starfall": {
+      "url": "fx/spells/pfx_ice_storm_starfall.png",
+      "cols": 5,
+      "rows": 9,
+      "frames": 41,
+      "fps": 21.43,
+      "w": 1285,
+      "h": 1692,
+      "fw": 257,
+      "fh": 188,
+      "pivot": [
+        0.5331,
+        0.2234
+      ],
+      "once": true,
+      "source": "pixelfx:arcane/star-fall (PAL.ice, 3 seeded layers offset + 0.25s apart, first 2.7s)"
+    },
+    "pfx_sleep_rune": {
+      "url": "fx/spells/pfx_sleep_rune.png",
+      "cols": 7,
+      "rows": 9,
+      "frames": 60,
+      "fps": 21.43,
+      "w": 854,
+      "h": 882,
+      "fw": 122,
+      "fh": 98,
+      "pivot": [
+        0.5,
+        0.2041
+      ],
+      "source": "pixelfx:arcane/rune-circle"
+    },
+    "pfx_chill_touch_bolt": {
+      "url": "fx/spells/pfx_chill_touch_bolt.png",
+      "cols": 2,
+      "rows": 6,
+      "frames": 12,
+      "fps": 21.43,
+      "w": 264,
+      "h": 360,
+      "fw": 132,
+      "fh": 60,
+      "pivot": [
+        0.7652,
+        0.5
+      ],
+      "source": "pixelfx:projectiles/plasma-shot (PAL.cyber)"
+    },
+    "pfx_chill_touch_burst": {
+      "url": "fx/spells/pfx_chill_touch_burst.png",
+      "cols": 7,
+      "rows": 7,
+      "frames": 49,
+      "fps": 21.43,
+      "w": 896,
+      "h": 833,
+      "fw": 128,
+      "fh": 119,
+      "pivot": [
+        0.5,
+        0.1092
+      ],
+      "once": true,
+      "source": "pixelfx:ice/snowflake-burst (PAL.cyber)"
+    },
+    "pfx_fire_bolt": {
+      "url": "fx/spells/pfx_fire_bolt.png",
+      "cols": 2,
+      "rows": 6,
+      "frames": 12,
+      "fps": 21.43,
+      "w": 264,
+      "h": 360,
+      "fw": 132,
+      "fh": 60,
+      "pivot": [
+        0.7652,
+        0.5
+      ],
+      "source": "pixelfx:projectiles/plasma-shot (PAL.fire)"
+    },
+    "pfx_ray_of_frost_shatter": {
+      "url": "fx/spells/pfx_ray_of_frost_shatter.png",
+      "cols": 3,
+      "rows": 6,
+      "frames": 18,
+      "fps": 14.29,
+      "w": 576,
+      "h": 672,
+      "fw": 192,
+      "fh": 112,
+      "pivot": [
+        0.3229,
+        0.1964
+      ],
+      "source": "pixelfx:ice/ice-shatter (PAL.ice, from the first cracks)",
+      "once": true
+    },
+    "pfx_sacred_flame_bless": {
+      "url": "fx/spells/pfx_sacred_flame_bless.png",
+      "cols": 6,
+      "rows": 3,
+      "frames": 15,
+      "fps": 21.43,
+      "w": 336,
+      "h": 384,
+      "fw": 56,
+      "fh": 128,
+      "pivot": [
+        0.5,
+        0.1562
+      ],
+      "source": "pixelfx:holy/blessing (PAL.holy, no stand-in actor, cone alpha lifted)"
+    },
+    "pfx_sacred_flame_fire": {
+      "url": "fx/spells/pfx_sacred_flame_fire.png",
+      "cols": 4,
+      "rows": 5,
+      "frames": 18,
+      "fps": 21.43,
+      "w": 392,
+      "h": 510,
+      "fw": 98,
+      "fh": 102,
+      "pivot": [
+        0.5,
+        0.098
+      ],
+      "source": "pixelfx:shadow/shadow-flames (PAL.holy)"
+    },
+    "pfx_arms_of_hadar": {
+      "url": "fx/spells/pfx_arms_of_hadar.png",
+      "cols": 6,
+      "rows": 9,
+      "frames": 49,
+      "fps": 21.43,
+      "w": 906,
+      "h": 1035,
+      "fw": 151,
+      "fh": 115,
+      "pivot": [
+        0.4967,
+        0.2087
+      ],
+      "source": "pixelfx:shadow/shadow-tendrils (whole, at its authored 3.2 s)",
+      "once": true
+    },
+    "pfx_bane_sigil": {
+      "url": "fx/spells/pfx_bane_sigil.png",
+      "cols": 7,
+      "rows": 10,
+      "frames": 64,
+      "fps": 21.43,
+      "w": 1162,
+      "h": 1280,
+      "fw": 166,
+      "fh": 128,
+      "pivot": [
+        0.5,
+        0.1964
+      ],
+      "source": "pixelfx:shadow/hex-sigil (PAL.blood, whole, at its authored 4.2 s)",
+      "once": true
+    },
+    "pfx_burning_hands": {
+      "url": "fx/spells/pfx_burning_hands.png",
+      "cols": 5,
+      "rows": 5,
+      "frames": 23,
+      "fps": 21.43,
+      "w": 745,
+      "h": 950,
+      "fw": 149,
+      "fh": 190,
+      "pivot": [
+        0,
+        0.5
+      ],
+      "source": "pixelfx:fire/fire-breath (spread 0.55 = the spell cone, margin 60, span crop)"
     }
   },
   "anims": {
@@ -211,28 +476,28 @@
       "travelSound": "cantripFireBolt",
       "impactSound": "spellImpact",
       "travel": {
-        "duration": 1,
-        "arc": 0.3,
+        "duration": 0.6,
+        "arc": 0.2,
         "back": {
           "enabled": true,
           "type": "procedural",
           "kind": "glow",
           "color": "#ff7a30",
-          "scale": 1.5,
+          "scale": 1,
           "dur": 0.6,
-          "opacity": 0.45,
+          "opacity": 0.4,
           "blend": "additive"
         },
         "front": {
           "enabled": true,
           "type": "sheet",
-          "sheet": "cantrip_fire_bolt",
+          "sheet": "pfx_fire_bolt",
+          "orient": true,
           "color": "#ffffff",
-          "scale": 1.1,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.6,
           "opacity": 1,
-          "blend": "additive",
-          "fps": 20
+          "blend": "normal"
         }
       },
       "impact": {
@@ -265,26 +530,27 @@
       "travelSound": "cantripChillTouch",
       "impactSound": "spellFreeze",
       "travel": {
-        "duration": 0.6,
-        "arc": 0,
+        "duration": 0.55,
+        "arc": 0.2,
         "back": {
           "enabled": true,
           "type": "procedural",
           "kind": "glow",
-          "color": "#7fd8c8",
-          "scale": 1.5,
-          "dur": 0.6,
-          "opacity": 0.5,
+          "color": "#18b4b0",
+          "scale": 1,
+          "dur": 0.55,
+          "opacity": 0.4,
           "blend": "additive"
         },
         "front": {
           "enabled": true,
           "type": "sheet",
-          "sheet": "cantrip_chill_touch",
+          "sheet": "pfx_chill_touch_bolt",
+          "orient": true,
           "color": "#ffffff",
           "scale": 1,
-          "dur": 0.7,
-          "opacity": 0.9,
+          "dur": 0.55,
+          "opacity": 1,
           "blend": "normal"
         }
       },
@@ -293,35 +559,35 @@
         "back": {
           "enabled": true,
           "type": "sheet",
-          "sheet": "cantrip_chill_touch",
-          "fps": 30,
-          "color": "#58c7c7",
-          "scale": 2,
-          "dur": 1,
-          "opacity": 0.95,
-          "blend": "additive"
-        },
-        "front": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "ring",
-          "color": "#a8ffe8",
-          "scale": 1.2,
-          "dur": 0.35,
+          "sheet": "pfx_chill_touch_burst",
+          "fps": 39,
+          "ground": true,
+          "color": "#ffffff",
+          "scale": 2.4,
+          "dur": 1.8,
           "opacity": 1,
           "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
         }
       }
     },
     "sacredFlame": {
       "name": "Sacred Flame",
-      "travelSound": "cantripSacredFlame",
-      "impactSound": "spellImpact",
+      "travelSound": "",
+      "impactSound": "cantripSacredFlame",
       "travel": {
-        "duration": 0.6,
-        "arc": 1.15,
+        "duration": 0.1,
+        "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#ffd34a",
@@ -331,7 +597,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "gigapack:scifi_charge_up_001_large_yellow",
           "color": "#ffffff",
@@ -343,38 +609,43 @@
       },
       "impact": {
         "delay": 0,
+        "hitAt": 0.35,
         "back": {
           "enabled": true,
           "type": "sheet",
-          "sheet": "cantrip_sacred_flame",
-          "fps": 30,
+          "sheet": "pfx_sacred_flame_fire",
+          "ground": true,
+          "delay": 0.35,
+          "fps": 28.57,
           "color": "#ffffff",
-          "scale": 2.7,
-          "dur": 1,
-          "opacity": 0.95,
-          "blend": "additive"
+          "scale": 2.6,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "procedural",
-          "kind": "ring",
-          "color": "#ffe080",
-          "scale": 1.2,
-          "dur": 0.35,
+          "type": "sheet",
+          "sheet": "pfx_sacred_flame_bless",
+          "ground": true,
+          "fps": 22.56,
+          "color": "#ffffff",
+          "scale": 3,
+          "dur": 0.95,
           "opacity": 1,
-          "blend": "normal"
+          "blend": "additive"
         }
       }
     },
     "produceFlame": {
       "name": "Produce Flame",
-      "travelSound": "cantripProduceFlame",
-      "impactSound": "spellImpact",
+      "travelSound": "",
+      "impactSound": "cantripProduceFlame",
       "travel": {
         "duration": 0.6,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#ffa040",
@@ -384,7 +655,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "gigapack:round_sparkle_burst_002_large_green",
           "color": "#ffffff",
@@ -424,15 +695,14 @@
     "eldritchBlast": {
       "name": "Eldritch Blast",
       "travelSound": "cantripEldritchBlast",
-      "impactSound": "spellImpact",
+      "impactSound": "",
       "travel": {
-        "duration": 0.55,
-        "arc": 0.35,
+        "duration": 0.75,
+        "arc": 0,
         "back": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#8a5cf6",
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
           "scale": 1,
           "dur": 0.55,
           "opacity": 0.45,
@@ -440,13 +710,17 @@
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "cantrip_eldritch_blast",
+          "type": "live",
+          "palette": "arcane",
           "color": "#ffffff",
-          "scale": 1.5,
-          "dur": 0.65,
-          "opacity": 0.9,
-          "blend": "additive"
+          "scale": 0.7,
+          "dur": 0.75,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "fan": {
+          "side": 2.4,
+          "up": 1.2
         }
       },
       "impact": {
@@ -458,7 +732,7 @@
           "fps": 30,
           "color": "#ffffff",
           "scale": 1.5,
-          "dur": 0.7,
+          "dur": 0.48,
           "opacity": 0.95,
           "blend": "additive"
         },
@@ -532,7 +806,7 @@
       "travelSound": "spellArmsOfHadar",
       "impactSound": "",
       "travel": {
-        "duration": 0.4,
+        "duration": 0.1,
         "arc": 0,
         "back": {
           "enabled": true,
@@ -541,19 +815,22 @@
           "color": "#6a3080",
           "scale": 1.5,
           "dur": 0.4,
-          "opacity": 0.5,
+          "opacity": 1,
           "blend": "additive"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_armsOfHadar",
+          "type": "live",
+          "sheet": "cantrip_eldritch_blast",
           "color": "#ffffff",
-          "scale": 1,
-          "dur": 0.4,
-          "opacity": 0.9,
-          "blend": "additive",
-          "fps": 30
+          "scale": 0.4,
+          "dur": 0.25,
+          "opacity": 0.7,
+          "blend": "normal",
+          "fps": 30,
+          "span": false,
+          "fx": "beam",
+          "palette": "shadow"
         }
       },
       "impact": {
@@ -561,16 +838,17 @@
         "back": {
           "enabled": true,
           "type": "sheet",
-          "sheet": "spell_armsOfHadar",
-          "fps": 30,
+          "sheet": "pfx_arms_of_hadar",
+          "ground": true,
+          "fps": 21.43,
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 4.5,
+          "dur": 3.2,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#6a3080",
@@ -589,7 +867,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#d0a0ff",
@@ -599,7 +877,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_bane",
           "color": "#ffffff",
@@ -615,16 +893,17 @@
         "back": {
           "enabled": true,
           "type": "sheet",
-          "sheet": "spell_bane",
-          "fps": 30,
+          "sheet": "pfx_bane_sigil",
+          "ground": true,
+          "fps": 21.43,
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 7,
+          "dur": 4.2,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#d0a0ff",
@@ -643,7 +922,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#ffe08a",
@@ -653,7 +932,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_bless",
           "color": "#ffffff",
@@ -668,17 +947,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_bless",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1.2,
+          "scale": 1,
+          "dur": 3,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#ffe08a",
@@ -692,56 +969,54 @@
     "chaosBolt": {
       "name": "Chaos Bolt",
       "travelSound": "spellChaosBolt",
-      "impactSound": "",
+      "impactSound": "spellThunderwave",
       "travel": {
-        "duration": 0.45,
-        "arc": 0.3,
+        "duration": 0.9,
+        "arc": 0,
+        "fan": {
+          "side": 1.2,
+          "up": 0.6
+        },
         "back": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#c0a0ff",
-          "scale": 1.5,
-          "dur": 0.45,
-          "opacity": 0.5,
-          "blend": "additive"
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_chaosBolt",
+          "type": "live",
+          "fx": "magicMissile",
+          "palette": "candy",
           "color": "#ffffff",
-          "scale": 1,
-          "dur": 0.45,
-          "opacity": 0.9,
-          "blend": "additive",
-          "fps": 30
+          "scale": 0.7,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
         }
       },
       "impact": {
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_chaosBolt",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 1.8,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "burst",
-          "burstType": "magic",
-          "color": "#d0a0ff",
-          "count": 14,
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
           "scale": 1,
-          "dur": 0.4,
+          "dur": 0.3,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         }
       }
     },
@@ -1382,13 +1657,13 @@
           "sheet": "spell_magicMissile",
           "fps": 30,
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 1.3,
+          "dur": 0.7,
           "opacity": 1,
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#8fd4e8",
@@ -1474,9 +1749,10 @@
           "enabled": true,
           "type": "sheet",
           "sheet": "spell_rayOfSickness",
+          "span": true,
           "color": "#ffffff",
           "scale": 1,
-          "dur": 0.45,
+          "dur": 1.2,
           "opacity": 0.9,
           "blend": "additive",
           "fps": 30
@@ -1485,7 +1761,7 @@
       "impact": {
         "delay": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_rayOfSickness",
           "fps": 30,
@@ -1773,6 +2049,466 @@
           "color": "#bfa060",
           "scale": 1.2,
           "dur": 0.35,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "fireball": {
+      "name": "Fireball",
+      "travelSound": "spellFire",
+      "impactSound": "cantripProduceFlame",
+      "travel": {
+        "duration": 0.55,
+        "arc": 0.7,
+        "back": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ff8a30",
+          "scale": 1.4,
+          "dur": 0.55,
+          "opacity": 0.55,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_fireball_bolt",
+          "orient": true,
+          "color": "#ffffff",
+          "scale": 1.3,
+          "dur": 0.65,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_fireball_blast",
+          "color": "#ffffff",
+          "scale": 8,
+          "dur": 1.35,
+          "opacity": 1,
+          "blend": "normal",
+          "ground": true
+        },
+        "front": {
+          "enabled": true,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#ff9a40",
+          "scale": 5,
+          "dur": 0.35,
+          "opacity": 0.7,
+          "blend": "additive"
+        }
+      }
+    },
+    "coneOfCold": {
+      "name": "Cone of Cold",
+      "travelSound": "spellIceStorm",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.75,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_cone_of_cold_breath",
+          "span": true,
+          "color": "#ffffff",
+          "scale": 10.9,
+          "dur": 1.1,
+          "opacity": 0.95,
+          "blend": "normal",
+          "spanLength": 12
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": false,
+          "type": "sheet",
+          "sheet": "pfx_cone_of_cold_freeze",
+          "ground": true,
+          "color": "#ffffff",
+          "scale": 2.2,
+          "dur": 2.07,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "procedural",
+          "kind": "glow",
+          "color": "#a6ecff",
+          "scale": 2,
+          "dur": 0.3,
+          "opacity": 0.6,
+          "blend": "additive"
+        }
+      }
+    },
+    "callLightning": {
+      "name": "Call Lightning",
+      "travelSound": "",
+      "impactSound": "spellThunderwave",
+      "travel": {
+        "duration": 0.5,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_call_lightning_strike",
+          "ground": true,
+          "color": "#ffffff",
+          "scale": 4.3,
+          "dur": 1.6,
+          "opacity": 1,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      }
+    },
+    "iceStorm": {
+      "name": "Ice Storm",
+      "travelSound": "",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.5,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_ice_storm_starfall",
+          "ground": true,
+          "color": "#ffffff",
+          "scale": 5.7,
+          "dur": 2.73,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      }
+    },
+    "blight": {
+      "name": "Blight",
+      "travelSound": "",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.5,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      }
+    },
+    "sleep": {
+      "name": "Sleep",
+      "travelSound": "",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.5,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_sleep_rune",
+          "ground": true,
+          "color": "#ffffff",
+          "scale": 1.6,
+          "dur": 2.6,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1.5,
+          "dur": 0.5,
+          "opacity": 0.9,
+          "blend": "additive"
+        }
+      }
+    },
+    "rayOfFrost": {
+      "name": "Ray of Frost",
+      "travelSound": "cantripRayOfFrost",
+      "impactSound": "spellImpact",
+      "travel": {
+        "duration": 0.2,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.2,
+          "opacity": 0.4,
+          "blend": "additive"
+        },
+        "front": {
+          "enabled": true,
+          "type": "live",
+          "fx": "beam",
+          "palette": "ice",
+          "width": 0.3,
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.55,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_ray_of_frost_shatter",
+          "ground": true,
+          "fps": 25.71,
+          "color": "#ffffff",
+          "scale": 1.4,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "none",
+          "kind": "ring",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "viciousMockery": {
+      "name": "Vicious Mockery",
+      "travelSound": "cantripViciousMockery",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.1,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.1,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.1,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.5,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "dragonBreathSpell": {
+      "name": "Burning Hands",
+      "travelSound": "spellFireSpray",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.3,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "sheet",
+          "sheet": "pfx_burning_hands",
+          "span": true,
+          "spanLength": 4.4,
+          "color": "#ffffff",
+          "scale": 5.61,
+          "dur": 1.5,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
           "opacity": 1,
           "blend": "normal"
         }

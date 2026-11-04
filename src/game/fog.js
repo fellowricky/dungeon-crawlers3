@@ -11,6 +11,8 @@ import * as THREE from 'three';
 import { FLOOR, WALL, POOL } from './constants.js';
 import { log, showBanner } from './ui.js';
 import { playSfx } from './audio.js';
+import { firstRunTip } from './help_ui.js';
+import { stopNixieEffect } from '../render/nixie_vfx.js';
 
 const FRONTIER_DIM = 0.35;
 const HIDE_Y = -999;
@@ -202,6 +204,7 @@ export const fogMethods = {
 
   dimInstances(mesh, only) {
     if (!mesh) return;
+    mesh.userData._cellBright = null;
     const set = mesh.userData.set;
     for (let i = 0; i < set.n; i++) {
       if (only && !only.has(i)) continue;
@@ -239,15 +242,22 @@ export const fogMethods = {
   },
 
   _sinkInstance(mesh, i) {
-    const s = mesh.userData.set;
-    if (!mesh.userData._origPy) mesh.userData._origPy = s.py.slice();
+    const u = mesh.userData, s = u.set;
+    if (!u._origPy) u._origPy = s.py.slice();
+    if (u._visState && u._visState[i] === 1 && s.py[i] === HIDE_Y) return;
+    if (!u._visState) u._visState = new Uint8Array(s.n);
+    u._visState[i] = 1;
     s.py[i] = HIDE_Y;
     this._writeInstanceMatrix(mesh, i);
   },
 
   _raiseInstance(mesh, i) {
-    const s = mesh.userData.set;
-    if (mesh.userData._origPy) s.py[i] = mesh.userData._origPy[i];
+    const u = mesh.userData, s = u.set;
+    const origY = u._origPy ? u._origPy[i] : s.py[i];
+    if (u._visState && u._visState[i] === 2 && s.py[i] === origY) return;
+    if (!u._visState) u._visState = new Uint8Array(s.n);
+    u._visState[i] = 2;
+    s.py[i] = origY;
     this._writeInstanceMatrix(mesh, i);
   },
 
@@ -264,22 +274,44 @@ export const fogMethods = {
 
   /** Write a cell's brightness. No bookkeeping — callers own `revealed`. */
   _paintCell(c, multiplier) {
+    const { floor, wall, wallCap } = this.engine.getMeshes();
     if (multiplier <= 0) {
+      if (floor && floor.userData._cellBright) floor.userData._cellBright[c] = 0;
+      if (wall && wall.userData._cellBright) wall.userData._cellBright[c] = 0;
+      if (wallCap && wallCap.userData._cellBright) wallCap.userData._cellBright[c] = 0;
       this.hideCell(c);
       return;
     }
     this.showCell(c);
-    const { floor, wall, wallCap } = this.engine.getMeshes();
+    const N = this.D ? this.D.W * this.D.H : 0;
     if (floor) {
-      this._eachFloorInstance(c, (i) => {
-        floor.setColorAt(i, _c.set(floor.userData.set.col[i]).multiplyScalar(multiplier));
-      });
-      floor.instanceColor.needsUpdate = true;
+      if (!floor.userData._cellBright || floor.userData._cellBright.length !== N) floor.userData._cellBright = new Float32Array(N).fill(-1);
+      if (floor.userData._cellBright[c] !== multiplier) {
+        floor.userData._cellBright[c] = multiplier;
+        this._eachFloorInstance(c, (i) => {
+          floor.setColorAt(i, _c.set(floor.userData.set.col[i]).multiplyScalar(multiplier));
+        });
+        floor.instanceColor.needsUpdate = true;
+      }
     }
     const wi = this.wallInst[c];
     if (wi >= 0) {
-      if (wall) { wall.setColorAt(wi, _c.set(wall.userData.set.col[wi]).multiplyScalar(multiplier)); wall.instanceColor.needsUpdate = true; }
-      if (wallCap) { wallCap.setColorAt(wi, _c.set(wallCap.userData.set.col[wi]).multiplyScalar(multiplier)); wallCap.instanceColor.needsUpdate = true; }
+      if (wall) {
+        if (!wall.userData._cellBright || wall.userData._cellBright.length !== N) wall.userData._cellBright = new Float32Array(N).fill(-1);
+        if (wall.userData._cellBright[c] !== multiplier) {
+          wall.userData._cellBright[c] = multiplier;
+          wall.setColorAt(wi, _c.set(wall.userData.set.col[wi]).multiplyScalar(multiplier));
+          wall.instanceColor.needsUpdate = true;
+        }
+      }
+      if (wallCap) {
+        if (!wallCap.userData._cellBright || wallCap.userData._cellBright.length !== N) wallCap.userData._cellBright = new Float32Array(N).fill(-1);
+        if (wallCap.userData._cellBright[c] !== multiplier) {
+          wallCap.userData._cellBright[c] = multiplier;
+          wallCap.setColorAt(wi, _c.set(wallCap.userData.set.col[wi]).multiplyScalar(multiplier));
+          wallCap.instanceColor.needsUpdate = true;
+        }
+      }
     }
   },
 
@@ -327,6 +359,15 @@ export const fogMethods = {
    * sighting must not count as having been there.
    */
   setCellBrightnessLOS(c, multiplier) {
+    /* A WALL the party has been beside (revealAround) stays lit for good.
+       Without this, a wall two or three cells thick whose only floor
+       neighbours lie in an unvisited room or an unreached corridor is sunk by
+       every fog rebuild (its neighbour rule says 0, and _losTier says 0 for a
+       revealed cell), then re-revealed by proximity on the next frame — a wall
+       blinking in and out just past line of sight. Floors are untouched: a
+       revealed floor already has its own permanent rule in _sinkCorridors and
+       revealCell, and `revealed` on floors is what gates monster activation. */
+    if (multiplier < 1.0 && this.revealed[c] && this.wallInst && this.wallInst[c] >= 0) multiplier = 1.0;
     const tier = this._losTier(c);
     this._paintCell(c, tier > multiplier ? tier : multiplier);
     this.revealed[c] = multiplier >= 1.0 ? 1 : 0;
@@ -345,6 +386,7 @@ export const fogMethods = {
     this.revealed[c] = 1;
     const { floor, wall, wallCap } = this.engine.getMeshes();
     if (floor) {
+      if (floor.userData._cellBright) floor.userData._cellBright[c] = 1.0;
       this._eachFloorInstance(c, (i) => {
         floor.setColorAt(i, _c.set(floor.userData.set.col[i]));
       });
@@ -352,8 +394,8 @@ export const fogMethods = {
     }
     const wiN = this.wallInst[c];
     if (wiN >= 0) {
-      if (wall) { wall.setColorAt(wiN, _c.set(wall.userData.set.col[wiN])); wall.instanceColor.needsUpdate = true; }
-      if (wallCap) { wallCap.setColorAt(wiN, _c.set(wallCap.userData.set.col[wiN])); wallCap.instanceColor.needsUpdate = true; }
+      if (wall) { if (wall.userData._cellBright) wall.userData._cellBright[c] = 1.0; wall.setColorAt(wiN, _c.set(wall.userData.set.col[wiN])); wall.instanceColor.needsUpdate = true; }
+      if (wallCap) { if (wallCap.userData._cellBright) wallCap.userData._cellBright[c] = 1.0; wallCap.setColorAt(wiN, _c.set(wallCap.userData.set.col[wiN])); wallCap.instanceColor.needsUpdate = true; }
     }
   },
 
@@ -449,6 +491,7 @@ export const fogMethods = {
     } else if (r.type === 'treasure') {
       showBanner('SECRET VAULT', 'Ancient treasures and forgotten loot lie within.', 'banner-treasure');
       log('✨ A treasure vault glitters ahead!', r.type);
+      firstRunTip('treasureRoom');
     } else if (r.type === 'shrine') {
       showBanner('COZY CAMPSITE', 'A warm campfire flickers, offering safety and restorative rest.', 'banner-shrine');
       log('🔥 A warm campfire crackles, offering restorative rest.', r.type);
@@ -458,6 +501,9 @@ export const fogMethods = {
     } else if (r.type === 'boss') {
       showBanner('BOSS LAIR', 'The ruler of these depths awaits!', 'banner-boss');
       log('💀 The boss lair. This is it.', r.type);
+      /* only where a boss actually waits: the quest's last floor */
+      const q = this.activeQuest;
+      if (!q || (this.questFloor | 0) >= (q.floors | 0)) firstRunTip('bossRoom');
     } else {
       const flavor = {
         combat: 'The party presses on.',
@@ -829,6 +875,21 @@ export const fogMethods = {
         } else continue;
         s.mesh.userData.fogVisible = vis;
         s.mesh.visible = vis && s.mesh.userData.layerVisible !== false;
+      }
+    }
+    if (this._exitIndicator && this._exitIndicator.mesh && this.floorExit) {
+      const fx = this.floorExit;
+      const exitCell = fx.y * (this.D ? this.D.W : 0) + fx.x;
+      const isExitVis = !!(
+        (visState && visState[fx.roomId] === 2) ||
+        (this.visitedRooms && this.visitedRooms[fx.roomId]) ||
+        (this.revealed && this.revealed[exitCell]) ||
+        (this.losSeen && this.losSeen[exitCell])
+      );
+      this._exitIndicator.mesh.visible = isExitVis;
+      if (!isExitVis && this._exitIndicator._nixieInst) {
+        stopNixieEffect(this._exitIndicator._nixieInst);
+        this._exitIndicator._nixieInst = null;
       }
     }
   }

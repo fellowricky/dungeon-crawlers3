@@ -51,3 +51,6 @@ tools/butler.exe
 
 # Web packager transcode cache (narration/music mp3, guild webp); regenerable.
 .cache/
+
+# LPC upgrader ComfyUI inputs/outputs: regenerable, the shipped result is public/lpc_128.
+tools/lpc_upgrader/cache/

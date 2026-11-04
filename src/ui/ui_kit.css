@@ -526,3 +526,11 @@ body.dc-in-combat canvas{
 .bag-item.sel{
   box-shadow:0 0 0 2px #c1a974, 0 0 12px rgba(193,169,116,.5) !important;
 }
+/* Equipment category chips share the 14/16px tab slice, which stacks them
+   into a second row and eats the bag. The smaller button slice stays one row. */
+#charscreen .bag-tab{
+  border-width:7px 8px 8px 8px !important;
+  border-image:url('./kit/button_solid.png') 7 8 8 8 fill / 7px 8px 8px 8px repeat !important;
+  flex:1 1 0; min-width:0;
+  font-size:13px; padding-left:2px; padding-right:2px;
+}

@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import {
-  makeHero, normalizeHero, spawnMonster, crForDungeonLevel, maxCrForDungeonLevel, crBandIndex, MONSTER_THEMES, MONSTERS_BY_ID, monsterSpawnsIn, dungeonMonsterIds, grantXp, getCuratedBossEncounter, getCuratedTacticalRoom, getThemeForMonster, pickRoomSpecies,
+  makeHero, normalizeHero, pendingPoints, spawnMonster, crForDungeonLevel, maxCrForDungeonLevel, crBandIndex, MONSTER_THEMES, MONSTERS_BY_ID, monsterSpawnsIn, dungeonMonsterIds, grantXp, getCuratedBossEncounter, getCuratedTacticalRoom, getThemeForMonster, pickRoomSpecies,
   storyPoolIds, storyLaneWeight, planStoryFloorCast, MONSTERS_ALL } from './srd.js';
 import {
   makeHeroMesh, makeRivalHeroMesh, makeMonsterMesh, drawBar, updateFloatTexts, makeFloatText,
@@ -21,11 +21,12 @@ import {
   preloadAllSpellAndCombatVFX, preloadFloorAssets, updateEntityStatusAuras
 } from './entities.js';
 import { generateRivalParty } from './rivals.js';
-import { addToInventory, takeFromInventory } from './items.js';
-import { configureSpriteMaterial } from './sprite_animator.js';
+import { addToInventory, takeFromInventory, makeLightSourceItem } from './items.js';
+import { configureSpriteMaterial, FACING_BAND_MOVE, FACING_BAND_REST } from './sprite_animator.js';
 import { updateCompositeFX } from './vfx_animations.js';
-import { playNixieEffect } from '../render/nixie_vfx.js';
-import { log, buildPartyFrames, updatePartyFrames, updateResources, showBanner, showTitle, showSetup, initGameLog, updateLogPauseBtn, bindPartyLeaderUI, bindCompanionUI, layoutHud, clearLootFeed } from './ui.js';
+import { tickDancingLights, tickLightMotes } from './spells.js';
+import { playNixieEffect, stopNixieEffect } from '../render/nixie_vfx.js';
+import { log, buildPartyFrames, updatePartyFrames, updatePartyLightBadges, updateResources, showBanner, showTitle, showSetup, initGameLog, updateLogPauseBtn, bindPartyLeaderUI, bindCompanionUI, layoutHud, clearLootFeed } from './ui.js';
 import { showSaveSlotsModal } from './ui_save_slots.js';
 import { installGlobalErrorHandlers, reportError } from './errors.js';
 import { firstRunTip } from './help_ui.js';
@@ -34,7 +35,7 @@ import { logRoomSpawnDebug } from './spawn_debug.js';
 import { initMenus, refreshMenus } from './menus.js';
 import { initShop, showShop } from './shop.js';
 import { initWorldMap, showWorldMap } from './worldmap.js';
-import { showLoadingScreen, hideLoadingScreen } from '../ui/loading_screen.js';
+import { showLoadingScreen, hideLoadingScreen, scheduleAfterPaint } from '../ui/loading_screen.js';
 import { showIntroCrawl } from './intro_crawl.js';
 import { initSkills, checkForChallenge, resetChallengeState, fireCampChallenge, checkRoomEntryChallenge, fireChallenge } from './skills.js';
 import { checkBossReveal } from './boss_card.js';
@@ -45,6 +46,7 @@ import { initItemReveal } from './item_reveal.js';
 import { initOptionsMenu } from './options_ui.js';
 import { getSetting, setSetting } from './settings.js';
 import { tickFxClock, fxClockState } from './fx_clock.js';
+import { actionAnimBusy } from './turn_engine.js';
 import { partyCentroid } from './combat_eval.js';
 import { GuildManager } from './guild.js';
 import {
@@ -58,16 +60,22 @@ import { initRunStats, finalizeRunStats, trackGold, trackLoot, trackFloor, resto
 import { showQuestResults } from './results.js';
 import { partyLongRest, partyShortRest } from './rest.js';
 import { hasEffect } from './conditions.js';
-import { initAudio, playSfx } from './audio.js';
+import { initAudio, playSfx, setMusicMode } from './audio.js';
 
 import { THEME_ORDER, REVEAL_RADIUS, SIGHT_RADIUS, FLOOR, WALL } from './constants.js';
-import { writeInstances, extinguishCampfire, openChest, cam, userZoom, userPitch, setCamZoom, setYawPitch,
-         BASE_HALF, MIN_CAM_ZOOM, MAX_CAM_ZOOM, yaw as camYaw, pitch as camPitch }
+import { writeInstances, extinguishCampfire, openChest, cam, userZoom, exploreZoom, userPitch, explorePitch,
+         setCamZoom, setCamMode, setYawPitch, BASE_HALF, MIN_CAM_ZOOM, MAX_CAM_ZOOM, yaw as camYaw, pitch as camPitch }
   from '../render/dungeon_scene.js';
+import { updateSpriteLighting, toggleLightDebug, hideLightOverlays } from '../render/sprite_lighting.js';
+import { updateCutaway, CUTAWAY_MAX } from '../render/wall_cutaway.js';
+import { tickLightRegistry, heroLightSource as heroLightSourceOf } from './light_sources.js';
 import { driveCamera, resetDirector, weightedFocus, actionEpicenter, blendFocus, clampPull, centroid,
-         CAM_FREE_SECONDS, CAM_ACTION_MARGIN, CAM_FIT_FLOOR_ZOOM }
+         pickClash, leadPoint, CAM_FREE_SECONDS, CAM_ACTION_MARGIN, CAM_FIT_FLOOR_ZOOM, CAM_AIM_HEIGHT,
+         CAM_EXPLORE_MARGIN, CAM_EXPLORE_MARGIN_FRAC, CAM_ORBIT_POINTER_HOLD }
   from './camera_director.js';
-import { autoProloguePlan } from './overland_prologue.js';
+import { autoProloguePlan, overlandSpawnLevel, depthFloor } from './overland_prologue.js';
+import { questSize } from './quests.js';
+import { initTutorial, showTutorialOffer, startTutorial, tutorialForcesCampChallenge, tutorialIsAiCamp, whenCardsIdle, isTutorialCardShowing } from './tutorial.js';
 import { buildWallAdj, buildChokepoints, buildSolidProps, buildSightBlockers, pathfindingMethods, canFly, isGroundFor } from './pathfinding.js';
 import { groundY as groundYAt, easeBodyY } from '../dungeon/elevation.js';
 import { buildFogMaps, fogMethods, syncDoorInstance, DOOR_OPEN_Y } from './fog.js';
@@ -156,8 +164,7 @@ export function getTentFacingDir(tentX, tentZ, campX, campZ, camera = cam) {
   const camAngle = Math.atan2(toCamZ, toCamX);
 
   let diff = camAngle - tentAngle;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
+  diff = Math.atan2(Math.sin(diff), Math.cos(diff));   // wrap to [-π, π]; finite in one step
 
   // diff is the angle of camera relative to the tent's front
   if (Math.abs(diff) <= Math.PI / 4) {
@@ -334,6 +341,7 @@ class Game {
       this.controlMode = 'auto';
       this.guild = new GuildManager(this);
       this.saveGame(slotId);
+      setMusicMode('playlist');
       this.beginRun();
     };
 
@@ -344,6 +352,7 @@ class Game {
         openTitle();
         return;
       }
+      setMusicMode('playlist');
       this.activeSaveSlot = slotId;
       setActiveSlot(slotId);
       this.heroes = save.heroes.map(h => ({ data: normalizeHero(h) }));
@@ -354,6 +363,14 @@ class Game {
       this.gold = save.gold; this.potions = { heal: 0, greater: 0, superior: 0, ...save.potions };
       this.bestiary = save.bestiary || {};
       this.inventory = save.inventory || [];
+      /* Heroes saved before torches whose trinket slot was taken: their torch
+         goes in the bag (srd normalizeHero marks them). */
+      for (const d of [...this.heroes.map(h => h.data), ...this.storedHeroes]) {
+        if (!d || !d._torchOwed) continue;
+        const t = makeLightSourceItem('torch');
+        if (t) addToInventory(this.inventory, t);
+        delete d._torchOwed;
+      }
       this.dungeonLevel = save.dungeonLevel;
       this.activeQuest = normalizeQuest(save.activeQuest || null);
       this.questFloor = save.questFloor || 0;
@@ -382,7 +399,10 @@ class Game {
       continueSaved(slotId);
     };
 
+    /* The title theme covers the whole front end (title, slot picker, party
+       setup); the shuffled playlist takes over once a run actually starts. */
     const openTitle = () => {
+      setMusicMode('title');
       const anySave = hasAnySave();
       showTitle(anySave, {
         onNew: () => {
@@ -430,6 +450,8 @@ class Game {
       const t = e.target;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       if (e.key === 'F3') { e.preventDefault(); setSetting('perfOverlay', !getSetting('perfOverlay')); return; }
+      /* F4: light debug — floor tiles and creatures coloured bright / dim / dark */
+      if (e.key === 'F4') { e.preventDefault(); toggleLightDebug(); return; }
       if (e.key === '1') this.drinkPotion('heal');
       else if (e.key === '2') this.drinkPotion('greater');
       else if (e.key === '3') this.drinkPotion('superior');
@@ -452,7 +474,7 @@ class Game {
       else if (e.code === 'Space' || e.key === ' ') {
         if (this.state === 'crawl') {
           e.preventDefault();
-          this.setPaused(!this.paused);
+          this.setPaused(!this.paused, true);
         }
       }
     });
@@ -467,6 +489,7 @@ class Game {
     initSkills(this);
     initChestLoot(this);
     initQuestEvents(this);
+    initTutorial(this);
     this._createDeathChoiceScreen();
     initAudio();
   }
@@ -484,9 +507,13 @@ class Game {
       this.state = 'worldmap';
       showWorldMap({ refresh: true });
     } else {
-      /* Brand-new company: narrated opening crawl, then the world map. */
+      /* Brand-new company: narrated opening crawl, then the tutorial offer
+         (every new party, skippable), then the world map. */
       this.state = 'worldmap';
-      showIntroCrawl(() => showWorldMap({ refresh: true }));
+      showIntroCrawl(() => showTutorialOffer({
+        onPlay: () => startTutorial(),
+        onSkip: () => showWorldMap({ refresh: true })
+      }));
     }
   }
 
@@ -496,7 +523,9 @@ class Game {
     this.questFloor = (quest && quest.startFloor) ? quest.startFloor : 1;
     if (quest) {
       quest.rivalFloor = quest.rivalFloor || Math.max(1, Math.ceil((quest.floors || 1) / 2));
-      quest.rivalSpawned = false;
+      /* No rival company in the tutorial: a second party of adventurers is
+         one system too many for someone's first three floors. */
+      quest.rivalSpawned = !!quest.tutorial;
       quest.rivalDefeated = false;
     }
     this._floorBeatFired = new Set();   // re-arm end-of-floor beats for this run
@@ -505,6 +534,9 @@ class Game {
     resetChallengeState(this, { newQuest: true });
     /* Fresh quest = long rest so abilities start available */
     partyLongRest(this, { silent: true, reason: 'embark' });
+    if (this.guild && typeof this.guild.applyTrainingBuffsOnEmbark === 'function') {
+      this.guild.applyTrainingBuffsOnEmbark(this.heroes);
+    }
     this.nextDungeon(true);
   }
 
@@ -542,70 +574,87 @@ class Game {
        quest) falls back to treating dungeonLevel as the level axis. */
     const MIN_ROOMS = 12, MAX_ROOMS = 70;
     const qLevel = q ? q.level : lvl;
-    const floor  = q ? this.questFloor : 1;
+    /* depthFloor: travel days in front of a routed quest's dungeon don't count
+       as depth, so a far quest's dungeon isn't bigger than a near one's. */
+    const floor  = q ? depthFloor(q, this.questFloor) : 1;
     const lvlT   = Math.min(1, Math.max(0, (qLevel - 1) / 19)); // 0 @Lv1 → 1 @Lv20
     const floorT = Math.min(1, Math.max(0, (floor  - 1) / 9));  // 0 @F1  → 1 @F10
     const grad   = 0.70 * lvlT + 0.30 * floorT;
     const roomCount = Math.min(MAX_ROOMS, Math.round(MIN_ROOMS + (MAX_ROOMS - MIN_ROOMS) * grad));
     const themeKey = q?.theme || THEME_ORDER[(lvl - 1) % THEME_ORDER.length];
-
-    showLoadingScreen({
-      title: q ? q.name : `DUNGEON DEPTH ${lvl}`,
-      subtitle: q ? `Floor ${this.questFloor} of ${q.floors} · Preparing encounters...` : `Descending into depth ${lvl}...`,
-      floor: this.questFloor
-    });
-    /* Long rest is applied when a floor is cleared (finishDungeon).
-       Here we only top up HP to at least half and clear combat-only state. */
-    for (const h of this.heroes) {
-      h.data.hp = Math.min(h.data.maxHp, Math.max(h.data.hp, Math.round(h.data.maxHp * 0.5)));
-      h.raging = false;
-      h.data.tempHp = 0;
-      h.uncannyUsed = false;
-      h._foughtThisCombat = false;
-      h.phaseStepUntil = 0;
-    }
-    if (q) {
-      log(`— ${q.name}: floor ${this.questFloor}/${q.floors} (depth ${lvl}) —`, 'sys');
-    }
-    /* Story missions on overland maps forge through the open-terrain
-       generator; everything downstream (onDungeon, fog, spawns) is shared. */
     /* floorPlan lets one mission change surface per floor — e.g. an overland
        approach that descends into a dungeon on floor 2. Indexed by
-       questFloor-1; missing entries fall back to the quest-level fields. */
-    /* Story missions declare floorPlan by hand; random quests get an equivalent
+       questFloor-1; missing entries fall back to the quest-level fields.
+       Story missions declare floorPlan by hand; random quests get an equivalent
        plan derived on the fly (overland approach + threshold, then the dungeon).
-       Deriving instead of baking keeps saved in-flight quests working. */
+       Deriving instead of baking keeps saved in-flight quests working.
+       Resolved before the curtain so it is keyed to this floor, not the
+       quest's destination dungeon. */
     const plan = (q && Array.isArray(q.floorPlan))
       ? q.floorPlan[this.questFloor - 1]
       : ((q && !q.skipPrologue) ? autoProloguePlan(q, this.questFloor) : null);
     const fKind = (plan && plan.mapKind) || (q && q.mapKind);
-    /* Overland floors use a shrouded-map fog (whole map dim-grey, brightening
-       around the party) instead of the dungeon's room-by-room black reveal. */
-    this._pendingOverland = fKind === 'overland';
     const fTheme = (plan && plan.theme) || (q && q.theme) || themeKey;
-    /* Story missions run hotter than random quests: threatMult scales every
-       zone's spawn budget in the generators. Explicit q.threatMult wins. */
-    const tMult = q ? (q.threatMult || (q.story ? 1.3 : 1)) : 1;
-    if (q && fKind === 'overland') {
-      this.engine.reforgeOverland(seed, {
-        themeKey: fTheme, level: qLevel, name: (plan && plan.name) || q.siteName || null,
-        mapW: (plan && plan.mapW) || q.mapW || 0,
-        mapH: (plan && plan.mapH) || q.mapH || 0,
-        zones: (plan && plan.zones) || q.zones || 0,
-        threatMult: tMult
-      });
-    } else {
-      /* reforge() has no name parameter (only the overland forge does), so a
-         curated dungeon-floor name is stashed here and stamped on in
-         onDungeon — otherwise story floors fall back to generated names. */
-      const hasRival = !!(
-        q && !q.rivalSpawned &&
-        (this.questFloor === (q.rivalFloor || 1) || q.forceRivalRoom)
-      );
-      this._pendingFloorName = (plan && plan.name) || null;
-      this.engine.reforge(seed, roomCount, fTheme, false, tMult, qLevel, { hasRivalRoom: hasRival });
-    }
-    if (!first) this.saveGame();
+
+    showLoadingScreen({
+      title: q ? q.name : `DUNGEON DEPTH ${lvl}`,
+      subtitle: q ? `Floor ${this.questFloor} of ${q.floors} · Preparing encounters...` : `Descending into depth ${lvl}...`,
+      floor: this.questFloor,
+      theme: fTheme,
+      party: this.realHeroes()
+    });
+    /* The forge is synchronous and used to run in this same turn, so the
+       curtain's first paint landed only after preload had already reported
+       ~70%. Yield once so the party is on screen at the left edge first. */
+    scheduleAfterPaint(() => {
+      /* Long rest is applied when a floor is cleared (finishDungeon).
+         Here we only top up HP to at least half and clear combat-only state. */
+      for (const h of this.heroes) {
+        h.data.hp = Math.min(h.data.maxHp, Math.max(h.data.hp, Math.round(h.data.maxHp * 0.5)));
+        h.raging = false;
+        h.data.tempHp = 0;
+        h.uncannyUsed = false;
+        h._foughtThisCombat = false;
+        h.phaseStepUntil = 0;
+        /* Berserker fury is measured on the combat clock now, which only moves
+           during fights — drop leftover stacks so they can't carry into the next one. */
+        h._bloodlust = 0; h._bloodlustUntil = 0;
+      }
+      if (q) {
+        log(`— ${q.name}: floor ${this.questFloor}/${q.floors} (depth ${lvl}) —`, 'sys');
+      }
+      /* Overland floors use a shrouded-map fog (whole map dim-grey, brightening
+         around the party) instead of the dungeon's room-by-room black reveal. */
+      this._pendingOverland = fKind === 'overland';
+      /* Story missions run hotter than random quests: threatMult scales every
+         zone's spawn budget in the generators. Explicit q.threatMult wins. */
+      const tMult = q ? (q.threatMult || (q.story ? 1.3 : 1)) : 1;
+      if (q && fKind === 'overland') {
+        /* Generated quests' overland floors spawn at half strength (see
+           overlandSpawnLevel); story missions keep their hand-tuned level. */
+        const spawnLevel = q.story ? qLevel : overlandSpawnLevel(qLevel);
+        this.engine.reforgeOverland(seed, {
+          themeKey: fTheme, level: spawnLevel, name: (plan && plan.name) || q.siteName || null,
+          mapW: (plan && plan.mapW) || q.mapW || 0,
+          mapH: (plan && plan.mapH) || q.mapH || 0,
+          zones: (plan && plan.zones) || q.zones || 0,
+          layout: (plan && plan.layout) || q.layout || null,
+          river: (plan && plan.river) ?? q.river,
+          threatMult: tMult
+        });
+      } else {
+        /* reforge() has no name parameter (only the overland forge does), so a
+           curated dungeon-floor name is stashed here and stamped on in
+           onDungeon — otherwise story floors fall back to generated names. */
+        const hasRival = !!(
+          q && !q.rivalSpawned &&
+          (this.questFloor === (q.rivalFloor || 1) || q.forceRivalRoom)
+        );
+        this._pendingFloorName = (plan && plan.name) || null;
+        this.engine.reforge(seed, roomCount, fTheme, false, tMult, qLevel, { hasRivalRoom: hasRival });
+      }
+      if (!first) this.saveGame();
+    });
   }
 
   /* ============ dungeon load (called by engine forge) ============ */
@@ -717,9 +766,14 @@ class Game {
        silently replaced the budget-drawn rooms with a lane-locked curated cast
        that ignored the budget entirely. */
     const storyPool = shouldUseStoryCast(_sq, _sPlan) && _rawRoster && storyPoolIds(_rawRoster).length ? _rawRoster : null;
+    const questLevel = this.activeQuest ? this.activeQuest.level : this.dungeonLevel;
     const questInfo = {
-      dungeonLevel: this.activeQuest ? this.activeQuest.level : this.dungeonLevel,
-      questFloor: this.questFloor,
+      /* must match the level _loadFloor forged the overland floor at, or the
+         CR window here disagrees with the CRs the generator priced */
+      dungeonLevel: (d.overland && this.activeQuest && !this.activeQuest.story)
+        ? overlandSpawnLevel(questLevel) : questLevel,
+      /* Depth for CR scaling (spawns, elite pack, boss): travel days excluded. */
+      questFloor: this.activeQuest ? depthFloor(this.activeQuest, this.questFloor) : this.questFloor,
       floors: this.activeQuest ? this.activeQuest.floors : 10
     };
     const finalFloor = !this.activeQuest || (this.questFloor | 0) >= (this.activeQuest.floors | 0);
@@ -889,6 +943,7 @@ class Game {
       const ex = (ba % W), ey = Math.floor(ba / W);
       this.floorExit = { roomId: d.boss, x: ex, y: ey, active: false, entered: false };
       this._exitIndicator = createExitIndicator(this.gameGroup, this.wx(ex), this.wz(ey));
+      if (this._exitIndicator && this._exitIndicator.mesh) this._exitIndicator.mesh.visible = false;
       updateExitIndicator(this._exitIndicator, 0, false, 0);
 
       // Spawn 2-3 Miniboss / Elite pack monsters in room d.boss
@@ -998,7 +1053,7 @@ class Game {
     }
 
     this.chests = d.props.filter(p => p.kind === 'chest').map(p => ({ x: p.x, y: p.y, roomId: p.roomId, looted: false }));
-    this.shrines = d.props.filter(p => p.kind === 'shrineCrystal').map(p => ({ x: p.x, y: p.y, roomId: p.roomId, used: false }));
+    this.shrines = d.props.filter(p => p.kind === 'shrineCrystal').map(p => ({ x: p.x, y: p.y, roomId: p.roomId, used: false, lightShrine: !!p.lightShrine }));
     placeGems(this);
 
     /* Ally-phase guest joins before placement so it gets a mesh like everyone */
@@ -1111,6 +1166,12 @@ class Game {
     refreshMenus(this);
     const warmupPromise = preloadFloorAssets(this, this.engine?.renderer, this.engine?.scene, this.engine?.cam);
     hideLoadingScreen(warmupPromise, 1400);
+    /* Tutorial-only cards (tutorial.js); they wait for the curtain to lift. */
+    firstRunTip('crawl');
+    /* A fresh party starts with level-up choices banked; say so before the
+       first step, or they walk the whole tutorial with points unspent. */
+    if (this.heroes.some(h => !h.companion && pendingPoints(h.data) > 0)) firstRunTip('startLevelUp');
+    if (d.overland) firstRunTip('overlandFog');
   }
 
   addMonster(spec, x, y, roomId, isBoss = false) {
@@ -1629,8 +1690,8 @@ class Game {
     for (const m of this.monsters) {
       if (!m.active || m.data.hp <= 0) continue;
       if (this._shutGateIsTheOnlyThingBetween(m)) {
-        m.active = false;
-        m._threat = null;
+        if (typeof this.disengageMonster === 'function') this.disengageMonster(m);
+        else { m.active = false; m._threat = null; }
         disengaged++;
       }
     }
@@ -1680,7 +1741,33 @@ class Game {
     this.tickPendingImpacts(dt);
     updateWorldFx(this.engine.scene, dt);
     updateCompositeFX(this.engine.scene, dt);
+    tickDancingLights(this, this.rawDt);
+    tickLightMotes(this, this.rawDt);
     updateEntityStatusAuras([...(this.heroes || []), ...(this.monsters || [])], dt);
+    /* Sprites are unlit billboards; shade them by the light where they stand
+       (raw dt — the easing is presentation, not combat pacing). */
+    if (this.state === 'crawl') {
+      tickLightRegistry(this.rawDt);
+      for (const h of this.heroes) if (h.data && h.data._dousedT > 0) h.data._dousedT = Math.max(0, h.data._dousedT - this.rawDt);
+      /* consumable torches burn while lit (docs/LIGHT_IDEAS.md 19) */
+      for (const h of this.heroes) {
+        const tr = h._lightActive && h.data && h.data.equipment && h.data.equipment.trinket;
+        if (!tr || tr.lightSource !== 'torch' || heroLightSourceOf(h.data) !== 'torch') continue;
+        tr.burn = (tr.burn == null ? 300 : tr.burn) - this.rawDt;
+        if (tr.burn <= 0 && this.useUpTorch) this.useUpTorch(h);
+      }
+      /* Out of a fight, a hero carrying a flame lights any dark sconce they
+         brush past (docs/LIGHT_IDEAS.md 33). Throttled; cheap either way. */
+      this._kindleT = (this._kindleT || 0) - this.rawDt;
+      if (this._kindleT <= 0 && !(this.initiative && this.initiative.active) && this.canKindle) {
+        this._kindleT = 0.5;
+        for (const h of this.heroes) if (h.data && h.data.hp > 0 && this.canKindle(h)) this.kindleTorch(h);
+      }
+      updateSpriteLighting([...(this.heroes || []), ...(this.monsters || [])], this.rawDt);
+      updatePartyLightBadges(this.heroes.map(x => x.data));
+    } else {
+      hideLightOverlays();   // nothing ticks them off a floor; don't let the last one linger
+    }
     if (this.paused) return;
     if (this._pendingFinish) {
       this._pendingFinish = false;
@@ -1741,12 +1828,12 @@ class Game {
         }
       }
       if (c >= 0) {
-        this.revealAround(c, REVEAL_RADIUS);
         if (c !== h.lastCell) {
           h.lastCell = c;
           this._fovDirty = true;
           const rid = this.D.roomId[c];
           if (rid >= 0) this.visitRoom(rid);
+          this.revealAround(c, REVEAL_RADIUS);
         }
       }
     }
@@ -1842,6 +1929,7 @@ class Game {
       this.recalculateFog(this);     // re-snuff frontier rooms
       for (const h of alive) {
         h._foughtThisCombat = false; // First Strike perk
+        h._hidden = false;           // Hide lasts the fight at most
         h.uncannyUsed = false;       // Uncanny Dodge once per fight
       }
       updatePartyFrames(this.heroes.map(x => x.data));
@@ -2013,15 +2101,20 @@ class Game {
         h.ent.anim.mesh.position.y = Math.max(0, 0.5 - h._deathLean * 0.5);
         h.ent.anim.update(dt);
       } else {
-        if (h.ent.anim && h.ent.anim.isPlayingAttack && h.ent.anim.isPlayingAttack()) {
-          /* Full attack animation sequence is actively playing (wind-up / swing).
-             Keep facing the attack target until the animation completes and returns to walk. */
+        const busyCast = h.castAnim && actionAnimBusy(h, this);
+        if ((h.ent.anim && h.ent.anim.isPlayingAttack && h.ent.anim.isPlayingAttack()) || busyCast) {
+          /* Full attack/cast sequence is actively playing (wind-up, charge, projectile, impact).
+             Keep facing the attack target until the sequence completes and returns to walk. */
           const tdx = h.attackTargetDX ?? h.lungeDX;
           const tdz = h.attackTargetDZ ?? h.lungeDZ;
           if (tdx != null && tdz != null) {
             const rdx = tdx * cosC - tdz * sinC;
             const rdz = tdx * sinC + tdz * cosC;
             h.ent.anim.setDirection(rdx, rdz);
+          }
+          if (!(h.ent.anim && h.ent.anim.isPlayingAttack && h.ent.anim.isPlayingAttack())) {
+            const sliced = h.ent.anim.anims;
+            h.ent.anim.play((!sliced || !!sliced.walk) ? 'idle' : 'walk');
           }
           h.ent.anim.mesh.position.y = 0;
         } else if (h.lungeT > 0) {
@@ -2036,7 +2129,7 @@ class Game {
           const pdx = h.x - (h._animPX ?? h.x);
           const pdz = h.z - (h._animPZ ?? h.z);
           const speed = Math.hypot(pdx, pdz) / Math.max(dt, 1e-4);
-          if (h.moving || speed > MOVE_ANIM_SPEED_EPS) {
+          if ((h.moving && !actionAnimBusy(h, this)) || speed > MOVE_ANIM_SPEED_EPS) {
             h._walkHold = WALK_ANIM_HOLD;
           } else if (h._walkHold > 0) {
             h._walkHold -= dt;
@@ -2056,9 +2149,13 @@ class Game {
           h.ent.anim.play(standing ? 'idle' : 'walk');
           h.ent.anim.mesh.position.y = 0;
 
+          /* A hero at rest only changes facing when the camera turns, so it
+             gets the wide band: the exploration orbit must not flip it on
+             every swing (FACING_BAND_REST). */
           const angle = h.ent.grp.rotation.y;
           const mdx = Math.sin(angle), mdz = Math.cos(angle);
-          h.ent.anim.setDirection(mdx * cosC - mdz * sinC, mdx * sinC + mdz * cosC);
+          h.ent.anim.setDirection(mdx * cosC - mdz * sinC, mdx * sinC + mdz * cosC,
+                                  h._walkHold > 0 ? FACING_BAND_MOVE : FACING_BAND_REST);
         }
       }
       if (h.data.hp > 0) h.ent.anim.update(dt);
@@ -2071,6 +2168,7 @@ class Game {
     /* The cutscene owns the camera outright while it runs — the director's
        dwell timers and deadbands would fight a scripted move. */
     if (!this.bossCutscene && elapsed > this.freeCamUntil) this.updateCameraDirector(dt, alive);
+    this.updateWallCutaway(dt);
 
 
 
@@ -2105,12 +2203,17 @@ class Game {
   updateCameraDirector(dt, alive) {
     if (!this.engine || !this.engine.camTarget) return;
 
+    /* Framed points carry the ground the body stands on (podiums, raised
+       terrain), read from the eased visual position, so a hero up on a dais is
+       framed by their actual head. */
+    const bodyY = e => (e && e.ent && e.ent.grp) ? (e.ent.grp.position.y || 0) : 0;
+
     /* WHO MUST STAY ON SCREEN: everyone standing, companions and summons
        included. They are bodies the player is invested in, and losing a
        familiar off the edge of frame is exactly as confusing as losing a hero. */
     const party = [];
     for (const h of this.heroes || []) {
-      if (h && h.data && h.data.hp > 0) party.push({ x: h.x, z: h.z });
+      if (h && h.data && h.data.hp > 0) party.push({ x: h.x, z: h.z, y: bodyY(h) });
     }
     if (!party.length) return;
 
@@ -2123,174 +2226,95 @@ class Game {
       for (const m of this.monsters || []) {
         if (!m || !m.active || !m.data || m.data.hp <= 0) continue;
         if (m.ent && m.ent.grp && m.ent.grp.visible === false) continue;
-        foes.push({ x: m.x, z: m.z });
+        foes.push({ x: m.x, z: m.z, y: bodyY(m) });
       }
     }
 
-    /* WHERE THE FRAME IS CENTRED. Out of combat it stays on the leader, as it
-       always has: the party strings out behind them down a corridor, and a
-       centroid would leave the hero being steered at the edge of the screen.
-       In combat the centre is the party's (companions excluded, per
-       partyCentroid) pulled 30% toward the hostiles. */
     const leader = this.partyLeader(alive);
     const core = partyCentroid(this.heroes);
+    /* The wheel and the orbit drag record against whichever mode is live, so
+       exploring and fighting each keep their own resting zoom and tilt. */
+    setCamMode(this.combat ? 'combat' : 'explore');
+    /* Updated every frame, combat included, so the velocity estimate is current
+       the moment exploration framing resumes rather than reading the whole
+       fight's displacement as one step. */
+    const lead = leadPoint(this._camDir, leader ? { x: leader.x, z: leader.z, y: bodyY(leader) } : null, dt);
 
-    /* Determine active combat action & target */
+    /* WHO THE COMBAT CAMERA IS WATCHING (see pickClash), and how hard. */
     let actionObj = null;
     const autoActionZoom = getSetting('cameraActionZoom') !== false;
     const autoActionRotate = getSetting('cameraActionRotate') !== false;
 
     if (this.combat) {
-      let activeHero = null;
-      let activeFoe = null;
-      let isLungeOrCast = false;
-
-      // Check 1: Any hero or monster actively lunging or casting this frame
-      for (const h of (this.heroes || [])) {
-        if (h && h.data && h.data.hp > 0 && (h.lungeT > 0 || h.castAnim)) {
-          activeHero = h;
-          activeFoe = h.target || h._pendingAttackTarget || h._lastTarget;
-          isLungeOrCast = true;
-          break;
-        }
-      }
-      if (!activeHero) {
-        for (const m of (this.monsters || [])) {
-          if (m && m.active && m.data && m.data.hp > 0 && (m.lungeT > 0 || m.castAnim)) {
-            activeFoe = m;
-            activeHero = m.target || m._lastTarget;
-            isLungeOrCast = true;
-            break;
-          }
-        }
-      }
-
-      // Check 2: Initiative current actor
       const inInitiative = !!(this.initiative && this.initiative.active);
       const curActor = inInitiative ? this._currentActor() : null;
-      if (!activeHero && !activeFoe && curActor) {
-        if (curActor._side === 'hero' || (this.heroes && this.heroes.includes(curActor))) {
-          activeHero = curActor;
-          activeFoe = curActor.target || curActor._pendingAttackTarget || curActor._lastTarget;
-        } else {
-          activeFoe = curActor;
-          activeHero = curActor.target || curActor._lastTarget;
-        }
-      }
-
-      // Check 3: Active targeting states
-      if (this.attackTargetingState && this.attackTargetingState.active) {
-        activeHero = activeHero || this.attackTargetingState.hero;
-        activeFoe = this.attackTargetingState.target || activeFoe;
-      } else if (this.spellTargetingState && this.spellTargetingState.active) {
-        activeHero = activeHero || this.spellTargetingState.hero;
-        activeFoe = this.spellTargetingState.target || activeFoe;
-      }
-
-      // Fallback: If one is found but not the other, find closest opposite
-      if (activeHero && !activeFoe && foes.length) {
-        let minD = Infinity;
-        for (const f of foes) {
-          const d = Math.hypot(f.x - activeHero.x, f.z - activeHero.z);
-          if (d < minD) { minD = d; activeFoe = f; }
-        }
-      } else if (activeFoe && !activeHero && party.length) {
-        let minD = Infinity;
-        for (const p of party) {
-          const d = Math.hypot(p.x - activeFoe.x, p.z - activeFoe.z);
-          if (d < minD) { minD = d; activeHero = p; }
-        }
-      }
-
-      // Fallback: If neither found, pick the closest hero-monster pair in the room
-      if (!activeHero && !activeFoe && party.length && foes.length) {
-        let minD = Infinity;
-        for (const p of party) {
-          for (const f of foes) {
-            const d = Math.hypot(p.x - f.x, p.z - f.z);
-            if (d < minD) {
-              minD = d;
-              activeHero = p;
-              activeFoe = f;
-            }
-          }
-        }
-      }
-
-      /* Subject hold to prevent rapid jitter between candidates */
-      const now = this.elapsed || 0;
-      if (isLungeOrCast && activeHero) {
-        this._camDir.subject = { actor: activeHero, target: activeFoe };
-        this._camDir.subjectUntil = now + 1.4;
-      } else if (this._camDir.subject && now < (this._camDir.subjectUntil || 0)) {
-        const s = this._camDir.subject;
-        const actAlive = !s.actor || (s.actor.data ? s.actor.data.hp > 0 : true);
-        const tgtAlive = !s.target || (s.target.data ? s.target.data.hp > 0 : true);
-        if (actAlive && tgtAlive) {
-          activeHero = s.actor;
-          activeFoe = s.target;
-        } else {
-          this._camDir.subject = null;
-        }
-      } else if (activeHero) {
-        this._camDir.subject = { actor: activeHero, target: activeFoe };
-        this._camDir.subjectUntil = now + 1.0;
-      }
+      const targeting = (this.attackTargetingState && this.attackTargetingState.active && this.attackTargetingState)
+                     || (this.spellTargetingState && this.spellTargetingState.active && this.spellTargetingState)
+                     || null;
+      const clash = pickClash(this._camDir, {
+        heroes: this.heroes || [], monsters: this.monsters || [], party, foes,
+        curActor, targetingHero: targeting ? targeting.hero : null, now: this.elapsed || 0
+      });
 
       /* Calculate action intensity based on fx_clock state and activity */
       const fx = typeof fxClockState === 'function' ? fxClockState() : { waiting: 0, beat: null };
       let targetIntensity = 0;
-      if (isLungeOrCast) {
+      if (clash.striking) {
         targetIntensity = 1.0;
       } else if (fx.waiting > 0) {
         if (fx.beat === 'major') targetIntensity = 1.0;
         else if (fx.beat === 'notable') targetIntensity = 0.9;
         else targetIntensity = 0.7;
-      } else if (curActor || activeHero || activeFoe) {
+      } else if (curActor || clash.actor || clash.target) {
         targetIntensity = 0.55;
       }
 
-      /* Smooth intensity transition */
+      /* Smooth intensity transition: quick to rise with a swing, slow to let
+         go. Exponential in dt, so it eases the same at any frame rate. */
       this._camDir.intensity = this._camDir.intensity || 0;
       const rate = targetIntensity > this._camDir.intensity ? 6.0 : 2.0;
-      this._camDir.intensity += (targetIntensity - this._camDir.intensity) * Math.min(1, dt * rate);
+      this._camDir.intensity += (targetIntensity - this._camDir.intensity) * (1 - Math.exp(-rate * Math.max(0, dt)));
 
-      const actorEnt = activeHero || curActor;
-      const targetEnt = activeFoe;
+      const actorEnt = clash.actor || curActor;
+      const targetEnt = clash.target;
       if (actorEnt && this._camDir.intensity > 0.01) {
         actionObj = {
-          actor: { x: actorEnt.x, z: actorEnt.z },
-          target: targetEnt ? { x: targetEnt.x, z: targetEnt.z } : null,
+          actor: { x: actorEnt.x, z: actorEnt.z, y: bodyY(actorEnt) },
+          target: targetEnt ? { x: targetEnt.x, z: targetEnt.z, y: bodyY(targetEnt) } : null,
           intensity: this._camDir.intensity
         };
+        if (typeof globalThis.setCombatActionFocus === 'function' && clash.striking) {
+          globalThis.setCombatActionFocus(actorEnt, targetEnt || actorEnt, 0.45);
+        }
       }
     } else if (this._camDir.intensity) {
       this._camDir.intensity = Math.max(0, this._camDir.intensity - dt * 3.0);
       this._camDir.subject = null;
     }
 
+    const aspect = cam.top > 0 ? cam.right / cam.top : 16 / 9;
+
     /* WHERE THE FRAME IS CENTRED.
-       In combat with an active clash: dynamically center heavily on the action epicenter.
-       Out of combat: stays on the leader. */
+       In combat with an active clash: heavily on the action epicenter, passed
+       as a final focus (frameCamera does not blend the clash in again).
+       In combat otherwise: the party's centre pulled 30% toward the hostiles.
+       Out of combat: the centre of the party's on-screen box, extended toward
+       where the leader is walking — framing 'box', no focus point at all. */
     let focus = null;
-    if (this.combat && actionObj && actionObj.intensity > 0.05 && (actionObj.actor || actionObj.target)) {
+    if (this.combat && actionObj && actionObj.intensity > 0.05) {
       const epic = actionEpicenter(actionObj.actor, actionObj.target);
       const tactical = core ? weightedFocus([core], foes) : (leader ? { x: leader.x, z: leader.z } : epic);
       const w = 0.35 + 0.55 * Math.min(1, actionObj.intensity);
       const blended = blendFocus(tactical, epic, w);
       focus = clampPull(centroid(party), blended, party, {
-        aspect: cam.top > 0 ? cam.right / cam.top : 16 / 9,
-        baseHalf: BASE_HALF, yaw: camYaw, pitch: camPitch,
-        margin: CAM_ACTION_MARGIN,
+        aspect, baseHalf: BASE_HALF, yaw: camYaw, pitch: camPitch,
+        margin: CAM_ACTION_MARGIN, aimY: CAM_AIM_HEIGHT,
         budgetZoom: Math.min(CAM_FIT_FLOOR_ZOOM, userZoom, MAX_CAM_ZOOM)
       });
     } else if (this.combat) {
       if (core) focus = weightedFocus([core], foes);
-    } else if (leader) {
-      focus = { x: leader.x, z: leader.z };
-    } else if (core) {
-      focus = core;
     }
+    const explore = !this.combat;
 
     /* Occlusion probe for the yaw scorer: walls, plus the props already
        classified as sight-blocking for the fog's field of view. */
@@ -2309,10 +2333,24 @@ class Game {
       entities: party.concat(foes),
       action: actionObj,
       actionZoom: autoFrame && autoActionZoom,
+      framing: explore ? 'box' : 'focus',
+      lead: explore ? lead : null,
+      margin: explore ? CAM_EXPLORE_MARGIN : undefined,
+      marginFrac: explore ? CAM_EXPLORE_MARGIN_FRAC : 0,
+      aimY: explore ? 0 : CAM_AIM_HEIGHT,
       targetX: this.engine.camTarget.x, targetZ: this.engine.camTarget.z,
-      zoom: cam.zoom, restZoom: userZoom,
-      restPitch: userPitch,
-      aspect: cam.top > 0 ? cam.right / cam.top : 16 / 9,
+      zoom: cam.zoom, restZoom: explore ? exploreZoom : userZoom,
+      restPitch: explore ? explorePitch : userPitch,
+      cutaway: getSetting('cameraWallCutaway') !== false,
+      /* The exploration orbit sways only out of combat, and holds still while
+         the player is pointing: a recent pointer move over the canvas, a
+         targeting mode, or a move waiting to be confirmed. */
+      orbit: explore && getSetting('cameraExploreOrbit') !== false,
+      orbitHold: ((this.elapsed || 0) - (this._pointerMovedAt ?? -Infinity) < CAM_ORBIT_POINTER_HOLD)
+                 || !!(this.attackTargetingState && this.attackTargetingState.active)
+                 || !!(this.spellTargetingState && this.spellTargetingState.active)
+                 || !!(this.pendingMoveState && this.pendingMoveState.active),
+      aspect,
       baseHalf: BASE_HALF, minZoom: MIN_CAM_ZOOM, maxZoom: MAX_CAM_ZOOM,
       yaw: camYaw, pitch: camPitch,
       autoRotate: (!!getSetting('cameraAutoRotate') && isBlocked != null && !D?.overland)
@@ -2323,11 +2361,42 @@ class Game {
 
     this.engine.camTarget.set(out.x, 0, out.z);
     if (autoFrame) setCamZoom(out.zoom);
-    if (Math.abs(out.yaw - camYaw) > 1e-4 || Math.abs(out.pitch - camPitch) > 1e-4) {
-      setYawPitch(out.yaw, out.pitch);
-    } else {
-      this.engine.updateCam();
+    /* Always applied, however small the change. The orbit's sway slows below
+       any threshold at each end of its swing, and a dropped step would
+       quietly shift the centre the sway is measured around. setYawPitch
+       refreshes the camera either way. */
+    setYawPitch(out.yaw, out.pitch);
+  }
+
+  /**
+   * Feed the wall cutaway (render/wall_cutaway.js) the bodies walls must not
+   * hide: the standing party first, then in combat the nearest visible
+   * hostiles. Runs every frame, not only when the director does — a player
+   * orbiting the camera by hand needs the walls cut just as much.
+   */
+  updateWallCutaway(dt) {
+    const on = getSetting('cameraWallCutaway') !== false;
+    const pts = [];
+    const at = e => (e.ent && e.ent.grp) ? e.ent.grp.position : { x: e.x, y: 0, z: e.z };
+    for (const h of this.heroes || []) {
+      if (pts.length >= CUTAWAY_MAX) break;
+      if (h && h.data && h.data.hp > 0) pts.push(at(h));
     }
+    if (this.combat && pts.length && pts.length < CUTAWAY_MAX) {
+      const c = centroid(pts);
+      const near = [];
+      for (const m of this.monsters || []) {
+        if (!m || !m.active || !m.data || m.data.hp <= 0) continue;
+        if (m.ent && m.ent.grp && m.ent.grp.visible === false) continue;
+        near.push({ p: at(m), d: Math.hypot(m.x - c.x, m.z - c.z) });
+      }
+      near.sort((a, b) => a.d - b.d);
+      for (const n of near) {
+        if (pts.length >= CUTAWAY_MAX) break;
+        pts.push(n.p);
+      }
+    }
+    updateCutaway(pts, on, dt);
   }
 
   updateTurnHighlights(dt) {
@@ -2625,6 +2694,7 @@ class Game {
     const cd = document.getElementById('dc-count');
     if (cd) cd.textContent = `auto-respawn in ${remaining}s`;
     this._deathTimer = setInterval(() => {
+      if (isTutorialCardShowing()) return;   // the countdown waits while the wipe card is read
       remaining--;
       if (cd) cd.textContent = `auto-respawn in ${remaining}s`;
       if (remaining <= 0) pick('respawn');
@@ -2643,6 +2713,7 @@ class Game {
     };
     this._deathPick = pick;
     ov.classList.add('show');
+    firstRunTip('partyWipe');
   }
 
   _hideDeathChoiceScreen() {
@@ -2731,6 +2802,9 @@ class Game {
     this.floorPhase = null;
     this.puzzleState = null;
     updateQuestTracker(this);
+    if (this.guild && typeof this.guild.consumeTrainingBuffs === 'function') {
+      this.guild.consumeTrainingBuffs(this.heroes);
+    }
     this.saveGame();
     this.state = 'worldmap';
     setTimeout(() => showWorldMap({ refresh: true }), 600);
@@ -2754,20 +2828,23 @@ class Game {
     if (gold) log(`🪙 Quest reward: +${gold}g.`, 'treasure');
 
     /* XP — quest rewards go to the real party only (never a temp ally or companion) */
-    const real = this.realHeroes();
-    const xpEach = Math.max(1, Math.round((q.rewardXp || 0) / Math.max(1, real.length)));
-    const before = real.map(h => h.data.level);
-    for (const h of real) {
-      grantXp(h.data, xpEach, log);
+    /* (The tutorial pays none: the party keeps only what it found.) */
+    if (q.rewardXp > 0) {
+      const real = this.realHeroes();
+      const xpEach = Math.max(1, Math.round(q.rewardXp / Math.max(1, real.length)));
+      const before = real.map(h => h.data.level);
+      for (const h of real) {
+        grantXp(h.data, xpEach, log);
+      }
+      if (real.some((h, i) => h.data.level > before[i])) this.announceLevelUp();
+      this.summons.syncScales();   // companions follow their summoner's new level
+      log(`✨ Quest reward: +${xpEach} XP each.`, 'level');
     }
-    if (real.some((h, i) => h.data.level > before[i])) this.announceLevelUp();
-    this.summons.syncScales();   // companions follow their summoner's new level
-    log(`✨ Quest reward: +${xpEach} XP each.`, 'level');
 
     /* Legendary pity: count 10-floor clears without a legendary reward;
        reset when one lands. generateQuests forces a legendary onto the
        hardest 10-floor offer once the counter reaches LEGENDARY_PITY. */
-    if ((q.floors | 0) >= 10) {
+    if (questSize(q) >= 10) {
       this.legendaryPity = (q.rewardItem && q.rewardItem.rarity === 'legendary')
         ? 0 : (this.legendaryPity | 0) + 1;
     }
@@ -2805,6 +2882,20 @@ class Game {
     if (!fx || !this.D) return;
     const rooms = this.D.rooms;
     if (!alive) alive = this.heroes.filter(h => h.data.hp > 0);
+
+    const exitCell = fx.y * this.D.W + fx.x;
+    const isExitVisible = !!(
+      (this.visitedRooms && this.visitedRooms[fx.roomId]) ||
+      (this.revealed && this.revealed[exitCell]) ||
+      (this.losSeen && this.losSeen[exitCell])
+    );
+    if (this._exitIndicator && this._exitIndicator.mesh) {
+      this._exitIndicator.mesh.visible = isExitVisible;
+      if (!isExitVisible && this._exitIndicator._nixieInst) {
+        stopNixieEffect(this._exitIndicator._nixieInst);
+        this._exitIndicator._nixieInst = null;
+      }
+    }
 
     const exitRoomCleared = typeof this._roomCleared === 'function' && this._roomCleared(fx.roomId);
 
@@ -2922,8 +3013,10 @@ class Game {
     /* Victory narration + quest-chain bookkeeping (sequel unlocks / epilogues) */
     onQuestCompleted(this, q);
 
-    /* Story-mode chapter completion unlocks the next chapter */
-    if (q.story && q.id) {
+    /* Story-mode chapter completion unlocks the next chapter (the tutorial
+       borrows the story plumbing but is not a chapter) */
+    if (q.tutorial) firstRunTip('questComplete');
+    if (q.story && q.id && !q.tutorial) {
       this.storyProgress = this.storyProgress || {};
       this.storyProgress[q.id] = (this.storyProgress[q.id] || 0) + 1;
     }
@@ -2932,6 +3025,9 @@ class Game {
     const summary = finalizeRunStats(this);
     this.runStats = null;
 
+    if (this.guild && typeof this.guild.consumeTrainingBuffs === 'function') {
+      this.guild.consumeTrainingBuffs(this.heroes);
+    }
     this.activeQuest = null;
     this.questFloor = 0;
     this.floorPhase = null;
@@ -2954,16 +3050,28 @@ class Game {
    *  (Persuasion/Insight/History/Deception) whose outcome resolves before the
    *  shop overlay appears. `state` must already be set to 'shop' by the caller. */
   _openCampFlow() {
-    const openShop = () => { if (this.state === 'shop') showShop(); };
+    const openShop = () => {
+      if (this.state !== 'shop') return;
+      showShop();
+      /* The AI lesson sits over the camp shop, where the Party screen it
+         opens is one click from where the player already is. */
+      if (tutorialIsAiCamp(this)) firstRunTip('aiPriorities');
+    };
     const alive = this.heroes.some(h => h.data.hp > 0);
     const campSkills = ['persuasion', 'insight', 'history', 'deception'];
     const skill = campSkills[Math.floor(Math.random() * campSkills.length)];
-    /* 55% chance a social challenge fires at camp */
-    if (alive && Math.random() < 0.55) {
-      if (!fireCampChallenge(this, skill, openShop)) openShop();
-    } else {
-      openShop();
-    }
+    firstRunTip('merchantCamp');
+    /* The camp card is read BEFORE the camp opens — shown on top of the
+       challenge it explains, it hid the challenge text. */
+    whenCardsIdle(() => {
+      /* 55% chance a social challenge fires at camp (always at the tutorial's
+         first camp, so every new player sees one) */
+      if (alive && (tutorialForcesCampChallenge(this) || Math.random() < 0.55)) {
+        if (!fireCampChallenge(this, skill, openShop)) openShop();
+      } else {
+        openShop();
+      }
+    });
   }
 
   notifyUserPan() {
@@ -2974,10 +3082,15 @@ class Game {
     this.freeCamUntil = this.elapsed + CAM_FREE_SECONDS;
   }
 
-  setPaused(p) {
+  /* `explicit` is true only for the player's own pause (Space / the log's
+     ⏸ button) and drives the centre-top PAUSED banner. Modal screens (hero
+     menu, shop, world map, skill checks, item reveal, floor beats) pause too,
+     but the screen itself is the cue — the banner would only sit on top of
+     their UI. */
+  setPaused(p, explicit = false) {
     this.paused = p;
     if (!p) this.freeCamUntil = this.elapsed + 1.5;
-    updateLogPauseBtn(p);
+    updateLogPauseBtn(p, explicit && p);
   }
 }
 

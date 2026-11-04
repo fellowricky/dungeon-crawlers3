@@ -10,9 +10,10 @@
 import {
   grantXp, heroAttackBonus, heroDamage, subclassOf,
   CLASSES, RACES, roll, d as die, d20Roll, mod, pendingPoints, pickAttackProfile,
-  WILD_SHAPE_FORMS, recalc, unarmedFallback, CANTRIP_SAVE_ABILITY
+  WILD_SHAPE_FORMS, recalc, unarmedFallback, CANTRIP_SAVE_ABILITY, profBonus
 } from './srd.js';
-import { rollItem, makeDye, equippedPerks, perkMag, addToInventory, takeFromInventory } from './items.js';
+import { rollItem, makeDye, equippedPerks, perkMag, addToInventory, takeFromInventory,
+         equippedRunes, applyRuneResist } from './items.js';
 import { iconHtml } from './icons.js';
 import {
   FLOOR, WALL, HERO_SPEED, HERO_ATTACK_CD, HERO_THINK_INTERVAL, COMBAT_SPEED, COMBAT_MOVE_BOOST, XP_SHARE,
@@ -21,18 +22,21 @@ import {
 import { hasFeature, hasFeat, hasSlotFor, spendSlotFor, recoverSlots, totalSlots,
   hasCharge, spendCharge, isArcanum,
   hasKi, spendKi, restoreKi, kiLeft,
-  featBonusDamage, featExtraAttacks, featOnHit, featIncomingDamage, featACBonus,
-  featCombatStartTempHp } from './features.js';
+  featBonusDamage, featBonusActionAttack, featPowerAttackAvailable, featOnHit, featIncomingDamage, featACBonus,
+  featCombatStartTempHp, styleAttackBonus, hasShieldEquipped, FEATS } from './features.js';
 import { trackGold, trackLoot } from './run_stats.js';
 import { GIGAPACK_REGISTRY } from './gigapack_registry.js';
 import { aoeZoneManager } from './aoe_system.js';
 import {
   meleeThreats, opportunityRisk, inMortalDanger, anyTargetInReach,
   effectiveHp, damageValue, heroAttackEv, slotCost, bestAoECenter, monsterDpr,
-  gridDist, gridFeet, reachTiles, canAttackFrom,
+  gridDist, gridFeet, reachTiles, canAttackFrom, chooseHeroAttackProfile,
 } from './combat_eval.js';
 import { Trace } from './ai_trace.js';
 import { VFX_ANIMS, CANTRIP_ANIM_BINDINGS } from './vfx_animations.js';
+/* matches body_fx.js SPELL_CHARGE_SECONDS, which needs a browser to import */
+const SPELL_CHARGE_SECONDS = 0.5;
+import { isHalfCoverCell } from './pathfinding.js';
 
 /* Dye drop odds per kill (independent of the gear-drop roll) */
 const DYE_DROP_BOSS = 0.35, DYE_DROP_ELITE = 0.08, DYE_DROP_NORMAL = 0.02;
@@ -419,7 +423,7 @@ export const CANTRIP_FX = {
   /* Fire Bolt (Wizard) — roaring orange flame particle orb */
   wizard:   { url:'fx/spells/cantrip_fire_bolt.png',        cols:19, rows:1, frames:19, fps:30, dur:1.0, scale:2.5, color:0xff7a30, projSheet: 'stylized_explosion_001_large_yellow' },
   /* Chill Touch (Sorcerer) — spectral ghostly hand, pale necrotic green */
-  sorcerer: { url:'fx/spells/cantrip_chill_touch.png',      cols:25, rows:1, frames:25, fps:30, dur:1.0, scale:2.5, color:0x7fd8c8, projSheet: 'spell_death_001_large_red' },
+  sorcerer: { url:'fx/spells/cantrip_chill_touch.png',      cols:25, rows:1, frames:25, fps:30, dur:1.0, scale:2.5, color:0x18b4b0, projSheet: 'spell_death_001_large_red' },
   /* Sacred Flame (Cleric) — golden radiant sunburst */
   cleric:   { url:'fx/spells/cantrip_sacred_flame.png',     cols:25, rows:1, frames:25, fps:30, dur:1.0, scale:2.7, color:0xffd34a, projSheet: 'round_light_burst_001_large_yellow' },
   /* Produce Flame (Druid) — bright natural flame */
@@ -433,9 +437,18 @@ export const CANTRIP_FX = {
 };
 
 import { SPELLS, spellDC } from './spells.js';
+import { activeDancingLights, dancingLightsTurn, pickProjectileTarget } from './spells.js';
 import { applyEffect, clearEffect, hasEffect, getEffect, getEffectMods, tickEffects, clearAllEffects, rollSave, rollSaveDetail, EFFECTS, ROUND_SECONDS } from './conditions.js';
-import { provokesOA, strikeInterval, scheduleFollowUpStrike } from './turn_engine.js';
+import { sightAdvantage, noteAttackFromDark, canSee, canHide } from './light_rules.js';
+import { lightStateOf, lightStateAt, heroLightSource, addVirtualLight, addDarkZone, TORCH_BURN_SEC } from './light_sources.js';
+import { monsterLightTraits } from './monster_light.js';
+
+/* Concentration spells whose mark may be moved to a new creature as a bonus
+   action once the marked one is dead (see tryMoveMark): spell key -> effect. */
+const MOVABLE_MARKS = { huntersMark: 'huntersMarked', hex: 'hexMarked' };
+import { provokesOA, strikeInterval, scheduleFollowUpStrike, actionAnimBusy, actionAnimRemaining } from './turn_engine.js';
 import { canFly, isGroundFor } from './pathfinding.js';
+import { groundY as groundYAt } from '../dungeon/elevation.js';
 import { firstRunTip } from './help_ui.js';
 
 
@@ -452,9 +465,12 @@ export const combatMethods = {
      still report correctly. Signatures mirror damageMonster / rollSave so the
      spell definitions can call them as drop-in replacements. */
   spellDamage(m, dmg, h, crit = false, opts = {}) {
+    /* a spell still charging: the number lands with the spell, not before it */
+    if (this._castLead) { this.fxDelay(0, () => this.spellDamage(m, dmg, h, crit, opts)); return 0; }
     if (!m || m.dead) return 0;
     const name = m.data?.name || 'foe';
     const { dmg: dealt, modLabel } = this.damageMonster(m, dmg, h, crit, opts);
+    if (this.fxPoseHit) this.fxPoseHit(m, h);
     const type = opts.dmgType ? ` ${opts.dmgType}` : '';
     const tag = modLabel ? ` (${modLabel})` : '';
     this.fxLog(`   ↳ ${dealt}${type}${tag} to ${name}`, crit ? 'crit' : 'roll');
@@ -481,7 +497,9 @@ export const combatMethods = {
    * Play cast animation + world VFX for a class feature / spell.
    * @param {object} h hero entity
    * @param {string} key ABILITY_FX key
-   * @param {object} [opts] { at: entity|{x,z}, alsoAt: entity[], noAnim, scale, dur, floatY }
+   * @param {object} [opts] { at: entity|{x,z}, alsoAt: entity[], noAnim, scale, dur, floatY, curve, sfxVolume,
+   *   fromPos/toPos: exact endpoints for a composite — pass the spell's own beam
+   *   endpoints so a sheet spanning caster→target lies along the beam }
    */
   playAbilityFx(h, key, opts = {}) {
     const at = opts.at || h;
@@ -490,32 +508,34 @@ export const combatMethods = {
       /* Authored composite animation (VFX animation editor) replaces the static
          cast burst: travel from the caster to the target, impact on arrival.
          Additional targets get their own impact layers (no extra sound). */
-      const from = this._v3(h.x, 0.55, h.z);
+      const from = opts.fromPos || (this.fxChestPos ? this.fxChestPos(h) : this._v3(h.x, 0.55, h.z));
       const toY = at.data && at.data.scale != null ? 0.4 * at.data.scale + 0.4 : 0.55;
-      const to = this._v3(at.x != null ? at.x : h.x, toY, at.z != null ? at.z : h.z);
+      const toX = at.x != null ? at.x : h.x, toZ = at.z != null ? at.z : h.z;
+      const to = opts.toPos || this._v3(toX, (this.fxGroundY ? this.fxGroundY(toX, toZ) : 0) + toY, toZ);
       this.fxCompositeAnimation(anim, from, to, {
-        travelSound: () => this.fxPlaySfx(this.fxSpellSfx(key), { volume: 0.65 }),
+        curve: opts.curve, follow: opts.follow,
+        travelSound: () => this.fxPlaySfx(this.fxSpellSfx(key), { volume: opts.sfxVolume != null ? opts.sfxVolume : 0.65 }),
         /* Lets a caller (e.g. Web) defer spawning a persistent ground effect
            until the travel bolt actually lands, instead of it appearing the
-           instant the spell is cast while the orb is still mid-flight. */
-        onImpact: opts.onImpact,
+           instant the spell is cast while the orb is still mid-flight. The
+           other targets' impacts land then too, not before the spell arrives. */
+        onImpact: (pos) => {
+          for (const t of opts.alsoAt || []) {
+            if (!t || t === at) continue;
+            const ty = (t.data && t.data.scale != null ? 0.4 * t.data.scale + 0.4 : 0.45) + (this.fxGroundY ? this.fxGroundY(t.x, t.z) : 0);
+            this.fxCompositeAnimation(anim, from, this._v3(t.x, ty, t.z), { skipTravel: true, travelSound: false, impactSound: false });
+          }
+          if (opts.onImpact) opts.onImpact(pos);
+        },
       });
-      for (const t of opts.alsoAt || []) {
-        if (!t || t === at) continue;
-        const ty = t.data && t.data.scale != null ? 0.4 * t.data.scale + 0.4 : 0.45;
-        this.fxCompositeAnimation(anim, from, this._v3(t.x, ty, t.z), { skipTravel: true, travelSound: false, impactSound: false });
-      }
-      if (!opts.noAnim && h?.ent) {
-        h.castAnim = !!opts.spell;
-        if (opts.at && opts.at !== h && opts.at.x != null) this.triggerLunge(h, opts.at);
-        else {
-          h.lungeDX = 0; h.lungeDZ = 1; h.lungeT = 0.28;
-        }
-      }
+      if (!opts.noAnim && h?.ent) this.heroAbilityAnim(h, opts);
       return;
     }
 
     this.fxPlaySfx(this.fxSpellSfx(key), { volume: 0.65 });
+    /* No authored animation to wait on: the caller's landing (damage, a
+       ground zone) happens now rather than never. */
+    if (opts.onImpact) opts.onImpact(opts.toPos || at);
     const fx = ABILITY_FX[key] || { sprite: 'dcss/effect/magic_bolt_1.png', color: 0xc0a060, label: null, float: '#e8c25a' };
     const x = at.x, z = at.z;
     const y = opts.floatY != null ? opts.floatY : 1.35;
@@ -553,25 +573,74 @@ export const combatMethods = {
     }
 
     /* Hero cast / strike animation (drives spellcast / slash sprites in the update loop) */
-    if (!opts.noAnim && h?.ent) {
-      h.castAnim = !!opts.spell;
-      if (opts.at && opts.at !== h && opts.at.x != null) this.triggerLunge(h, opts.at);
-      else {
-        h.lungeDX = 0; h.lungeDZ = 1; h.lungeT = 0.28;
-      }
+    if (!opts.noAnim && h?.ent) this.heroAbilityAnim(h, opts);
+  },
+
+  /* The caster's body for playAbilityFx: a spell plays the full spellcast
+     animation, a class feature keeps the short lunge. */
+  heroAbilityAnim(h, opts) {
+    if (opts.spell) { this.heroStartCastAnim(h, opts.at); return; }
+    h.castAnim = false;
+    if (opts.at && opts.at !== h && opts.at.x != null) this.triggerLunge(h, opts.at);
+    else {
+      h.lungeDX = 0; h.lungeDZ = 1; h.lungeT = 0.28;
     }
+  },
+
+  /**
+   * Play the hero's spellcast animation toward `target` (an entity or {x,z};
+   * the caster itself, or nothing, for a self-cast). Returns its length in
+   * combat seconds.
+   *
+   * Spells used to get only the 0.22 s attack lunge here, so a caster read as
+   * done long before the spell was, and walked off (heroPostAttackWithdraw)
+   * while its beam was still out. The cast now plays whole: the turn engine
+   * and heroCombat's busy gate hold the caster still until its last frame.
+   * A spell that calls playAbilityFx several times (a burst at the caster,
+   * then one per target) is ONE cast — a call that lands mid-cast only turns
+   * the caster, it never restarts the animation.
+   */
+  heroStartCastAnim(h, target = null) {
+    if (!h || !h.ent || !h.ent.anim) return 0;
+    const anim = h.ent.anim;
+    if (target && target !== h && target.x != null) {
+      const dx = target.x - h.x, dz = target.z - h.z, d = Math.hypot(dx, dz);
+      if (d > 1e-3) {
+        h.attackTargetDX = dx / d; h.attackTargetDZ = dz / d;
+        if (typeof globalThis.setCombatActionFocus === 'function') {
+          globalThis.setCombatActionFocus(h, target, 0.75);
+        }
+      }
+    } else if (!actionAnimBusy(h)) {
+      /* Self-cast: hold the heading the body already has, not the last
+         target's (the attack branch of the visual loop faces attackTarget). */
+      const rot = h.ent.grp ? h.ent.grp.rotation.y : 0;
+      h.attackTargetDX = Math.sin(rot); h.attackTargetDZ = Math.cos(rot);
+    }
+    h.castAnim = true;
+    if (actionAnimBusy(h)) return actionAnimRemaining(h);
+    if (typeof anim.play !== 'function') return 0;
+    anim.play(anim.anims ? 'attack' : 'spellcast', true);
+    const dur = actionAnimRemaining(h);
+    /* The cast carries information: keep the turn from advancing until it
+       has played (the fx clock runs on the same scaled dt as the sprite). */
+    if (dur > 0 && typeof this.fxHold === 'function') this.fxHold(dur);
+    return dur;
   },
 
   /* ── Combat pacing helpers ────────────────────────────────────── */
 
-  /** Seconds since the current combat encounter began. */
-  _combatSec() {
-    return this._combatEngagedAt != null ? this.elapsed - this._combatEngagedAt : 999;
+  /** Which round of the current encounter we are in, 1-based and whole — read
+   *  off the combat clock, never real time, so the speed slider cannot change
+   *  when an ability becomes available. */
+  _combatRound() {
+    if (this._combatEngagedAt == null) return 999;
+    return Math.floor((this.fxNow - this._combatEngagedAt) / ROUND_SECONDS) + 1;
   },
 
-  /** True when combat has lasted at least minSec — prevents instant cooldown dumps. */
-  _combatStable(minSec = 2.0) {
-    return this._combatSec() >= minSec;
+  /** True once combat has reached round `minRound` — prevents instant cooldown dumps. */
+  _combatStable(minRound = 1) {
+    return this._combatRound() >= minRound;
   },
 
   getAbilityUseWeight,
@@ -664,9 +733,12 @@ export const combatMethods = {
       /* Invisible monsters can't be auto-targeted until they attack (5e). */
       if (getEffectMods(m).invisible) continue;
       const dd = Math.hypot(m.x - h.x, m.z - h.z);
-      if ((this.initiative && this.initiative.active) || dd < 13) cands.push({ m, dd });
+      if ((this.initiative && this.initiative.active) || dd < 13) cands.push({ m, dd, seen: canSee(h, m) });
     }
     if (!cands.length) return null;
+    /* Foes lost in the dark (light_rules.js) aren't picked while any seen
+       foe remains; with nothing in sight, the hero swings blind. */
+    if (cands.some(c => c.seen)) for (let i = cands.length - 1; i >= 0; i--) if (!cands[i].seen) cands.splice(i, 1);
 
     /* Crowd control the party does not immediately shatter.
        Sleep and Hypnotic Pattern both ride the `unconscious` key, and
@@ -764,17 +836,22 @@ export const combatMethods = {
   findMonsterTarget(h) {
     if (!h || !this.monsters || !this.monsters.length) return null;
     const engaged = h.aiFoe;
-    if (engaged && engaged.data && engaged.data.hp > 0 && engaged.active) return engaged;
+    if (engaged && engaged.data && engaged.data.hp > 0 && engaged.active && !this.isDominated(engaged)) return engaged;
     let best = null, bestScore = -Infinity;
+    let sheep = null, sheepScore = -Infinity;
     for (const m of this.monsters) {
       if (!m || !m.data || m.data.hp <= 0 || !m.active) continue;
+      if (this.isDominated(m)) continue;                // fighting for us
       if (getEffectMods(m).invisible) continue;
       const dd = Math.hypot(m.x - h.x, m.z - h.z);
       const hpFrac = m.data.hp / Math.max(m.data.maxHp, 1);
       const score = (1 - hpFrac) * 1.0 - dd * 0.5;
+      /* A polymorphed foe is neutralised until someone hits it — don't be the
+         one who does, unless it is the only thing left standing. */
+      if (hasEffect(m, 'polymorphed')) { if (score > sheepScore) { sheepScore = score; sheep = m; } continue; }
       if (score > bestScore) { bestScore = score; best = m; }
     }
-    return best;
+    return best || sheep;
   },
 
   /* A fight is on but this hero has no foe within engagement range —
@@ -785,7 +862,7 @@ export const combatMethods = {
   combatCatchup(h, alive, dt) {
     let anchor = null, best = 1e9, isFoe = false;
     for (const m of this.monsters) {
-      if (m.data.hp <= 0 || !m.active) continue;
+      if (m.data.hp <= 0 || !m.active || this.isDominated(m)) continue;
       const dd = Math.hypot(m.x - h.x, m.z - h.z);
       if (dd < best) { best = dd; anchor = m; isFoe = true; }
     }
@@ -963,7 +1040,10 @@ export const combatMethods = {
     if (!fleePath) return false;                         // cornered — just stay put
 
     this.setEntityPath(h, fleePath); h.repathT = 0.6; h.stuckT = 0;
-    h.moving = this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt || 0.016);
+    /* After a spell the cast is still playing: the walk is queued and the busy
+       gate in heroCombat releases it on the cast's last frame. */
+    h.moving = actionAnimBusy(h, this)
+      || this.moveStep(h, HERO_SPEED * h.data.speedMult * this.hasteMult(h), dt || 0.016);
     this.fxLog(`🏹 ${h.data.name} gives ground, keeping the shot open.`, 'sys');
     return true;
   },
@@ -1131,6 +1211,552 @@ export const combatMethods = {
     return travelTiles > M + S;
   },
 
+  /* ── Feat / fighting-style reactions and decisions ──────────────── */
+
+  /** Elemental Adept: a spell of the caster's class element ignores resistance. */
+  elementalAdeptIgnores(h, opts) {
+    if (!h || !h.data || !(opts.magical || opts.spell) || !opts.dmgType) return false;
+    if (!hasFeat(h.data, 'elementalAdept')) return false;
+    const element = h.data.cantripProfile?.dmgType || CLASSES[h.data.classKey]?.attack?.dmgType || null;
+    return !!element && opts.dmgType === element;
+  },
+
+  /** Great Weapon Master / Sharpshooter: -5 to hit for +10 damage, taken when
+   *  the expected damage goes up. Same rule in auto and manual mode. */
+  applyPowerAttack(h, foe, atk, opts) {
+    if (!foe || !foe.data || !featPowerAttackAvailable(h.data, atk)) return false;
+    const ac = (foe.data.ac || 10) + (getEffectMods(foe).acBonus || 0);
+    const toHit = h.data.atkProf + mod(h.data.effStats[atk.ability] ?? 10) + (opts.atkBonus || 0) + styleAttackBonus(h.data, atk);
+    const pHit = (b) => Math.min(0.95, Math.max(0.05, (21 - (ac - b)) / 20));
+    const avg = atk.dmg[0] * (atk.dmg[1] + 1) / 2 + (h.data.dmgBonus || 0) + (opts.extraDmg || 0) + 2;
+    if (pHit(toHit - 5) * (avg + 10) <= pHit(toHit) * avg) return false;
+    opts.atkBonus = (opts.atkBonus || 0) - 5;
+    opts.extraDmg = (opts.extraDmg || 0) + 10;
+    opts.powerAttack = true;
+    return true;
+  },
+
+  /** Protection style: an adjacent shield-bearing ally spends a reaction to
+   *  put the attack at disadvantage. Returns -1 (applied) or 0. */
+  protectionReaction(m, target) {
+    for (const s of this.heroes || []) {
+      if (s === target || !s.data || s.data.hp <= 0 || s.reactionUsed) continue;
+      if (s.data.fightingStyle !== 'protection' || !hasShieldEquipped(s.data)) continue;
+      if (Math.hypot(s.x - target.x, s.z - target.z) > 1.6) continue;
+      if (getEffectMods(s).incapacitated) continue;
+      s.reactionUsed = true;
+      this.fxLog(`🛡️ ${s.data.name} interposes a shield — ${m.data.name}'s attack on ${target.data.name} is at disadvantage.`, 'sys');
+      return -1;
+    }
+    return 0;
+  },
+
+  /** Defensive Duelist: with a finesse weapon, spend the reaction to add
+   *  proficiency to AC against a melee attack that would otherwise hit.
+   *  Returns the AC to add (0 when not used). */
+  defensiveDuelistParry(h, attackTotal, ac) {
+    if (!h || !h.data || h.reactionUsed || !hasFeat(h.data, 'defensiveDuelist')) return 0;
+    const w = h.data.equipment && h.data.equipment.weapon;
+    if (!w || !w.finesse) return 0;
+    const pb = profBonus(h.data.level || 1);
+    if (attackTotal < ac || attackTotal >= ac + pb) return 0;   // only when it turns a hit into a miss
+    h.reactionUsed = true;
+    this.fxText('parry', this._v3(h.x, 1.4, h.z), '#c0d8ff');
+    this.fxLog(`🤺 ${h.data.name} parries (Defensive Duelist, +${pb} AC).`, 'miss');
+    return pb;
+  },
+
+  /** Sentinel: when `m` attacks `target`, any other adjacent Sentinel with a
+   *  reaction left gets a melee attack against it first. */
+  sentinelReaction(m, target) {
+    for (const s of this.heroes || []) {
+      if (s === target || !s.data || s.data.hp <= 0 || s.reactionUsed || !hasFeat(s.data, 'sentinel')) continue;
+      const p = s.data.weaponProfile || s.data.lastProfile;
+      if (!p || !p.melee) continue;
+      if (Math.hypot(s.x - m.x, s.z - m.z) > 1.8) continue;
+      if (getEffectMods(s).incapacitated) continue;
+      s.reactionUsed = true;
+      this.fxLog(`🛑 ${s.data.name}'s Sentinel reaction: a strike at ${m.data.name} for attacking ${target.data.name}!`, 'crit');
+      this.heroAttackRoll(s, m, this.heroes.filter(x => x.data.hp > 0), { profile: p, opportunity: true });
+    }
+  },
+
+  /** Mage Slayer: a creature casting a spell next to a Mage Slayer eats a
+   *  reaction melee attack. */
+  mageSlayerReaction(m) {
+    for (const s of this.heroes || []) {
+      if (!s.data || s.data.hp <= 0 || s.reactionUsed || !hasFeat(s.data, 'mageSlayer')) continue;
+      const p = s.data.weaponProfile || s.data.lastProfile;
+      if (!p || !p.melee) continue;
+      if (Math.hypot(s.x - m.x, s.z - m.z) > 1.8) continue;
+      if (getEffectMods(s).incapacitated) continue;
+      s.reactionUsed = true;
+      this.fxLog(`⚔️ ${s.data.name} (Mage Slayer) strikes ${m.data.name} as it casts!`, 'crit');
+      this.heroAttackRoll(s, m, this.heroes.filter(x => x.data.hp > 0), { profile: p });
+    }
+  },
+
+  /** Shield Master: bonus-action shove after the Attack action — STR
+   *  (Athletics) against the target's STR or DEX; success knocks it prone. */
+  shieldMasterShove(h, foe) {
+    if (!h || !foe || !foe.data || foe.data.hp <= 0 || h._bonusActed) return false;
+    if (!hasFeat(h.data, 'shieldMaster') || !hasShieldEquipped(h.data)) return false;
+    if (Math.hypot(foe.x - h.x, foe.z - h.z) > 1.8) return false;
+    if (hasEffect(foe, 'prone') || getEffectMods(foe).incapacitated) return false;
+    h._bonusActed = true;
+    const mine = die(20) + mod(h.data.effStats?.str ?? 10) + profBonus(h.data.level || 1);
+    const fs = foe.data.effStats || {};
+    const theirs = die(20) + Math.max(mod(fs.str ?? 10), mod(fs.dex ?? 10));
+    if (mine > theirs && applyEffect(foe, 'prone', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h })) {
+      this.fxText('SHOVED', this._v3(foe.x, 1.3, foe.z), '#bfa060');
+      this.fxLog(`🛡️ ${h.data.name} shield-shoves ${foe.data.name} prone!`, 'crit');
+      return true;
+    }
+    this.fxLog(`🛡️ ${h.data.name}'s shield shove fails to topple ${foe.data.name}.`, 'miss');
+    return false;
+  },
+
+  /* ── Cunning Action: bonus-action Dash + Disengage ──
+     Doubles this turn's movement and, as Disengage, suppresses opportunity
+     attacks while the rogue withdraws (turn_engine reads disengageActive). */
+  cunningActionDash(h) {
+    applyEffect(h, 'dashing', { duration: ROUND_SECONDS, elapsed: this.fxNow });
+    h.disengageActive = true;
+    if (h.moveLeft != null && typeof this.cellsForSpeed === 'function') h.moveLeft += this.cellsForSpeed(h);
+    this.playAbilityFx(h, 'cunningAction', { at: h });
+    this.fxLog(`💨 ${h.data.name} uses Cunning Action — Disengage and Dash!`, 'heal');
+  },
+
+  /* ── Bardic Inspiration: one ally, one die ──
+     5e: a d6 (d8 at bard level 5, d10 at 10, d12 at 15) the ally adds to one
+     attack roll. The AI hands it to the uninspired ally who hits hardest. */
+  inspirationDie(bard) {
+    const lv = bard?.data?.level || 1;
+    return lv >= 15 ? 12 : lv >= 10 ? 10 : lv >= 5 ? 8 : 6;
+  },
+  pickInspirationTarget(h, alive) {
+    const cands = (alive || []).filter(a => a !== h && a.data.hp > 0 && !a.companion && !hasEffect(a, 'inspired'));
+    if (!cands.length) return null;
+    const score = (a) => {
+      const p = a.data.weaponProfile || a.data.lastProfile || CLASSES[a.data.classKey]?.attack;
+      const dieAvg = p && p.dmg ? p.dmg[0] * (p.dmg[1] + 1) / 2 : 3;
+      const swings = hasFeature(a.data, 'extraAttack2') ? 3 : hasFeature(a.data, 'extraAttack') ? 2 : 1;
+      return dieAvg * swings + (a.data.dmgBonus || 0);
+    };
+    return cands.sort((a, b) => score(b) - score(a))[0];
+  },
+  grantBardicInspiration(h, target) {
+    const die_ = this.inspirationDie(h);
+    applyEffect(target, 'inspired', { duration: Infinity, elapsed: this.fxNow, source: h, data: { die: die_ } });
+    this.playAbilityFx(h, 'bardic', { at: h, alsoAt: [target], spell: true });
+    this.fxLog(`🎵 ${h.data.name} inspires ${target.data.name}! (+1d${die_} on their next attack)`, 'heal');
+  },
+
+  /* ── Mirror Image ──
+     5e: with N images left, a d20 of 6+ (3), 8+ (2) or 11+ (1) means the
+     attack goes for an image instead of you. The image has AC 10 + DEX; if
+     the attack total beats that the image is destroyed — either way you are
+     not hit. Returns true when the blow was drawn off. */
+  mirrorImageIntercept(h, attackTotal) {
+    const eff = getEffect(h, 'mirrorImages');
+    if (!eff || !(eff.images > 0)) return false;
+    const need = eff.images >= 3 ? 6 : eff.images === 2 ? 8 : 11;
+    if (die(20) < need) return false;
+    const imageAc = 10 + mod(h.data.effStats?.dex ?? 10);
+    if (attackTotal >= imageAc) {
+      eff.images -= 1;
+      this.fxText('image shatters', this._v3(h.x, 1.5, h.z), '#c0d8ff');
+      this.fxLog(`🪞 The blow shatters one of ${h.data.name}'s mirror images (${eff.images} left).`, 'miss');
+      if (eff.images <= 0) clearEffect(h, 'mirrorImages');
+    } else {
+      this.fxText('image', this._v3(h.x, 1.5, h.z), '#c0d8ff');
+      this.fxLog(`🪞 The blow passes through one of ${h.data.name}'s mirror images.`, 'miss');
+    }
+    h._effectCache = null;
+    return true;
+  },
+
+  /* ── Banishment ──
+     The creature is off the field: invisible, inactive, untargetable, out of
+     initiative, and immune to everything until the effect ends (duration or
+     the caster's concentration). monster_ai's update loop calls
+     returnBanished when it sees the effect has gone. */
+  banishMonster(h, m, rounds = 10) {
+    if (!m || !m.data || m.data.hp <= 0 || m.dead) return false;
+    if (!applyEffect(m, 'banished', { duration: ROUND_SECONDS * rounds, elapsed: this.fxNow, source: h })) return false;
+    m._banished = true;
+    m.active = false;
+    m.walk = false; m.moving = false;
+    if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+    if (m.ent && m.ent.grp) m.ent.grp.visible = false;
+    for (const a of this.heroes || []) if (a.aiFoe === m) a.aiFoe = null;
+    return true;
+  },
+  returnBanished(m) {
+    if (!m || !m._banished) return;
+    m._banished = false;
+    clearEffect(m, 'banished');
+    if (m.ent && m.ent.grp) m.ent.grp.visible = true;
+    if (m.data.hp > 0 && !m.dead) {
+      m.active = true;
+      this.fxText('returns', this._v3(m.x, 1.3, m.z), '#a0b0e0');
+      this.fxLog(`🌀 ${m.data.name} is wrenched back from banishment!`, 'miss');
+    }
+    this.fxStatusTray(m);
+  },
+
+  /* ── Sustained spells (Spiritual Weapon, Animate Objects, Call Lightning) ──
+     A spell that keeps acting every round registers an onTurn callback:
+       on the concentration record   (h.conc.onTurn)   — ends with concentration
+       on h.sustained                 (non-concentration, e.g. Spiritual Weapon)
+     initiative._beginTurn calls this for the actor whose turn is starting. */
+  sustainSpell(h, key, rounds, onTurn) {
+    h.sustained = { key, until: this.fxNow + ROUND_SECONDS * rounds, onTurn };
+  },
+  processTurnSustained(h) {
+    if (!h || !h.data || h.data.hp <= 0 || !(this.heroes || []).includes(h)) return;
+    dancingLightsTurn(this, h);
+    if (h.sustained) {
+      if (this.fxNow >= h.sustained.until) {
+        this.fxLog(`✨ ${h.data.name}'s ${SPELLS[h.sustained.key]?.label || h.sustained.key} fades.`, 'sys');
+        h.sustained = null;
+      } else {
+        try { h.sustained.onTurn(this, h); } catch (e) { console.warn('sustained spell', e); }
+      }
+    }
+    if (h.conc && typeof h.conc.onTurn === 'function') {
+      try { h.conc.onTurn(this, h); } catch (e) { console.warn('concentration spell', e); }
+    }
+  },
+
+  /* ── Domination (Dominate Monster) ───────────────────────────────
+     A dominated creature stays a monster — same wrapper, same mesh, same
+     initiative slot — but every side-sensitive question is answered through
+     these helpers: monster_ai picks its targets from the hostile list and
+     lets hostiles target it, initiative stamps it 'ally' so it cannot keep a
+     fight alive on its own, hero AI stops aiming at it, and its hits are
+     credited to its master. Area spells still catch it: a Fireball does not
+     know whose side anyone is on. */
+  isDominated(m) {
+    return !!(m && m.dominatedBy && hasEffect(m, 'dominated'));
+  },
+  isHostileMonster(m) {
+    return !!(m && m.data && m.data.hp > 0 && !m.dead && !this.isDominated(m));
+  },
+  hostileMonsters() {
+    return (this.monsters || []).filter(m => this.isHostileMonster(m) && m.active !== false);
+  },
+  dominatedMonsters() {
+    return (this.monsters || []).filter(m => this.isDominated(m) && m.data.hp > 0 && !m.dead);
+  },
+  /** True when `e` is a monster wrapper (as opposed to a hero/companion). */
+  isMonsterEntity(e) {
+    return !!e && !(this.heroes || []).includes(e) && (this.monsters || []).includes(e);
+  },
+
+  dominateMonster(h, m, rounds = 10) {
+    if (!h || !m || !m.data || m.data.hp <= 0 || m.dead) return false;
+    if (!applyEffect(m, 'dominated', { duration: ROUND_SECONDS * rounds, elapsed: this.fxNow, source: h })) return false;
+    m.dominatedBy = h;
+    m.active = true;
+    /* forget who it hated a moment ago */
+    m._threat = null; m._tgtIdx = undefined; m._forcedTgt = undefined;
+    if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+    /* and make the party forget it was their foe */
+    for (const a of this.heroes || []) if (a.aiFoe === m) a.aiFoe = null;
+    this.fxText('DOMINATED', this._v3(m.x, 1.5 * ((m.data.scale != null ? m.data.scale : 1)) + 0.4, m.z), '#c084fc');
+    this.fxStatusTray(m);
+    return true;
+  },
+
+  /** The spell ended (duration, broken concentration): the creature is its own
+   *  again and remembers exactly who did that to it. */
+  releaseDominated(m, reason = 'the spell ends') {
+    if (!m || !m.dominatedBy) return;
+    const master = m.dominatedBy;
+    m.dominatedBy = null;
+    clearEffect(m, 'dominated');
+    m._threat = null; m._tgtIdx = undefined;
+    if (m.data.hp > 0 && !m.dead) {
+      m.active = true;
+      if (this.creditThreat && master) this.creditThreat(m, master, 25);   // it goes for the caster first
+      this.fxLog(`👁️ ${m.data.name} shakes off the domination (${reason}) and turns on the party!`, 'miss');
+    }
+    this.fxStatusTray(m);
+  },
+
+  /** Take a monster off the field with no kill credit, gold, XP or drops —
+   *  used when a dominated creature is released after the fight has already
+   *  been won and simply flees. Reuses the death dissolve for the exit. */
+  dismissMonster(m, reason = 'flees') {
+    if (!m || m.dead) return;
+    m.dead = true;
+    m.data.hp = 0;
+    m.active = false;
+    m.burn = null;
+    if (m.ent) {
+      if (m.ent.bar?.spr) m.ent.bar.spr.visible = false;
+      if (m.ent.statusTray?.spr) m.ent.statusTray.spr.visible = false;
+      if (m.ent.turnHighlight?.group) m.ent.turnHighlight.group.visible = false;
+      const mesh = m.ent.anim?.mesh;
+      if (m.ent.grp) {
+        m._deathAnim = {
+          t: 0, dur: 1.2, kind: 'evaporate',
+          baseScaleX: mesh?.scale?.x || 1.5, baseScaleY: mesh?.scale?.y || 1.5,
+          started: false, pixAcc: 0, holdT: 0
+        };
+        if (mesh?.material) { mesh.material.transparent = true; mesh.material.alphaTest = 0; }
+      }
+    }
+    this.fxLog(`💨 ${m.data.name} ${reason}.`, 'sys');
+  },
+
+  /** End-of-fight: a creature still under Dominate Monster has no one left to
+   *  fight for. Rather than turning on the party the instant the spell lapses
+   *  (an immediate second fight nobody asked for) it breaks and runs. */
+  resolveDominatedAtCombatEnd() {
+    for (const m of this.dominatedMonsters()) {
+      m.dominatedBy = null;
+      clearEffect(m, 'dominated');
+      this.dismissMonster(m, 'breaks free of the domination and flees the field');
+    }
+  },
+
+  /* ── Teleportation (Misty Step, Dimension Door) ──────────────────
+     Snap an entity to a cell with no movement cost and no opportunity attack —
+     the hero-side twin of monster_ai's monsterBlink. Ground rules match the
+     out-of-bounds rescue in Game.update: set x/z, move the render group, drop
+     any planned path so the mover doesn't walk back to where it was going. */
+  /* ── Snuff & Kindle (docs/LIGHT_IDEAS.md 10, 33) ──
+     A wall torch is reachable from the floor tile it lights. Snuff is the
+     Thief's; Kindle needs a flame — a carried torch or lantern. Both cost an
+     action in a fight. */
+  torchNear(h, wantLit, reach = 1.6) {
+    const D = this.D;
+    if (!D || !D.torches || !h) return null;
+    let best = null, bd = reach;
+    for (const t of D.torches) {
+      if ((t.lit !== false) !== wantLit) continue;
+      const fx = this.wx(t.x + t.dx), fz = this.wz(t.y + t.dy);
+      const d = Math.hypot(fx - h.x, fz - h.z);
+      if (d <= bd) { bd = d; best = t; }
+    }
+    return best;
+  },
+  canSnuff(h) {
+    const d = h && h.data;
+    return !!(d && d.classKey === 'rogue' && d.subclass === 'thief' && this.torchNear(h, true));
+  },
+  canKindle(h) {
+    const src = h && h.data ? heroLightSource(h.data) : null;
+    return !!((src === 'torch' || src === 'lantern') && this.torchNear(h, false));
+  },
+  snuffTorch(h) {
+    const t = this.torchNear(h, true);
+    if (!t) return false;
+    if (this.engine && this.engine.setTorchLit) this.engine.setTorchLit(t, false); else t.lit = false;
+    this.fxLog(`🌑 ${h.data.name} snuffs out the torch — darkness pools around them.`, 'buff');
+    return true;
+  },
+  kindleTorch(h) {
+    const t = this.torchNear(h, false);
+    if (!t) return false;
+    if (this.engine && this.engine.setTorchLit) this.engine.setTorchLit(t, true); else t.lit = true;
+    this.fxLog(`🔥 ${h.data.name} kindles the sconce.`, 'buff');
+    return true;
+  },
+
+  /* Light abilities the AI reaches for, once each per fight. Returns the key used. */
+  tryLightAbilities(h) {
+    const d = h.data;
+    const once = h._lightAbilityUsed || (h._lightAbilityUsed = {});
+    const foes = (this.monsters || []).filter(m => m && m.data && m.data.hp > 0 && m.active && this.isHostileMonster(m));
+    const near = (p, r) => foes.filter(m => Math.hypot(m.x - p.x, m.z - p.z) <= r);
+    /* Dancing Lights: light up a foe the party can't see */
+    if (!once.dancingLights && !activeDancingLights(h) && (d.knownSpells || []).includes('dancingLights')) {
+      const lost = foes.find(m => !canSee(h, m) && Math.hypot(m.x - h.x, m.z - h.z) <= 12);
+      if (lost && SPELLS.dancingLights.cast(this, h, lost)) { once.dancingLights = true; return 'dancingLights'; }
+    }
+    /* Shadow Arts (Way of Shadow, 2 ki): wrap the melee in Darkness, then Shadow Step through it */
+    if (!once.shadowArts && d.classKey === 'monk' && d.subclass === 'shadow' && hasKi(d, 2) && near(h, 2.5).length >= 2) {
+      spendKi(d, 2);
+      addDarkZone({ x: h.x, z: h.z, r: 2, ttl: 30, spell: true });
+      this.fxLog(`🌑 ${d.name} spends 2 Ki — Shadow Arts drowns the fight in darkness!`, 'crit');
+      once.shadowArts = true; return 'shadowArts';
+    }
+    /* Radiant Flare (cleric talent, short rest): undead and shadow things nearby */
+    const holyTarget = m => (m.data.type === 'undead') || monsterLightTraits(m).sunlightWeak || monsterLightTraits(m).vampire;
+    if (!once.radiantFlare && d.skills && d.skills.radiantFlare > 0 && hasCharge(d, 'radiantFlare')
+        && near(h, 4).some(holyTarget)) {
+      return this.radiantFlare(h) ? (once.radiantFlare = true, 'radiantFlare') : null;
+    }
+    /* Blinding Flash (Evoker, a spell slot): blind foes lurking in the dark */
+    if (!once.blindingFlash && d.classKey === 'wizard' && d.subclass === 'evoker' && hasSlotFor(d, 1)) {
+      const lurk = foes.filter(m => lightStateOf(m) === 'dark');
+      const centre = lurk.find(m => lurk.filter(o => Math.hypot(o.x - m.x, o.z - m.z) <= 3).length >= 2);
+      if (centre) return this.blindingFlash(h, centre) ? (once.blindingFlash = true, 'blindingFlash') : null;
+    }
+    return null;
+  },
+  radiantFlare(h) {
+    const d = h.data;
+    if (!hasCharge(d, 'radiantFlare')) return false;
+    spendCharge(d, 'radiantFlare');
+    addVirtualLight({ x: h.x, z: h.z, bright: 4, dim: 6, color: 0xfff6d0, ttl: 6, sunlight: true });
+    let n = 0;
+    for (const m of this.monsters || []) {
+      if (!m || !m.data || m.data.hp <= 0 || !m.active || Math.hypot(m.x - h.x, m.z - h.z) > 4) continue;
+      const t = monsterLightTraits(m);
+      if (!(m.data.type === 'undead' || t.sunlightWeak || t.vampire)) continue;
+      this.spellDamage(m, roll(2, 8), h, false, { dmgType: 'radiant', magical: true }); n++;
+    }
+    this.fxLog(`☀️ ${d.name}'s Radiant Flare floods the room with holy light${n ? ` — ${n} creature${n > 1 ? 's' : ''} of the dark sear` : ''}!`, 'crit');
+    return true;
+  },
+  blindingFlash(h, at) {
+    const d = h.data;
+    if (!spendSlotFor(d, 1)) return false;
+    const dc = spellDC(h);
+    let n = 0;
+    for (const m of this.monsters || []) {
+      if (!m || !m.data || m.data.hp <= 0 || !m.active) continue;
+      if (Math.hypot(m.x - at.x, m.z - at.z) > 3 || lightStateOf(m) !== 'dark') continue;
+      if (this.spellSave && this.spellSave(m, 'con', dc, { magic: true })) continue;
+      applyEffect(m, 'blinded', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h }); n++;
+    }
+    addVirtualLight({ x: at.x, z: at.z, bright: 3, dim: 5, color: 0xffffff, ttl: 1 });
+    this.fxLog(`💥 ${d.name}'s Blinding Flash bursts in the dark — ${n} blinded!`, 'crit');
+    return true;
+  },
+
+  /* the registry entry point spells use (oil flask, thrown torch…) */
+  addVirtualLight(spec) { return addVirtualLight(spec); },
+
+  /* ── Torches as a stack (docs/LIGHT_IDEAS.md 19, 20) ── */
+  /** Spend one torch from the hero's stack; refill from the party bag when
+   *  the stack runs out. Returns the torches left (0 = none). */
+  useUpTorch(h) {
+    const d = h && h.data;
+    const tr = d && d.equipment && d.equipment.trinket;
+    if (!tr || tr.lightSource !== 'torch') return 0;
+    tr.charges = Math.max(0, (tr.charges == null ? 1 : tr.charges) - 1);
+    tr.burn = TORCH_BURN_SEC;
+    if (tr.charges > 0) return tr.charges;
+    delete d.equipment.trinket;
+    const bag = Array.isArray(this.inventory) ? this.inventory : [];
+    const i = bag.findIndex(it => it && it.lightSource === 'torch' && (it.charges == null || it.charges > 0));
+    if (i >= 0) {
+      d.equipment.trinket = bag.splice(i, 1)[0];
+      this.fxLog(`🔥 ${d.name} takes fresh torches from the pack (${d.equipment.trinket.charges}).`, 'sys');
+      return d.equipment.trinket.charges || 1;
+    }
+    this.fxLog(`🌑 ${d.name}'s last torch gutters out.`, 'sys');
+    return 0;
+  },
+  /** Throw a lit torch onto a creature the hero can't see (within 4 tiles):
+   *  it lights that spot for ~10 rounds; the thrower is dark while readying
+   *  the next torch. Costs a torch. */
+  throwTorchTarget(h) {
+    if (!h || !h.data || heroLightSource(h.data) !== 'torch') return null;
+    let best = null, bd = 4.01;
+    for (const m of this.monsters || []) {
+      if (!m || !m.data || m.data.hp <= 0 || !m.active || canSee(h, m)) continue;
+      const dd = Math.hypot(m.x - h.x, m.z - h.z);
+      if (dd < bd) { bd = dd; best = m; }
+    }
+    return best;
+  },
+  throwTorch(h, at = null) {
+    const tgt = at || this.throwTorchTarget(h);
+    if (!tgt) return false;
+    addVirtualLight({ x: tgt.x, z: tgt.z, bright: 2, dim: 4, color: 0xff9a4a, ttl: 60 });
+    h.data._dousedT = 6;                    // a round to ready the next one
+    this.useUpTorch(h);
+    if (this.fxProjectile) this.fxProjectile(this._v3(h.x, 0.8, h.z), this._v3(tgt.x, 0.3, tgt.z), 'bolt', 0xff9a4a, () => {});
+    this.fxLog(`🔥 ${h.data.name} hurls a torch — it lands by ${tgt.data.name}, lighting them up!`, 'crit');
+    return true;
+  },
+
+  /** A free floor tile next to `foe`, in dim light or darkness, within `range`
+   *  tiles of `e` — where Shadow Step can land. -1 if none. */
+  shadowCellBeside(e, foe, range = 12) {
+    if (!this.D || !foe) return -1;
+    const W = this.D.W, H = this.D.H, grid = this.D.grid;
+    const fc = this.cellOf(foe.x, foe.z);
+    if (fc < 0) return -1;
+    const fx = fc % W, fy = Math.floor(fc / W);
+    let best = -1, bestD = Infinity;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const x = fx + dx, y = fy + dy;
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      const c = y * W + x;
+      if (grid[c] !== 1) continue;                                  // FLOOR
+      if (this.isCellOccupiedAny && this.isCellOccupiedAny(c, e)) continue;
+      const wx = this.wx(x), wz = this.wz(y);
+      const reach = Math.hypot(wx - e.x, wz - e.z);
+      if (reach > range) continue;
+      if (lightStateAt(wx, wz) === 'bright') continue;
+      if (reach < bestD) { bestD = reach; best = c; }
+    }
+    return best;
+  },
+
+  teleportEntity(e, cell) {
+    if (!e || cell < 0 || !this.D) return false;
+    const W = this.D.W;
+    const x = this.wx(cell % W), z = this.wz(Math.floor(cell / W));
+    e.x = x; e.z = z;
+    if (e.ent && e.ent.grp) e.ent.grp.position.set(x, groundYAt(this.D, x, z), z);
+    if (typeof this.clearEntityPath === 'function') this.clearEntityPath(e);
+    e.path = null; e.pathI = 0; e.walk = false; e.moving = false;
+    return true;
+  },
+
+  /* Candidate landing cells within `range` tiles of `e`: floor the entity can
+     stand on, not a shut door, not under another body. `needLOS` (Misty Step's
+     "a space you can see") drops cells the entity cannot see from where it is. */
+  teleportCandidates(e, range, needLOS = true) {
+    if (!e || !this.D || !this.D.grid) return [];
+    const W = this.D.W, H = this.D.H || Math.floor(this.D.grid.length / W);
+    const from = this.cellOf(e.x, e.z);
+    const gx = from % W, gz = Math.floor(from / W);
+    const flies = canFly(e);
+    const out = [];
+    for (let dz = -range; dz <= range; dz++) {
+      for (let dx = -range; dx <= range; dx++) {
+        if (dx === 0 && dz === 0) continue;
+        if (dx * dx + dz * dz > range * range) continue;
+        const nx = gx + dx, nz = gz + dz;
+        if (nx < 0 || nx >= W || nz < 0 || nz >= H) continue;
+        const c = nz * W + nx;
+        if (!isGroundFor(this.D.grid, c, flies)) continue;
+        if (this.D.solidProps && this.D.solidProps[c]) continue;
+        if (typeof this.isCellDoorClosed === 'function' && this.isCellDoorClosed(c)) continue;
+        if (typeof this.isCellBodyOccupied === 'function' && this.isCellBodyOccupied(c, e)) continue;
+        const x = this.wx(nx), z = this.wz(nz);
+        if (needLOS && typeof this.hasLOS === 'function' && !this.hasLOS(e.x, e.z, x, z)) continue;
+        out.push({ cell: c, x, z });
+      }
+    }
+    return out;
+  },
+
+  /* The landing spot that gets `e` furthest from the nearest living foe —
+     an escape teleport. Returns the cell or -1 when nowhere is better than here. */
+  escapeTeleportCell(e, range, needLOS = true) {
+    const foes = (this.monsters || []).filter(m => m.data && m.data.hp > 0 && m.active !== false && !m.dead);
+    const nearestFoe = (x, z) => foes.length
+      ? Math.min(...foes.map(m => Math.hypot(m.x - x, m.z - z))) : Infinity;
+    const here = nearestFoe(e.x, e.z);
+    let best = -1, bestD = here;
+    for (const c of this.teleportCandidates(e, range, needLOS)) {
+      const d = nearestFoe(c.x, c.z);
+      if (d > bestD + 0.01) { bestD = d; best = c.cell; }
+    }
+    return best;
+  },
+
   heroApproachRoute(h, foe, atk) {
     const from = this.cellOf(h.x, h.z);
     const R = this.desiredStandoff(h, atk);
@@ -1189,33 +1815,71 @@ export const combatMethods = {
     /* Take the first reachable candidate. Capped so a hero surrounded by walls
        doesn't run a full search every repath. */
     const tries = Math.min(candidates.length, 10);
+    const threat = (foe && foe.data && foe.data.ranged) ? foe : null;
     for (let i = 0; i < tries; i++) {
-      const route = this.findPath(from, candidates[i], { mover: h });
+      const route = this.findPath(from, candidates[i], { mover: h, threat });
       if (route) return { goal: candidates[i], route };
     }
     return { goal: candidates[0] ?? -1, route: null };
   },
 
+  /** The basic-attack profile `h` uses against `foe` this turn. Cached on the
+   *  hero per initiative turn and target: heroCombat runs every frame, and the
+   *  old per-frame coin flip swapped weapon and cantrip mid-approach. */
+  heroAttackProfileFor(h, foe) {
+    const d = h.data;
+    const ini = this.initiative;
+    /* Anything that changes what is in hand mid-turn re-decides: a new turn,
+       being silenced, wild shape, or swapping gear. */
+    const key = [ini && ini.active ? `${ini.round}:${ini.idx}` : 'free',
+      d._effects && d._effects.silenced ? 's' : '', d.inWildShape ? 'w' : '',
+      d.weaponProfile && d.weaponProfile.name, d.cantripProfile && d.cantripProfile.name].join('|');
+    const c = h._atkChoice;
+    if (c && c.key === key && c.foe === foe) return c.profile;
+    const profile = chooseHeroAttackProfile(h, foe, this)
+      || (d.weaponProfile || d.cantripProfile ? pickAttackProfile(d) : (d.lastProfile || CLASSES[d.classKey].attack));
+    h._atkChoice = { key, foe, profile };
+    return profile;
+  },
+
   heroCombat(h, foe, alive, dt) {
     const cls = CLASSES[h.data.classKey];
-    /* Attack profile is resolved per-turn from the equipped weapon (casters
-       roll between cantrip and weapon via aiPrefs.rangedPref). Threaded through
-       opts.profile to every heroAttackRoll call below, including Extra Attack /
-       Action Surge / Flurry / Frenzy so they share the same stance this turn. */
-    const atk = h.data.weaponProfile || h.data.cantripProfile
-      ? pickAttackProfile(h.data) : (h.data.lastProfile || cls.attack);
-    h.data.lastProfile = atk;
     /* not const: the "something is already in reach" check below can switch
        targets mid-turn, and everything downstream reads this distance. */
     let dist = Math.hypot(foe.x - h.x, foe.z - h.z);
     /* Per-hero AI priority directives (see menus.js AI Priorities tab). */
     const abilityUse = this.getAbilityUseWeight(h);
     const cm = this.getCombatMovementWeight(h);
-    /* Initiative gate: off-turn heroes cannot act or move on other creatures' turns. */
-    if (this.initiative && this.initiative.active && !this.isCurrentActor(h)) return;
+    /* Initiative gate: a hero acts only on its own turn. Stated positively, as
+       monster_ai.runMonsterBehavior is: the old negative form
+       (`active && !isCurrentActor`) passed on the frame a monster wakes, since
+       tryActivateMonster flips `active` AFTER updateInitiative has run, so
+       nobody had rolled yet and a hero got a free swing or spell before
+       initiative. The roll happens on the very next frame. */
+    if (!this.isCurrentActor(h)) return;
+
+    /* A cast (or swing) still playing holds the hero where it stands: no step
+       of a walk, no next action, until its last frame. That is what keeps a
+       caster from walking off mid-spellcast, and a bonus-action spell and the
+       action after it from animating on top of each other. A walk already
+       queued (heroPostAttackWithdraw) counts as moving, so the turn engine
+       cannot end the turn in the frame between the cast ending and the first
+       step. */
+    if (actionAnimBusy(h, this)) {
+      h.moving = !!(h.path && h.pathI < h.path.length && (h.moveLeft || 0) > 0);
+      return;
+    }
+
+    /* Attack profile, decided ONCE per turn (and again if the target changes):
+       heroes with both a weapon and a cantrip compare expected damage against
+       this foe (combat_eval.chooseHeroAttackProfile). Threaded through
+       opts.profile to every heroAttackRoll call below, including Extra Attack /
+       Action Surge / Flurry / Frenzy so they share the same stance this turn. */
+    const atk = this.heroAttackProfileFor(h, foe);
+    h.data.lastProfile = atk;
 
     // Track combat engagement for pacing / staggering
-    if (!this._combatEngagedAt) this._combatEngagedAt = this.elapsed;
+    if (this._combatEngagedAt == null) this._combatEngagedAt = this.fxNow;
     h._abilityUsedThisCycle = false;
 
     /* Manual mode: player heroes do NOT auto-chase or auto-attack.
@@ -1269,6 +1933,9 @@ export const combatMethods = {
 
     /* Defensive/buff reflexes are "abilities" — skip entirely at 0% ability-use. */
     if (abilityUse > 0) this.runCombatReflexes(h, alive, foe);
+    /* A reflex that cast a spell (Healing Word, Misty Step…) plays out before
+       the action; the busy gate above picks the turn up again afterwards. */
+    if (actionAnimBusy(h, this)) return;
 
     /* Moonbeam reposition AI check: if concentrating on moonbeam and action available */
     if (!h.actUsed && h.conc?.key === 'moonbeam' && h.conc.zone) {
@@ -1369,6 +2036,8 @@ export const combatMethods = {
       if (executed && d) {
         this.fxLog(`⚡ ${d.name} executes queued action!`, 'crit');
       }
+      /* Whatever comes next waits for the queued action's animation. */
+      if (executed && actionAnimBusy(h, this)) return;
     }
 
     /* AI potion: if this hero's HP is below their Auto-Potion Trigger, drink from
@@ -1425,8 +2094,6 @@ export const combatMethods = {
       }
     }
 
-    h.actUsed = true;
-
     /* Action economy: a spotlight grants one action + one bonus action. The
        bonus-action flags (h._bonusActed / h._bonusLeveled) are reset at the
        start of the turn in initiative.js _beginTurn — NOT here — so the reflex
@@ -1435,12 +2102,19 @@ export const combatMethods = {
 
     /* known spells (learned via progression) */
     const sc = subclassOf(h.data);
+    /* Bonus-action phase: cast a bonus-action spell (Healing Word, Hex,
+       Hunter's Mark, Misty Step…) WITHOUT ending the turn, then fall through
+       to the action below. For buff-then-swing spells (Hex, Hunter's Mark,
+       Thunderous Smite) this means the same-turn weapon attack benefits.
+       The action does not start until the bonus spell's cast has played out:
+       return with the Action still unspent, and the busy gate at the top of
+       heroCombat brings the hero back here once it has — _bonusActed stops
+       the bonus phase from running twice. */
+    if (abilityUse > 0 && this.tryCastBonusSpell(h, foe, alive) && actionAnimBusy(h, this)) return;
+
+    h.actUsed = true;
+
     if (abilityUse > 0) {
-      /* Bonus-action phase: cast a bonus-action spell (Healing Word, Hex,
-         Hunter's Mark, Misty Step…) WITHOUT ending the turn, then fall through
-         to the action below. For buff-then-swing spells (Hex, Hunter's Mark,
-         Thunderous Smite) this means the same-turn weapon attack benefits. */
-      this.tryCastBonusSpell(h, foe, alive);
       /* Action phase: a leveled action-spell. 5e bonus-spell rule — if a leveled
          spell was already cast as a bonus action this turn, the action can only
          be a weapon attack or cantrip, not a second leveled spell. */
@@ -1454,6 +2128,7 @@ export const combatMethods = {
       `${atk.source || (atk.melee ? 'melee' : 'ranged')} → ${foe.data.name} at ${gridFeet(this, h, foe)} ft (reach ${attackRange * 5} ft)`);
     const opts = this.buildAttackOpts(h, foe, sc);
     opts.profile = atk;
+    this.applyPowerAttack(h, foe, atk, opts);
     this.beginBlastAction(h, atk);
     const delaySec = this.heroPerformAttack(h, foe, alive, opts);
     this.fireExtraBeams(h, foe, alive, atk);
@@ -1465,6 +2140,8 @@ export const combatMethods = {
        like Extra Attack it is a weapon thing — it must not double the beams. */
     else if (hasFeature(h.data, 'extraAttack')
           || (hasFeature(h.data, 'thirstingBlade') && !atk.beams)) attacks = 2;
+    /* Haste: the spell's extra action, spent on one more weapon attack. */
+    if (!atk.beams && !atk.cantripScale) attacks += getEffectMods(h).extraAttack || 0;
     /* Follow-up swings ride the combat clock (see scheduleFollowUpStrike):
        each one starts once the previous animation has finished, however the
        speed slider or hit-stop has stretched it. */
@@ -1476,22 +2153,44 @@ export const combatMethods = {
     });
     for (let i = 1; i < attacks; i++) followUp(i * interval, atk);
 
-    /* Feat-granted bonus strikes (Polearm Master butt-end, Crossbow Expert). */
-    if (atk.source === 'weapon') {
-      const feExtra = featExtraAttacks(h.data);
-      for (let i = 0; i < feExtra; i++) followUp((attacks + i) * interval, atk);
-    }
-
     /* Two-Weapon Fighting (5e): when dual-wielding two light weapons, the
        off hand lands one bonus-action attack this turn. No ability mod to its
-       damage (the noAbilityMod flag is set on the offhand profile). Only fires
-       when the main attack this turn was a weapon swing, not a cantrip — and
-       only if the hero hasn't already spent its bonus action (e.g. on Healing
-       Word or another bonus-action ability). Claims the bonus action. */
+       damage unless the Two-Weapon Fighting style says otherwise (the
+       noAbilityMod flag on the offhand profile). Only fires when the main
+       attack this turn was a weapon swing, not a cantrip — and only if the
+       hero hasn't already spent its bonus action (e.g. on Healing Word or
+       another bonus-action ability). Claims the bonus action. */
     if (atk.source === 'weapon' && h.data.offhandProfile && foe.data.hp > 0 && !h._bonusActed) {
-      const offDelay = (attacks + featExtraAttacks(h.data)) * interval;
       h._bonusActed = true;
-      followUp(offDelay, h.data.offhandProfile);
+      followUp(attacks * interval, h.data.offhandProfile);
+    }
+
+    /* Shield Master: shove the foe prone with the bonus action (then the
+       rest of the party swings at a prone target). */
+    if (atk.source === 'weapon' && atk.melee && !h._bonusActed && hasFeat(h.data, 'shieldMaster')
+        && foe.data.hp > 0 && this.shieldMasterShove(h, foe)) { /* bonus action spent */ }
+
+    /* Feat bonus-action attacks (Polearm Master's butt-end, Crossbow Expert's
+       extra shot, Charger after a run-up, Great Weapon Master after a crit or
+       a kill). Decided once the main swings have landed, because GWM's trigger
+       is only known then; the bonus action is claimed at that moment. */
+    if (atk.source === 'weapon' && !h._bonusActed) {
+      const movedCells = (h.moveLeft != null && typeof this.cellsForSpeed === 'function')
+        ? Math.max(0, this.cellsForSpeed(h) - h.moveLeft) : 0;
+      scheduleFollowUpStrike(this, h, attacks * interval, () => {
+        if (h._bonusActed || !h.data || h.data.hp <= 0) return;
+        const ba = featBonusActionAttack(h.data, {
+          movedCells, weaponProfile: atk, lastHitCrit: !!h._lastHitCrit, lastHitKilled: !!h._lastHitKilled
+        });
+        if (!ba) return;
+        const tgt = (foe && foe.data && foe.data.hp > 0) ? foe : this.findMonsterTarget(h);
+        if (!tgt) return;
+        const reach = ba.profile.melee ? 1.8 : (ba.profile.range || 6);
+        if (Math.hypot(tgt.x - h.x, tgt.z - h.z) > reach) return;
+        h._bonusActed = true;
+        this.fxLog(`⚔️ ${h.data.name}'s ${ba.label} grants a bonus attack!`, 'crit');
+        this.heroPerformAttack(h, tgt, alive, { profile: ba.profile, extraDmg: ba.extraDmg || 0 });
+      });
     }
 
     /* Action Surge (class feature or Champion subclass) — only when it matters */
@@ -1568,20 +2267,53 @@ export const combatMethods = {
 
     /* ── Cunning Action — dodge when bloodied ── */
     if (!h._abilityUsedThisCycle) {
+      /* 5e: a bonus action to Dash, Disengage or Hide, every turn, no charges.
+         The AI uses it to break away when bloodied and pinned. */
       const cunning = hasFeature(d, 'cunningActionClass') || (sc && sc.active.key === 'cunningAction');
-      if (cunning && hasCharge(d, 'cunningActionClass') && d.hp < d.maxHp * 0.35 && !h._bonusActed) {
-        spendCharge(d, 'cunningActionClass'); h._abilityUsedThisCycle = true; h._bonusActed = true;
-        applyEffect(h, 'hasted', { duration: 30, elapsed: this.fxNow });
-        this.playAbilityFx(h, 'cunningAction', { at: h });
-        this.fxLog(`💨 ${d.name} uses Cunning Action — darting clear! (+4 AC, +40% speed)`, 'heal');
+      const pinned = this.monsters.some(m => this.isHostileMonster(m) && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 1.8);
+      if (cunning && d.hp < d.maxHp * 0.35 && pinned && !h._bonusActed) {
+        h._abilityUsedThisCycle = true; h._bonusActed = true;
+        this.cunningActionDash(h);
         hudDirty = true;
       }
+    }
+
+    /* ── Class light abilities (docs/LIGHT_IDEAS.md 13, 35, 50, 51) ── */
+    if (!h._abilityUsedThisCycle && this.initiative && this.initiative.active) {
+      const used = this.tryLightAbilities(h);
+      if (used) { h._abilityUsedThisCycle = true; hudDirty = true; }
+    }
+
+    /* ── Throw a torch onto a foe lost in the dark (once a fight) ── */
+    if (!h._abilityUsedThisCycle && !h.actUsed && !h._torchThrown && this.initiative && this.initiative.active) {
+      const tgt = this.throwTorchTarget(h);
+      if (tgt && this.throwTorch(h, tgt)) { h._torchThrown = true; h._abilityUsedThisCycle = true; h.actUsed = true; hudDirty = true; }
+    }
+
+    /* ── Snuff (Thief) — standing in the light beside a lit sconce, mid-fight,
+       nothing adjacent: put it out (the action), so the next beat can Hide. ── */
+    if (!h._abilityUsedThisCycle && !h.actUsed && this.initiative && this.initiative.active
+        && lightStateOf(h) === 'bright' && this.canSnuff(h)
+        && !this.monsters.some(m => this.isHostileMonster(m) && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 1.8)) {
+      if (this.snuffTorch(h)) { h._abilityUsedThisCycle = true; h.actUsed = true; hudDirty = true; }
+    }
+
+    /* ── Hide (Cunning Action / Skulker) — melt into shadow while fighting ──
+       Only from a dim or dark tile; broken by attacking (a Skulker's miss
+       excepted) or by stepping into bright light (light_rules.js canSee). */
+    if (!h._abilityUsedThisCycle && !h._bonusActed && !h._hidden
+        && this.initiative && this.initiative.active && canHide(h)) {
+      h._abilityUsedThisCycle = true; h._bonusActed = true;
+      h._hidden = true;
+      this.fxText('hidden', this._v3(h.x, 1.5, h.z), '#7f8fb0');
+      this.fxLog(`🌑 ${d.name} melts into the shadows.`, 'buff');
+      hudDirty = true;
     }
 
     /* ── Patient Defense (monk, bonus action) — spend 1 Ki to Dodge when hard-pressed ── */
     if (!h._abilityUsedThisCycle && !h._bonusActed) {
       if ((hasFeature(d, 'patientDefense') || hasFeature(d, 'flurryOfBlows')) && hasKi(d, 1)
-          && d.hp < d.maxHp * 0.5 && this._combatStable(1.0)) {
+          && d.hp < d.maxHp * 0.5 && this._combatStable(1)) {
         spendKi(d, 1); h._abilityUsedThisCycle = true; h._bonusActed = true;
         applyEffect(h, 'patientDefense', { duration: ROUND_SECONDS, elapsed: this.fxNow });
         this.playAbilityFx(h, 'patientDefense', { at: h });
@@ -1595,9 +2327,11 @@ export const combatMethods = {
       if (hasFeature(d, 'stepOfTheWind') && hasKi(d, 1) && d.hp < d.maxHp * 0.4
           && this.monsters.filter(m => m.active && m.data && m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) < 2.0).length >= 2) {
         spendKi(d, 1); h._abilityUsedThisCycle = true; h._bonusActed = true;
-        applyEffect(h, 'hasted', { duration: 6.0, elapsed: this.fxNow });
+        applyEffect(h, 'dashing', { duration: ROUND_SECONDS, elapsed: this.fxNow });
+        h.disengageActive = true;
+        if (h.moveLeft != null && typeof this.cellsForSpeed === 'function') h.moveLeft += this.cellsForSpeed(h);
         this.playAbilityFx(h, 'stepOfTheWind', { at: h });
-        this.fxLog(`💨 ${d.name} spends 1 Ki on Step of the Wind — darting away! (+4 AC, +40% speed)`, 'heal');
+        this.fxLog(`💨 ${d.name} spends 1 Ki on Step of the Wind — Disengage and Dash!`, 'heal');
         hudDirty = true;
       }
     }
@@ -1611,7 +2345,7 @@ export const combatMethods = {
         this.fxLog(`💨 ${d.name} uses Fast Hands to throw a smoke bomb!`, 'heal');
         for (const m of this.monsters) {
           if (m.data.hp > 0 && Math.hypot(m.x - h.x, m.z - h.z) < 4.0) {
-            applyEffect(m, 'blinded', { duration: 6, elapsed: this.fxNow, source: h });
+            applyEffect(m, 'blinded', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
             this.fxText('BLINDED', this._v3(m.x, 1.3, m.z), '#888899');
           }
         }
@@ -1622,9 +2356,9 @@ export const combatMethods = {
     /* ── Remarkable Athlete (Champion subclass active) ── */
     if (!h._abilityUsedThisCycle) {
       if (sc && sc.active.key === 'remarkableAthlete' && hasCharge(d, 'remarkableAthlete')
-          && this._combatStable(1.5)) {
+          && this._combatStable(1)) {
         spendCharge(d, 'remarkableAthlete'); h._abilityUsedThisCycle = true;
-        applyEffect(h, 'remarkableAthlete', { duration: 30, elapsed: this.fxNow });
+        applyEffect(h, 'remarkableAthlete', { duration: ROUND_SECONDS * 5, elapsed: this.fxNow });
         this.playAbilityFx(h, 'remarkableAthlete', { at: h });
         this.fxLog(`🏃 ${d.name} uses Remarkable Athlete — physical peak reached! (+2 AC, +10% speed)`, 'heal');
         hudDirty = true;
@@ -1641,7 +2375,7 @@ export const combatMethods = {
         m.data.hp > 0 && !m.dead && Math.hypot(m.x - h.x, m.z - h.z) < 12);
       if (hasFeature(d, 'rage') && hasCharge(d, 'rage') && rageWorthIt && !h._bonusActed) {
         spendCharge(d, 'rage'); h._abilityUsedThisCycle = true; h._bonusActed = true;
-        applyEffect(h, 'raging', { duration: 30, elapsed: this.fxNow });
+        applyEffect(h, 'raging', { duration: ROUND_SECONDS * 10, elapsed: this.fxNow });   // 5e: 1 minute
         this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
         this.fxLog(`😡 ${d.name} enters a Rage!`, 'crit');
         hudDirty = true;
@@ -1652,25 +2386,21 @@ export const combatMethods = {
     if (!h._abilityUsedThisCycle) {
       if (sc && sc.active.key === 'bearTotem' && hasCharge(d, 'bearTotem') && d.hp < d.maxHp * 0.35) {
         spendCharge(d, 'bearTotem'); h._abilityUsedThisCycle = true;
-        applyEffect(h, 'bearTotem', { duration: 30, elapsed: this.fxNow });
+        applyEffect(h, 'bearTotem', { duration: ROUND_SECONDS * 10, elapsed: this.fxNow });   // 1 minute, like Rage
         this.playAbilityFx(h, 'bearTotem', { at: h, scale: 1.6 });
         this.fxLog(`🐻 ${d.name} summons the Bear Totem — damage halved!`, 'heal');
         hudDirty = true;
       }
     }
 
-    /* ── Bardic Inspiration — don't inspire in the first 2s, wait for real trouble ── */
+    /* ── Bardic Inspiration — don't inspire in round 1, wait for real trouble ── */
     if (!h._abilityUsedThisCycle) {
       if (hasFeature(d, 'bardicInspiration') && hasCharge(d, 'bardicInspiration') && alive.length >= 2
-          && this._combatStable(2.0) && !h._bonusActed) {
-        const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.6);
-        const uninspiredAllies = alive.filter(a => !hasEffect(a, 'inspired'));
-        if (anyHurt && uninspiredAllies.length > 0) {
+          && this._combatStable(2) && !h._bonusActed) {
+        const target = this.pickInspirationTarget(h, alive);
+        if (target) {
           spendCharge(d, 'bardicInspiration'); h._abilityUsedThisCycle = true; h._bonusActed = true;
-          for (const a of alive)
-            applyEffect(a, 'inspired', { duration: Infinity, elapsed: this.fxNow });
-          this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
-          this.fxLog(`🎵 ${d.name} inspires the party! (advantage on next attack)`, 'heal');
+          this.grantBardicInspiration(h, target);
           hudDirty = true;
         }
       }
@@ -1689,15 +2419,12 @@ export const combatMethods = {
     /* ── Combat Inspiration (Valor bard) — requires combat to be underway ── */
     if (!h._abilityUsedThisCycle) {
       if (sc && sc.active.key === 'combatInspiration' && hasCharge(d, 'combatInspiration')
-          && this._combatStable(2.5) && alive.length >= 2) {
-        const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.65);
-        const uninspiredAllies = alive.filter(a => !hasEffect(a, 'inspired'));
-        if (anyHurt && uninspiredAllies.length > 0) {
+          && this._combatStable(2) && alive.length >= 2) {
+        const target = this.pickInspirationTarget(h, alive);
+        if (target) {
           spendCharge(d, 'combatInspiration'); h._abilityUsedThisCycle = true;
-          for (const a of alive)
-            applyEffect(a, 'inspired', { duration: Infinity, elapsed: this.fxNow });
-          this.playAbilityFx(h, 'combatSong', { at: h, alsoAt: alive, spell: true });
-          this.fxLog(`🎶 ${d.name} plays a battle song! (advantage on next attack)`, 'heal');
+          this.grantBardicInspiration(h, target);
+          this.playAbilityFx(h, 'combatSong', { at: h, alsoAt: [target], spell: true });
           hudDirty = true;
         }
       }
@@ -1710,9 +2437,10 @@ export const combatMethods = {
     const opts = {};
     const d = h.data;
     let hudDirty = false;
-    const stable = this._combatStable(1.5);
+    const stable = this._combatStable(1);
     if (sc && hasCharge(d, sc.active.key)) {
-      if (sc.active.key === 'deathstrike' && foe.data.hp >= foe.data.maxHp
+      /* Shadow Kill: Assassinate also lands on a foe that can't see you */
+      if (sc.active.key === 'deathstrike' && (foe.data.hp >= foe.data.maxHp || !canSee(foe, h))
           && this._worthSpending(h, foe, null, 'normal')) {
         spendCharge(d, 'deathstrike'); opts.autoCrit = true;
         this.playAbilityFx(h, 'deathstrike', { at: foe });
@@ -1730,16 +2458,25 @@ export const combatMethods = {
         this.playAbilityFx(h, 'vowOfEnmity', { at: foe, spell: true });
         this.fxLog(`⚔️ ${d.name} swears a Vow of Enmity! (advantage)`, 'crit');
         hudDirty = true;
-      } else if (sc.active.key === 'shadowStep' && stable
+      } else if (sc.active.key === 'shadowStep' && stable && lightStateOf(h) !== 'bright'
           && this._worthSpending(h, foe, null, 'low')) {
-        spendCharge(d, 'shadowStep'); opts.atkBonus = 4; opts.extraDmg = roll(2, 6);
-        this.playAbilityFx(h, 'shadowStep', { at: foe });
-        this.fxLog(`🌑 ${d.name} Shadow Steps behind the foe!`, 'crit');
-        hudDirty = true;
+        /* 5e Shadow Step: from shadow to shadow (dim or dark, both ends),
+           advantage on the next melee attack. No shadow beside the foe, no step. */
+        const cell = this.shadowCellBeside ? this.shadowCellBeside(h, foe, 12) : -1;
+        if (cell >= 0) {
+          spendCharge(d, 'shadowStep'); opts.adv = (opts.adv || 0) + 1;
+          this.playAbilityFx(h, 'shadowStep', { at: h });
+          this.teleportEntity(h, cell);
+          this.playAbilityFx(h, 'shadowStep', { at: h });
+          this.fxLog(`🌑 ${d.name} Shadow Steps from one darkness to the next! (advantage)`, 'crit');
+          hudDirty = true;
+        }
       } else if (sc.active.key === 'sacredWeapon' && stable
           && this._worthSpending(h, foe, null, 'normal')) {
         spendCharge(d, 'sacredWeapon');
-        applyEffect(h, 'sacredWeapon', { duration: 30, elapsed: this.fxNow });
+        /* 5e: add your CHA modifier (minimum +1) to attack rolls for 1 minute */
+        applyEffect(h, 'sacredWeapon', { duration: ROUND_SECONDS * 10, elapsed: this.fxNow,
+          data: { atkBonus: Math.max(1, mod(d.effStats?.cha ?? 10)) } });
         this.playAbilityFx(h, 'sacredWeapon', { at: h, spell: true });
         this.fxLog(`✨ ${d.name} blesses their weapon!`, 'crit');
         hudDirty = true;
@@ -1771,14 +2508,25 @@ export const combatMethods = {
         hudDirty = true;
       }
     }
-    if (hasFeature(d, 'divineSmite') && !d.smiteUsed
-        && (foe.isBoss || this.monsterEliteRoom(foe))
-        && this._worthSpending(h, foe, null, 'high')) {
-      d.smiteUsed = true;
-      opts.extraDmg = (opts.extraDmg || 0) + roll(2, 8);
-      this.playAbilityFx(h, 'divineSmite', { at: foe, spell: true });
-      this.fxLog(`💫 ${d.name} Divine Smites!`, 'crit');
-      hudDirty = true;
+    /* Divine Smite (5e): on a melee weapon hit, expend a spell slot for 2d8
+       radiant, +1d8 per slot level above 1st (max 5d8), +1d8 vs undead/fiends.
+       The AI spends its lowest slot on anything worth the slot — bosses,
+       elites, or a foe healthy enough that 2d8+ is not wasted overkill. */
+    const smiteProfile = h.data.lastProfile || h.data.weaponProfile;
+    if (hasFeature(d, 'divineSmite') && smiteProfile && smiteProfile.melee && !smiteProfile.cantripScale
+        && (foe.isBoss || this.monsterEliteRoom(foe) || foe.data.hp >= 12)
+        && this._worthSpending(h, foe, null, 'normal')) {
+      const slotLv = hasSlotFor(d, 1) ? spendSlotFor(d, 1) : 0;   // lowest slot available
+      if (slotLv > 0) {
+        const undeadOrFiend = ['undead', 'fiend', 'demon', 'devil'].includes((foe.data.type || '').toLowerCase())
+          || (foe.data.tags || []).some(t => ['undead', 'fiend', 'demon', 'devil'].includes(t));
+        const dice = Math.min(5, 1 + slotLv) + (undeadOrFiend ? 1 : 0);
+        opts.extraDmg = (opts.extraDmg || 0) + roll(dice, 8);
+        opts.smiteDice = dice;
+        this.playAbilityFx(h, 'divineSmite', { at: foe, spell: true });
+        this.fxLog(`💫 ${d.name} Divine Smites! (${dice}d8 radiant, level-${slotLv} slot)`, 'crit');
+        hudDirty = true;
+      }
     }
     if (hasFeature(d, 'tidesOfChaos') && !d.tidesUsed && stable
         && this._worthSpending(h, foe, null, 'normal')) {
@@ -1795,9 +2543,10 @@ export const combatMethods = {
     /* Reckless Attack: advantage on the attack (monsters get advantage back) */
     if (hasEffect(h, 'raging') && hasFeature(d, 'recklessAttack')) opts.adv = (opts.adv || 0) + 1;
     if (hasEffect(h, 'raging')) opts.extraDmg = (opts.extraDmg || 0) + 2;
-    /* sacredWeapon's +4 to hit comes from its effect mods in heroAttackRoll */
-    if (hasEffect(h, 'sacredWeapon')) {
-      opts.extraDmg = (opts.extraDmg || 0) + roll(1, 8);
+    /* Crusader's Mantle: +1d4 radiant on weapon hits (it used to apply a
+       'blessed' effect that was never defined, so the spell did nothing). */
+    if (hasEffect(h, 'crusadersMantle') && !h.data.lastProfile?.cantripScale) {
+      opts.extraDmg = (opts.extraDmg || 0) + roll(1, 4);
     }
     const hexEff = getEffect(foe, 'hexMarked');
     if (hexEff && hexEff.source === h) opts.extraDmg = (opts.extraDmg || 0) + roll(1, 6);
@@ -1873,12 +2622,23 @@ export const combatMethods = {
   heroPerformAttack(h, foe, alive, opts = {}) {
     const profile = opts.profile || h.data?.lastProfile || h.data?.weaponProfile;
     const animDur = this.heroStartAttackAnim(h, foe, profile);
-    const delaySec = (this.fxImpactDelay && animDur > 0) ? animDur : 0;
+    const isCantrip = !!(profile && (profile.isSave || profile.cantripScale || profile.source === 'cantrip'));
+    const preCharge = isCantrip && !h._blastFollowUp && typeof this.fxSpellCharge === 'function' && typeof this.fxImpactDelay === 'function';
+    if (preCharge) {
+      const cfx = CANTRIP_FX[h.data?.classKey];
+      const color = cfx ? cfx.color : 0xe8d8a8;
+      this.fxSpellCharge(h, color, null, foe ? { x: foe.x - h.x, z: foe.z - h.z } : null);
+    }
+    const releaseWait = preCharge ? SPELL_CHARGE_SECONDS : animDur;
+    const delaySec = (this.fxImpactDelay && releaseWait > 0) ? releaseWait : 0;
+    if (animDur > 0 && typeof this.fxHold === 'function') this.fxHold(animDur);
 
     if (delaySec > 0) {
       this.fxImpactDelay(delaySec, () => {
         if (!foe || foe.dead || (foe.data && foe.data.hp <= 0) || !h || h.dead || (h.data && h.data.hp <= 0)) return;
-        this.heroAttackRoll(h, foe, alive, opts);
+        const prevPre = h._cantripPreCharged;
+        if (preCharge) h._cantripPreCharged = true;
+        try { this.heroAttackRoll(h, foe, alive, opts); } finally { h._cantripPreCharged = prevPre; }
       });
     } else {
       this.heroAttackRoll(h, foe, alive, opts);
@@ -1893,6 +2653,15 @@ export const combatMethods = {
        back to the cached lastProfile if a caller omitted it. */
     const profile = opts.profile || h.data.lastProfile || h.data.weaponProfile || cls.attack;
     const isCantrip = !!(profile.isSave || profile.cantripScale || profile.source === 'cantrip');
+    const isRanged = !profile.melee;
+    const cover = (isRanged && typeof this.getCover === 'function')
+      ? this.getCover(h, foe)
+      : { type: 'none', acBonus: 0, dexBonus: 0 };
+
+    if (cover.type === 'total') {
+      this.fxLog(`🎯 ${h.data.name}'s shot at ${foe.data.name} is completely blocked by cover!`, 'miss');
+      return 0;
+    }
 
     /* 5e advantage/disadvantage: sum sources, roll 2d20 take high/low */
     const selfMods = getEffectMods(h);
@@ -1900,7 +2669,18 @@ export const combatMethods = {
     let adv = opts.adv || 0;
     if (foeMods.defAdvantage) adv += 1;        // foe blinded / paralyzed / faerie-fired…
     if (selfMods.atkDisadvantage) adv -= 1;    // attacker poisoned / frightened / prone…
-    if (selfMods.atkAdvantage) adv += selfMods.atkAdvantage; // Bardic Inspiration advantage
+    if (selfMods.atkAdvantage) adv += selfMods.atkAdvantage; // Foresight
+    /* Unseen attacker (Pass Without Trace): advantage on the strike, and the
+       strike gives you away. */
+    if (selfMods.invisible) {
+      adv += 1;
+      clearEffect(h, 'invisible');
+      this.fxText('revealed', this._v3(h.x, 1.5, h.z), '#aabbcc');
+    }
+    /* Light & sight (light_rules.js): can't see the target -> disadvantage;
+       the target can't see you -> advantage, and the strike gives you away. */
+    const sight = sightAdvantage(h, foe);
+    adv += sight.adv;
 
     /* Boss intel (foreshadow phase): the party knows the final boss's weaknesses */
     const qIntel = this.activeQuest;
@@ -1927,11 +2707,13 @@ export const combatMethods = {
          - Sacred Flame: DEX Save */
       const dc = spellDC(h);
       const saveAb = profile.saveAbility || CANTRIP_SAVE_ABILITY[profile.nameKey] || 'dex';
+      const coverDex = (saveAb === 'dex') ? cover.dexBonus : 0;
       /* In D&D 5e, target rolling a save: advantage on attacker translates to disadvantage on target's save */
-      const saveRes = rollSaveDetail(foe, saveAb, dc, { magic: true, adv: -adv });
+      const saveRes = rollSaveDetail(foe, saveAb, dc, { magic: true, adv: -adv, bonus: coverDex });
       d20 = saveRes.d20;
       total = saveRes.total;
-      vs = `(${saveAb.toUpperCase()} save: ${total} vs DC ${dc})`;
+      const coverSaveTag = coverDex > 0 ? ` [cover +${coverDex}]` : '';
+      vs = `(${saveAb.toUpperCase()} save: ${total}${coverSaveTag} vs DC ${dc})`;
       miss = saveRes.saved;
       crit = !miss && (d20 === 1 || !!opts.autoCrit);
       if (miss) {
@@ -1942,19 +2724,26 @@ export const combatMethods = {
     } else {
       /* Standard weapon/unarmed attack roll vs Armor Class */
       d20 = d20Roll(adv);
-      /* Consume one-shot attack buffs (Bardic Inspiration: advantage on next attack) */
-      if (selfMods.atkAdvantage && hasEffect(h, 'inspired')) clearEffect(h, 'inspired');
       if (d20 === 1 && RACES[h.data.raceKey].lucky) d20 = die(20);
       /* Compose the to-hit bonus from the profile's ability + cached proficiency/gear. */
       const baseAtk = h.data.atkProf + mod(h.data.effStats[profile.ability]);
-      atkBonus = baseAtk + (opts.atkBonus || 0) + selfMods.atkBonus;
-      if (selfMods.blessDice) atkBonus += die(4);   // Bless / inspiration: +1d4 to hit
+      atkBonus = baseAtk + (opts.atkBonus || 0) + selfMods.atkBonus + styleAttackBonus(h.data, profile);
+      if (selfMods.blessDice) atkBonus += die(4);   // Bless: +1d4 to hit
+      /* Bardic Inspiration: add the inspiration die to this roll, then it is spent. */
+      const insp = getEffect(h, 'inspired');
+      if (insp) {
+        const idie = die(insp.die || 6);
+        atkBonus += idie;
+        clearEffect(h, 'inspired');
+        this.fxText(`+${idie} 🎵`, this._v3(h.x, 1.6, h.z), '#e8a8ff');
+      }
       if (intel) atkBonus += 2;
 
       crit = !!opts.autoCrit || d20 >= h.data.critRange;
       total = d20 + atkBonus;
-      /* Foe AC reflects active effects (bossWeakened -2, faerieFire, etc.) */
-      const foeAc = foe.data.ac + foeMods.acBonus;
+      /* Foe AC reflects active effects (bossWeakened -2, faerieFire, etc.) and cover */
+      const baseFoeAc = foe.data.ac + foeMods.acBonus;
+      const foeAc = baseFoeAc + cover.acBonus;
       miss = !crit && total < foeAc;
       /* paralyzed / unconscious foes: any melee hit is a critical (5e) */
       if (!miss && foeMods.autoCritMelee && profile.melee) crit = true;
@@ -1975,24 +2764,42 @@ export const combatMethods = {
         this.refreshAbilityHud();
       }
 
+      if (miss && total >= baseFoeAc && cover.acBonus > 0) {
+        this.fxLog(`🛡️ ${foe.data.name} is protected by ${cover.type === 'threeQuarters' ? 'three-quarters' : 'half'} cover (+${cover.acBonus} AC)!`, 'miss');
+      }
+
       const advTag = adv > 0 ? ', adv' : adv < 0 ? ', dis' : '';
+      const coverTag = cover.acBonus > 0 ? `, cover +${cover.acBonus}` : '';
+      /* say why, or a darkness modifier reads as a bug */
+      if (sight.unseenAttacker) this.fxLog(`🌑 ${h.data.name} strikes from the shadows!`, 'roll');
+      else if (sight.unseenTarget) this.fxLog(`🌑 ${h.data.name} can't see ${foe.data.name} in the dark.`, 'roll');
       /* The roll math states its own total, so the line never has to print the
          number twice — "hit, 13 dmg 13 (6+7 vs AC 13)" read as though 13 meant
          two different things, because it did. */
-      vs = `(${d20}+${atkBonus}=${total} vs AC ${foeAc}${advTag})`;
+      vs = `(${d20}+${atkBonus}=${total} vs AC ${foeAc}${advTag}${coverTag})`;
       if (crit && !miss) this.fxLog(`💥 ${h.data.name} crits ${foe.data.name}!`, 'crit',
         { detail: opts.autoCrit ? '(Assassinate)' : `(nat ${d20})` });
       else if (miss) this.fxLog(`${h.data.name} → ${foe.data.name}: miss ${vs}`, 'miss');
     }
 
+    /* Striking unseen gives you away — unless a Skulker misses from hiding. */
+    if (sight.unseenAttacker && !(miss && h._hidden && hasFeat(h.data, 'skulker'))) {
+      noteAttackFromDark(h, true);
+      h._hidden = false;
+    } else if (!sight.unseenAttacker) h._hidden = false;
+
     let dmg = 0, sneak = false;
     if (!miss) {
       let wasCrit = crit;
       dmg = heroDamage(h.data, wasCrit, profile) + (opts.extraDmg || 0);
+      /* Effect-granted damage (Enlarge's +1d4-ish, Giant Strength's +2, Berserker
+         fury). These flags were aggregated by getEffectMods for years and read
+         by nobody on the hero side — Enlarge/Reduce was a tooltip. */
+      if (selfMods.dmgBonus) dmg += selfMods.dmgBonus;
+      if (selfMods.dmgDealtMul !== 1) dmg = Math.max(1, Math.round(dmg * selfMods.dmgDealtMul));
       if (wasCrit && hasFeature(h.data, 'brutalCritical') && profile.melee) {
         dmg += die(profile.dmg[1] || 6);
       }
-      if (h.wildShapeUntil > this.elapsed) dmg += roll(2, 6);
       if (cls.sneakDice || hasFeature(h.data, 'sneakAttack')) {
         const flanked = alive.some(a => a !== h && Math.hypot(a.x - foe.x, a.z - foe.z) < 1.7);
         if (flanked) {
@@ -2000,12 +2807,21 @@ export const combatMethods = {
           dmg += roll(dice, 6); sneak = true;
         }
       }
+      /* Shadow Strike (rogue talent): the first blow each fight from dim light
+         or darkness, +1 Sneak Attack die per rank, no ally needed. */
+      const ssRank = (h.data.skills && h.data.skills.shadowStrike) | 0;
+      if (ssRank > 0 && !h._shadowStrikeSpent && lightStateOf(h) !== 'bright') {
+        h._shadowStrikeSpent = true;
+        dmg += roll(ssRank, 6); sneak = true;
+        this.fxLog(`🌑 ${h.data.name}'s Shadow Strike! (+${ssRank}d6)`, 'crit');
+      }
       /* Agonizing Blast: CHA to cantrip damage for warlocks */
       if (hasFeature(h.data, 'agonizingBlast') && profile.cantripScale) {
         dmg += mod(h.data.effStats.cha);
       }
-      /* Feat conditional bonus damage (GWM / Sharpshooter / Charger / Grappler /
-         Mounted Combatant / Spell Sniper / Skulker / Keen Mind). */
+      /* Feat conditional bonus damage (Grappler vs impaired foes, Skulker's
+         opening shot, Keen Mind). GWM / Sharpshooter / Charger moved to their
+         real SRD mechanics — see applyPowerAttack and featBonusActionAttack. */
       dmg += featBonusDamage(h.data, {
         profile,
         weapon: h.data.equipment && h.data.equipment.weapon,
@@ -2022,6 +2838,17 @@ export const combatMethods = {
        raw roll, and damageMonster still has resistance, immunity and the
        elemental split to apply. Printing it up front made the combat log
        contradict the number that appears over the target's head. */
+    /* Per-turn bookkeeping the feats read: Great Weapon Master's crit trigger,
+       Mobile's "no OA from what I hit in melee", Sentinel's root on an
+       opportunity attack. */
+    if (!miss && profile.melee && !isCantrip) {
+      if (crit) h._lastHitCrit = true;
+      (h._meleeTargets || (h._meleeTargets = new Set())).add(foe);
+      if (opts.opportunity && hasFeat(h.data, 'sentinel')) {
+        applyEffect(foe, 'rooted', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
+        this.fxLog(`🛑 ${h.data.name}'s Sentinel strike roots ${foe.data.name} in place!`, 'crit');
+      }
+    }
     this.strike(h, foe, dmg, crit && !miss, miss, alive, profile, (dealt, modLabel) => {
       if (isCantrip || miss || crit) return;
       /* Order: what happened, then how it was rolled, then the damage LAST —
@@ -2051,14 +2878,25 @@ export const combatMethods = {
    *  they read as separate bolts rather than one thick line. */
   fireExtraBeams(h, foe, alive, profile) {
     const beams = (profile && profile.beams) || 0;
+    /* Each bolt finds its own target: it stays on a foe until the bolts already
+       thrown should finish it, then moves on, so none is wasted on a corpse. */
+    const expected = new Map();
+    for (const m of (this.monsters || [])) if (m.data && m.data.hp > 0) expected.set(m, m.data.hp);
+    const perBolt = 5.5 + (h.data.dmgBonus || 0);
+    if (foe) expected.set(foe, (expected.get(foe) || 0) - perBolt);
     for (let i = 1; i < beams; i++) {
+      const planned = pickProjectileTarget(this, h, foe, expected);
+      if (planned) expected.set(planned, (expected.get(planned) || 0) - perBolt);
       /* Wider than the 140 ms the old spell-cast path used: that one drew an
          instant beam, while the cantrip attack plays a ~0.55 s travelling
          projectile. Too tight and consecutive bolts land on top of each other
-         and read as a single hit that dealt damage twice. */
-      scheduleFollowUpStrike(this, h, i * 0.22, () => {
-        if (foe && foe.data && foe.data.hp > 0 && h.data && h.data.hp > 0) {
-          this.heroAttackRoll(h, foe, alive, { profile });
+         and read as a single hit that dealt damage twice. The first bolt waits
+         out the charge at the chest; the rest leave after it, without another. */
+      scheduleFollowUpStrike(this, h, SPELL_CHARGE_SECONDS + i * 0.22, () => {
+        const tgt = planned && planned.data && planned.data.hp > 0 ? planned : (pickProjectileTarget(this, h, foe) || foe);
+        if (tgt && tgt.data && tgt.data.hp > 0 && h.data && h.data.hp > 0) {
+          h._blastFollowUp = true;
+          try { this.heroAttackRoll(h, tgt, alive, { profile }); } finally { h._blastFollowUp = false; }
         }
       });
     }
@@ -2195,7 +3033,8 @@ export const combatMethods = {
       }
 
       if (id === 'frostBite') {
-        applyEffect(foe, 'chilled', { duration: 3.0, elapsed: this.fxNow, source: h });
+        /* 'chilled' was never a defined effect, so the perk did nothing. */
+        applyEffect(foe, 'slowed', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
         this.fxText('FROSTBITE', this._v3(foe.x, 1.3, foe.z), '#8fd4e8');
         this.fxSprite('dcss/effect/cloud_magic_trail_0.png', this._v3(foe.x, 0.5, foe.z), 1.2, 0.3);
       }
@@ -2216,7 +3055,7 @@ export const combatMethods = {
   applyFeatOnHit(h, foe, crit) {
     if (foe.dead || foe.data.hp <= 0) return;
     const p = h.data.lastProfile || h.data.weaponProfile || { melee: true };
-    const hasShield = !!(h.data.equipment && h.data.equipment.shield);
+    const hasShield = hasShieldEquipped(h.data);
     const res = featOnHit(h.data, { melee: !!p.melee, crit, hasShield });
     for (const e of res.effects) {
       if (!hasEffect(foe, e.key)) {
@@ -2261,10 +3100,10 @@ export const combatMethods = {
     for (const { perk, item } of perks) {
       if (perk.id === 'phaseStep') {
         const ac = perkMag('phaseStep', item.ilvl);
-        h.phaseStepUntil = this.elapsed + 3;
+        h.phaseStepUntil = this.fxNow + ROUND_SECONDS;   // one round, on the combat clock
         h.phaseStepAc = ac;
         this.fxText('PHASE', this._v3(h.x, 1.4, h.z), '#8fd4e8');
-        this.fxLog(`◈ ${h.data.name}'s Phase Step grants +${ac} AC briefly.`, 'heal');
+        this.fxLog(`◈ ${h.data.name}'s Phase Step grants +${ac} AC for 1 round.`, 'heal');
       }
     }
   },
@@ -2315,7 +3154,7 @@ export const combatMethods = {
         if (!h._foughtThisCombat) opts.extraDmg = (opts.extraDmg || 0) + Math.max(1, mod(d.effStats.wis)) + roll(1, 4);
         break;
       case 'bloodlust':                      // Berserker: spend stacked kill-fury
-        if (h._bloodlust && h._bloodlustUntil > this.elapsed)
+        if (h._bloodlust && h._bloodlustUntil > this.fxNow)
           opts.extraDmg = (opts.extraDmg || 0) + h._bloodlust * 2;
         break;
     }
@@ -2355,9 +3194,9 @@ export const combatMethods = {
     if (!sc || !sc.passiveKey) return;
     const d = h.data;
     if (sc.passiveKey === 'bloodlust') {                 // Berserker: fury stacks
-      const cur = (h._bloodlust && h._bloodlustUntil > this.elapsed) ? h._bloodlust : 0;
+      const cur = (h._bloodlust && h._bloodlustUntil > this.fxNow) ? h._bloodlust : 0;
       h._bloodlust = Math.min(3, cur + 1);
-      h._bloodlustUntil = this.elapsed + 6;
+      h._bloodlustUntil = this.fxNow + ROUND_SECONDS * 2;   // two rounds, on the combat clock
       this.fxText(`FURY x${h._bloodlust}`, this._v3(h.x, 1.5, h.z), '#ff6030');
     } else if (sc.passiveKey === 'darkBlessing') {       // Fiend: temp HP on kill
       const t = Math.max(1, d.level);
@@ -2407,6 +3246,14 @@ export const combatMethods = {
   subclassCombatStart(h, alive) {
     if (h.data.hp <= 0) return;
     const d = h.data;
+    h._shadowStrikeSpent = false;          // Shadow Strike: once per fight
+    h._torchThrown = false;                // a thrown torch: once per fight
+    h._lightAbilityUsed = {};              // Dancing Lights / Shadow Arts / flares: once each per fight
+
+    /* Umbral Sight (ranger talent): an extra attack in the opening round */
+    if (d.skills && d.skills.umbralSight > 0) {
+      applyEffect(h, 'dreadAmbush', { duration: ROUND_SECONDS, elapsed: this.fxNow });
+    }
 
     /* Perfect Self (Monk L20 capstone): Regain 4 Ki when starting combat at 0 Ki */
     if (hasFeature(d, 'perfectSelf') && (d.ki || 0) === 0) {
@@ -2438,7 +3285,7 @@ export const combatMethods = {
         h.data.tempHp = Math.max(h.data.tempHp || 0, t);
         this.fxText('SURGE +HP', this._v3(h.x, 1.5, h.z), '#e67e22');
       } else {
-        applyEffect(h, 'hasted', { duration: 6, elapsed: this.fxNow });
+        applyEffect(h, 'hasted', { duration: ROUND_SECONDS, elapsed: this.fxNow });
         this.fxText('SURGE HASTE', this._v3(h.x, 1.5, h.z), '#e67e22');
       }
     }
@@ -2640,6 +3487,9 @@ export const combatMethods = {
   },
 
   markSpellUsed(h, spell) {
+    /* A subclass feature casting its spell for free (Circle of the Land's
+       Entangle): the feature's own charge was already spent. */
+    if (h._freeCastKey === spell.key) { h._freeCastKey = null; return; }
     /* Scroll-cast (the spell was NOT known — it came from the equipped trinket):
        consume a scroll charge instead of a slot/rest resource. */
     if (h._scrollCastKey === spell.key) {
@@ -2749,7 +3599,7 @@ export const combatMethods = {
     if (w <= 0) return -1;
     const enemies = (this.monsters || []).filter(m => m.data && m.data.hp > 0 && m.active !== false);
     if (!enemies.length) return -1;
-    if (!this._combatStable(1.0)) return -1;
+    if (!this._combatStable(1)) return -1;
     /* Don't waste a potion in an open wipe. */
     const partyFrac = (alive || []).length
       ? (alive || []).reduce((s, a) => s + a.data.hp / a.data.maxHp, 0) / (alive || []).length
@@ -2765,7 +3615,9 @@ export const combatMethods = {
   _scoreSpellForTarget(h, key, foe, alive, out = null) {
     let _aoeSpot = null;
     const sp = SPELLS[key];
-    if (!sp || !this.canUseSpellRecharge(h, sp)) return -1;
+    /* passive spells (Light) are never cast — knowing them is the effect;
+       'never' spells (Dancing Lights) have their own trigger */
+    if (!sp || sp.passive || (sp.ai && sp.ai.when === 'never') || !this.canUseSpellRecharge(h, sp)) return -1;
 
     /* already concentrating on this spell — don't waste a slot recasting it */
     if (sp.concentration && h.conc?.key === key) return -1;
@@ -2900,7 +3752,7 @@ export const combatMethods = {
 
     // ── "Any" Spells ──
     else if (ai.when === 'any') {
-      if (!this._combatStable(ai.minCombatSec || 1.0) || !this._worthSpending(h, foe, alive, 'low')) {
+      if (!this._combatStable(ai.minCombatRound || 1) || !this._worthSpending(h, foe, alive, 'low')) {
         return -1;
       }
     }
@@ -3033,6 +3885,7 @@ export const combatMethods = {
      action-spell. Returns true if cast. */
   tryCastBonusSpell(h, foe, alive) {
     if (h._bonusActed) return false;
+    if (this.tryMoveMark(h, foe)) return true;
     const pick = this._pickKnownSpell(h, foe, alive, sp => sp.bonusAction === true);
     if (!pick) return false;
     if (pick.potion) return this._usePotion(h, pick.potion);
@@ -3043,6 +3896,35 @@ export const combatMethods = {
     if (!ok) return false;
     h._bonusActed = true;
     if ((sp.level || 0) > 0) h._bonusLeveled = true;
+    return true;
+  },
+
+  /* Hunter's Mark / Hex, 5e: if the marked creature drops to 0 hp, the caster
+     can use a bonus action on a later turn to move the mark to a new creature
+     — no slot, concentration simply carries on. Until now the hero sat on a
+     concentration whose only target was a corpse and had to burn a fresh slot
+     to mark again. This is not a spell cast, so it spends the bonus action
+     without tripping the "no second leveled spell this turn" rule. */
+  tryMoveMark(h, foe) {
+    const conc = h.conc || h.data?.conc;
+    if (!conc || !foe || foe.dead || !(foe.data?.hp > 0)) return false;
+    const eff = MOVABLE_MARKS[conc.key];
+    if (!eff) return false;
+    const targets = conc.targets || [];
+    const live = targets.some(t => t && t.e && !t.e.dead && t.e.data?.hp > 0);
+    if (live) return false;
+    if (hasEffect(foe, eff)) return false;
+    const old = targets.find(t => t && t.e);
+    for (const t of targets) if (t && t.e) clearEffect(t.e, t.key);
+    applyEffect(foe, eff, { duration: 120, elapsed: this.fxNow, source: h });
+    conc.targets = [{ e: foe, key: eff }];
+    if (h.conc) h.conc.targets = conc.targets;
+    if (h.data?.conc) h.data.conc.targets = conc.targets;
+    this.playAbilityFx(h, conc.key, { at: foe, spell: true });
+    const label = SPELLS[conc.key]?.label || conc.key;
+    this.fxLog(`${eff === 'hexMarked' ? '🔮' : '🎯'} ${h.data.name} moves ${label} from ${old?.e?.data?.name || 'the fallen'} to ${foe.data.name}.`, 'crit');
+    h._bonusActed = true;
+    this.refreshHud();
     return true;
   },
 
@@ -3090,6 +3972,9 @@ export const combatMethods = {
 
   resolveSpell(h, key, foe, alive, opts = {}) {
     if (h.data && h.data.inWildShape && key !== 'wildShape') return false;
+    if (hasEffect(h, 'silenced')) return false;
+    /* casting gives an unseen hero away (5e: invisibility ends when you cast) */
+    if (hasEffect(h, 'invisible') && key !== 'passWithoutTrace') clearEffect(h, 'invisible');
     const sp = SPELLS[key];
     if (!sp || !this.canUseSpellRecharge(h, sp)) return false;
     if (this.checkCounterspellInterrupt(h, key, sp)) return false;
@@ -3114,7 +3999,8 @@ export const combatMethods = {
       Trace.record(h, 'cast', why);
     }
     try {
-      return sp.cast(this, h, foe, alive, opts.slotLevel, opts.center || null);
+      const cast = () => sp.cast(this, h, foe, alive, opts.slotLevel, opts.center || null);
+      return this.fxWithSpellCharge ? this.fxWithSpellCharge(h, sp.color, cast, sp.chargeFx) : cast();
     } finally {
       this._aoeCenter = null;
     }
@@ -3148,6 +4034,20 @@ export const combatMethods = {
       }
       return false;
     }
+    /* Circle of the Land: a free Entangle per short rest (it was listed as the
+       circle's active and never handled — the button did nothing). */
+    if (key === 'entangle' && hasCharge(d, 'entangle') && foe && SPELLS.entangle?.cast) {
+      const pack = this.monsters.filter(m => this.isHostileMonster(m) && m.active && Math.hypot(m.x - foe.x, m.z - foe.z) <= 2.5);
+      if (pack.length >= 2 && this._worthSpending(h, foe, alive, 'normal')) {
+        spendCharge(d, 'entangle');
+        h._freeCastKey = 'entangle';
+        const ok = SPELLS.entangle.cast(this, h, foe, alive, 1, null);
+        h._freeCastKey = null;
+        this.refreshAbilityHud();
+        return !!ok;
+      }
+      return false;
+    }
     if (key === 'fireball' && hasSlotFor(d, 3)) {
       const w = this.getAbilityUseWeight(h);
       if (w > 0 && Math.random() <= w && this._worthSpending(h, foe, alive, 'normal')) {
@@ -3164,7 +4064,7 @@ export const combatMethods = {
       }
       return false;
     }
-    if (key === 'dragonBreath' && hasCharge(d, 'dragonBreath') && this._combatStable(1.0)) {
+    if (key === 'dragonBreath' && hasCharge(d, 'dragonBreath') && this._combatStable(1)) {
       const foes = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 3);
       if (foes.length >= 2) {
         spendCharge(d, 'dragonBreath');
@@ -3175,7 +4075,7 @@ export const combatMethods = {
         return true;
       }
     }
-    if (key === 'wildSurge' && hasCharge(d, 'wildSurge') && this._combatStable(1.5)) {
+    if (key === 'wildSurge' && hasCharge(d, 'wildSurge') && this._combatStable(1)) {
       // Only surge when someone is actually hurt — don't waste the heal
       const anyHurt = alive.some(a => a.data.hp < a.data.maxHp * 0.8);
       if (anyHurt) {
@@ -3197,13 +4097,23 @@ export const combatMethods = {
       this.refreshAbilityHud();
       return true;
     }
-    if (key === 'feyPresence' && hasCharge(d, 'feyPresence') && this._combatStable(1.2)) {
+    if (key === 'feyPresence' && hasCharge(d, 'feyPresence') && this._combatStable(1)) {
       const foes = this.monsters.filter(m => m.data.hp > 0 && m.active && Math.hypot(m.x - h.x, m.z - h.z) < 3);
       if (foes.length) {
         spendCharge(d, 'feyPresence');
-        for (const m of foes) m.charmedUntil = this.elapsed + 3;
+        /* 5e: WIS save or charmed until the end of your next turn (1 round).
+           Goes through the effect system so the monster AI actually honours it
+           — the old m.charmedUntil field was read by nothing. */
+        const dc = spellDC(h);
+        let charmed = 0;
+        for (const m of foes) {
+          if (this.spellSave(m, 'wis', dc, { magic: true })) continue;
+          if (applyEffect(m, 'charmed', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h })) charmed++;
+        }
         this.playAbilityFx(h, 'feyPresence', { at: h, alsoAt: foes, spell: true });
-        this.fxLog(`🧚 ${d.name}'s Fey Presence charms nearby foes!`, 'heal');
+        this.fxLog(charmed
+          ? `🧚 ${d.name}'s Fey Presence charms ${charmed} nearby foe${charmed > 1 ? 's' : ''} for 1 round!`
+          : `🧚 ${d.name}'s Fey Presence — every foe resists!`, charmed ? 'heal' : 'miss');
         this.refreshAbilityHud();
         return true;
       }
@@ -3262,6 +4172,7 @@ export const combatMethods = {
   },
 
   healHero(a, amt) {
+    if (this._castLead) { this.fxDelay(0, () => this.healHero(a, amt)); return; }
     const wasDown = a.data.hp <= 0;
     if (!wasDown && amt <= 0) return;
     /* Any healing revives a downed ally (5e): floor at 1 HP and reset the
@@ -3310,6 +4221,94 @@ export const combatMethods = {
     /* At least 2 tiles (10 ft) so a shooter is never parked in melee, and
        never beyond its own range or the shot cannot connect. */
     return Math.max(2, Math.min(rangeTiles - 1, Math.round(rangeTiles * frac)));
+  },
+
+  /**
+   * Determine D&D 5e cover between an attacker and target:
+   *   - 'total': line of sight completely obstructed (cannot target directly)
+   *   - 'threeQuarters': mostly concealed (+5 AC, +5 DEX saves)
+   *   - 'half': partially concealed by corners/low props/intervening creatures (+2 AC, +2 DEX saves)
+   *   - 'none': clean unobstructed line of fire (+0 AC)
+   */
+  getCover(attacker, target) {
+    if (!attacker || !target) return { type: 'none', acBonus: 0, dexBonus: 0 };
+    const ax = attacker.x, az = attacker.z;
+    const tx = target.x, tz = target.z;
+    const dx = tx - ax, dz = tz - az;
+    const dist = Math.hypot(dx, dz);
+    if (dist <= 1.5) {
+      // Adjacent melee: no cover
+      return { type: 'none', acBonus: 0, dexBonus: 0 };
+    }
+
+    const ay = (typeof this.groundY === 'function') ? this.groundY(ax, az) + 0.6 : 0.6;
+    const ty = (typeof this.groundY === 'function') ? this.groundY(tx, tz) + 0.5 : 0.5;
+
+    // Normal vector perpendicular to the line of fire
+    const nx = -dz / dist;
+    const nz = dx / dist;
+    const offset = 0.28;
+
+    const centerClear = typeof this.hasLOS === 'function' ? this.hasLOS(ax, az, tx, tz, ay, ty) : true;
+    const leftClear   = typeof this.hasLOS === 'function' ? this.hasLOS(ax, az, tx - nx * offset, tz - nz * offset, ay, ty) : true;
+    const rightClear  = typeof this.hasLOS === 'function' ? this.hasLOS(ax, az, tx + nx * offset, tz + nz * offset, ay, ty) : true;
+
+    const clearCount = (centerClear ? 1 : 0) + (leftClear ? 1 : 0) + (rightClear ? 1 : 0);
+
+    if (clearCount === 0 || (!centerClear && clearCount <= 1)) {
+      return { type: 'total', acBonus: Infinity, dexBonus: Infinity };
+    }
+    if (clearCount === 1) {
+      // 1 of 3 rays clear: Three-Quarters Cover (+5 AC, +5 DEX save)
+      return { type: 'threeQuarters', acBonus: 5, dexBonus: 5 };
+    }
+    if (clearCount === 2) {
+      // 2 of 3 rays clear: Half Cover (+2 AC, +2 DEX save)
+      return { type: 'half', acBonus: 2, dexBonus: 2 };
+    }
+
+    // All 3 rays clear to target bounds: check for low obstacle props along center ray
+    const steps = Math.ceil(dist * 3);
+    const cellOf = typeof this.cellOf === 'function' ? (x, z) => this.cellOf(x, z) : null;
+    if (cellOf && this.D) {
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        const wx = ax + dx * t;
+        const wz = az + dz * t;
+        const c = cellOf(wx, wz);
+        if (c >= 0 && isHalfCoverCell(this.D, c)) {
+          return { type: 'half', acBonus: 2, dexBonus: 2 };
+        }
+      }
+    }
+
+    // Check for intervening creatures (other heroes or monsters standing in the line of fire)
+    const entities = [];
+    if (Array.isArray(this.heroes)) {
+      for (const h of this.heroes) {
+        if (h && h !== attacker && h !== target && h.data && h.data.hp > 0) entities.push(h);
+      }
+    }
+    if (Array.isArray(this.monsters)) {
+      for (const m of this.monsters) {
+        if (m && m !== attacker && m !== target && m.data && m.data.hp > 0 && m.active !== false) entities.push(m);
+      }
+    }
+
+    for (const ent of entities) {
+      const ex = ent.x - ax, ez = ent.z - az;
+      const proj = (ex * dx + ez * dz) / (dist * dist);
+      if (proj > 0.15 && proj < 0.85) {
+        const px = ax + dx * proj;
+        const pz = az + dz * proj;
+        const perpDist = Math.hypot(ent.x - px, ent.z - pz);
+        if (perpDist <= 0.45) {
+          return { type: 'half', acBonus: 2, dexBonus: 2 };
+        }
+      }
+    }
+
+    return { type: 'none', acBonus: 0, dexBonus: 0 };
   },
 
   /* dynamic in-combat positioning: hold a standoff band around the foe at the
@@ -3429,7 +4428,7 @@ export const combatMethods = {
     ac += mods.acBonus;
     ac += this.subclassACBonus(h); // conditional subclass passive (Hold the Line / Cloak of Shadows)
     /* Phase Step legendary perk: short AC surge after a kill. */
-    if (h.phaseStepUntil && this.elapsed < h.phaseStepUntil) ac += h.phaseStepAc || 4;
+    if (h.phaseStepUntil && this.fxNow < h.phaseStepUntil) ac += h.phaseStepAc || 4;
     /* Barkskin: AC has a floor (default 16) while the effect is active. */
     if (mods.acFloor) ac = Math.max(ac, mods.acFloor);
     return ac;
@@ -3478,7 +4477,7 @@ export const combatMethods = {
    *  reads as a bug, and the combat log printing the RAW roll while the
    *  floating number printed the mitigated one made the two contradict
    *  each other outright. */
-  applyIncomingDamage(h, dmg, detail = null) {
+  applyIncomingDamage(h, dmg, detail = null, opts = {}) {
     /* Same floor as damageMonster, for the same reason: this ends in `hp -= d`,
        so a negative would heal the hero it was supposed to hurt. */
     let d = Math.max(0, dmg);
@@ -3490,8 +4489,9 @@ export const combatMethods = {
       h.uncannyUsed = true;
       d = Math.ceil(d / 2);
     }
-    /* Feat flat damage reduction (Heavy Armor Master). */
-    d = featIncomingDamage(h.data, d);
+    /* Feat flat damage reduction (Heavy Armor Master: nonmagical B/P/S only). */
+    d = featIncomingDamage(h.data, d, opts.dmgType || null, !!opts.magical);
+    d = applyRuneResist(h.data, d, opts.dmgType || null);
     d = this.absorbTempHp(h, d, detail);
 
     /* Wild Shape health pool absorption */
@@ -3542,7 +4542,9 @@ export const combatMethods = {
         this.breakConcentration(h, 'downed');
       } else if (d > 0) {
         const dc = Math.max(10, Math.floor(d / 2));
-        if (!rollSave(h, 'con', dc)) this.breakConcentration(h, `took ${d} damage — failed DC ${dc} CON save`);
+        /* War Caster: advantage on the save to hold concentration */
+        const adv = hasFeat(h.data, 'warCaster') ? 1 : 0;
+        if (!rollSave(h, 'con', dc, { adv })) this.breakConcentration(h, `took ${d} damage — failed DC ${dc} CON save`);
       }
     }
     if (detail) { detail.dealt = d; detail.mitigated = (detail.raw || 0) - d; }
@@ -3555,7 +4557,7 @@ export const combatMethods = {
      save each round via tickEffects). Runs INSTEAD of heroCombat (game.js). */
   charmedHeroUpdate(h, alive, dt) {
     /* initiative gate, same as heroCombat */
-    if (this.initiative && this.initiative.active && !this.isCurrentActor(h)) return;
+    if (!this.isCurrentActor(h)) return;
     if (getEffectMods(h).incapacitated) { h.moving = false; return; }
 
     /* nearest living ally (not self) */
@@ -3614,6 +4616,17 @@ export const combatMethods = {
      Called each frame from the hero status loop in game.js. */
   tickHeroDots(h) {
     if (!h._effects || h.data.hp <= 0) return;
+    /* Regenerate: 1 HP per round on the same clock the DoTs use. */
+    const regen = getEffectMods(h).regenPerRound;
+    if (regen > 0 && h.data.hp < h.data.maxHp) {
+      if (h._regenClock == null) h._regenClock = this.fxNow;
+      if (this.fxNow - h._regenClock >= ROUND_SECONDS) {
+        h._regenClock += ROUND_SECONDS;
+        h.data.hp = Math.min(h.data.maxHp, h.data.hp + regen);
+        this.fxText(`+${regen}`, this._v3(h.x, 1.4, h.z), '#6ae06a');
+        if (h.ent && h.ent.bar) this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
+      }
+    }
     for (const k in h._effects) {
       const eff = h._effects[k];
       if (eff.dotDmg == null) continue;
@@ -3639,6 +4652,49 @@ export const combatMethods = {
     }
   },
 
+  runeEffectOf(rune) {
+    if (!rune) return null;
+    if (rune.effect) return rune.effect;
+    return this.guild && typeof this.guild.runeEffect === 'function'
+      ? this.guild.runeEffect(rune.runeKey)
+      : null;
+  },
+
+  runeElemDamageForHit(h, profile) {
+    const extra = {};
+    if (profile?.source !== 'cantrip' && h?.data?.elemDamage) {
+      Object.assign(extra, h.data.elemDamage);
+    }
+    if (profile?.source !== 'cantrip' && h?.data) {
+      for (const r of equippedRunes(h.data)) {
+        const e = this.runeEffectOf(r);
+        const slot = r.slotType || r.runeSlotType;
+        if (!e || e.type !== 'elemDice' || slot === 'armor' || slot === 'worn') continue;
+        const n = roll(e.dice[0], e.dice[1]);
+        extra[e.elem] = (extra[e.elem] || 0) + n;
+      }
+    }
+    const total = Object.values(extra).reduce((a, v) => a + (v || 0), 0);
+    return total > 0 ? extra : null;
+  },
+
+  applyWeaponRuneOnHit(h, foe, dealt) {
+    if (!h?.data || !dealt) return;
+    for (const r of equippedRunes(h.data)) {
+      const e = this.runeEffectOf(r);
+      const slot = r.slotType || r.runeSlotType;
+      if (!e || slot === 'armor' || slot === 'worn') continue;
+      if (e.type === 'healDice') {
+        this.healHero(h, roll(e.dice[0], e.dice[1]));
+      } else if (e.type === 'saveProc' && foe && foe.data && foe.data.hp > 0) {
+        const saveRes = rollSaveDetail(foe, e.save || 'con', e.dc);
+        if (!saveRes.pass) {
+          applyEffect(foe, e.condition, { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
+        }
+      }
+    }
+  },
+
   /** `onDealt(dealt, modLabel)` fires when the blow ACTUALLY resolves, with the
    *  post-mitigation number. The caller logs from there rather than up front:
    *  a ranged attack resolves inside the projectile's onImpact, half a second
@@ -3656,9 +4712,7 @@ export const combatMethods = {
        Cantrips are inherently magical. */
     const wDmgType = p.dmgType || 'slashing';
     const wMagical = !!getEffectMods(h).magicWeapon || p.source === 'cantrip';
-    const elemDamage = (p.source !== 'cantrip' && h.data?.elemDamage && (h.data?.elemDamageTotal > 0))
-      ? h.data.elemDamage
-      : null;
+    const elemDamage = this.runeElemDamageForHit(h, p);
     if (p.melee) {
       this.triggerLunge(h, foe);
       this.fxPlaySfx('swordAttack', { volume: 0.7 });
@@ -3683,7 +4737,7 @@ export const combatMethods = {
             const dc = h.data.kiSaveDC || (8 + (h.data.atkProf || 2) + mod(h.data.effStats?.wis || 10));
             const saveRes = rollSaveDetail(foe, 'con', dc);
             if (!saveRes.pass) {
-              applyEffect(foe, 'stunned', { duration: 6.0, elapsed: this.fxNow, source: h });
+              applyEffect(foe, 'stunned', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
               this.playAbilityFx(foe, 'stunningStrike', { at: foe });
               this.fxLog(`💫 ${h.data.name} delivers a Stunning Strike! ${foe.data.name} is stunned! (Save ${saveRes.total} vs DC ${dc})`, 'crit');
             } else {
@@ -3704,8 +4758,8 @@ export const combatMethods = {
       const color = cfx ? cfx.color : 0xe8d8a8;
       const kind = isCantrip ? 'bolt' : 'arrow';
       const foeScale = (foe && foe.data && foe.data.scale != null) ? foe.data.scale : 1.0;
-      const from = this._v3(h.x, 0.55, h.z);
-      const to = this._v3(foe.x, 0.4 * foeScale + 0.4, foe.z);
+      const from = isCantrip && this.fxChestPos ? this.fxChestPos(h) : this._v3(h.x, 0.55, h.z);
+      const to = this._v3(foe.x, (this.fxGroundY ? this.fxGroundY(foe.x, foe.z) : 0) + 0.4 * foeScale + 0.4, foe.z);
 
       /* Resolve the hit once the effect lands (composite impact or projectile). */
       const resolveHit = () => {
@@ -3718,7 +4772,7 @@ export const combatMethods = {
            but the headless sim's _v3 is a plain {x,y,z}, and calling .set on
            that threw straight through every sim run. */
         const curFoeScale = (foe && foe.data && foe.data.scale != null) ? foe.data.scale : 1.0;
-        to.x = foe.x; to.y = 0.4 * curFoeScale + 0.4; to.z = foe.z;
+        to.x = foe.x; to.y = (this.fxGroundY ? this.fxGroundY(foe.x, foe.z) : 0) + 0.4 * curFoeScale + 0.4; to.z = foe.z;
         if (miss) {
           if (isCantrip) {
             this.fxText('Saved!', this._v3(foe.x, 1.1, foe.z), '#9aa');
@@ -3732,6 +4786,7 @@ export const combatMethods = {
         }
         this.fxPlaySfx(kind === 'arrow' ? 'bowHit' : 'spellImpact', { volume: 0.75 });
         const res = this.damageMonster(foe, dmg, h, crit, { dmgType: wDmgType, magical: wMagical, elemDamage });
+        if (isCantrip && this.fxPoseHit) this.fxPoseHit(foe, h);
         if (onDealt) onDealt(res.dmg, res.modLabel);
         this.applyOnHitPerks(h, foe, dmg, crit, party);
         if (kind === 'bolt') {
@@ -3759,7 +4814,7 @@ export const combatMethods = {
            the target: over a ~0.55 s flight it can be shoved by an earlier
            beam, step away on its own turn, or be pulled in. */
         this.fxCantripDelivery(from, to, classKey, {
-          color, dmgType: wDmgType, follow: foe, onImpact: resolveHit
+          color, dmgType: wDmgType, follow: foe, onImpact: resolveHit, caster: (h._blastFollowUp || h._cantripPreCharged) ? null : h
         });
       } else {
         this.fxPlaySfx('bowAttack', { volume: 0.7 });
@@ -3785,6 +4840,16 @@ export const combatMethods = {
     const cfx = CANTRIP_FX[classKey];
     const color = opts.color != null ? opts.color : (cfx ? cfx.color : 0xe8d8a8);
     const onImpact = opts.onImpact || (() => {});
+
+    /* A cantrip opens with the same charge at the chest as any spell. */
+    if (opts.caster && this.fxSpellCharge && this.fxDelay) {
+      this.fxSpellCharge(opts.caster, color, null, { x: to.x - from.x, z: to.z - from.z });
+      this.fxDelay(SPELL_CHARGE_SECONDS, () => {
+        const launchFrom = (opts.caster && this.fxChestPos) ? this.fxChestPos(opts.caster) : from;
+        this.fxCantripDelivery(launchFrom, to, classKey, { ...opts, caster: null });
+      });
+      return;
+    }
 
     if (anim) {
       this.fxCompositeAnimation(anim, from, to, {
@@ -3812,6 +4877,9 @@ export const combatMethods = {
   },
 
   triggerLunge(e, target) {
+    if (typeof globalThis.setCombatActionFocus === 'function' && e && target) {
+      globalThis.setCombatActionFocus(e, target, 0.75);
+    }
     const dx = target.x - e.x, dz = target.z - e.z, d = Math.hypot(dx, dz) || 1;
     e.lungeDX = dx / d; e.lungeDZ = dz / d;
     e.lungeDur = 0.22; e.lungeAmp = 0.16; e.lungeT = 0.22;
@@ -3820,6 +4888,9 @@ export const combatMethods = {
   /** Target leans away from `from` then the sin envelope snaps them back. */
   triggerDodge(e, from) {
     if (!e || !from) return;
+    if (typeof globalThis.setCombatActionFocus === 'function') {
+      globalThis.setCombatActionFocus(from, e, 0.70);
+    }
     const dx = e.x - from.x, dz = e.z - from.z, d = Math.hypot(dx, dz) || 1;
     e.lungeDX = dx / d; e.lungeDZ = dz / d;
     e.lungeDur = 0.20; e.lungeAmp = 0.14; e.lungeT = 0.20;
@@ -3855,6 +4926,26 @@ export const combatMethods = {
 
   damageMonster(m, dmg, h, crit = false, opts = {}) {
     if (m.dead) return { dmg: 0, modLabel: null };
+    if (typeof globalThis.setCombatActionFocus === 'function' && m) {
+      globalThis.setCombatActionFocus(h || opts.via || m, m, 0.85);
+    }
+    /* Banished: it is not here to be hit. */
+    if (m._banished) return { dmg: 0, modLabel: null };
+    /* Polymorphed (a sheep): damage lands on the beast form's own little HP
+       pool; when that is gone the creature reverts with its real HP intact
+       (5e: excess damage does not carry over). */
+    if (hasEffect(m, 'polymorphed')) {
+      m._polyHp = (m._polyHp == null ? 4 : m._polyHp) - Math.max(0, dmg);
+      this.fxHitFlash(m.ent);
+      this.fxText(String(dmg), this._v3(m.x, 1.1, m.z), '#ff8a5a', crit);
+      if (m._polyHp <= 0) {
+        clearEffect(m, 'polymorphed');
+        m._polyHp = null;
+        this.fxLog(`🐑 ${m.data.name} is struck and snaps back to its true form!`, 'miss');
+        this.fxStatusTray(m);
+      }
+      return { dmg: 0, modLabel: null };
+    }
 
     // Guild: War Room Monster Slaying Orders & Academy Tech Passives
     if (this.guild && dmg > 0) {
@@ -3887,14 +4978,7 @@ export const combatMethods = {
       }
     }
 
-    // Inscribed Weapon Runes (e.g. Vampiric Rune heal)
-    const heroWeapon = h?.data?.equipment?.weapon || h?.data?.inventory?.find(i => i.slot === 'weapon' && i.equipped);
-    const inscribed = heroWeapon?.inscribedRune || h?.data?.inscribedRune;
-    if (inscribed && dmg > 0) {
-      if (inscribed.runeKey === 'rune_vampire' && h && h.data) {
-        this.healHero(h, Math.max(1, Math.round(dmg * 0.06)));
-      }
-    }
+    this.applyWeaponRuneOnHit(h, m, dmg);
 
     /* Damage-type modifiers: resistance / immunity / vulnerability (5e).
      * Spell damage passes { dmgType, magical:true }; weapon strikes pass a
@@ -3915,6 +4999,7 @@ export const combatMethods = {
       let physMod = null;
       if (opts.dmgType && physDmg > 0) {
         physMod = this.damageModifier(m, opts.dmgType, !!opts.magical || !!opts.spell);
+        if (physMod === 'resist' && this.elementalAdeptIgnores(h, opts)) physMod = null;
         if (physMod === 'immune') physFinal = 0;
         else if (physMod === 'vuln') {
           physFinal = physDmg * 2;
@@ -3980,7 +5065,8 @@ export const combatMethods = {
         }
       }
     } else if (opts.dmgType && dmg > 0) {
-      const mod = this.damageModifier(m, opts.dmgType, !!opts.magical || !!opts.spell);
+      let mod = this.damageModifier(m, opts.dmgType, !!opts.magical || !!opts.spell);
+      if (mod === 'resist' && this.elementalAdeptIgnores(h, opts)) mod = null;
       if (mod === 'immune') { finalDmg = 0; modLabel = 'IMMUNE'; }
       else if (mod === 'vuln') {
         finalDmg = dmg * 2;
@@ -4096,7 +5182,10 @@ export const combatMethods = {
     /* Phase F hooks: onDamaged retaliates against the attacker (fire
        elemental Fire Form, salamander Heated Body). onBloodied fires
        once when HP first crosses 50% (flesh-golem Berserk, enrage). */
-    if (dmg > 0 && m.data.hp > 0 && m.data.abilities && h?.data?.hp > 0) {
+    /* `opts.via` names the creature that actually struck (a dominated monster
+       fighting for `h`): Fire Form and its kin answer the body that touched
+       them, never the caster standing across the room. */
+    if (dmg > 0 && m.data.hp > 0 && m.data.abilities && h?.data?.hp > 0 && !opts.via) {
       this.applyOnDamagedAbilities(m, h, dmg, opts);
     }
     if (!m._bloodied && m.data.hp > 0 && m.data.maxHp && m.data.hp < m.data.maxHp / 2) {
@@ -4209,6 +5298,7 @@ export const combatMethods = {
 
   killMonster(m, h) {
     m.dead = true;
+    firstRunTip('firstKill');
     m.burn = null;
     if (m.ent) {
       if (m.ent.bar?.spr) m.ent.bar.spr.visible = false;
@@ -4247,6 +5337,7 @@ export const combatMethods = {
     }
     if (h?.data) {
       h.data.kills++;
+      h._lastHitKilled = true;   // Great Weapon Master's bonus-attack trigger
       this.applyOnKillPerks(h, m);
     }
     /* Companion kill: forward on-kill perks to the summoner (e.g. Beast Bond heal) */
@@ -4512,6 +5603,7 @@ export const combatMethods = {
     const sc = subclassOf(h.data);
     const opts = this.buildAttackOpts(h, foe, sc);
     opts.profile = atk;
+    this.applyPowerAttack(h, foe, atk, opts);
 
     /* Extra Attack / Thirsting Blade resolution for manual mode:
        A hero taking the Attack action receives a pool of attacks based on
@@ -4523,6 +5615,7 @@ export const combatMethods = {
       if (hasFeature(h.data, 'extraAttack3')) total = 4;
       else if (hasFeature(h.data, 'extraAttack2')) total = 3;
       else if (hasFeature(h.data, 'extraAttack') || (hasFeature(h.data, 'thirstingBlade') && !atk.beams)) total = 2;
+      if (!atk.beams && !atk.cantripScale) total += getEffectMods(h).extraAttack || 0;   // Haste
       h.attacksLeft = total;
       h.attackActionCommitted = true;
     }
@@ -4678,6 +5771,10 @@ export const combatMethods = {
     }
     const sp = SPELLS[key];
     if (!sp) return false;
+    if (hasEffect(h, 'silenced')) {
+      this.fxLog(`${h.data.name} is silenced and cannot cast ${sp.label || key}.`, 'sys');
+      return false;
+    }
     const isBonus = sp.bonusAction === true || sp.castingTime === 'bonus';
     if (isBonus && (h.bonusUsed || h._bonusActed)) {
       this.fxLog(`${h.data.name} already used their Bonus Action this turn.`, 'sys');
@@ -4704,6 +5801,22 @@ export const combatMethods = {
       }
     }
 
+    /* One cast at a time: a spell picked while the last one (the bonus spell
+       just before it) is still playing starts on that cast's last frame. */
+    if (h._castQueued) {
+      this.fxLog(`${h.data.name} is still casting.`, 'sys');
+      return false;
+    }
+    const wait = actionAnimRemaining(h);
+    if (wait > 0) {
+      h._castQueued = true;
+      scheduleFollowUpStrike(this, h, wait, () => {
+        h._castQueued = false;
+        if (h.data && h.data.hp > 0) this.manualPerformSpell(h, key, targetFoe, targetPos, slotLevel, assignedTargets);
+      });
+      return true;
+    }
+
     const alive = this.heroes.filter(x => x.data.hp > 0);
     const foe = isAlly ? (targetFoe || null) : (targetFoe || (targetPos ? this.monsters.find(m => m.active && m.data.hp > 0 && Math.hypot(m.x - targetPos.x, m.z - targetPos.z) <= radius) : null) || this.findMonsterTarget(h));
 
@@ -4711,7 +5824,9 @@ export const combatMethods = {
        scroll charge instead of a slot — flag it for markSpellUsed. */
     const viaScroll = !(h.data.knownSpells || []).includes(key) && this._equippedScroll(h.data)?.spellKey === key;
     h._scrollCastKey = viaScroll ? key : null;
-    const success = sp.cast ? sp.cast(this, h, foe, alive, chosenSlotLevel, targetPos, assignedTargets) : this.resolveSpell(h, key, foe, alive);
+    const runCast = () => sp.cast(this, h, foe, alive, chosenSlotLevel, targetPos, assignedTargets);
+    const success = !sp.cast ? this.resolveSpell(h, key, foe, alive)
+      : this.fxWithSpellCharge ? this.fxWithSpellCharge(h, sp.color, runCast, sp.chargeFx) : runCast();
     h._scrollCastKey = null;
     if (success) {
       if (isBonus) {
@@ -4767,6 +5882,15 @@ export const combatMethods = {
     } else if (actionType === 'disengage') {
       if (!this.takeCommonAction(h, 'disengage')) return false;
       this.fxLog('(movement provokes no opportunity attacks this turn)', 'heal');
+    } else if (actionType === 'throwTorch') {
+      if (!this.throwTorch(h)) return false;
+      h.actUsed = true;
+    } else if (actionType === 'snuff') {
+      if (!this.canSnuff(h) || !this.snuffTorch(h)) return false;
+      h.actUsed = true;
+    } else if (actionType === 'kindle') {
+      if (!this.canKindle(h) || !this.kindleTorch(h)) return false;
+      h.actUsed = true;
     } else if (actionType === 'help') {
       h.actUsed = true;
       h.attacksLeft = 0;
@@ -4811,15 +5935,22 @@ export const combatMethods = {
     } else if (abilityKey === 'rage') {
       if (!spendCharge(d, 'rage')) { this.fxLog('Rage has no uses left.', 'sys'); return false; }
       h.bonusUsed = true; h._bonusActed = true;
-      applyEffect(h, 'raging', { duration: 30, elapsed: this.fxNow });
+      applyEffect(h, 'raging', { duration: ROUND_SECONDS * 10, elapsed: this.fxNow });   // 5e: 1 minute
       this.playAbilityFx(h, 'rage', { at: h, scale: 1.7 });
       this.fxLog(`😡 ${d.name} enters a Rage!`, 'crit');
     } else if (abilityKey === 'cunningAction') {
-      if (!spendCharge(d, 'cunningActionClass')) { this.fxLog('Cunning Action has no uses left.', 'sys'); return false; }
       h.bonusUsed = true; h._bonusActed = true;
-      applyEffect(h, 'hasted', { duration: 30, elapsed: this.fxNow });
-      this.playAbilityFx(h, 'cunningAction', { at: h });
-      this.fxLog(`💨 ${d.name} uses Cunning Action (+4 AC, +40% speed)!`, 'heal');
+      this.cunningActionDash(h);
+    } else if (abilityKey === 'hoodLantern') {
+      d._lanternHooded = !d._lanternHooded;
+      h.bonusUsed = true; h._bonusActed = true;
+      this.fxLog(d._lanternHooded ? `🏮 ${d.name} hoods the lantern — a faint glow only.` : `🏮 ${d.name} unhoods the lantern.`, 'buff');
+    } else if (abilityKey === 'hide') {
+      if (!canHide(h)) { this.fxLog(`${d.name} needs dim light or darkness to hide.`, 'sys'); return false; }
+      h.bonusUsed = true; h._bonusActed = true;
+      h._hidden = true;
+      this.fxText('hidden', this._v3(h.x, 1.5, h.z), '#7f8fb0');
+      this.fxLog(`🌑 ${d.name} melts into the shadows.`, 'buff');
     } else if (abilityKey === 'flurry') {
       const foe = typeof this.findMonsterTarget === 'function' ? this.findMonsterTarget(h) : null;
       if (!foe || foe.data.hp <= 0) { this.fxLog('No target for Flurry of Blows.', 'sys'); return false; }
@@ -4843,15 +5974,17 @@ export const combatMethods = {
     } else if (abilityKey === 'stepOfTheWind') {
       if (!spendKi(d, 1)) { this.fxLog('No Ki points left for Step of the Wind.', 'sys'); return false; }
       h.bonusUsed = true; h._bonusActed = true;
-      applyEffect(h, 'hasted', { duration: 6.0, elapsed: this.fxNow });
+      applyEffect(h, 'dashing', { duration: ROUND_SECONDS, elapsed: this.fxNow });
+      h.disengageActive = true;
+      if (h.moveLeft != null && typeof this.cellsForSpeed === 'function') h.moveLeft += this.cellsForSpeed(h);
       this.playAbilityFx(h, 'stepOfTheWind', { at: h });
-      this.fxLog(`💨 ${d.name} uses Step of the Wind (+4 AC, +40% speed)!`, 'heal');
+      this.fxLog(`💨 ${d.name} uses Step of the Wind — Disengage and Dash!`, 'heal');
     } else if (abilityKey === 'bardicInspiration') {
+      const target = this.pickInspirationTarget(h, alive);
+      if (!target) { this.fxLog('Everyone who could use it is already inspired.', 'sys'); return false; }
       if (!spendCharge(d, 'bardicInspiration')) { this.fxLog('Bardic Inspiration has no uses left.', 'sys'); return false; }
       h.bonusUsed = true; h._bonusActed = true;
-      for (const a of alive) applyEffect(a, 'inspired', { duration: Infinity, elapsed: this.fxNow });
-      this.playAbilityFx(h, 'bardic', { at: h, alsoAt: alive, spell: true });
-      this.fxLog(`🎵 ${d.name} uses Bardic Inspiration (advantage on next attack)!`, 'heal');
+      this.grantBardicInspiration(h, target);
     } else if (abilityKey === 'dropWildShape' || abilityKey === 'revertWildShape') {
       if (!d.inWildShape) { this.fxLog(`${d.name} is not in Wild Shape.`, 'sys'); return false; }
       this.revertWildShape(h, 0, { voluntary: true });
@@ -4871,6 +6004,23 @@ export const combatMethods = {
     if (!d) return false;
     const alive = (this.heroes || []).filter(x => x.data && x.data.hp > 0);
 
+    if (abilityKey === 'radiantFlare') {
+      if (h.actUsed || !this.radiantFlare(h)) return false;
+      h.actUsed = true; this.refreshHud(); this.fxUpdateManualBar(); return true;
+    }
+    if (abilityKey === 'blindingFlash') {
+      const tgt = (this.monsters || []).find(m => m && m.data && m.data.hp > 0 && m.active && lightStateOf(m) === 'dark'
+        && Math.hypot(m.x - h.x, m.z - h.z) <= 12);
+      if (h.actUsed || !tgt || !this.blindingFlash(h, tgt)) return false;
+      h.actUsed = true; this.refreshHud(); this.fxUpdateManualBar(); return true;
+    }
+    if (abilityKey === 'shadowArts') {
+      if (h._bonusActed || !hasKi(d, 2)) return false;
+      spendKi(d, 2);
+      addDarkZone({ x: h.x, z: h.z, r: 2, ttl: 30, spell: true });
+      this.fxLog(`🌑 ${d.name} spends 2 Ki — Shadow Arts drowns the fight in darkness!`, 'crit');
+      h.bonusUsed = true; h._bonusActed = true; this.refreshHud(); this.fxUpdateManualBar(); return true;
+    }
     if (abilityKey === 'actionSurge') {
       if (h._actionSurged) { this.fxLog(`${d.name} has already used Action Surge this turn.`, 'sys'); return false; }
       if (!hasFeature(d, 'actionSurgeClass') && !(subclassOf(d) && subclassOf(d).active.key === 'actionSurge')) {
@@ -4898,7 +6048,7 @@ export const combatMethods = {
       this.playAbilityFx(h, 'fastHands', { at: h });
       this.fxLog(`💨 ${d.name} uses Fast Hands to throw a smoke bomb!`, 'heal');
       for (const m of foes) {
-        applyEffect(m, 'blinded', { duration: 6, elapsed: this.fxNow, source: h });
+        applyEffect(m, 'blinded', { duration: ROUND_SECONDS, elapsed: this.fxNow, source: h });
         this.fxText('BLINDED', this._v3(m.x, 1.3, m.z), '#888899');
       }
     } else {

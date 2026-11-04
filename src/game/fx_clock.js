@@ -117,6 +117,11 @@ export function readyToAdvance() {
   return now >= fxUntil + (beat != null ? BEAT_BUFFER[beat] : 0);
 }
 
+/** True while an information-carrying visual (cast, charge, projectile, impact) is still playing (excluding post-visual read dwell). */
+export function fxVisualBusy() {
+  return now < fxUntil;
+}
+
 /** Seconds still to wait. 0 when ready. Used by the deadlock breaker and tests. */
 export function fxWaitRemaining() {
   return Math.max(0, (fxUntil + (beat != null ? BEAT_BUFFER[beat] : 0)) - now);

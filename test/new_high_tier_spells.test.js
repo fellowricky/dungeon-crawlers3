@@ -8,7 +8,7 @@ const NEW = ['dominatePerson', 'forcecage', 'foresight', 'powerWordHeal',
 function stub({ saveSucceeds = false } = {}) {
   const mob = (name, hp = 60) => ({
     x: 4, z: 0, dead: false, active: true,
-    data: { name, hp, maxHp: 60, scale: 1, level: 10, effStats: { wis: 10 } }
+    data: { name, hp, maxHp: 60, scale: 1, level: 10, effStats: { wis: 10 }, type: 'humanoid' }
   });
   const ally = (name, hp) => ({
     x: 0, z: 0, dead: hp <= 0,
@@ -29,6 +29,8 @@ function stub({ saveSucceeds = false } = {}) {
     spellDamage: vi.fn((t, amt) => { t.data.hp = Math.max(0, t.data.hp - amt); }),
     spellSave: vi.fn(() => saveSucceeds),
     concentrate: vi.fn(),
+    /* Dominate Person hands off to the team-switch in combat.js */
+    dominateMonster: vi.fn((h, m) => { m.dominatedBy = h; m._effects = { ...(m._effects || {}), dominated: { until: 60 } }; return true; }),
     _reviveHeroPose: vi.fn(),
     _v3: (x, y, z) => ({ x, y, z }),
   };
@@ -56,15 +58,22 @@ describe('the new high-tier spells', () => {
     }
   });
 
-  it('Dominate Person charms a foe that fails its save, and nothing on a save', () => {
+  it('Dominate Person turns a humanoid that fails its save, nothing on a save, and refuses non-humanoids', () => {
     const { game, caster } = stub({ saveSucceeds: false });
     SPELLS.dominatePerson.cast(game, caster, game.monsters[0]);
-    expect(hasEffect(game.monsters[0], 'charmed')).toBe(true);
-    expect(game.concentrate).toHaveBeenCalled();
+    expect(game.dominateMonster).toHaveBeenCalledWith(caster, game.monsters[0], 10);
+    expect(hasEffect(game.monsters[0], 'dominated')).toBe(true);
+    expect(hasEffect(game.monsters[0], 'charmed')).toBe(false);
+    expect(game.concentrate).toHaveBeenCalledWith(caster, 'dominatePerson', [{ e: game.monsters[0], key: 'dominated' }]);
 
     const saved = stub({ saveSucceeds: true });
     SPELLS.dominatePerson.cast(saved.game, saved.caster, saved.game.monsters[0]);
-    expect(hasEffect(saved.game.monsters[0], 'charmed')).toBe(false);
+    expect(saved.game.dominateMonster).not.toHaveBeenCalled();
+
+    const beast = stub({ saveSucceeds: false });
+    beast.game.monsters[0].data.type = 'beast';
+    expect(SPELLS.dominatePerson.cast(beast.game, beast.caster, beast.game.monsters[0])).toBe(false);
+    expect(beast.game.markSpellUsed).not.toHaveBeenCalled();   // slot kept
   });
 
   it('Forcecage restrains with no saving throw at all', () => {

@@ -1775,6 +1775,10 @@
     .dr-mob-row .dr-mob-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .dr-mob-row .dr-mob-cr { font-family: monospace; font-size: 10.5px; color: var(--text-muted); }
     .dr-mob-row .dr-mob-fam { font-size: 9.5px; color: var(--text-muted); opacity: 0.8; }
+    .dr-mob-row .dr-mob-anim { font-size: 9px; width: 10px; text-align: center; }
+    .dr-mob-row.animated .dr-mob-anim { color: var(--gold-bright); }
+    .dr-mob-row.static .dr-mob-anim { color: var(--text-muted); opacity: 0.5; }
+    .dr-mob-row.static .dr-mob-name { color: var(--text-muted); font-style: italic; }
 
     /* Per-level CR coverage strip: one cell per dungeon level 1-20 */
     .dr-coverage {
@@ -3177,6 +3181,11 @@
             <option value="all">All creatures</option>
             <option value="in">In this roster</option>
             <option value="out">Not in this roster</option>
+          </select>
+          <select id="dr-anim-filter" title="Animated creatures are the purpose-built tier rosters; static ones are the first-wave sprites" style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-main); padding:6px; border-radius:6px; font-size:12px">
+            <option value="all">Animated + static</option>
+            <option value="animated">▶ Animated only</option>
+            <option value="static">■ Static only (old wave)</option>
           </select>
           <label style="font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px">CR
             <input type="number" id="dr-cr-min" step="0.25" min="0" placeholder="min" style="width:64px; background:var(--bg-input); border:1px solid var(--border); color:#fff; padding:4px 6px; border-radius:6px; font-size:12px">

@@ -1,7 +1,7 @@
 /**
  * Shop System — an overlay shown between dungeon floors.
  */
-import { rollItem, bonusText, ilvlText, migrateItem, slotsFor, compareItemStats, addToInventory } from './items.js';
+import { rollItem, bonusText, ilvlText, migrateItem, slotsFor, compareItemStats, addToInventory, makeLightSourceItem, BASES, makeConsumableFromBase } from './items.js';
 import { log, updateResources } from './ui.js';
 import { refreshMenus } from './menus.js';
 
@@ -71,6 +71,17 @@ export function showShop() {
     if (it) shopInventory.push({ type: 'gear', item: it, price: Math.round(it.value * 2 * priceMult) });
   }
 
+  /* Torches burn down (docs/LIGHT_IDEAS.md 19): a bundle of five, always stocked. */
+  const bundle = makeLightSourceItem('torch', 5);
+  if (bundle) { bundle.name = 'Bundle of Torches'; shopInventory.push({ type: 'gear', item: bundle, price: Math.round(5 * priceMult) }); }
+  /* Oil flasks: thrown fire and light (docs/LIGHT_IDEAS.md 24). */
+  const oilBase = (BASES.trinket || []).find(b => b.spellKey === 'oilFlask');
+  const oil = oilBase ? makeConsumableFromBase(oilBase, tier) : null;
+  if (oil) shopInventory.push({ type: 'gear', item: oil, price: Math.round(oil.value * 2 * priceMult) });
+  /* The torch upgrade: always on the shelf (it never drops as loot). */
+  const lantern = makeLightSourceItem('lantern');
+  if (lantern) shopInventory.push({ type: 'gear', item: lantern, price: Math.round(lantern.value * 2 * priceMult) });
+
   if (hasDiscount) log(`💰 Merchant's favour — all prices reduced 15% this visit.`, 'treasure');
 
   $('shopscreen').classList.add('show');
@@ -115,7 +126,7 @@ function renderShop() {
   $('shop-gold').textContent = G.gold;
 
   const renderIcon = icon => (icon && icon.includes('/'))
-    ? `<img src="./${icon}" style="width:28px;height:28px;image-rendering:pixelated;vertical-align:middle;" />`
+    ? `<img class="item-ico" src="./${icon}" style="image-rendering:pixelated;vertical-align:middle;" />`
     : (icon || '');
 
   const grid = $('shop-grid');

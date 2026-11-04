@@ -221,6 +221,15 @@
       "fallback": null,
       "note": ""
     },
+    "spellCharge": {
+      "category": "element",
+      "files": [
+        "Spells/Spell Charge 1.wav",
+        "Spells/Spell Charge 2.wav"
+      ],
+      "fallback": null,
+      "note": "soft swell under the half-second cast charge; tools/sfx/make_spell_charge.py"
+    },
     "spellImpact": {
       "category": "element",
       "files": [
@@ -348,7 +357,7 @@
     "cantripFireBolt": {
       "category": "cantrip",
       "files": [
-        "Spells/Cantrip Fire Bolt.wav"
+        "Spells/Cantrip Fire Bolt Short.wav"
       ],
       "fallback": "spellFire",
       "note": "wizard Fire Bolt"
@@ -364,7 +373,7 @@
     "cantripSacredFlame": {
       "category": "cantrip",
       "files": [
-        "Spells/Cantrip Sacred Flame.wav"
+        "Spells/Cantrip Sacred Flame Short.wav"
       ],
       "fallback": "spellHoly",
       "note": "cleric Sacred Flame"
@@ -380,7 +389,7 @@
     "cantripEldritchBlast": {
       "category": "cantrip",
       "files": [
-        "Spells/Cantrip Eldritch Blast.wav"
+        "Spells/Cantrip Eldritch Blast Bolt.wav"
       ],
       "fallback": "spellArcane",
       "note": "warlock Eldritch Blast"
@@ -388,7 +397,7 @@
     "spellArmsOfHadar": {
       "category": "school",
       "files": [
-        "Spells/Arms of Hadar.wav"
+        "Spells/Arms of Hadar Trimmed.wav"
       ],
       "fallback": "spellNecrotic",
       "note": "per-spell Arms of Hadar"
@@ -404,7 +413,7 @@
     "spellBless": {
       "category": "support",
       "files": [
-        "Spells/Bless.wav"
+        "Spells/Bless Trimmed.wav"
       ],
       "fallback": "spellBlessing",
       "note": "per-spell Bless"
@@ -707,7 +716,7 @@
     "blindness": "spellMind",
     "silence": "spellMind",
     "hideousLaughter": "spellHideousLaughter",
-    "darkness": "spellMind",
+    "darkness": "spellNature",
     "entangle": "spellEntangle",
     "web": "spellWeb",
     "grease": "spellGrease",
@@ -727,8 +736,9 @@
     "magicWeapon": "spellArcane",
     "mistyStep": "spellStealth",
     "spiritualWeapon": "spellSummon",
-    "eldritchBlast": "spellArcane",
+    "eldritchBlast": "cantripEldritchBlast",
     "chillTouch": "cantripChillTouch",
+    "viciousMockery": "cantripViciousMockery",
     "chromaticOrb": "spellChromaticOrb",
     "rayOfSickness": "spellRayOfSickness",
     "flamingSphere": "spellFire",
@@ -770,7 +780,11 @@
     "foresight": "spellHeal",
     "powerWordHeal": "spellHeal",
     "stormOfVengeance": "spellLightning",
-    "trueResurrection": "spellHeal"
+    "trueResurrection": "spellHeal",
+    "light": "spellBless",
+    "oilFlask": "spellFire",
+    "dancingLights": "spellBless",
+    "daylight": "spellBless"
   },
   "cantrips": {
     "wizard": "cantripFireBolt",

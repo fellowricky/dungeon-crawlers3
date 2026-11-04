@@ -15,8 +15,8 @@
  * Everything here is pure and headless-safe (no VFX/UI/THREE), so the balance
  * sim and unit tests can call it directly.
  */
-import { mod } from './srd.js';
-import { getEffectMods, hasEffect } from './conditions.js';
+import { mod, cantripDice } from './srd.js';
+import { getEffectMods, hasEffect, saveModifier } from './conditions.js';
 import { hasFeature } from './features.js';
 
 /* An average d20 attack lands ~55-65% of the time in this game's AC bands.
@@ -116,16 +116,23 @@ export function monsterDpr(m, target = null, game = null) {
 export function heroAttackEv(h, profile, foe, game) {
   const d = h && h.data;
   if (!d || !profile || !foe || !foe.data) return 0;
+  const isCantrip = !!(profile.isSave || profile.cantripScale);
   let p;
-  if (profile.isSave || profile.cantripScale) {
+  if (isCantrip) {
+    /* Every class cantrip is a saving throw: the chance it lands is the
+       chance the target FAILS. Same DC as spells.spellDC and the same save
+       modifier as the real roll (conditions.saveModifier). */
     const saveAb = profile.saveAbility || 'dex';
-    const dc = 8 + (d.atkProf || 2) + mod(d.effStats?.[profile.ability || d._classAtk] ?? 10);
-    const saveMod = (foe.data.saves && foe.data.saves[saveAb] != null)
-      ? foe.data.saves[saveAb]
-      : (foe.data.effStats && foe.data.effStats[saveAb] != null
-          ? mod(foe.data.effStats[saveAb])
-          : Math.max(0, Math.floor((foe.data.cr || 1) / 4)));
-    p = Math.max(0.05, Math.min(0.95, (dc - 1 - saveMod) / 20));
+    const lvl = d.level || 1;
+    const dc = 8 + (2 + Math.floor((lvl - 1) / 4)) + mod(d.effStats?.[d._classAtk || profile.ability] ?? 10);
+    const saveMod = saveModifier(foe, saveAb);
+    const pSave = Math.max(0.05, Math.min(0.95, (21 - (dc - saveMod)) / 20));
+    /* the caster's advantage is the target's disadvantage, and back */
+    let adv = 0;
+    if (getEffectMods(foe).defAdvantage) adv += 1;
+    if (foe.data.magicResistance) adv -= 1;
+    const saved = adv > 0 ? pSave * pSave : adv < 0 ? 1 - (1 - pSave) * (1 - pSave) : pSave;
+    p = 1 - saved;
   } else {
     const atkBonus = (d.atkProf || 0) + mod(d.effStats?.[profile.ability] ?? 10)
       + (getEffectMods(h).atkBonus || 0);
@@ -136,12 +143,16 @@ export function heroAttackEv(h, profile, foe, game) {
     p = hitChance(atkBonus, foeAc, adv);
   }
   const dice = profile.dmg || [1, 6];
-  const physHit = avgRoll(dice[0] || 1, dice[1] || 6, 0)
-    + mod(d.effStats?.[profile.ability] ?? 10) + (d.dmgBonus || 0);
+  /* A cantrip grows its dice with level (heroDamage) and adds no ability
+     modifier; Eldritch Blast instead fires one die per beam. */
+  const diceCount = isCantrip ? (profile.beams ? 1 : cantripDice(d.level || 1)) : (dice[0] || 1);
+  const physHit = avgRoll(diceCount, dice[1] || 6, 0)
+    + (isCantrip ? 0 : mod(d.effStats?.[profile.ability] ?? 10)) + (d.dmgBonus || 0);
   /* Extra Attack / multiattack, so a fighter's turn isn't valued like a
-     wizard's cantrip. */
+     wizard's cantrip — it never applies to the cantrip itself. */
   let swings = 1;
-  if (hasFeature(d, 'extraAttack2')) swings = 3;
+  if (isCantrip) swings = Math.max(1, profile.beams || 1);
+  else if (hasFeature(d, 'extraAttack2')) swings = 3;
   else if (hasFeature(d, 'extraAttack')) swings = 2;
   /* damageModifier returns a TAG ('immune'|'resist'|'vuln'|null), not a
      multiplier — translate it. */
@@ -163,6 +174,48 @@ export function heroAttackEv(h, profile, foe, game) {
   }
   const perHit = Math.max(0, physHit) * physMul + elemHit;
   return Math.max(0, perHit) * swings * p;
+}
+
+/**
+ * Weapon or cantrip for a hero's basic attack against `foe`, decided on the
+ * numbers rather than a coin flip. A cleric beside a plated knight casts Sacred
+ * Flame (a DEX save ignores the plate); beside a soft goblin it swings the mace.
+ *
+ *   value = expected damage (heroAttackEv) — hit chance vs AC for the weapon,
+ *           failed-save chance for the cantrip — and 0 for whichever cannot
+ *           reach the foe with the movement left this turn;
+ *   then the hero's AI Priorities "ranged" lean nudges it: neutral at 0.5,
+ *   up to ±30% toward the cantrip or the weapon.
+ *
+ * Returns null when there is no real choice (no cantrip, silenced, no weapon,
+ * a casting focus in hand, wild shape) so the caller keeps its old rules.
+ */
+export function chooseHeroAttackProfile(h, foe, game) {
+  const d = h && h.data;
+  if (!d || !foe || !foe.data) return null;
+  const weapon = d.weaponProfile, cantrip = d.cantripProfile;
+  const silenced = !!(d._effects && d._effects.silenced);
+  if (!weapon || !cantrip || silenced || weapon.focus || d.inWildShape) return null;
+
+  const dist = Math.hypot(foe.x - h.x, foe.z - h.z);
+  const move = h.moveLeft != null ? h.moveLeft
+    : (game && typeof game.cellsForSpeed === 'function' ? game.cellsForSpeed(h) : 6);
+  const inReach = (range) => dist - (range || 1.5) <= move + 0.01;
+
+  const evWeapon = inReach(weapon.melee === false ? weapon.range : Math.max(1.5, weapon.range || 1.5))
+    ? heroAttackEv(h, weapon, foe, game) : 0;
+  const evCantrip = inReach(cantrip.range || 6) ? heroAttackEv(h, cantrip, foe, game) : 0;
+  if (evWeapon <= 0 && evCantrip <= 0) return null;
+
+  let rp = d.aiPrefs && d.aiPrefs.rangedPref != null ? d.aiPrefs.rangedPref : null;
+  if (rp == null) {
+    const ms = d.aiPrefs && d.aiPrefs.movementStyle;
+    rp = ms === 'kite' ? 0.85 : (ms === 'hold' ? 0.2 : 0.5);
+  }
+  const lean = Math.max(0, Math.min(1, rp)) - 0.5;          // -0.5 … +0.5
+  const scoreCantrip = evCantrip * (1 + 0.6 * lean);
+  const scoreWeapon = evWeapon * (1 - 0.6 * lean);
+  return scoreCantrip > scoreWeapon ? cantrip : weapon;
 }
 
 /**
@@ -330,7 +383,8 @@ export function bestAoECenter(game, caster, radius, opts = {}) {
   const maxRange = opts.maxRange != null ? opts.maxRange : 12;
   const perTarget = opts.perTargetDamage || 0;
   const live = (game.monsters || []).filter(m =>
-    m && m.data && m.data.hp > 0 && m.active !== false && !getEffectMods(m).invisible);
+    m && m.data && m.data.hp > 0 && m.active !== false && !getEffectMods(m).invisible
+    && !(typeof game.isDominated === 'function' && game.isDominated(m)));
   if (!live.length) return null;
 
   const centers = [];

@@ -7,7 +7,7 @@ import {
 } from './srd.js';
 import { resolveChoice } from './features.js';
 import { slotsFor, migrateItem, migrateInventory, itemCategory, itemPoints,
-  addToInventory, takeFromInventory, coalesceInventory, qtyOf } from './items.js';
+  addToInventory, takeFromInventory, coalesceInventory, qtyOf, isRune } from './items.js';
 import { drawBar, makeFloatText } from './entities.js';
 import { log, updatePartyFrames, updateResources } from './ui.js';
 import { SAVE_KEY } from './constants.js';
@@ -33,6 +33,7 @@ export function heroSaveRecord(d) {
   if (!d || typeof d !== 'object') return d;
   const out = { ...d };
   delete out._queuedAction;   // a manual-mode intent, meaningless after reload
+  delete out._lightState;     // re-read from the scene every frame
   out.conc = d.conc && d.conc.key ? { key: d.conc.key } : null;
   if (d._effects && typeof d._effects === 'object') {
     out._effects = {};
@@ -84,6 +85,9 @@ export const inventoryMethods = {
   equipItem(hero, item, preferSlot = null) {
     if (item && item.slot === 'dye') {
       return { ok: false, reason: 'Drag the dye onto an equipped item to apply it.' };
+    }
+    if (isRune(item)) {
+      return { ok: false, reason: 'Drag the rune onto a piece of gear to inscribe it.' };
     }
     if (!canEquip(hero, item)) return { ok: false, reason: 'Not proficient with that.' };
     migrateItem(item);
@@ -150,6 +154,31 @@ export const inventoryMethods = {
     log(`🎨 ${it.name} is dyed ${dyeItem.name.replace(/ Dye$/, '')}.`, 'treasure');
     this.afterGearChange(hero);
     return { ok: true };
+  },
+
+  /** Spend a bag rune on equipped gear in `slotKey`. */
+  applyRuneToSlot(hero, slotKey, runeItem) {
+    if (!this.guild || typeof this.guild.applyRuneToItem !== 'function') {
+      return { ok: false, reason: 'The Enchanter is not available.' };
+    }
+    const it = hero && hero.equipment && hero.equipment[slotKey];
+    if (!it) return { ok: false, reason: 'Nothing equipped there to inscribe.' };
+    const r = this.guild.applyRuneToItem(it, runeItem);
+    if (r.ok) {
+      log(`✨ ${runeItem.name} inscribed on ${it.name}.`, 'treasure');
+      this.afterGearChange(hero);
+    }
+    return r;
+  },
+
+  /** Spend a bag rune on another bag item (unequipped gear). */
+  applyRuneToBagItem(gearItem, runeItem) {
+    if (!this.guild || typeof this.guild.applyRuneToItem !== 'function') {
+      return { ok: false, reason: 'The Enchanter is not available.' };
+    }
+    const r = this.guild.applyRuneToItem(gearItem, runeItem);
+    if (r.ok) log(`✨ ${runeItem.name} inscribed on ${gearItem.name}.`, 'treasure');
+    return r;
   },
 
   unequipItem(hero, slot) {

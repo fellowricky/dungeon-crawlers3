@@ -6,9 +6,9 @@ describe('5e SRD Spell Alignment & Upcasting Tests', () => {
     const log = [];
     const mockGame = {
       markSpellUsed: vi.fn(),
-      playAbilityFx: vi.fn(),
+      /* The fireball animation lands its damage through onImpact. */
+      playAbilityFx: vi.fn((h, key, opts) => opts?.onImpact?.()),
       fxLog: (msg) => log.push(msg),
-      fxProjectile: (from, to, type, color, onDetonate) => onDetonate(),
       fxSprite: vi.fn(),
       fxSlash: vi.fn(),
       spellSave: vi.fn().mockReturnValue(false),

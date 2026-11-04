@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { showLoadingScreen, hideLoadingScreen, updateLoadingProgress, MIN_LOADING_TIME_MS } from '../src/ui/loading_screen.js';
+import { showLoadingScreen, hideLoadingScreen, updateLoadingProgress, advanceLoadingMarch, loadingMarch, MIN_LOADING_TIME_MS, MARCH_FULL_MS } from '../src/ui/loading_screen.js';
 
 describe('Dungeon Loading Screen Overlay', () => {
   let elementRegistry = new Map();
@@ -60,18 +60,28 @@ describe('Dungeon Loading Screen Overlay', () => {
     expect(MIN_LOADING_TIME_MS).toBe(1400);
   });
 
-  it('Updates loading progress percentage and status label', () => {
+  it('Reports progress without snapping the party across the screen', () => {
     showLoadingScreen({ title: 'DEPTH 4' });
-    const percent = global.document.getElementById('dungeon-loading-percent');
     const subtitle = global.document.getElementById('dungeon-loading-subtitle');
-    const fill = global.document.getElementById('dungeon-loading-bar-fill');
+    const party = global.document.getElementById('dungeon-loading-party');
 
-    expect(percent.textContent).toBe('0%');
+    expect(party).not.toBeNull();
+    expect(loadingMarch()).toEqual({ shown: 0, target: 0 });
 
-    updateLoadingProgress(65, 'Loading spell VFX & cantrips...');
-    expect(percent.textContent).toBe('65%');
-    expect(subtitle.textContent).toBe('Loading spell VFX & cantrips...');
-    expect(fill.style.width).toBe('65%');
+    updateLoadingProgress(70, 'Composing party hero sprites...');
+    expect(subtitle.textContent).toBe('Composing party hero sprites...');
+    expect(loadingMarch().target).toBe(70);
+    expect(loadingMarch().shown).toBe(0);
+
+    /* A stalled frame must not spend the whole stall walking. dt is capped,
+       so a jump to 70% is crossed over many steps, not one. */
+    const step = advanceLoadingMarch(2);
+    const capped = 100 / (MARCH_FULL_MS / 1000) * 0.05;
+    expect(step).toBeCloseTo(capped, 5);
+    expect(step).toBeLessThan(70);
+
+    for (let i = 0; i < 80; i++) advanceLoadingMarch(0.05);
+    expect(loadingMarch().shown).toBe(70);
   });
 
   it('Enforces minimum duration before hiding', () => {

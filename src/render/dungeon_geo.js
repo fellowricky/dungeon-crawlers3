@@ -138,6 +138,38 @@ export function worldBoxUV(g, scale = 1.0, offU = 0, offV = 0){
   return g;
 }
 
+/**
+ * Box UV projection scaled by instance dimension (sx, sy, sz) so that the
+ * texture maintains an exact 1:1 isotropic aspect ratio and consistent texel density
+ * across non-uniformly scaled instanced meshes.
+ */
+export function scaledBoxUV(g, sx = 1.0, sy = 1.0, sz = 1.0, texScale = 1.0){
+  if (!g.attributes.normal) g.computeVertexNormals();
+  const p = g.attributes.position, n = g.attributes.normal;
+  let uv = g.attributes.uv;
+  if(!uv || uv.count !== p.count){
+    uv = new THREE.BufferAttribute(new Float32Array(p.count * 2), 2);
+    g.setAttribute('uv', uv);
+  }
+  for(let i = 0; i < p.count; i++){
+    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i)), az = Math.abs(n.getZ(i));
+    const x = p.getX(i) * sx * texScale;
+    const y = p.getY(i) * sy * texScale;
+    const z = p.getZ(i) * sz * texScale;
+    let u, v;
+    if(ay >= ax && ay >= az){
+      u = x; v = z;
+    } else if(ax >= az){
+      u = z; v = y;
+    } else {
+      u = x; v = y;
+    }
+    uv.setXY(i, u, v);
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
 export const GEO = {};
 /* Floor tiles very nearly fill their 1.0 grid cell. They used to be 0.96,
    leaving a 0.04 slot between neighbours — invisible enough while every tile
@@ -154,17 +186,17 @@ GEO.floor   = boxUV(chamferBox(1 - TILE_GAP,0.22,1 - TILE_GAP,0.05).translate(0,
 GEO.wall    = boxUV(chamferBox(1,1,1,0.07));
 GEO.wallCap = boxUV(chamferBox(1.09,0.13,1.09,0.035));
 GEO.basin   = new THREE.BoxGeometry(1,0.55,1).translate(0,-0.43,0);
-GEO.pillar  = mergeGeos([
+GEO.pillar  = boxUV(mergeGeos([
   xg(chamferBox(0.68,0.15,0.68,0.035), 0,0,0, 0,0,0, 1),
   xg(new THREE.CylinderGeometry(0.19,0.25,1.5,10), 0,0.89,0, 0,0,0, 1),
   xg(new THREE.CylinderGeometry(0.27,0.27,0.07,10), 0,1.68,0, 0,0,0, 1),
   xg(chamferBox(0.55,0.14,0.55,0.03), 0,1.72,0, 0,0,0, 1)
-]);
+]));
 /* Default (ANCIENT-flavoured) doorway. Every theme's variant is built further
    down, next to the spawn-portal variants — see the DOORWAY block after the
    spawn geometry, and DOORWAY_THEMES in dungeon_generator.js for the wiring. */
 GEO.archPost   = chamferBox(0.24,1.74,0.24,0.045);
-GEO.archLintel = chamferBox(1,0.22,0.36,0.05);
+GEO.archLintel = scaledBoxUV(chamferBox(1,0.22,0.36,0.05), 2.18, 1.25, 1.30, 1.0);
 GEO.gate       = chamferBox(1,1,0.08,0.015);
 GEO.torch = mergeGeos([
   xg(new THREE.BoxGeometry(0.07,0.36,0.07), 0,0.16,0.07, -0.42,0,0, 1),
@@ -227,12 +259,14 @@ GEO.candle = mergeGeos([
   // Right short candle
   xg(new THREE.CylinderGeometry(0.038, 0.045, 0.12, 6), 0.08, 0.07, -0.05, -0.05, 0, 0.06, 1)
 ]);
-GEO.sepulcherDais = mergeGeos([
-  // Tier 1 broad stone disc
+/* Boss-arena disc. A cylinder cap maps the whole stone image across the
+   diameter (~5 units, then ×1.3 when the arena places it), so the ashlar
+   read as a few giant slabs beside the 1-unit floor tiles. The 1.3 is that
+   placement scale: one repeat per world unit, same as a floor tile. */
+GEO.sepulcherDais = scaledBoxUV(mergeGeos([
   xg(new THREE.CylinderGeometry(2.4, 2.5, 0.12, 16), 0, 0.06, 0, 0, 0, 0, 1),
-  // Tier 2 raised step disc
   xg(new THREE.CylinderGeometry(1.8, 1.9, 0.12, 16), 0, 0.18, 0, 0, 0, 0, 1)
-]);
+]), 1, 1, 1, 1.3);
 GEO.icicle = mergeGeos([
   xg(new THREE.ConeGeometry(0.075,0.5,6).rotateX(Math.PI), 0,-0.25,0, 0,0,0, 1),
   xg(new THREE.ConeGeometry(0.05,0.34,6).rotateX(Math.PI), 0.11,-0.17,0.04, 0,0,0, 1),
@@ -246,6 +280,8 @@ GEO.roots = mergeGeos([
   xg(tube(V3(-0.02,1.2,-0.05),V3(-0.5,0.7,0.3), V3(-0.2,0.02,0.55)), 0,0,0, 0,0,0, 1)
 ]);
 GEO.moss  = new THREE.CircleGeometry(0.42,9).rotateX(-Math.PI/2).translate(0,0.013,0);
+GEO.wallIvy = new THREE.PlaneGeometry(0.88, 1.55).translate(0, 0.77, 0);
+GEO.threshold = scaledBoxUV(chamferBox(0.98, 0.08, 0.98, 0.02).translate(0, 0.04, 0), 2.12, 0.85, 0.65, 1.0);
 GEO.crack = new THREE.PlaneGeometry(1.2,1.2).rotateX(-Math.PI/2).translate(0,0.016,0);
 GEO.seal  = new THREE.PlaneGeometry(0.86,0.86).rotateX(-Math.PI/2).translate(0,0.02,0);
 GEO.blot  = new THREE.PlaneGeometry(1.15,1.15).rotateX(-Math.PI/2).translate(0,0.018,0);
@@ -428,44 +464,43 @@ GEO.cauldron = mergeGeos([
   xg(new THREE.CylinderGeometry(0.03,0.03,0.3,5), 0.22,0.12,0, 0,0,-0.4, 1),
   xg(new THREE.CylinderGeometry(0.03,0.03,0.3,5), 0,0.12,0.22, -0.4,0,0, 1)
 ]);
+/* chamferBox stands on y=0 and grows upward. These y values are the bottoms
+   of pieces that were first placed by their centres (a 1.5-tall post centred
+   at 0.81 starts at 0.06). Leaving the centre in place put each post's middle
+   on the lintel, so the sides stuck up out of the top of the shelf. */
 GEO.ossuaryFrame = mergeGeos([
-  // Stone outer arch frame: pillars sit on sill and connect to top lintel
-  xg(chamferBox(0.12,1.5,0.22,0.02), -0.42,0.81,0, 0,0,0, 1),
-  xg(chamferBox(0.12,1.5,0.22,0.02),  0.42,0.81,0, 0,0,0, 1),
-  xg(chamferBox(0.96,0.16,0.24,0.03), 0,1.56,0, 0,0,0, 1),
-  xg(chamferBox(0.96,0.12,0.24,0.03), 0,0.06,0, 0,0,0, 1),
-  // Recessed back cavity wall
+  xg(chamferBox(0.12,1.5,0.22,0.02), -0.42,0.06,0, 0,0,0, 1),
+  xg(chamferBox(0.12,1.5,0.22,0.02),  0.42,0.06,0, 0,0,0, 1),
+  xg(chamferBox(0.96,0.16,0.24,0.03), 0,1.48,0, 0,0,0, 1),
+  xg(chamferBox(0.96,0.12,0.24,0.03), 0,0.00,0, 0,0,0, 1),
+  /* BoxGeometry is centred, unlike chamferBox, so 0.81 is this wall's middle. */
   xg(new THREE.BoxGeometry(0.84,1.44,0.04), 0,0.81,-0.10, 0,0,0, 1),
-  // Stone shelf dividers
-  xg(chamferBox(0.84,0.06,0.20,0.01), 0,0.52,0, 0,0,0, 1),
-  xg(chamferBox(0.84,0.06,0.20,0.01), 0,1.04,0, 0,0,0, 1)
+  xg(chamferBox(0.84,0.06,0.20,0.01), 0,0.49,0, 0,0,0, 1),
+  xg(chamferBox(0.84,0.06,0.20,0.01), 0,1.01,0, 0,0,0, 1)
 ]);
 
-GEO.ossuaryBones = mergeGeos([
-  // Bottom tier skulls (4)
-  xg(new THREE.SphereGeometry(0.095,8,7), -0.30,0.22,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7), -0.10,0.22,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7),  0.10,0.22,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7),  0.30,0.22,0.02, 0,0,0, 1),
-  // Bottom tier bone bed
+/* The ossuary's skulls: [x, centre y, radius] in the frame's local space,
+   front facing +Z. The scene puts the real skull model in these slots once
+   it has loaded (dungeon_scene.js ossuaryWall) and keeps only the bone beds
+   below; until then the spheres stand in. */
+export const OSSUARY_SKULL_SLOTS = [
+  [-0.30,0.22,0.095], [-0.10,0.22,0.095], [0.10,0.22,0.095], [0.30,0.22,0.095],   // bottom tier
+  [-0.30,0.72,0.095], [-0.10,0.72,0.095], [0.10,0.72,0.095], [0.30,0.72,0.095],   // middle tier
+  [-0.20,1.22,0.095], [0.00,1.26,0.105], [0.20,1.22,0.095]                        // top tier
+];
+const ossuaryBeds = () => [
   xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.10,0.02, 0,0,0, 1),
   xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.36,0.02, 0,0,0, 1),
-  // Middle tier skulls (4)
-  xg(new THREE.SphereGeometry(0.095,8,7), -0.30,0.72,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7), -0.10,0.72,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7),  0.10,0.72,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7),  0.30,0.72,0.02, 0,0,0, 1),
-  // Middle tier bone bed
   xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.58,0.02, 0,0,0, 1),
   xg(new THREE.CylinderGeometry(0.022,0.022,0.78,5).rotateZ(Math.PI/2), 0,0.88,0.02, 0,0,0, 1),
-  // Top tier skulls (3)
-  xg(new THREE.SphereGeometry(0.095,8,7), -0.20,1.22,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.105,8,7),  0.00,1.26,0.02, 0,0,0, 1),
-  xg(new THREE.SphereGeometry(0.095,8,7),  0.20,1.22,0.02, 0,0,0, 1),
-  // Top tier bone bed
   xg(new THREE.CylinderGeometry(0.022,0.022,0.64,5).rotateZ(Math.PI/2), 0,1.10,0.02, 0,0,0, 1),
   xg(new THREE.CylinderGeometry(0.022,0.022,0.52,5).rotateZ(Math.PI/2), 0,1.38,0.02, 0,0,0, 1)
+];
+GEO.ossuaryBones = mergeGeos([
+  ...OSSUARY_SKULL_SLOTS.map(([x, y, r]) => xg(new THREE.SphereGeometry(r,8,7), x,y,0.02, 0,0,0, 1)),
+  ...ossuaryBeds()
 ]);
+GEO.ossuaryBeds = mergeGeos(ossuaryBeds());
 GEO.ossuaryWall = GEO.ossuaryFrame;
 GEO.sporePod = mergeGeos([
   xg(new THREE.SphereGeometry(0.38,9,8, 0,Math.PI*2, 0,Math.PI*0.75), 0,0.3,0, 0,0,0, 1,1.3,1),
@@ -582,59 +617,61 @@ GEO.spawn3_verdant = mergeGeos([
  */
 
 /* ANCIENT — fluted masonry: stepped base, tapered shaft, flared capital. */
-GEO.archPost_ancient = mergeGeos([
-  xg(chamferBox(0.30,0.12,0.30,0.02), 0,0.06,0, 0,0,0, 1),
-  xg(chamferBox(0.26,0.10,0.26,0.02), 0,0.17,0, 0,0,0, 1),
-  xg(new THREE.CylinderGeometry(0.10,0.12,1.30,8), 0,0.87,0, 0,0,0, 1),
-  xg(chamferBox(0.24,0.09,0.24,0.02), 0,1.56,0, 0,0,0, 1),
-  xg(chamferBox(0.30,0.10,0.30,0.02), 0,1.66,0, 0,0,0, 1)
-]);
-/* keystone in the middle of a flat lintel */
-GEO.archLintel_ancient = mergeGeos([
-  xg(chamferBox(1,0.20,0.34,0.04), 0,0,0, 0,0,0, 1),
-  xg(chamferBox(0.16,0.30,0.38,0.03), 0,0.04,0, 0,0,0, 1)
-]);
+GEO.archPost_ancient = boxUV(mergeGeos([
+  xg(chamferBox(0.40,0.16,0.44,0.03), 0,0.08,0, 0,0,0, 1),
+  xg(chamferBox(0.34,0.12,0.38,0.02), 0,0.22,0, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(0.13,0.15,1.28,10), 0,0.92,0, 0,0,0, 1),
+  xg(chamferBox(0.34,0.12,0.38,0.02), 0,1.62,0, 0,0,0, 1),
+  xg(chamferBox(0.42,0.14,0.48,0.03), 0,1.74,0, 0,0,0, 1)
+]));
+/* keystone in the middle of a flat lintel with projecting crown */
+GEO.archLintel_ancient = scaledBoxUV(mergeGeos([
+  xg(chamferBox(1.0, 0.22, 0.44, 0.03), 0, 0, 0, 0, 0, 0, 1),
+  xg(chamferBox(1.0, 0.06, 0.50, 0.02), 0, 0.21, 0, 0, 0, 0, 1),
+  xg(chamferBox(0.22, 0.36, 0.54, 0.03), 0, -0.04, 0, 0, 0, 0, 1)
+]), 2.18, 1.25, 1.30, 1.0);
 
 /* MOLTEN — fractured basalt: chunky, canted blocks and a cracked lintel. */
 GEO.archPost_molten = mergeGeos([
-  xg(chamferBox(0.28,0.52,0.28,0.03), 0,0.26,0, 0,0.10,0.02, 1),
-  xg(chamferBox(0.24,0.46,0.25,0.03), 0,0.75,0, 0,-0.14,-0.03, 1),
-  xg(chamferBox(0.26,0.44,0.24,0.03), 0,1.20,0, 0,0.20,0.02, 1),
-  xg(chamferBox(0.22,0.26,0.22,0.02), 0,1.55,0, 0,-0.10,0, 1)
+  xg(chamferBox(0.36,0.52,0.38,0.03), 0,0.26,0, 0,0.10,0.02, 1),
+  xg(chamferBox(0.32,0.46,0.34,0.03), 0,0.75,0, 0,-0.14,-0.03, 1),
+  xg(chamferBox(0.34,0.44,0.33,0.03), 0,1.20,0, 0,0.20,0.02, 1),
+  xg(chamferBox(0.30,0.28,0.32,0.02), 0,1.55,0, 0,-0.10,0, 1)
 ]);
-GEO.archLintel_molten = mergeGeos([
-  xg(chamferBox(1,0.24,0.36,0.03), 0,0,0, 0,0,0, 1),
-  xg(new THREE.ConeGeometry(0.09,0.20,4), -0.26,-0.16,0, Math.PI,0,0, 1),
-  xg(new THREE.ConeGeometry(0.07,0.16,4), 0.22,-0.14,0, Math.PI,0,0.2, 1)
-]);
+GEO.archLintel_molten = scaledBoxUV(mergeGeos([
+  xg(chamferBox(1,0.30,0.52,0.04), 0,0,0, 0,0,0, 1),
+  xg(chamferBox(0.34,0.22,0.54,0.03), 0,0.16,0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(0.10,0.24,4), -0.28,-0.18,0, Math.PI,0,0, 1),
+  xg(new THREE.ConeGeometry(0.08,0.18,4), 0.24,-0.15,0, Math.PI,0,0.2, 1)
+]), 2.18, 1.25, 1.30, 1.0);
 
 /* FROST — rimed ice: faceted tapering columns under a crystal lintel. */
 GEO.archPost_frost = mergeGeos([
-  xg(new THREE.CylinderGeometry(0.14,0.17,0.30,6), 0,0.15,0, 0,0,0, 1),
-  xg(new THREE.CylinderGeometry(0.09,0.14,1.24,6), 0,0.92,0, 0,0.3,0, 1),
-  xg(new THREE.OctahedronGeometry(0.13,0), 0,1.62,0, 0,0.4,0, 1,1.5,1)
+  xg(new THREE.CylinderGeometry(0.18,0.22,0.32,6), 0,0.16,0, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(0.12,0.18,1.24,6), 0,0.92,0, 0,0.3,0, 1),
+  xg(new THREE.OctahedronGeometry(0.16,0), 0,1.64,0, 0,0.4,0, 1,1.5,1)
 ]);
-GEO.archLintel_frost = mergeGeos([
-  xg(chamferBox(1,0.16,0.30,0.03), 0,0,0, 0,0,0, 1),
-  xg(new THREE.OctahedronGeometry(0.13,0), 0,0.10,0, 0,0.5,0, 1,1.2,1),
-  xg(new THREE.ConeGeometry(0.06,0.22,5), -0.30,-0.16,0, Math.PI,0,0, 1),
-  xg(new THREE.ConeGeometry(0.05,0.17,5), 0.28,-0.13,0, Math.PI,0,0, 1)
-]);
+GEO.archLintel_frost = scaledBoxUV(mergeGeos([
+  xg(chamferBox(1,0.24,0.48,0.04), 0,0,0, 0,0,0, 1),
+  xg(new THREE.OctahedronGeometry(0.18,0), 0,0.14,0, 0,0.5,0, 1,1.2,1),
+  xg(new THREE.ConeGeometry(0.08,0.28,5), -0.32,-0.18,0, Math.PI,0,0, 1),
+  xg(new THREE.ConeGeometry(0.06,0.22,5), 0.30,-0.15,0, Math.PI,0,0, 1)
+]), 2.18, 1.25, 1.30, 1.0);
 
 /* GRIM — gothic iron: narrow barbed posts and a pointed, spiked lintel. */
 GEO.archPost_grim = mergeGeos([
-  xg(chamferBox(0.28,0.10,0.28,0.02), 0,0.05,0, 0,0,0, 1),
-  xg(new THREE.CylinderGeometry(0.085,0.10,1.42,4).rotateY(Math.PI/4), 0,0.81,0, 0,0,0, 1),
-  xg(new THREE.ConeGeometry(0.10,0.24,4).rotateY(Math.PI/4), 0,1.62,0, 0,0,0, 1),
-  xg(new THREE.ConeGeometry(0.05,0.16,4), 0.13,1.10,0, 0,0,-1.45, 1),
-  xg(new THREE.ConeGeometry(0.05,0.16,4), -0.13,0.78,0, 0,0,1.45, 1)
+  xg(chamferBox(0.36,0.14,0.38,0.03), 0,0.07,0, 0,0,0, 1),
+  xg(new THREE.CylinderGeometry(0.12,0.14,1.42,4).rotateY(Math.PI/4), 0,0.81,0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(0.14,0.28,4).rotateY(Math.PI/4), 0,1.64,0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(0.06,0.16,4), 0.11,1.10,0, 0,0,-1.45, 1),
+  xg(new THREE.ConeGeometry(0.06,0.16,4), -0.11,0.78,0, 0,0,1.45, 1)
 ]);
-GEO.archLintel_grim = mergeGeos([
-  xg(chamferBox(1,0.15,0.30,0.02), 0,0,0, 0,0,0, 1),
-  xg(new THREE.ConeGeometry(0.11,0.26,4).rotateY(Math.PI/4), 0,0.16,0, 0,0,0, 1),
-  xg(new THREE.ConeGeometry(0.05,0.18,4), -0.32,0.12,0, 0,0,0, 1),
-  xg(new THREE.ConeGeometry(0.05,0.18,4), 0.32,0.12,0, 0,0,0, 1)
-]);
+GEO.archLintel_grim = scaledBoxUV(mergeGeos([
+  xg(chamferBox(1,0.26,0.48,0.03), 0,0,0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(0.14,0.36,4).rotateY(Math.PI/4), 0,0.22,0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(0.06,0.24,4), -0.34,0.14,0, 0,0,0, 1),
+  xg(new THREE.ConeGeometry(0.06,0.24,4), 0.34,0.14,0, 0,0,0, 1)
+]), 2.18, 1.25, 1.30, 1.0);
 
 /* VERDANT — overgrown: knotted root posts under a living branch lintel. */
 GEO.archPost_verdant = mergeGeos([
@@ -670,7 +707,7 @@ GEO.archLintel_overland = mergeGeos([
 
 GEO.bossShard = spireGeo(0.34,2.3,0.7);
 GEO.plinth   = chamferBox(0.92,0.5,0.92,0.06);
-GEO.platform = chamferBox(2.35,0.04,2.35,0.015);
+GEO.platform = scaledBoxUV(chamferBox(2.35,0.04,2.35,0.015), 1.0, 1.0, 1.0, 1.0);
 GEO.crystal = mergeGeos([
   xg(new THREE.OctahedronGeometry(0.3,0), 0,0,0, 0,0,0, 1,1.45,1),
   xg(new THREE.OctahedronGeometry(0.16,0), 0,0.34,0, 0,0.6,0, 1,1.4,1)
@@ -678,7 +715,9 @@ GEO.crystal = mergeGeos([
 GEO.ring     = new THREE.TorusGeometry(0.95,0.02,6,24).rotateX(-Math.PI/2);
 GEO.portal   = new THREE.CircleGeometry(0.86,24).rotateX(-Math.PI/2);
 GEO.runeRing = new THREE.RingGeometry(1.5,2.3,48).rotateX(-Math.PI/2);
-GEO.shaft    = new THREE.CylinderGeometry(0.45,1.7,6,12,1,true).translate(0,3,0);
+GEO.mistSheet = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+GEO.shaft   = new THREE.CylinderGeometry(0.35, 2.6, 14, 36, 1, true).translate(0, 7, 0);
+GEO.sunSpot = new THREE.CircleGeometry(1.0, 32).rotateX(-Math.PI / 2);
 GEO.brazier = mergeGeos([
   xg(new THREE.BoxGeometry(0.07,0.5,0.07), 0.16,0.25,0, 0,0,-0.25, 1),
   xg(new THREE.BoxGeometry(0.07,0.5,0.07), -0.08,0.25,0.14, 0.22,0,0.13, 1),

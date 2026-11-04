@@ -11,16 +11,22 @@
  */
 import { SPELLS } from './spells.js';
 import { roll, d as die, d20Roll } from './srd.js';
-import { hasFeature } from './features.js';
+import { hasFeature, hasFeat, hasShieldEquipped } from './features.js';
 import { AGGRO_RANGE, COMBAT_JOIN_RANGE, MONSTER_ATTACK_CD, MONSTER_SPEED_MULT,
   THREAT_WEIGHT, THREAT_DIST_WEIGHT, THREAT_JITTER, THREAT_HALFLIFE_SEC, TARGET_SWITCH_MARGIN,
   KITE_THREAT_RANGE, KITE_RETREAT_DIST, KITE_COMMIT_SEC,
   TACTICAL_BLOODIED_FRAC, TACTICAL_DODGE_BLOODIED_FRAC, TACTICAL_DODGE_PIN_THREATS,
-  FLANK_OFFSET, PACK_TAGS, PACK_IDS, PACK_FOCUS_BONUS, FLOOR } from './constants.js';
-import { hasEffect, getEffectMods, tickEffects as _tickEffects, applyEffect, clearEffect, rollSave, rollSaveDetail } from './conditions.js';
-import { provokesOA, strikeInterval, attackAnimDelay, scheduleFollowUpStrike } from './turn_engine.js';
+  FLANK_OFFSET, PACK_TAGS, PACK_IDS, PACK_FOCUS_BONUS, FLOOR, WALL } from './constants.js';
+import { hasEffect, getEffectMods, tickEffects as _tickEffects, applyEffect, clearEffect, rollSave, rollSaveDetail, ROUND_SECONDS } from './conditions.js';
+import { sightAdvantage, noteAttackFromDark, canSee, noticeRangeMul } from './light_rules.js';
+import { monsterLightTraits } from './monster_light.js';
+import { lightStateOf, addDarkZone, VIRTUAL_LIGHTS, zonePos } from './light_sources.js';
+import { provokesOA, strikeInterval, attackAnimDelay, scheduleFollowUpStrike, actionAnimBusy, actionAnimRemaining } from './turn_engine.js';
+import { SPELL_CHARGE_SECONDS } from '../render/body_fx.js';
 import { groundY as groundYAt, easeBodyY } from '../dungeon/elevation.js';
 import { Motion } from './motion_debug.js';
+import { FACING_BAND_MOVE, FACING_BAND_REST } from './sprite_animator.js';
+import { firstRunTip } from './help_ui.js';
 
 /** Spells accessible to specific boss monsters (by id).  Keys are spell ids
  *  from the SPELLS registry; bosses cast them on alternating attack cycles. */
@@ -174,6 +180,16 @@ export const monsterAiMethods = {
       /* tick timed effects on monsters (combat clock — see conditions.js) */
       _tickEffects(m, this.fxNow);
       this.fxStatusTray(m);
+      /* Dominate Monster ran out (or the caster's concentration broke and the
+         effect went with it): hand the creature back its own will. */
+      if (m.dominatedBy && !hasEffect(m, 'dominated')) this.releaseDominated(m);
+      const dominated = !!m.dominatedBy;
+      /* Banishment: off the plane until the effect lapses — nothing below
+         applies to a creature that is not here. */
+      if (m._banished) {
+        if (!hasEffect(m, 'banished')) this.returnBanished(m);
+        continue;
+      }
 
       /* decay accumulated threat (exponential half-life) so stale aggro fades */
       if (m._threat) {
@@ -192,12 +208,26 @@ export const monsterAiMethods = {
         } else {
           continue;
         }
+      } else if (this._cutOffFromParty(m, alive)) {
+        /* Awake, but no living hero can walk to it without a gate opening —
+           and no gate opens while it keeps the fight alive. The one hero who
+           could reach it is dead (that is the only way a woken monster ends
+           up here). Left active it would hold the party in initiative for
+           ever: monsters cannot path through a shut door, heroes may not
+           open one mid-fight, and the stall watchdog is off in manual mode
+           and blind whenever a regenerating monster keeps the HP total
+           moving. Sleep now; the survivors walk up, the gate swings, and it
+           wakes on its own terms. */
+        this.disengageMonster(m);
+        if (typeof this.fxLog === 'function') this.fxLog(`🚪 ${m.data.name} loses track of the party behind a shut door.`, 'sys');
+        continue;
       }
 
       /* Regeneration (SRD trait): heal per tick while below max, unless fire
          or acid damage suppressed it (m._noRegenUntil, set in damageMonster). */
       if (m.data.regen && m.data.hp < m.data.maxHp &&
-          !(m._noRegenUntil && this.fxNow < m._noRegenUntil)) {
+          !(m._noRegenUntil && this.fxNow < m._noRegenUntil) &&
+          !(monsterLightTraits(m).vampire && lightStateOf(m) === 'bright')) {   // 43: light stops a vampire mending
         m._regenT = (m._regenT || 0) + dt;
         if (m._regenT >= 3) {
           m._regenT = 0;
@@ -207,9 +237,44 @@ export const monsterAiMethods = {
         }
       }
 
+      /* Light traits (docs/LIGHT_IDEAS.md 39, 40): a Shadow hides in dim light
+         or darkness as a bonus action; a darkmantle wraps itself in magical
+         Darkness once it wakes. */
+      {
+        const lt = monsterLightTraits(m);
+        if (lt.shadowStealth && m.active && !m._hidden && lightStateOf(m) !== 'bright'
+            && this.initiative && this.initiative.active) {
+          m._hidden = true;
+          if (this.fxLog) this.fxLog(`🌑 ${m.data.name} slips into the shadows.`, 'roll');
+        }
+        /* 43: sunlight (Sunbeam, Daylight, Radiant Flare) burns a vampire */
+        if (lt.vampire && m.active) {
+          let inSun = false;
+          for (const L of VIRTUAL_LIGHTS) {
+            if (!L.sunlight) continue;
+            const p = zonePos(L);
+            if (Math.hypot(p.x - m.x, p.z - m.z) <= (L.bright || 0)) { inSun = true; break; }
+          }
+          if (inSun) {
+            m._sunBurnT = (m._sunBurnT || 0) + dt;
+            if (m._sunBurnT >= 6) {
+              m._sunBurnT = 0;
+              const burn = (Math.floor(Math.random() * 6) + 1) + (Math.floor(Math.random() * 6) + 1);   // 2d6
+              if (this.spellDamage) this.spellDamage(m, burn, null, false, { dmgType: 'radiant', magical: true });
+              if (this.fxLog) this.fxLog(`☀️ ${m.data.name} smokes and burns in the sunlight! (${burn} radiant)`, 'crit');
+            }
+          } else m._sunBurnT = 0;
+        }
+        if (lt.darknessAura && m.active && !m._darkZone) {
+          m._darkZone = addDarkZone({ follow: m, r: lt.darknessAura });
+          if (this.fxLog) this.fxLog(`🌑 Unnatural darkness billows from ${m.data.name}!`, 'crit');
+        }
+      }
+
       /* Real-time Aura Pulse (Stench, Fetid Cloud, Gibbering, Fire Form aura, etc.):
-         pulses every N seconds (default 4.0s) against all alive heroes within radius */
-      if (m.data.abilities && m.data.abilities.some(a => a.trigger === 'aura' && !a.fxOnly)) {
+         pulses every N seconds (default 4.0s) against all alive heroes within radius.
+         A dominated creature's aura is not turned on the party. */
+      if (!dominated && m.data.abilities && m.data.abilities.some(a => a.trigger === 'aura' && !a.fxOnly)) {
         m._auraT = (m._auraT || 0) + dt;
         if (m._auraT >= AURA_PULSE_EVERY) {
           m._auraT = 0;
@@ -229,7 +294,21 @@ export const monsterAiMethods = {
         }
       }
 
-      const tgt = this.pickMonsterTarget(m, alive);
+      let tgt;
+      if (dominated) {
+        /* Fights for its master: nearest hostile monster. With none left it
+           simply stands its turn. */
+        tgt = this.pickDominatedTarget(m);
+        if (!tgt) {
+          m.walk = false; m.moving = false;
+          if (this.isCurrentActor(m)) m.actUsed = true;
+          continue;
+        }
+      } else {
+        /* Hostiles see the party AND any creature the party has turned. */
+        const thralls = this.dominatedMonsters();
+        tgt = this.pickMonsterTarget(m, thralls.length ? alive.concat(thralls) : alive);
+      }
       if (!tgt) continue;
 
       this.runMonsterBehavior(m, tgt, dt);
@@ -266,17 +345,26 @@ export const monsterAiMethods = {
    *
    * One BFS, cached against door state and party position, instead of a path
    * query per monster per frame. `_unlockedDoors` only ever grows — doors never
-   * re-lock — so a monster can never become sealed AFTER it woke, which is what
-   * makes gating activation alone sufficient.
+   * re-lock — so the reachable region only ever shrinks one way: when the
+   * living party itself changes. A hero who ended up past a shut gate wakes
+   * the room beyond, and when he dies there the survivors are sealed off from
+   * a fight that is still running. That is why active monsters are checked
+   * against this too (_cutOffFromParty, in updateMonsters), not only the
+   * sleeping ones.
    */
   _partyReachableRooms(alive) {
+    const reach = this._partyReach(alive);
+    return reach ? reach.rooms : null;
+  },
+
+  _partyReach(alive) {
     const D = this.D;
     if (!D || !D.grid || !D.roomId || !alive || !alive.length) return null;
 
     let key = (this._unlockedDoors ? this._unlockedDoors.size : -1) + '|';
     for (const h of alive) key += this.cellOf(h.x, h.z) + ',';
     if (this._reachRoomCache && this._reachRoomCache.key === key) {
-      return this._reachRoomCache.rooms;
+      return this._reachRoomCache;
     }
 
     const W = D.W, H = D.H, total = W * H;
@@ -299,7 +387,10 @@ export const monsterAiMethods = {
         const ny = y + (d === 2 ? 1 : d === 3 ? -1 : 0);
         if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
         const n = ny * W + nx;
-        if (seen[n] || D.grid[n] !== FLOOR) continue;
+        /* Only walls and gates seal. Water is crossed by flyers and shot
+           over by everyone, so a pool is part of the region, not its edge —
+           otherwise a stirge hovering over a mere reads as cut off. */
+        if (seen[n] || D.grid[n] === WALL) continue;
         /* A shut door is a wall for this purpose — stop, and do not mark it
            seen, so it still gets reached once it opens. */
         if (doorCheck && this.isCellDoorClosed(n)) continue;
@@ -307,8 +398,8 @@ export const monsterAiMethods = {
       }
     }
 
-    this._reachRoomCache = { key, rooms };
-    return rooms;
+    this._reachRoomCache = { key, rooms, seen };
+    return this._reachRoomCache;
   },
 
   /** True if `m` sits in a room the party cannot currently walk to. */
@@ -319,10 +410,39 @@ export const monsterAiMethods = {
     return !rooms.has(m.roomId);
   },
 
+  /** True if the cell `m` is standing on right now cannot be walked to from
+   *  any living hero without opening a gate. Cell-based, unlike
+   *  _sealedFromParty: `roomId` is the spawn room and a monster that chased
+   *  the party two rooms over still carries it. */
+  _cutOffFromParty(m, alive) {
+    if (!m) return false;
+    const reach = this._partyReach(alive);
+    if (!reach) return false;
+    const c = this.cellOf(m.x, m.z);
+    if (c < 0 || c >= reach.seen.length) return false;
+    /* A body clipped into a wall is a different bug with its own watchdog;
+       calling it cut off would just flip it asleep and awake every frame. */
+    if (this.D.grid[c] === WALL) return false;
+    return !reach.seen[c];
+  },
+
+  /** Put an active monster back to sleep. Nothing about the encounter is
+   *  reset beyond that: heroDecideTarget drops it as a target the moment it
+   *  is inactive, and it wakes again through tryActivateMonster like any
+   *  other sleeper once someone can actually reach it. */
+  disengageMonster(m) {
+    m.active = false;
+    m._threat = null;
+    m._tgtIdx = undefined;
+    if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m);
+    else { m.path = null; m.pathI = 0; }
+    m.moving = false;
+  },
+
   activateRoomMonsters(roomId) {
     if (roomId == null) return;
     for (const m of this.monsters) {
-      if (m.roomId === roomId && !m.active && m.data.hp > 0) {
+      if (m.roomId === roomId && !m.active && m.data.hp > 0 && !m._banished) {
         m.active = true;
         if (m.ent && m.ent.grp) m.ent.grp.visible = true;
       }
@@ -337,6 +457,7 @@ export const monsterAiMethods = {
    */
   tryActivateMonster(m, alive) {
     if (m.active) return true;
+    if (m._banished) return false;
     const known = this.visitedRooms[m.roomId] || this.revealed[this.cellOf(m.x, m.z)];
     if (!known) return false;
 
@@ -367,7 +488,10 @@ export const monsterAiMethods = {
     const range = inFight ? COMBAT_JOIN_RANGE : AGGRO_RANGE;
 
     for (const h of alive) {
-      if (Math.hypot(h.x - m.x, h.z - m.z) < range &&
+      /* a lit hero is noticed from further, one lost in the dark from closer */
+      /* 48: at night an unlit party is harder to spot */
+      const night = this.D && this.D.timeOfDay === 'night' && !h._lightActive ? 0.8 : 1;
+      if (Math.hypot(h.x - m.x, h.z - m.z) < range * noticeRangeMul(m, h) * night &&
           this.hasLOS(h.x, h.z, m.x, m.z)) {
         m.active = true;
         m.ent.grp.visible = true;
@@ -413,8 +537,14 @@ export const monsterAiMethods = {
     const packFocus = (m._pack && this.packFocusHero(m)) ?? -1;
     const isTactical = this.isTacticalMonster(m);
 
+    /* Unseen heroes (Pass Without Trace) are not targets while anyone
+       visible is; if the whole party is hidden the monster guesses. */
+    /* Same for heroes the monster can't see in the dark (light_rules.js). */
+    const seenHero = o => !getEffectMods(o).invisible && canSee(m, o);
+    const anyVisible = alive.some(seenHero);
     let tgt = null, best = -Infinity;
     for (const h of alive) {
+      if (anyVisible && !seenHero(h)) continue;
       const hi = this.heroes.indexOf(h);
       const d = Math.hypot(h.x - m.x, h.z - m.z);
       /* ignore heroes way out of aggro range unless we're already on them */
@@ -424,6 +554,8 @@ export const monsterAiMethods = {
                 + (AGGRO_RANGE - d) * THREAT_DIST_WEIGHT
                 + (h._aiJitter || 0);
       if (hi === packFocus) score += PACK_FOCUS_BONUS;
+      /* 41: drawn to light — a moth makes for whoever carries a flame */
+      if (h._lightActive && monsterLightTraits(m).drawnToLight) score += 40;
 
       if (isTactical && h.data) {
         const clsKey = h.data.classKey;
@@ -445,6 +577,18 @@ export const monsterAiMethods = {
       m._targetDist = Math.hypot(tgt.x - m.x, tgt.z - m.z);
     }
     return tgt;
+  },
+
+  /** Nearest living hostile monster for a dominated creature to fight. */
+  pickDominatedTarget(m) {
+    let best = null, bestD = Infinity;
+    for (const o of this.monsters) {
+      if (o === m || !this.isHostileMonster(o) || !o.active) continue;
+      const d = Math.hypot(o.x - m.x, o.z - m.z);
+      if (d < bestD) { bestD = d; best = o; }
+    }
+    if (best) { m._tgtIdx = -1; m._targetDist = bestD; }
+    return best;
   },
 
   /** Credit damage as threat on a monster (called from damageMonster). */
@@ -576,6 +720,11 @@ export const monsterAiMethods = {
        monster just shot, which is why only ranged ones appeared to cheat.
        Initiative rolls on the very next frame, so holding here costs a frame. */
     if (!this.isCurrentActor(m)) return;
+    if (actionAnimBusy(m, this)) {
+      m.walk = false;
+      m.moving = !!(m.path && m.pathI < m.path.length && (m.moveLeft || 0) > 0);
+      return;
+    }
 
     /* Incapacitated (asleep, stunned, paralysed, petrified, held): no action,
        no reaction, no movement — the turn is simply skipped.
@@ -610,16 +759,17 @@ export const monsterAiMethods = {
     /* Ranged monster: if a melee hero is breathing down our neck, kite
        away rather than stand and die. Otherwise hold at range and shoot. */
     if (m.data.ranged) {
-      const threat = this.nearestMeleeThreat(m);
+      const threat = m.dominatedBy ? null : this.nearestMeleeThreat(m);
       if (threat) {
         this.monsterKite(m, tgt, threat, dt);
         return;
       }
-      if (dist <= m.data.rngRange) {
+      const canSee = this.hasLOS(m.x, m.z, tgt.x, tgt.z);
+      if (dist <= m.data.rngRange && canSee) {
         this.monsterRanged(m, tgt, dt);
         return;
       }
-      /* target out of range: fall through to chase and close the gap */
+      /* target out of range or blocked by cover/wall: fall through to chase and close the gap / find an angle */
     }
 
     /* Dash / Dodge: the tactical fallbacks for a turn where the monster's
@@ -814,19 +964,35 @@ export const monsterAiMethods = {
     if (!this.hasLivePath(m)) {
       this.setEntityPath(m, this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m }));
     }
+    /* face the target so shots/anims look right while backing away */
+    this.faceTowards(m, tgt.x, tgt.z, dt);
+
+    /* fire first if there's already a clean shot at the target and action is free,
+       so the cast, charge, projectile, and hit animation complete before retreating */
+    if (!m.actUsed
+        && Math.hypot(tgt.x - m.x, tgt.z - m.z) <= m.data.rngRange
+        && (!this.hasLOS || this.hasLOS(m.x, m.z, tgt.x, tgt.z))) {
+      m.actUsed = true;
+      this._countSwing(m);
+      this.monsterRangedAttack(m, tgt);
+    }
+
+    if (actionAnimBusy(m, this)) {
+      m.walk = false;
+      m.moving = !!(m.path && m.pathI < m.path.length && (m.moveLeft || 0) > 0);
+      return;
+    }
+
     const mods = getEffectMods(m);
     let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
     if (m.slowUntil && this.elapsed < m.slowUntil) spd *= 0.5;
     m.walk = this.moveStep(m, spd, dt);
     m.moving = m.walk;
 
-    /* face the target so shots/anims look right while backing away */
-    this.faceTowards(m, tgt.x, tgt.z, dt);
-
-    /* fire if there's a clean shot at the target and action is free */
+    /* fire if stepping just opened a clean shot at the target and action is free */
     if (!m.actUsed
         && Math.hypot(tgt.x - m.x, tgt.z - m.z) <= m.data.rngRange
-        && this.hasLOS(m.x, m.z, tgt.x, tgt.z)) {
+        && (!this.hasLOS || this.hasLOS(m.x, m.z, tgt.x, tgt.z))) {
       m.actUsed = true;
       this._countSwing(m);
       this.monsterRangedAttack(m, tgt);
@@ -840,6 +1006,7 @@ export const monsterAiMethods = {
     m.path = null;
     this.faceTowards(m, tgt.x, tgt.z, dt);
     if (!m.actUsed) {
+      if (typeof this.hasLOS === 'function' && !this.hasLOS(m.x, m.z, tgt.x, tgt.z)) return;
       m.actUsed = true;
       this._countSwing(m);
       this.monsterRangedAttack(m, tgt);
@@ -880,6 +1047,23 @@ export const monsterAiMethods = {
     }
     /* Blood Frenzy (SRD sharks / sahuagin): advantage vs a target not at full HP */
     if (m.data.bloodFrenzy && h.data && h.data.maxHp && h.data.hp < h.data.maxHp) adv += 1;
+    /* Protection fighting style: an adjacent shield-bearer's reaction */
+    if (this.protectionReaction) adv += this.protectionReaction(m, h);
+    /* Light & sight (light_rules.js). Most dungeon natives have darkvision,
+       so the dark rarely hides the party from them — but it can. */
+    const sight = sightAdvantage(m, h);
+    adv += sight.adv;
+    noteAttackFromDark(m, sight.unseenAttacker);
+    m._hidden = false;                           // striking gives a hider away
+    /* Sunlight Sensitivity / Weakness (SRD): fighting in bright light — a
+       torch counts — is at disadvantage. docs/LIGHT_IDEAS.md 17, 39 */
+    const lt = monsterLightTraits(m);
+    if ((lt.sunlightSensitive || lt.sunlightWeak) && lightStateOf(m) === 'bright') {
+      adv -= 1;
+      if (!m._sunLogged) { m._sunLogged = true; this.fxLog(`☀️ ${m.data.name} flinches from the light.`, 'roll'); }
+    }
+    if (sight.unseenAttacker) this.fxLog(`🌑 ${m.data.name} strikes unseen from the dark!`, 'roll');
+    else if (sight.unseenTarget) this.fxLog(`🌑 ${m.data.name} swings blind at ${h.data.name}.`, 'roll');
     return adv;
   },
 
@@ -892,11 +1076,22 @@ export const monsterAiMethods = {
 
   /** Fire a ranged projectile at a hero. */
   monsterRangedAttack(m, h) {
+    if (this.isMonsterEntity(h)) return this.monsterAttackMonster(m, h, true);
+    if (typeof globalThis.setCombatActionFocus === 'function' && m && h) {
+      globalThis.setCombatActionFocus(m, h, 1.25);
+    }
     /* Invisible monsters are revealed the moment they attack (5e) */
     if (hasEffect(m, 'invisible')) this.revealInvisible(m);
     /* Animated-atlas monsters play their one-shot attack sheet when firing
        (forced, for the same Multiattack reason as monsterAttack). */
     if (m.ent && m.ent.anim && m.ent.anim.play) m.ent.anim.play('attack', true);
+    const animRem = actionAnimRemaining(m);
+    if (animRem > 0 && typeof this.fxHold === 'function') this.fxHold(animRem);
+    const cover = (typeof this.getCover === 'function')
+      ? this.getCover(m, h)
+      : { type: 'none', acBonus: 0, dexBonus: 0 };
+    if (cover.type === 'total') return;
+
     const adv = this.monsterAttackAdv(m, h);
     const d20 = d20Roll(adv);
     const atkMods = getEffectMods(m);
@@ -905,9 +1100,10 @@ export const monsterAiMethods = {
     const total = d20 + atkBonus;
     let crit = d20 === 20;
     if (crit) this.triggerHitStop(2);
-    const ac = this.heroAC(h);
-    const from = this._v3(m.x, 0.55, m.z);
-    const to = this._v3(h.x, 0.4, h.z);
+    const baseAc = this.heroAC(h);
+    const ac = baseAc + cover.acBonus;
+    const from = this.fxChestPos ? this.fxChestPos(m) : this._v3(m.x, 0.55, m.z);
+    const to = this._v3(h.x, (this.fxGroundY ? this.fxGroundY(h.x, h.z) : 0) + 0.4, h.z);
 
     /* Not every ranged attacker draws a bow. `cantripClass` names one of the
        hero cantrip classes (CANTRIP_FX in combat.js) and routes the whole
@@ -918,14 +1114,19 @@ export const monsterAiMethods = {
     const hitSfx = cantripClass ? 'spellImpact' : 'bowHit';
     const missSfx = cantripClass ? 'spellImpact' : 'bowBlock';
 
+    const preCharge = !!(cantripClass && typeof this.fxSpellCharge === 'function' && typeof this.fxImpactDelay === 'function');
+    if (preCharge) {
+      this.fxSpellCharge(m, m.data.rangedColor || m.data.color || 0xff8a5a, null, { x: h.x - m.x, z: h.z - m.z });
+    }
     const deliver = (color, onImpact) => {
+      const curFrom = this.fxChestPos ? this.fxChestPos(m) : this._v3(m.x, 0.55, m.z);
       if (cantripClass) {
-        this.fxCantripDelivery(from, to, cantripClass, {
+        this.fxCantripDelivery(curFrom, to, cantripClass, { caster: preCharge ? null : m,
           dmgType: m.data.rangedDmgType || 'magic', follow: h, onImpact
         });
       } else {
         this.fxPlaySfx('bowAttack', { volume: 0.5 });
-        this.fxProjectile(from, to, 'arrow', color, onImpact);
+        this.fxProjectile(curFrom, to, 'arrow', color, onImpact);
       }
     };
 
@@ -933,8 +1134,9 @@ export const monsterAiMethods = {
        authored windup -> release -> recover, so firing immediately shows the
        arrow already in flight while the archer is still drawing. Melee already
        does this; ranged did not. 0 for un-animated monsters keeps their timing. */
-    const impactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
+    const rawImpactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
       ? m.ent.anim.attackImpactDelay() : 0;
+    const impactIn = preCharge ? Math.max(rawImpactIn, SPELL_CHARGE_SECONDS) : rawImpactIn;
     const onRelease = (fn) => this.fxImpactDelay(impactIn, fn);
 
     if (cantripClass) {
@@ -955,7 +1157,8 @@ export const monsterAiMethods = {
       const saveAb = MONSTER_CANTRIP_SAVES[cantripClass] || 'dex';
       const prof = Math.max(2, Math.floor(((m.data.cr || 1)) / 4) + 2);
       const dc = m.data.spellDC || (8 + Math.max(prof, atkBonus));
-      const saveRes = rollSaveDetail(h, saveAb, dc, { magic: true });
+      const coverDex = (saveAb === 'dex') ? cover.dexBonus : 0;
+      const saveRes = rollSaveDetail(h, saveAb, dc, { magic: true, bonus: coverDex });
 
       if (saveRes.saved) {
         onRelease(() => {
@@ -977,8 +1180,11 @@ export const monsterAiMethods = {
           if (h.data.hp <= 0) return;
           this.fxPlaySfx(hitSfx, { volume: 0.6 });
           const mit = {};
-          const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
+          const dealt = this.applyIncomingDamage
+            ? this.applyIncomingDamage(h, dmg, mit, { dmgType: m.data.rangedDmgType || 'magic', magical: true })
+            : (h.data.hp -= dmg, dmg);
           this.fxHitFlash(h.ent);
+          if (cantripClass && this.fxPoseHit) this.fxPoseHit(h, m);
           if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, '#ff9a7a');
           else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), '#ff9a7a');
           this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
@@ -1000,7 +1206,14 @@ export const monsterAiMethods = {
       return;
     }
 
+    if ((crit || total >= ac) && this.mirrorImageIntercept && this.mirrorImageIntercept(h, total)) {
+      onRelease(() => deliver(0x999999, () => this.fxPlaySfx(missSfx, { volume: 0.45 })));
+      return;
+    }
     if (!crit && total < ac) {
+      if (total >= baseAc && cover.acBonus > 0) {
+        this.fxLog(`🛡️ ${h.data.name} is protected by ${cover.type === 'threeQuarters' ? 'three-quarters' : 'half'} cover (+${cover.acBonus} AC vs ${m.data.name}'s shot)!`, 'miss');
+      }
       /* spawn a visible projectile that "misses" */
       onRelease(() => {
         deliver(0x999999, () => {
@@ -1022,6 +1235,7 @@ export const monsterAiMethods = {
       this.fxPlaySfx(hitSfx, { volume: 0.6 });
       const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg) : (h.data.hp -= dmg, dmg);
       this.fxHitFlash(h.ent);
+      if (cantripClass && this.fxPoseHit) this.fxPoseHit(h, m);
       this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
       this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
       if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, m, dealt);
@@ -1046,15 +1260,24 @@ export const monsterAiMethods = {
   /** Apply boss-inflicted damage to a hero: HP, bar, floater, downs, perks.
    *  `dmgType` is plumbed for future hero-resistance support (roadmap 2F);
    *  heroes have no statblock resistance yet, so it is not currently reduced. */
-  hurtHero(h, dmg, src, colorHex = 0xff5040, dmgType = null) {
+  hurtHero(h, dmg, src, colorHex = 0xff5040, dmgType = null, magical = false) {
     if (h.data.hp <= 0) return 0;
+    /* A monster on the receiving end (a dominated creature, or a hostile hit
+       by one): the monster damage path owns resistances, death and loot. */
+    if (this.isMonsterEntity(h)) {
+      const credit = src && src.dominatedBy ? src.dominatedBy : null;
+      const r = this.damageMonster(h, dmg, credit, false, { skipPerks: true, via: src, dmgType });
+      return r ? r.dmg : 0;
+    }
     const mit = {};
-    const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
+    const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit, { dmgType, magical }) : (h.data.hp -= dmg, dmg);
     this.fxHitFlash(h.ent);
+    if (magical && this.fxPoseHit) this.fxPoseHit(h, src);
     if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, '#ff7a5a');
     else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), '#ff7a5a');
     this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
     if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, src, dealt);
+    if (!h.companion && h.data.hp > 0 && h.data.hp < h.data.maxHp * 0.5) firstRunTip('potion');
     if (h.data.hp <= 0) {
       if (h.companion && this.killCompanion) {
         this.killCompanion(h, src);
@@ -1072,9 +1295,17 @@ export const monsterAiMethods = {
   /** Boss pool / data-driven cycle ability, if the cadence is due.
    *  Returns true if an ability was used (the monster's action is spent). */
   tryMonsterCycleAbility(m, tgt) {
+    /* A dominated creature only swings (its spells and breath are aimed
+       through hero-shaped resolvers), and nothing aims an ability at another
+       monster for the same reason — they close and hit it instead. */
+    if (m.dominatedBy || this.isMonsterEntity(tgt)) return false;
+    /* Silence: no spells. Non-spell abilities (a breath, a hook, a grab) still
+       work — only entries that name a spell are verbal. */
+    const silenced = hasEffect(m, 'silenced');
     /* legacy boss pool takes precedence */
     const spells = m.isBoss ? BOSS_SPELLS[m.data.id] : null;
     if (spells) {
+      if (silenced) return false;
       if ((m._spellCycle || 0) >= BOSS_SPELL_EVERY) {
         m._spellCycle = 0;
         this.monsterCastSpell(m, tgt, spells);
@@ -1095,6 +1326,7 @@ export const monsterAiMethods = {
        in — from being wasted on a hero already standing next to it. */
     const dist = Math.hypot(tgt.x - m.x, tgt.z - m.z);
     const cyc = abs.filter(a => a.trigger === 'cycle' &&
+      !(silenced && a.spell) &&
       !(a.maxUses != null && (spent[a.key] || 0) >= a.maxUses) &&
       !(a.range != null && dist > a.range) &&
       !(a.minRange != null && dist < a.minRange));
@@ -1277,8 +1509,12 @@ export const monsterAiMethods = {
        onHit riders, auras and death bursts that must stay immediate. */
     const abilityImpactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
       ? m.ent.anim.attackImpactDelay() : 0;
+    const isSpell = !!(fx.magic || (key && SPELLS[key]));
+    /* Mage Slayer: casting next to one invites a reaction attack */
+    if (isSpell && this.mageSlayerReaction) this.mageSlayerReaction(m);
     this.fxImpactDelay(abilityImpactIn, () => {
-      for (const h of targets) this._resolveAbilityOnHero(m, h, fx, label, { aoe: !!fx.aoe });
+      if (m.data.hp <= 0 || m.dead) return;
+      for (const h of targets) this._resolveAbilityOnHero(m, h, fx, label, { aoe: !!fx.aoe, isSpell });
       this.refreshHud();
     });
   },
@@ -1288,6 +1524,10 @@ export const monsterAiMethods = {
   _resolveAbilityOnHero(m, h, fx, label, opts = {}) {
     let saveRes = null;
     let dc = 10;
+    /* Mage Slayer: advantage on saves against a spell cast by an adjacent creature */
+    const isSpell = !!(fx.magic || opts.isSpell);
+    const mageSlayerAdv = isSpell && h.data && hasFeat(h.data, 'mageSlayer')
+      && Math.hypot(m.x - h.x, m.z - h.z) <= 1.8 ? 1 : 0;
     if (fx.save) {
       const abStat = fx.save.ab || 'con';
       const prof = m.data.statblock?.prof || Math.max(2, Math.floor((m.data.cr || 1) / 4) + 2);
@@ -1295,7 +1535,7 @@ export const monsterAiMethods = {
       const statMod = Math.floor((statVal - 10) / 2);
       const calculatedDC = 8 + prof + statMod;
       dc = fx.save.dc != null ? Math.max(fx.save.dc, calculatedDC) : calculatedDC;
-      saveRes = rollSaveDetail(h.data || h, fx.save.ab, dc, { magic: !!fx.magic });
+      saveRes = rollSaveDetail(h.data || h, fx.save.ab, dc, { magic: !!fx.magic, adv: mageSlayerAdv });
     }
     const saved = saveRes ? saveRes.saved : false;
     this.fxRichAbilityVFX(m, h, fx, label, opts);
@@ -1329,10 +1569,18 @@ export const monsterAiMethods = {
     let dmg = 0;
     if (fx.dice) {
       dmg = roll(fx.dice[0], fx.dice[1], fx.dice[2] || 0);
-      if (saved) dmg = fx.save && fx.save.half ? Math.floor(dmg / 2) : 0;
+      /* Evasion (rogue 7 / monk 7): against a DEX save for half, a pass takes
+         nothing and a fail takes half. */
+      const dexHalf = fx.save && fx.save.half && (fx.save.ab || 'con') === 'dex';
+      const evasion = dexHalf && h.data && hasFeature(h.data, 'evasion');
+      /* Shield Master's reaction: a passed DEX save for half means no damage */
+      const shieldMaster = dexHalf && saved && h.data && hasFeat(h.data, 'shieldMaster') && hasShieldEquipped(h.data) && !h.reactionUsed;
+      if (shieldMaster) { h.reactionUsed = true; dmg = 0; this.fxText('shield!', this._v3(h.x, 1.3, h.z), '#c0d8ff'); }
+      else if (evasion) dmg = saved ? 0 : Math.floor(dmg / 2);
+      else if (saved) dmg = fx.save && fx.save.half ? Math.floor(dmg / 2) : 0;
       if (dmg > 0) {
         this.fxLog(`${m.data.name}'s ${label} hits ${h.data.name} for ${dmg}${saved ? ' (saved for half)' : ''}`, 'down');
-        this.hurtHero(h, dmg, m, fx.color || 0xff5040, fx.dmgType);
+        this.hurtHero(h, dmg, m, fx.color || 0xff5040, fx.dmgType, isSpell);
       } else {
         this.fxText(saved ? 'save!' : 'resist', this._v3(h.x, 1.1, h.z), '#9aa');
       }
@@ -1364,7 +1612,7 @@ export const monsterAiMethods = {
       /* repeat save each round to shake the condition off (5e "at the end
          of each of its turns") — reuses the ability's own save & DC */
       if (fx.effect.repeatSave && fx.save)
-        eOpts.repeatSave = { ability: fx.save.ab, dc: fx.save.dc, every: 6 };
+        eOpts.repeatSave = { ability: fx.save.ab, dc: fx.save.dc, every: ROUND_SECONDS };
       /* until-rest debuffs (drained / corroded) carry no duration; tag them
          so rest.js clears them on a short/long rest */
       if (fx.effect.dur == null) eOpts.tag = 'rest';
@@ -1553,7 +1801,7 @@ export const monsterAiMethods = {
       /* buff: apply a status effect to self (raging / bloodlust / hasted…) */
       if (ab.buff) {
         const effKey = typeof ab.buff === 'string' ? ab.buff : ab.buff.key;
-        const dur = (typeof ab.buff === 'object' ? ab.buff.dur : null) || ab.dur || 5;
+        const dur = (typeof ab.buff === 'object' ? ab.buff.dur : null) || ab.dur || ROUND_SECONDS;
         applyEffect(m, effKey, { duration: dur, elapsed: this.fxNow });
         this.fxLog(` ${m.data.name}'s ${ab.label || 'kill buff'}!`, 'crit');
         this.fxText(ab.label || 'kill buff', this._v3(m.x, 1.5, m.z), '#e8c25a');
@@ -1593,7 +1841,7 @@ export const monsterAiMethods = {
       /* buff: standard self-buff (most common — Berserk, Bloodlust). */
       if (ab.buff) {
         const effKey = typeof ab.buff === 'string' ? ab.buff : ab.buff.key;
-        const dur = (typeof ab.buff === 'object' ? ab.buff.dur : null) || ab.dur || 8;
+        const dur = (typeof ab.buff === 'object' ? ab.buff.dur : null) || ab.dur || ROUND_SECONDS * 2;
         applyEffect(m, effKey, { duration: dur, elapsed: this.fxNow });
         this.fxLog(`${m.data.name} ${ab.label || 'enrages'}!`, 'crit');
         this.fxText(ab.label || 'ENRAGED', this._v3(m.x, 1.5, m.z), '#ff5040');
@@ -1683,6 +1931,19 @@ export const monsterAiMethods = {
     m.walk = moved;
     m.moving = moved;
 
+    /* If a ranged monster closed in or rounded an obstruction and now has clear line of sight, take the shot! */
+    if (m.data.ranged && !m.actUsed) {
+      const curDist = Math.hypot(tgt.x - m.x, tgt.z - m.z);
+      if (curDist <= m.data.rngRange && this.hasLOS(m.x, m.z, tgt.x, tgt.z)) {
+        m.path = null;
+        m.walk = false;
+        m.moving = false;
+        this.faceTowards(m, tgt.x, tgt.z, dt);
+        this.monsterRanged(m, tgt, dt);
+        return;
+      }
+    }
+
     /* Monster stuck-recovery. Heroes get multi-stage handleStuck; monsters had
        nothing, so a body wedged against a doorway frame (stepAlong reports no
        progress) used to sit there until its next scheduled repath produced the
@@ -1724,6 +1985,17 @@ export const monsterAiMethods = {
 
   /** One monster → hero attack roll + damage. */
   monsterAttack(m, h) {
+    /* 40: light-snuffers — a goblin or cultist may douse a lit hero's torch
+       (once per fight) instead of swinging. The hero is in the dark until it
+       dries out (game.js ticks _dousedT down). */
+    if (h && h.data && h._lightActive && !m._dousedOnce && monsterLightTraits(m).douser
+        && !hasEffect(m, 'charmed') && !getEffectMods(m).incapacitated && Math.random() < 0.25) {
+      m._dousedOnce = true;
+      h.data._dousedT = 12;
+      if (this.fxLog) this.fxLog(`💧 ${m.data.name} hurls water — ${h.data.name}'s light hisses out!`, 'crit');
+      return;
+    }
+    if (this.isMonsterEntity(h)) return this.monsterAttackMonster(m, h, false);
     /* charmed or incapacitated monsters skip attacks */
     if (hasEffect(m, 'charmed')) {
       this.fxText('charmed', this._v3(m.x, 1.1, m.z), '#e8a8ff');
@@ -1732,6 +2004,10 @@ export const monsterAiMethods = {
     if (getEffectMods(m).incapacitated) return;
     /* Invisible monsters are revealed the moment they attack (5e) */
     if (hasEffect(m, 'invisible')) this.revealInvisible(m);
+    /* Sentinel: a guard standing next to this monster punishes it for
+       attacking someone else — before the blow lands. */
+    if (this.sentinelReaction) this.sentinelReaction(m, h);
+    if (m.data.hp <= 0 || m.dead) return;
     const dmgDealtMul = getEffectMods(m).dmgDealtMul;
     this.triggerLunge(m, h);
     /* Animated-atlas monsters (bestiary editor) play their one-shot attack
@@ -1739,6 +2015,8 @@ export const monsterAiMethods = {
        previous swing's sheet has settled back to idle, and play() would
        otherwise no-op and leave the impact delay pointing into thin air. */
     if (m.ent && m.ent.anim && m.ent.anim.play) m.ent.anim.play('attack', true);
+    const animRem = actionAnimRemaining(m);
+    if (animRem > 0 && typeof this.fxHold === 'function') this.fxHold(animRem);
     const adv = this.monsterAttackAdv(m, h);
     const d20 = d20Roll(adv);
     const atkMods = getEffectMods(m);
@@ -1749,7 +2027,9 @@ export const monsterAiMethods = {
     /* defender auto-crit on melee (paralyzed/unconscious) */
     if (getEffectMods(h).autoCritMelee) crit = true;
     if (crit) this.triggerHitStop(2);
-    const ac = this.heroAC(h);
+    let ac = this.heroAC(h);
+    /* Defensive Duelist: a finesse fighter may parry one melee hit per round */
+    if (!crit && this.defensiveDuelistParry) ac += this.defensiveDuelistParry(h, total, ac);
     /* The outcome is decided now, but the CONSEQUENCES wait for the swing to
        reach its contact pose - otherwise the damage number and hit spark appear
        while the creature is still winding up. 0 for un-animated monsters, which
@@ -1759,6 +2039,11 @@ export const monsterAiMethods = {
     const onImpact = (fn) => this.fxImpactDelay(impactIn, fn);
 
     this.fxPlaySfx('swordAttack', { volume: 0.5 });
+    /* Mirror Image: a blow that would connect may be drawn onto a duplicate. */
+    if ((crit || total >= ac) && this.mirrorImageIntercept && this.mirrorImageIntercept(h, total)) {
+      onImpact(() => this.fxPlaySfx('swordBlock', { volume: 0.4 }));
+      return;
+    }
     if (!crit && total < ac) {
       onImpact(() => {
         if (this.showMiss) this.showMiss(h, m);
@@ -1776,7 +2061,7 @@ export const monsterAiMethods = {
     const statVal = m.data.effStats?.[statKey] ?? m.data.statblock?.stats?.[statKey] ?? 10;
     const statMod = Math.floor((statVal - 10) / 2);
     const dmgBonus = Math.max(dmgArr[2] || 0, statMod);
-    let dmg = roll(dice, dmgArr[1], dmgBonus);
+    let dmg = roll(dice, dmgArr[1], dmgBonus) + (atkMods.dmgBonus || 0);
     dmg = Math.round(dmg * dmgDealtMul);
     /* Swarms deal half damage once bloodied (SRD "…or half if the swarm has
        half of its hit points or fewer"). */
@@ -1804,7 +2089,9 @@ export const monsterAiMethods = {
       }
       this.fxMeleeHitVFX({ x: h.x, z: h.z }, { x: m.x, z: m.z }, crit, 'slashing', 0.9);
       const mit = {};
-      const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
+      const dealt = this.applyIncomingDamage
+        ? this.applyIncomingDamage(h, dmg, mit, { dmgType: m.data.dmgType || 'slashing', magical: !!m.data.magicalAttacks })
+        : (h.data.hp -= dmg, dmg);
       this.fxHitFlash(h.ent);
       /* Logged HERE, after mitigation, so the line agrees with the number over
          the hero's head. Printed before the roll was applied, it reported the
@@ -1833,6 +2120,74 @@ export const monsterAiMethods = {
         if (m?.data?.abilities) this.applyOnKillAbilities(m, h);
       }
     });
+  },
+
+  /**
+   * Monster-vs-monster attack (Dominate Monster). Same roll as monsterAttack
+   * — d20 + atk vs the target's AC, crit on a natural 20 — but the damage goes
+   * through damageMonster so resistances, Undead Fortitude, death and loot all
+   * behave. A dominated attacker's hits are credited to its master (threat,
+   * damage tally, kill line); a hostile hitting the thrall credits nobody.
+   */
+  monsterAttackMonster(m, tgt, ranged = false) {
+    if (getEffectMods(m).incapacitated) return;
+    if (!tgt || !tgt.data || tgt.data.hp <= 0 || tgt.dead) return;
+    if (hasEffect(m, 'invisible')) this.revealInvisible(m);
+    if (!ranged) this.triggerLunge(m, tgt);
+    if (m.ent && m.ent.anim && m.ent.anim.play) m.ent.anim.play('attack', true);
+    const animRem = actionAnimRemaining(m);
+    if (animRem > 0 && typeof this.fxHold === 'function') this.fxHold(animRem);
+
+    const atkMods = getEffectMods(m);
+    const tgtMods = getEffectMods(tgt);
+    let adv = 0;
+    if (tgtMods.defAdvantage) adv += 1;
+    if (atkMods.atkDisadvantage) adv -= 1;
+    const d20 = d20Roll(adv);
+    let atkBonus = (m.data.atk != null ? m.data.atk : 4) + (atkMods.atkBonus || 0);
+    if (atkMods.blessDice) atkBonus += die(4);
+    const total = d20 + atkBonus;
+    let crit = d20 === 20;
+    if (tgtMods.autoCritMelee && !ranged) crit = true;
+    const ac = (tgt.data.ac != null ? tgt.data.ac : 10) + (tgtMods.acBonus || 0);
+
+    const impactIn = (m.ent && m.ent.anim && m.ent.anim.attackImpactDelay)
+      ? m.ent.anim.attackImpactDelay() : 0;
+    const credit = m.dominatedBy || null;
+    const label = credit ? `${m.data.name} (dominated)` : m.data.name;
+
+    const resolve = () => {
+      if (tgt.data.hp <= 0 || tgt.dead) return;
+      if (!crit && total < ac) {
+        this.fxText('miss', this._v3(tgt.x, 1.1, tgt.z), '#9aa');
+        this.fxPlaySfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.5 });
+        this.fxLog(`${label} → ${tgt.data.name}: miss`, 'miss', { detail: `(${total} vs AC ${ac})` });
+        return;
+      }
+      const dmgArr = Array.isArray(m.data.dmg) ? m.data.dmg : [1, 8, 2];
+      let dice = dmgArr[0]; if (crit) dice *= 2;
+      const statKey = m.data.ranged ? 'dex' : 'str';
+      const statVal = m.data.effStats?.[statKey] ?? m.data.statblock?.stats?.[statKey] ?? 10;
+      const dmgBonus = Math.max(dmgArr[2] || 0, Math.floor((statVal - 10) / 2));
+      let dmg = roll(dice, dmgArr[1], dmgBonus) + (atkMods.dmgBonus || 0);
+      dmg = Math.round(dmg * atkMods.dmgDealtMul);
+      if (m.data.swarm && m.data.maxHp && m.data.hp <= m.data.maxHp / 2) dmg = Math.max(1, Math.floor(dmg / 2));
+      if (m.cutWordsUntil && this.fxNow < m.cutWordsUntil) dmg = Math.max(1, dmg - 2);
+      this.fxPlaySfx(ranged ? 'bowHit' : 'swordHit', { volume: 0.6 });
+      if (!ranged) this.fxMeleeHitVFX({ x: tgt.x, z: tgt.z }, { x: m.x, z: m.z }, crit, 'slashing', 0.9);
+      const dmgType = m.data.ranged ? (m.data.rangedDmgType || 'piercing') : (m.data.dmgType || 'slashing');
+      this.fxLog(`${label} hits ${tgt.data.name} for ${dmg}${crit ? ' (crit!)' : ''}`, crit ? 'down' : 'roll', { cat: 'hitmiss' });
+      this.damageMonster(tgt, dmg, credit, crit, { skipPerks: true, via: m, dmgType });
+    };
+
+    if (ranged) {
+      this.fxPlaySfx('bowAttack', { volume: 0.5 });
+      this.fxImpactDelay(impactIn, () =>
+        this.fxProjectile(this._v3(m.x, 0.55, m.z), this._v3(tgt.x, 0.4, tgt.z), 'arrow', 0xd0c0a0, resolve));
+    } else {
+      this.fxPlaySfx('swordAttack', { volume: 0.5 });
+      this.fxImpactDelay(impactIn, resolve);
+    }
   },
 
   /**
@@ -1951,7 +2306,9 @@ export const monsterAiMethods = {
         m.ent.anim.setDirection(lrdx, lrdz);
         m.ent.anim.mesh.position.y = 0;
       } else {
-        m.ent.anim.setDirection(rdx, rdz);
+        /* Standing monsters get the wide band, like resting heroes: only the
+           camera turns them, and the exploration orbit must not flip them. */
+        m.ent.anim.setDirection(rdx, rdz, m.walk ? FACING_BAND_MOVE : FACING_BAND_REST);
         if (m.walk) {
           m.ent.anim.mesh.position.y = Math.abs(Math.sin(elapsed * 9)) * 0.08;
         } else {

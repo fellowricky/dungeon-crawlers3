@@ -1,8 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { generateDungeon, THEMES, FLOOR, TYPE } from '../src/dungeon/dungeon_generator.js';
 import {
-  autoProloguePlan, prologueLength, approachTheme, THRESHOLD_THEME, APPROACH_POOLS
+  autoProloguePlan, prologueLength, approachTheme, THRESHOLD_THEME, APPROACH_POOLS,
+  overlandSpawnLevel, OVERLAND_STRENGTH
 } from '../src/game/overland_prologue.js';
+import { maxCrForDungeonLevel } from '../src/game/constants.js';
+
+describe('overland spawn strength', () => {
+  it('fields at most half the dungeon CR, and never below level 1', () => {
+    for (let lvl = 1; lvl <= 20; lvl++) {
+      const s = overlandSpawnLevel(lvl);
+      expect(s).toBeGreaterThanOrEqual(1);
+      expect(s).toBeLessThanOrEqual(lvl);
+      if (s > 1) expect(maxCrForDungeonLevel(s)).toBeLessThanOrEqual(maxCrForDungeonLevel(lvl) * OVERLAND_STRENGTH);
+    }
+  });
+
+  it('never gets weaker as the quest level rises', () => {
+    for (let lvl = 2; lvl <= 20; lvl++) {
+      expect(overlandSpawnLevel(lvl)).toBeGreaterThanOrEqual(overlandSpawnLevel(lvl - 1));
+    }
+  });
+});
 
 const OVERLAND = Object.keys(THEMES).filter(k => THEMES[k].overland);
 /* the portrait sizes are what the prologue actually asks for; the square ones
@@ -223,3 +242,43 @@ describe('overland prologue', () => {
     }
   });
 });
+
+describe('overland arena spawns', () => {
+  it('spawns arena monsters deep away from the road track', () => {
+    for (const themeKey of ['forest', 'holdfast', 'boneyard']) {
+      for (const seed of [42, 101, 7919]) {
+        const d = generateDungeon({
+          seed, themeKey, mapW: 60, mapH: 300, zones: 9, layout: 'ribbon', level: 5
+        });
+        const arenas = d.rooms.filter(r => r.arena && (r.type === TYPE.COMBAT || r.type === TYPE.ELITE));
+        expect(arenas.length).toBeGreaterThanOrEqual(3);
+
+        for (const r of arenas) {
+          const roomSpawns = d.spawns.filter(s => s.roomId === r.id);
+          expect(roomSpawns.length, `arena ${r.id} spawns`).toBeGreaterThanOrEqual(2);
+
+          // Vector pointing from the road into the arena
+          let ax = r.cx - r.roadX, ay = r.cy - r.roadY;
+          const al = Math.hypot(ax, ay) || 1;
+          ax /= al; ay /= al;
+
+          for (const s of roomSpawns) {
+            const sc = s.y * d.W + s.x;
+            // Never within 4 tiles of the road corridor
+            expect(d.roadDist[sc], `spawn ${s.x},${s.y} roadDist in arena ${r.id}`).toBeGreaterThanOrEqual(4);
+            // Spawn is reachable
+            expect(d.bfs[sc], `spawn ${s.x},${s.y} bfs reachable in arena ${r.id}`).toBeGreaterThanOrEqual(0);
+            // Spawn is pushed in the half-space facing away from the road
+            const dot = (s.x - r.roadX) * ax + (s.y - r.roadY) * ay;
+            expect(dot, `spawn depth into arena ${r.id}`).toBeGreaterThan(0);
+          }
+
+          // Average road distance in the arena should be comfortably deep (>= 6 tiles)
+          const avgRoadDist = roomSpawns.reduce((sum, s) => sum + d.roadDist[s.y * d.W + s.x], 0) / roomSpawns.length;
+          expect(avgRoadDist, `avg road distance in arena ${r.id}`).toBeGreaterThanOrEqual(6);
+        }
+      }
+    }
+  });
+});
+

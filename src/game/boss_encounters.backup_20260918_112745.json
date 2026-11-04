@@ -1,0 +1,1932 @@
+[
+ {
+  "id": "molten-l1",
+  "theme": "molten",
+  "level": 1,
+  "name": "The Ember Vents",
+  "bossId": "ember-swarm-chief",
+  "bossTitle": "Ignis, Ember-Swarm Chief",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "vent-beetle",
+    "count": 1
+   },
+   {
+    "id": "ember-magmin",
+    "count": 2
+   },
+   {
+    "id": "ash-speaker",
+    "count": 1
+   },
+   {
+    "id": "cinder-rat",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "A magma runt in a cracked obsidian crown; the vents answer him.",
+  "cutscene": {
+   "kicker": "The vents answer to",
+   "sub": "A magma runt in a cracked obsidian crown — and every ember in the hollow at his back.",
+   "sfx": "spellFire",
+   "shake": 0.8
+  }
+ },
+ {
+  "id": "molten-l2",
+  "theme": "molten",
+  "level": 2,
+  "name": "Hell Hound Alpha",
+  "bossId": "hell-hound",
+  "bossTitle": "Ignis Flame-Jaw",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "lemure",
+    "count": 3
+   }
+  ],
+  "targetCR": 1.5,
+  "description": "A massive hell hound breathing persistent cinder flames."
+ },
+ {
+  "id": "molten-l3",
+  "theme": "molten",
+  "level": 3,
+  "name": "Bearded Devil Enforcer",
+  "bossId": "bearded-devil",
+  "bossTitle": "Malakor the Scourge",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "imp",
+    "count": 2
+   }
+  ],
+  "targetCR": 2,
+  "description": "A fierce infernal warrior wielding a saw-toothed glaive."
+ },
+ {
+  "id": "molten-l4",
+  "theme": "molten",
+  "level": 4,
+  "name": "Salamander Scoutlord",
+  "bossId": "salamander",
+  "bossTitle": "Vrax Searing-Tail",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "magmin",
+    "count": 2
+   }
+  ],
+  "targetCR": 2.5,
+  "description": "A molten serpent-person coiled atop a pillar of magma."
+ },
+ {
+  "id": "molten-l5",
+  "theme": "molten",
+  "level": 5,
+  "name": "Fire Elemental Lord",
+  "bossId": "fire-elemental",
+  "bossTitle": "Pyros the Eternal Flame",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "magmin",
+    "count": 3
+   }
+  ],
+  "targetCR": 3,
+  "description": "A roaring column of living flame that incinerates stone."
+ },
+ {
+  "id": "molten-l6",
+  "theme": "molten",
+  "level": 6,
+  "name": "Barbed Devil Overseer",
+  "bossId": "barbed-devil",
+  "bossTitle": "Kalthor Spine-Rend",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "imp",
+    "count": 3
+   }
+  ],
+  "targetCR": 3.5,
+  "description": "A spiked fiend surrounded by cackling imps."
+ },
+ {
+  "id": "molten-l7",
+  "theme": "molten",
+  "level": 7,
+  "name": "Young Red Dragon Drake",
+  "bossId": "young-red-dragon",
+  "bossTitle": "Cinderwing",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "hell-hound",
+    "count": 2
+   }
+  ],
+  "targetCR": 4,
+  "description": "A ferocious young dragon resting upon a hoard of heated iron."
+ },
+ {
+  "id": "molten-l8",
+  "theme": "molten",
+  "level": 8,
+  "name": "Fire Giant Vanguard",
+  "bossId": "fire-giant",
+  "bossTitle": "Forge-Master Thrum",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "salamander",
+    "count": 2
+   }
+  ],
+  "targetCR": 5,
+  "description": "A towering giant clad in plate forged in volcanic depths."
+ },
+ {
+  "id": "molten-l9",
+  "theme": "molten",
+  "level": 9,
+  "name": "Vrock Abyssal Terror",
+  "bossId": "vrock",
+  "bossTitle": "Krazak the Feathered Pestilence",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "dretch",
+    "count": 4
+   }
+  ],
+  "targetCR": 6,
+  "description": "A vulture-like demon emitting a deafening screech."
+ },
+ {
+  "id": "molten-l10",
+  "theme": "molten",
+  "level": 10,
+  "name": "Efreeti Sultan",
+  "bossId": "efreeti",
+  "bossTitle": "Sultan Ash-Kazar",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "fire-elemental",
+    "count": 2
+   }
+  ],
+  "targetCR": 7,
+  "description": "A lord from the City of Brass wielding scimitars of pure magma."
+ },
+ {
+  "id": "molten-l11",
+  "theme": "molten",
+  "level": 11,
+  "name": "Hezrou Abyssal Warmaster",
+  "bossId": "hezrou",
+  "bossTitle": "Gargrath the Slime-Feeder",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "barbed-devil",
+    "count": 2
+   }
+  ],
+  "targetCR": 8,
+  "description": "A toad-like demonic monstrosity dripping acidic secretions."
+ },
+ {
+  "id": "molten-l12",
+  "theme": "molten",
+  "level": 12,
+  "name": "Glabrezu Fiend Lord",
+  "bossId": "glabrezu",
+  "bossTitle": "Baelor Pincers-of-Fate",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "hell-hound",
+    "count": 3
+   }
+  ],
+  "targetCR": 9,
+  "description": "A four-armed demon giant offering dark bargains before battle."
+ },
+ {
+  "id": "molten-l13",
+  "theme": "molten",
+  "level": 13,
+  "name": "Hellion Warlord",
+  "bossId": "hellion",
+  "bossTitle": "High Inquisitor Vex",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "hell-knight",
+    "count": 2
+   }
+  ],
+  "targetCR": 10,
+  "description": "An elite fiendish commander in hell-forged armor."
+ },
+ {
+  "id": "molten-l14",
+  "theme": "molten",
+  "level": 14,
+  "name": "Hell Knight Commander",
+  "bossId": "hell-knight",
+  "bossTitle": "Lord Malphas",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "imp",
+    "count": 4
+   }
+  ],
+  "targetCR": 11,
+  "description": "A dread champion whose blade bleeds brimstone."
+ },
+ {
+  "id": "molten-l15",
+  "theme": "molten",
+  "level": 15,
+  "name": "Tormentor Fiend Sovereign",
+  "bossId": "tormentor",
+  "bossTitle": "Kruel the Unforgiving",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "salamander",
+    "count": 3
+   }
+  ],
+  "targetCR": 12,
+  "description": "An ancient infernal lord wielding chains of burning iron."
+ },
+ {
+  "id": "molten-l16",
+  "theme": "molten",
+  "level": 16,
+  "name": "Marilith Blade-Empress",
+  "bossId": "marilith",
+  "bossTitle": "Vespera Six-Blades",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "hell-knight",
+    "count": 2
+   }
+  ],
+  "targetCR": 13,
+  "description": "A six-armed serpent demon striking with lightning-fast blades."
+ },
+ {
+  "id": "molten-l17",
+  "theme": "molten",
+  "level": 17,
+  "name": "Adult Red Dragon Sovereign",
+  "bossId": "adult-red-dragon",
+  "bossTitle": "Brimstone the Tyrant",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "fire-elemental",
+    "count": 3
+   }
+  ],
+  "targetCR": 14,
+  "description": "A colossal dragon whose breath turns subterranean halls to lava."
+ },
+ {
+  "id": "molten-l18",
+  "theme": "molten",
+  "level": 18,
+  "name": "Balor Demon Prince",
+  "bossId": "balor",
+  "bossTitle": "Prince Gorthor",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "marilith",
+    "count": 1
+   }
+  ],
+  "targetCR": 15,
+  "description": "A fiery fiendish overlord wielding a whip of flame and a sword of lightning."
+ },
+ {
+  "id": "molten-l19",
+  "theme": "molten",
+  "level": 19,
+  "name": "Pit Fiend Archduke",
+  "bossId": "pit-fiend",
+  "bossTitle": "Archduke Belial",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "hell-knight",
+    "count": 3
+   }
+  ],
+  "targetCR": 16,
+  "description": "The supreme ruler of the ashfields, radiating absolute terror."
+ },
+ {
+  "id": "molten-l20",
+  "theme": "molten",
+  "level": 20,
+  "name": "Ancient Red Dragon Emperor",
+  "bossId": "ancient-red-dragon",
+  "bossTitle": "Ignis-Vorgar the World-Eater",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "balor",
+    "count": 1
+   }
+  ],
+  "targetCR": 18,
+  "description": "The apex of dragonkind, breathing fires that melt bedrock."
+ },
+ {
+  "id": "frost-l1",
+  "theme": "frost",
+  "level": 1,
+  "name": "The Rime Vault",
+  "bossId": "hoarfrost-warden",
+  "bossTitle": "The Hoarfrost Warden",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "rime-crawler",
+    "count": 2
+   },
+   {
+    "id": "rime-urchin",
+    "count": 2
+   },
+   {
+    "id": "shard-mantis",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "It has not moved in a very long time. The ice has grown around it, and it is still watching."
+ },
+ {
+  "id": "frost-l2",
+  "theme": "frost",
+  "level": 2,
+  "name": "The White Mother",
+  "bossId": "whitewake-white-mother",
+  "bossTitle": "The White Mother",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "whitewake-hearthguard",
+    "count": 1
+   },
+   {
+    "id": "whitewake-icebreaker",
+    "count": 2
+   },
+   {
+    "id": "whitewake-spearcaster",
+    "count": 1
+   },
+   {
+    "id": "whitewake-snowfang",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "The hunters stand aside as you come in, which is the first thing that frightens you. They are not guarding her. They are waiting to see what she decides."
+ },
+ {
+  "id": "frost-l3",
+  "theme": "frost",
+  "level": 3,
+  "name": "Yeti Snow-Hunter",
+  "bossId": "polar-bear",
+  "bossTitle": "Bruma the White Terror",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "winter-wolf",
+    "count": 2
+   }
+  ],
+  "targetCR": 2,
+  "description": "A towering polar bear covered in thick white fur."
+ },
+ {
+  "id": "frost-l4",
+  "theme": "frost",
+  "level": 4,
+  "name": "Giant Ice Frog Matriarch",
+  "bossId": "giant-frog",
+  "bossTitle": "Gargle the Glacial",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "ice-mephit",
+    "count": 3
+   }
+  ],
+  "targetCR": 2.5,
+  "description": "A gargantuan ice-encrusted amphibian."
+ },
+ {
+  "id": "frost-l5",
+  "theme": "frost",
+  "level": 5,
+  "name": "Young White Dragon Drake",
+  "bossId": "young-white-dragon",
+  "bossTitle": "Rime-Scale",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "winter-wolf",
+    "count": 3
+   }
+  ],
+  "targetCR": 3,
+  "description": "A savage dragon brooding over frozen caverns."
+ },
+ {
+  "id": "frost-l6",
+  "theme": "frost",
+  "level": 6,
+  "name": "Frost Giant Scoutmaster",
+  "bossId": "frost-giant",
+  "bossTitle": "Skadi Cold-Eye",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "polar-bear",
+    "count": 2
+   }
+  ],
+  "targetCR": 3.5,
+  "description": "A hulking frost giant holding a battleaxe coated in hoarfrost."
+ },
+ {
+  "id": "frost-l7",
+  "theme": "frost",
+  "level": 7,
+  "name": "Ice Golem Warden",
+  "bossId": "stone-golem",
+  "bossTitle": "Sentinel Glacier",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "ice-mephit",
+    "count": 4
+   }
+  ],
+  "targetCR": 4,
+  "description": "An ancient automaton carved from dense magical ice."
+ },
+ {
+  "id": "frost-l8",
+  "theme": "frost",
+  "level": 8,
+  "name": "Remorhaz Ice-Burrower",
+  "bossId": "remorhaz",
+  "bossTitle": "Cinder-Gland the Frost-Worm",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "ice-mephit",
+    "count": 3
+   }
+  ],
+  "targetCR": 5,
+  "description": "A chitinous worm radiating extreme heat amidst icy caverns."
+ },
+ {
+  "id": "frost-l9",
+  "theme": "frost",
+  "level": 9,
+  "name": "Frost Giant Warmaster",
+  "bossId": "frost-giant",
+  "bossTitle": "Jarl Thrym",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "winter-wolf",
+    "count": 3
+   }
+  ],
+  "targetCR": 6,
+  "description": "A legendary warrior-jarl from the frozen peaks."
+ },
+ {
+  "id": "frost-l10",
+  "theme": "frost",
+  "level": 10,
+  "name": "Adult White Dragon Sovereign",
+  "bossId": "adult-white-dragon",
+  "bossTitle": "Cryonix the Blizzard",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "ice-mephit",
+    "count": 4
+   }
+  ],
+  "targetCR": 7,
+  "description": "An apex predator of the glaciated peaks."
+ },
+ {
+  "id": "frost-l11",
+  "theme": "frost",
+  "level": 11,
+  "name": "Remorhaz Queen",
+  "bossId": "remorhaz",
+  "bossTitle": "Mother of Frost-Fires",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "winter-wolf",
+    "count": 3
+   }
+  ],
+  "targetCR": 8,
+  "description": "A massive remorhaz queen protecting her frozen nest."
+ },
+ {
+  "id": "frost-l12",
+  "theme": "frost",
+  "level": 12,
+  "name": "Glacial Wight King",
+  "bossId": "wight-king",
+  "bossTitle": "King Frost-Bane",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "greater-mummy",
+    "count": 2
+   }
+  ],
+  "targetCR": 9,
+  "description": "An ancient undead king entombed in glacial ice."
+ },
+ {
+  "id": "frost-l13",
+  "theme": "frost",
+  "level": 13,
+  "name": "Frost Giant Overlord",
+  "bossId": "frost-giant",
+  "bossTitle": "High King Hrym",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "frost-giant",
+    "count": 2
+   }
+  ],
+  "targetCR": 10,
+  "description": "Ruler of the ice citadel, wielding a runic greataxe."
+ },
+ {
+  "id": "frost-l14",
+  "theme": "frost",
+  "level": 14,
+  "name": "Ancient White Dragon Drake",
+  "bossId": "ancient-white-dragon",
+  "bossTitle": "Frostbite the Eternal",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "winter-wolf",
+    "count": 4
+   }
+  ],
+  "targetCR": 11,
+  "description": "A colossal dragon whose breath creates instantly frozen statues."
+ },
+ {
+  "id": "frost-l15",
+  "theme": "frost",
+  "level": 15,
+  "name": "Glacial Lich Lord",
+  "bossId": "ancient-lich-lord",
+  "bossTitle": "Arch-Lich Gelidus",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "greater-mummy",
+    "count": 3
+   }
+  ],
+  "targetCR": 12,
+  "description": "An ancient wizard who bound his soul to eternal ice."
+ },
+ {
+  "id": "frost-l16",
+  "theme": "frost",
+  "level": 16,
+  "name": "Storm Giant Frost-Ruler",
+  "bossId": "storm-giant",
+  "bossTitle": "Lord Tempestas",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "frost-giant",
+    "count": 2
+   }
+  ],
+  "targetCR": 13,
+  "description": "A giant who commands blizzards and arctic lightning."
+ },
+ {
+  "id": "frost-l17",
+  "theme": "frost",
+  "level": 17,
+  "name": "Ancient White Dragon Sovereign",
+  "bossId": "ancient-white-dragon",
+  "bossTitle": "Ymir-Bane",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "frost-giant",
+    "count": 2
+   }
+  ],
+  "targetCR": 14,
+  "description": "The supreme dragon of the frozen wastes."
+ },
+ {
+  "id": "frost-l18",
+  "theme": "frost",
+  "level": 18,
+  "name": "Ancient Silver Dragon Sovereign",
+  "bossId": "ancient-silver-dragon",
+  "bossTitle": "Argentum the Pure",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "stone-golem",
+    "count": 2
+   }
+  ],
+  "targetCR": 15,
+  "description": "A venerable silver dragon commanding frozen winds."
+ },
+ {
+  "id": "frost-l19",
+  "theme": "frost",
+  "level": 19,
+  "name": "Glacial Arch-Lich Supreme",
+  "bossId": "lich",
+  "bossTitle": "Vaelin the Frost-Binder",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "ancient-lich-lord",
+    "count": 1
+   }
+  ],
+  "targetCR": 16,
+  "description": "A terrifying undead sorcerer surrounded by biting cold."
+ },
+ {
+  "id": "frost-l20",
+  "theme": "frost",
+  "level": 20,
+  "name": "Ancient Silver Dragon Sovereign Guard",
+  "bossId": "ancient-silver-dragon",
+  "bossTitle": "High Glacial Sovereign",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "ancient-white-dragon",
+    "count": 1
+   }
+  ],
+  "targetCR": 18,
+  "description": "An ancient dragon embodiment of the endless winter."
+ },
+ {
+  "id": "verdant-l1",
+  "theme": "verdant",
+  "level": 1,
+  "name": "The Deep Nest",
+  "bossId": "ant-queen",
+  "bossTitle": "The Brood Queen",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "ant-soldier",
+    "count": 2
+   },
+   {
+    "id": "ant-worker",
+    "count": 2
+   },
+   {
+    "id": "ant-spitter",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "She cannot retreat and will not need to; the nest comes apart around her first."
+ },
+ {
+  "id": "verdant-l2",
+  "theme": "verdant",
+  "level": 2,
+  "name": "The Widowsilk Nest",
+  "bossId": "spider-queen",
+  "bossTitle": "Nyx, the Widowsilk Queen",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "widowsilk-carapace",
+    "count": 1
+   },
+   {
+    "id": "widowsilk-fang",
+    "count": 2
+   },
+   {
+    "id": "widowsilk-slinger",
+    "count": 1
+   },
+   {
+    "id": "widowsilk-weaver",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "Nyx broods at the heart of a silk-choked hollow; her broodkin drop from the dark the moment the webs shiver."
+ },
+ {
+  "id": "verdant-l3",
+  "theme": "verdant",
+  "level": 3,
+  "name": "The Quiet Bloom",
+  "bossId": "bloomrot-sovereign",
+  "bossTitle": "The Bloomrot Sovereign",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "bloomrot-bracketback",
+    "count": 1
+   },
+   {
+    "id": "bloomrot-capfist",
+    "count": 2
+   },
+   {
+    "id": "bloomrot-puffcap",
+    "count": 1
+   },
+   {
+    "id": "bloomrot-thrall",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "Nothing in this chamber makes a sound, and everything in it turns to face you at the same moment. The bodies standing along the wall are not guards. They are furniture the colony has not finished with."
+ },
+ {
+  "id": "verdant-l4",
+  "theme": "verdant",
+  "level": 4,
+  "name": "The Bramblecourt",
+  "bossId": "bramblecourt-warden",
+  "bossTitle": "The Thorn Warden",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "bramblecourt-heartwood",
+    "count": 1
+   },
+   {
+    "id": "bramblecourt-thornblade",
+    "count": 2
+   },
+   {
+    "id": "bramblecourt-quillcast",
+    "count": 1
+   },
+   {
+    "id": "bramblecourt-thistlewitch",
+    "count": 1
+   }
+  ],
+  "targetCR": 2,
+  "description": "They let you walk the whole length of the hall before anyone acknowledges you, and then all of them do at once. The Warden does not stand up. It simply keeps standing up, and does not stop."
+ },
+ {
+  "id": "verdant-l5",
+  "theme": "verdant",
+  "level": 5,
+  "name": "The Blackbog Court",
+  "bossId": "blackbog-grandmother",
+  "bossTitle": "The Blackbog Grandmother",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "blackbog-blight-fairy",
+    "count": 2
+   },
+   {
+    "id": "blackbog-redcap",
+    "count": 1
+   }
+  ],
+  "targetCR": 3,
+  "description": "The oldest thing in the water, wearing a breastplate of stolen wedding rings, with her fairies and a redcap at her feet."
+ },
+ {
+  "id": "verdant-l6",
+  "theme": "verdant",
+  "level": 6,
+  "name": "The Old Growth",
+  "bossId": "old-growth-elder",
+  "bossTitle": "The Elder",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "old-growth-sapling",
+    "count": 2
+   },
+   {
+    "id": "old-growth-heartwood",
+    "count": 1
+   }
+  ],
+  "targetCR": 4,
+  "description": "The room was not built to hold it. It got in by being here first, and it has just finished deciding about you."
+ },
+ {
+  "id": "verdant-l7",
+  "theme": "verdant",
+  "level": 7,
+  "name": "Treant Ancient Elder",
+  "bossId": "treant",
+  "bossTitle": "Oak-Heart the Ancient",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "dryad",
+    "count": 2
+   }
+  ],
+  "targetCR": 4,
+  "description": "An awakened oak tree towering over the forest canopy."
+ },
+ {
+  "id": "verdant-l8",
+  "theme": "verdant",
+  "level": 8,
+  "name": "Hydra Swamptyrant",
+  "bossId": "hydra",
+  "bossTitle": "Seven-Head Hydrix",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "giant-constrictor-snake",
+    "count": 2
+   }
+  ],
+  "targetCR": 5,
+  "description": "A multi-headed reptilian monster whose heads regrow when severed."
+ },
+ {
+  "id": "verdant-l9",
+  "theme": "verdant",
+  "level": 9,
+  "name": "Chimera Wild-Hunter",
+  "bossId": "chimera",
+  "bossTitle": "Triple-Fang Terror",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "manticore",
+    "count": 2
+   }
+  ],
+  "targetCR": 6,
+  "description": "A grotesque hybrid of lion, goat, and dragon."
+ },
+ {
+  "id": "verdant-l10",
+  "theme": "verdant",
+  "level": 10,
+  "name": "Roc Sky-Hunter",
+  "bossId": "roc",
+  "bossTitle": "Gale-Wing",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "giant-eagle",
+    "count": 3
+   }
+  ],
+  "targetCR": 7,
+  "description": "A colossal bird of prey capable of carrying off elephants."
+ },
+ {
+  "id": "verdant-l11",
+  "theme": "verdant",
+  "level": 11,
+  "name": "The Fey Queen Empress",
+  "bossId": "fey-queen",
+  "bossTitle": "Queen Titania's Sentinel",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "dryad",
+    "count": 3
+   }
+  ],
+  "targetCR": 8,
+  "description": "A radiant arch-fey commanding the wild verdant realm."
+ },
+ {
+  "id": "verdant-l12",
+  "theme": "verdant",
+  "level": 12,
+  "name": "Adult Green Dragon Sovereign",
+  "bossId": "adult-green-dragon",
+  "bossTitle": "Verdantis the Corruptor",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "treant",
+    "count": 2
+   }
+  ],
+  "targetCR": 9,
+  "description": "A master of manipulation and deadly chlorine gas."
+ },
+ {
+  "id": "verdant-l13",
+  "theme": "verdant",
+  "level": 13,
+  "name": "Tyrannosaurus Rex Apex",
+  "bossId": "tyrannosaurus-rex",
+  "bossTitle": "King Tooth",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "triceratops",
+    "count": 2
+   }
+  ],
+  "targetCR": 10,
+  "description": "The ultimate prehistoric predator of the primordial jungle."
+ },
+ {
+  "id": "verdant-l14",
+  "theme": "verdant",
+  "level": 14,
+  "name": "Guardian Serpent Sovereign",
+  "bossId": "guardian-serpent",
+  "bossTitle": "Ouroboros the Green",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "hydra",
+    "count": 2
+   }
+  ],
+  "targetCR": 11,
+  "description": "An ancient celestial serpent guarding sacred groves."
+ },
+ {
+  "id": "verdant-l15",
+  "theme": "verdant",
+  "level": 15,
+  "name": "Arch-Druid Treant Lord",
+  "bossId": "treant",
+  "bossTitle": "Iron-Bark the Unbroken",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "fey-queen",
+    "count": 1
+   }
+  ],
+  "targetCR": 12,
+  "description": "The primal spirit of the ancient deep woods."
+ },
+ {
+  "id": "verdant-l16",
+  "theme": "verdant",
+  "level": 16,
+  "name": "Dragon Turtle Swamptyrant",
+  "bossId": "dragon-turtle",
+  "bossTitle": "Crag-Shell",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "hydra",
+    "count": 2
+   }
+  ],
+  "targetCR": 13,
+  "description": "A gigantic armored reptile breathing scalding steam."
+ },
+ {
+  "id": "verdant-l17",
+  "theme": "verdant",
+  "level": 17,
+  "name": "Ancient Green Dragon Sovereign",
+  "bossId": "ancient-green-dragon",
+  "bossTitle": "Venom-Spite the Ancient",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "treant",
+    "count": 2
+   }
+  ],
+  "targetCR": 14,
+  "description": "An ancient dragon whose presence rots entire forests."
+ },
+ {
+  "id": "verdant-l18",
+  "theme": "verdant",
+  "level": 18,
+  "name": "Ancient Copper Dragon Archon",
+  "bossId": "ancient-copper-dragon",
+  "bossTitle": "Riddler of the Glade",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "fey-queen",
+    "count": 2
+   }
+  ],
+  "targetCR": 15,
+  "description": "A venerable copper dragon testing intruders with primal magic."
+ },
+ {
+  "id": "verdant-l19",
+  "theme": "verdant",
+  "level": 19,
+  "name": "Ancient Gold Dragon Forest Sovereign",
+  "bossId": "adult-gold-dragon",
+  "bossTitle": "Aurum the Sun-Watcher",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "ancient-green-dragon",
+    "count": 1
+   }
+  ],
+  "targetCR": 16,
+  "description": "A legendary dragon radiating divine verdant warmth."
+ },
+ {
+  "id": "verdant-l20",
+  "theme": "verdant",
+  "level": 20,
+  "name": "Arch-Fey Empress of the Deep Woods",
+  "bossId": "fey-queen",
+  "bossTitle": "Empress Oberonia",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "ancient-green-dragon",
+    "count": 1
+   }
+  ],
+  "targetCR": 18,
+  "description": "The supreme ruler of all wild, untamed nature."
+ },
+ {
+  "id": "grim-l1",
+  "theme": "grim",
+  "level": 1,
+  "name": "The Barrow Rite",
+  "bossId": "cult-leader",
+  "bossTitle": "The Bone-Chanter",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "skeletal-bulwark",
+    "count": 1
+   },
+   {
+    "id": "skeletal-swordsman",
+    "count": 2
+   },
+   {
+    "id": "skeletal-bowman",
+    "count": 1
+   },
+   {
+    "id": "cultist",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "A robed celebrant keeps the barrow's dead upright; break him and the rite fails."
+ },
+ {
+  "id": "grim-l2",
+  "theme": "grim",
+  "level": 2,
+  "name": "The Reckoning",
+  "bossId": "mother-vellum",
+  "bossTitle": "Keeper of the Tithe",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "iron-penitent",
+    "count": 1
+   },
+   {
+    "id": "tithe-taker",
+    "count": 2
+   },
+   {
+    "id": "nail-marker",
+    "count": 1
+   },
+   {
+    "id": "tithe-confessor",
+    "count": 1
+   }
+  ],
+  "targetCR": 1.5,
+  "description": "She has not seen in thirty years and she knows your name anyway. Close the ledger."
+ },
+ {
+  "id": "grim-l3",
+  "theme": "grim",
+  "level": 3,
+  "name": "The Pale Harvest",
+  "bossId": "sarkoth",
+  "bossTitle": "Sarkoth, the Pale Harvest",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "gravebound",
+    "count": 1
+   },
+   {
+    "id": "risen-drudge",
+    "count": 2
+   },
+   {
+    "id": "gorebloat",
+    "count": 1
+   },
+   {
+    "id": "carrion-ghoul",
+    "count": 1
+   }
+  ],
+  "targetCR": 2,
+  "description": "Mother Vellum wrote the names. This is the man she wrote them for, and the ledger is nearly full."
+ },
+ {
+  "id": "grim-l4",
+  "theme": "grim",
+  "level": 4,
+  "name": "The Chirurgeon's Ward",
+  "bossId": "cauter",
+  "bossTitle": "Cauter, the Mending Hand",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "tallowclad",
+    "count": 1
+   },
+   {
+    "id": "suture-thing",
+    "count": 2
+   },
+   {
+    "id": "hook-hauler",
+    "count": 1
+   },
+   {
+    "id": "sluiceborn",
+    "count": 1
+   }
+  ],
+  "targetCR": 2.5,
+  "description": "Vellum wrote the names and Sarkoth collected them. They were all brought here, and this is the man who decided what they were for."
+ },
+ {
+  "id": "grim-l5",
+  "theme": "grim",
+  "level": 5,
+  "name": "The Unrelieved",
+  "bossId": "hald",
+  "bossTitle": "Hald, the Unrelieved",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "greenmail",
+    "count": 1
+   },
+   {
+    "id": "cairnsworn",
+    "count": 2
+   },
+   {
+    "id": "ashen-archer",
+    "count": 1
+   },
+   {
+    "id": "grave-hollow",
+    "count": 1
+   }
+  ],
+  "targetCR": 3,
+  "description": "The cult were squatters. This is the garrison they were squatting in, and nobody ever came to relieve it."
+ },
+ {
+  "id": "grim-l6",
+  "theme": "grim",
+  "level": 6,
+  "name": "Mummy Crypt Guardian",
+  "bossId": "guardian-mummy",
+  "bossTitle": "Khamun the Preserved",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "skeletal-warrior",
+    "count": 2
+   }
+  ],
+  "targetCR": 3.5,
+  "description": "An embalmed priest protecting ancient tombs."
+ },
+ {
+  "id": "grim-l7",
+  "theme": "grim",
+  "level": 7,
+  "name": "Wraith Overlord",
+  "bossId": "wraith",
+  "bossTitle": "Shadow-Stalker Malice",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "shadow",
+    "count": 4
+   }
+  ],
+  "targetCR": 4,
+  "description": "An incorporeal phantom that steps through solid stone."
+ },
+ {
+  "id": "grim-l8",
+  "theme": "grim",
+  "level": 8,
+  "name": "Vampire Knight Chieftain",
+  "bossId": "vampire-knight",
+  "bossTitle": "Count Blood-Lord",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "vampire-spawn",
+    "count": 3
+   }
+  ],
+  "targetCR": 5,
+  "description": "A noble bloodsucker wielding an unholy blade."
+ },
+ {
+  "id": "grim-l9",
+  "theme": "grim",
+  "level": 9,
+  "name": "Vampire Mage Archon",
+  "bossId": "vampire-mage",
+  "bossTitle": "Lady Carmilla",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "wight",
+    "count": 3
+   }
+  ],
+  "targetCR": 6,
+  "description": "A vampiric sorceress casting dark blood spells."
+ },
+ {
+  "id": "grim-l10",
+  "theme": "grim",
+  "level": 10,
+  "name": "Wight King Sovereign",
+  "bossId": "wight-king",
+  "bossTitle": "King Aldric the Barrow-Lord",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "death-knight",
+    "count": 2
+   }
+  ],
+  "targetCR": 7,
+  "description": "A legendary undead monarch ruling over crypts."
+ },
+ {
+  "id": "grim-l11",
+  "theme": "grim",
+  "level": 11,
+  "name": "Mummy Priest High Prophet",
+  "bossId": "mummy-priest",
+  "bossTitle": "High Priest Amun",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "guardian-mummy",
+    "count": 3
+   }
+  ],
+  "targetCR": 8,
+  "description": "A mummified holy man hurling necrotic curses."
+ },
+ {
+  "id": "grim-l12",
+  "theme": "grim",
+  "level": 12,
+  "name": "Reaper Lord Harvest-Master",
+  "bossId": "reaper-lord",
+  "bossTitle": "Grim Reaper Malakor",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "wraith",
+    "count": 3
+   }
+  ],
+  "targetCR": 9,
+  "description": "A scythe-wielding manifestation of inevitable death."
+ },
+ {
+  "id": "grim-l13",
+  "theme": "grim",
+  "level": 13,
+  "name": "Drow Matron Shadow Sovereign",
+  "bossId": "drow-matron",
+  "bossTitle": "Matron Baenre",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "vampire-knight",
+    "count": 2
+   }
+  ],
+  "targetCR": 10,
+  "description": "A high priestess of Lolth channeling dark magic."
+ },
+ {
+  "id": "grim-l14",
+  "theme": "grim",
+  "level": 14,
+  "name": "Death Knight Overlord",
+  "bossId": "death-knight",
+  "bossTitle": "Lord Warden Kaelen",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "wight-king",
+    "count": 2
+   }
+  ],
+  "targetCR": 11,
+  "description": "A fallen paladin empowered by unholy flame and necrosis."
+ },
+ {
+  "id": "grim-l15",
+  "theme": "grim",
+  "level": 15,
+  "name": "Greater Mummy Sovereign",
+  "bossId": "greater-mummy",
+  "bossTitle": "Pharaoh Rahotep",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "mummy-priest",
+    "count": 2
+   }
+  ],
+  "targetCR": 12,
+  "description": "An ancient pharaoh whose touch turns flesh to dust."
+ },
+ {
+  "id": "grim-l16",
+  "theme": "grim",
+  "level": 16,
+  "name": "Ancient Lich Lord Supreme",
+  "bossId": "ancient-lich-lord",
+  "bossTitle": "Arch-Lich Vargus",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "death-knight",
+    "count": 2
+   }
+  ],
+  "targetCR": 13,
+  "description": "A master of necromancy and absolute dark magic."
+ },
+ {
+  "id": "grim-l17",
+  "theme": "grim",
+  "level": 17,
+  "name": "Ancient Shadow Dragon Sovereign",
+  "bossId": "shadow-dragon-ancient",
+  "bossTitle": "Umbra the Eclipse",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "reaper-lord",
+    "count": 2
+   }
+  ],
+  "targetCR": 14,
+  "description": "A dragon corrupted by dark shadow planes."
+ },
+ {
+  "id": "grim-l18",
+  "theme": "grim",
+  "level": 18,
+  "name": "Lich King High Sovereign",
+  "bossId": "lich",
+  "bossTitle": "Lich King Morbidus",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "ancient-lich-lord",
+    "count": 1
+   }
+  ],
+  "targetCR": 15,
+  "description": "The supreme undead monarch of the shadowy abyss."
+ },
+ {
+  "id": "grim-l19",
+  "theme": "grim",
+  "level": 19,
+  "name": "Death Knight Arch-Marshal",
+  "bossId": "death-knight",
+  "bossTitle": "Grand Marshal Mortis",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "shadow-dragon-ancient",
+    "count": 1
+   }
+  ],
+  "targetCR": 16,
+  "description": "The high commander of the armies of the dead."
+ },
+ {
+  "id": "grim-l20",
+  "theme": "grim",
+  "level": 20,
+  "name": "Undead Overlord Arch-Lich Supreme",
+  "bossId": "lich",
+  "bossTitle": "Vanth the Deathless Sovereign",
+  "bossHpMult": 1.9,
+  "escorts": [
+   {
+    "id": "shadow-dragon-ancient",
+    "count": 1
+   },
+   {
+    "id": "death-knight",
+    "count": 2
+   }
+  ],
+  "targetCR": 18,
+  "description": "The ultimate lord of death, commanding all mortal decay."
+ },
+ {
+  "id": "ancient-l1",
+  "theme": "ancient",
+  "level": 1,
+  "name": "The Grikvein Warren",
+  "bossId": "kobold-chief",
+  "bossTitle": "Grik, Kobold Chief",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "kobold-shieldback",
+    "count": 1
+   },
+   {
+    "id": "kobold-warden",
+    "count": 1
+   },
+   {
+    "id": "kobold-slinger",
+    "count": 1
+   },
+   {
+    "id": "kobold-scrapper",
+    "count": 2
+   }
+  ],
+  "targetCR": 1,
+  "description": "Grik holds the deep gallery behind a wall of shields, his slingers pitching javelins from the dark."
+ },
+ {
+  "id": "ancient-l2",
+  "theme": "ancient",
+  "level": 2,
+  "name": "The Nail-Crown Warren",
+  "bossId": "goblin-warchief",
+  "bossTitle": "Grot, Nail-Crown",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "goblin-shield",
+    "count": 1
+   },
+   {
+    "id": "goblin-cutter",
+    "count": 2
+   },
+   {
+    "id": "goblin-archer",
+    "count": 1
+   },
+   {
+    "id": "goblin-hexer",
+    "count": 1
+   }
+  ],
+  "targetCR": 1,
+  "description": "Grot holds the second vault behind a wall of scavenged shields, his hexer cursing from the dark."
+ },
+ {
+  "id": "ancient-l3",
+  "theme": "ancient",
+  "level": 3,
+  "name": "The Red-Banner Cohort",
+  "bossId": "hobgoblin-legate",
+  "bossTitle": "Vurk, the Red-Banner",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "hobgoblin-ironback",
+    "count": 1
+   },
+   {
+    "id": "hobgoblin-legionary",
+    "count": 2
+   },
+   {
+    "id": "hobgoblin-archer",
+    "count": 1
+   },
+   {
+    "id": "goblin-cutter",
+    "count": 2
+   }
+  ],
+  "targetCR": 2,
+  "description": "Vurk holds the third gate in a shield line, his press-ganged goblins shoved out front to soak the first charge."
+ },
+ {
+  "id": "ancient-l4",
+  "theme": "ancient",
+  "level": 4,
+  "name": "The Court of Four Gates",
+  "bossId": "bugbear-warlord",
+  "bossTitle": "Ghaur, King of the Four Gates",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "bugbear-hidebound",
+    "count": 1
+   },
+   {
+    "id": "bugbear-maul",
+    "count": 1
+   },
+   {
+    "id": "bugbear-throatcutter",
+    "count": 1
+   },
+   {
+    "id": "hobgoblin-legionary",
+    "count": 1
+   },
+   {
+    "id": "goblin-cutter",
+    "count": 1
+   }
+  ],
+  "targetCR": 3,
+  "description": "Four gates, four castes, and Ghaur at the bottom of them with an iron mask where a crown should be. The crowns are on his belt."
+ },
+ {
+  "id": "ancient-l5",
+  "theme": "ancient",
+  "level": 5,
+  "name": "The Carrion Choir",
+  "bossId": "gnoll-packlord",
+  "bossTitle": "Hessk, Split-Grin",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "gnoll-bonecarl",
+    "count": 1
+   },
+   {
+    "id": "gnoll-render",
+    "count": 1
+   },
+   {
+    "id": "gnoll-longfang",
+    "count": 1
+   },
+   {
+    "id": "carrion-hyena",
+    "count": 2
+   }
+  ],
+  "targetCR": 3,
+  "description": "Below the Four Gates the hierarchy stops and the laughing starts. Hessk does not rule the warren; it just eats what the warren leaves."
+ },
+ {
+  "id": "ancient-l6",
+  "theme": "ancient",
+  "level": 6,
+  "name": "The Sundered Oath",
+  "bossId": "orc-oathbearer",
+  "bossTitle": "Gorrukh, the Last Word",
+  "bossHpMult": 1.4,
+  "escorts": [
+   {
+    "id": "orc-unbroken",
+    "count": 1
+   },
+   {
+    "id": "orc-oathsworn",
+    "count": 2
+   },
+   {
+    "id": "orc-berserker",
+    "count": 1
+   },
+   {
+    "id": "orc-eyepriest",
+    "count": 1
+   }
+  ],
+  "targetCR": 3,
+  "description": "The warren above pays rent to a garrison that outlived whatever it swore to. Gorrukh has no crown and does not want one. It has a post, and it is still standing at it."
+ },
+ {
+  "id": "ancient-l7",
+  "theme": "ancient",
+  "level": 7,
+  "name": "Stone Giant Lord",
+  "bossId": "stone-giant-lord",
+  "bossTitle": "Lord Crag-Mantle",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "minotaur",
+    "count": 2
+   }
+  ],
+  "targetCR": 4,
+  "description": "A master stone carver and warrior of ancient peaks."
+ },
+ {
+  "id": "ancient-l8",
+  "theme": "ancient",
+  "level": 8,
+  "name": "Medusa Petro-Queen",
+  "bossId": "medusa",
+  "bossTitle": "Gorgon-Stare Sylvan",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "basilisk",
+    "count": 2
+   }
+  ],
+  "targetCR": 5,
+  "description": "A serpent-haired queen whose gaze turns flesh to stone."
+ },
+ {
+  "id": "ancient-l9",
+  "theme": "ancient",
+  "level": 9,
+  "name": "Behir Lightning Serpent",
+  "bossId": "behir",
+  "bossTitle": "Storm-Coil",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "gargoyle",
+    "count": 2
+   }
+  ],
+  "targetCR": 6,
+  "description": "A twelve-legged reptilian monster breathing lightning."
+ },
+ {
+  "id": "ancient-l10",
+  "theme": "ancient",
+  "level": 10,
+  "name": "Aboleth Deep Guardian",
+  "bossId": "aboleth",
+  "bossTitle": "N'gath the Primordial",
+  "bossHpMult": 1.5,
+  "escorts": [
+   {
+    "id": "chuul",
+    "count": 2
+   }
+  ],
+  "targetCR": 7,
+  "description": "An ancient telepathic aberration dwelling in sunken ruins."
+ },
+ {
+  "id": "ancient-l11",
+  "theme": "ancient",
+  "level": 11,
+  "name": "Stone Golem Archon",
+  "bossId": "stone-golem",
+  "bossTitle": "Colossus of the Sun",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "shield-guardian",
+    "count": 2
+   }
+  ],
+  "targetCR": 8,
+  "description": "An indestructible granite titan guarding royal chambers."
+ },
+ {
+  "id": "ancient-l12",
+  "theme": "ancient",
+  "level": 12,
+  "name": "Iron Golem Colossus",
+  "bossId": "shield-guardian",
+  "bossTitle": "The Iron Sentinel",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "gargoyle",
+    "count": 4
+   }
+  ],
+  "targetCR": 9,
+  "description": "A massive iron statue breathing poisonous gas."
+ },
+ {
+  "id": "ancient-l13",
+  "theme": "ancient",
+  "level": 13,
+  "name": "Storm Giant Sovereign",
+  "bossId": "storm-giant",
+  "bossTitle": "King Thunder-Strike",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "stone-golem",
+    "count": 2
+   }
+  ],
+  "targetCR": 10,
+  "description": "A majestic giant who commands the power of tempestuous skies."
+ },
+ {
+  "id": "ancient-l14",
+  "theme": "ancient",
+  "level": 14,
+  "name": "Androsphinx Protector",
+  "bossId": "androsphinx",
+  "bossTitle": "Sphinx of the Sun-Vault",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "guardian-mummy",
+    "count": 3
+   }
+  ],
+  "targetCR": 11,
+  "description": "A divine winged lion testing travelers with ancient riddles."
+ },
+ {
+  "id": "ancient-l15",
+  "theme": "ancient",
+  "level": 15,
+  "name": "Ancient Iron Dragon Guardian",
+  "bossId": "iron-dragon-ancient",
+  "bossTitle": "Ferrus the Unbroken",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "stone-golem",
+    "count": 2
+   }
+  ],
+  "targetCR": 12,
+  "description": "A legendary metallic dragon clad in impenetrable iron plates."
+ },
+ {
+  "id": "ancient-l16",
+  "theme": "ancient",
+  "level": 16,
+  "name": "Dragon Turtle Sun-Ruler",
+  "bossId": "dragon-turtle",
+  "bossTitle": "Leviathan-Shell",
+  "bossHpMult": 1.6,
+  "escorts": [
+   {
+    "id": "aboleth",
+    "count": 1
+   }
+  ],
+  "targetCR": 13,
+  "description": "A gigantic shelled sea-beast guarding flooded ruins."
+ },
+ {
+  "id": "ancient-l17",
+  "theme": "ancient",
+  "level": 17,
+  "name": "Ancient Brass Dragon Guardian",
+  "bossId": "ancient-brass-dragon",
+  "bossTitle": "Kharos the Sun-Speaker",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "androsphinx",
+    "count": 1
+   }
+  ],
+  "targetCR": 14,
+  "description": "An ancient brass dragon defending sacred relics."
+ },
+ {
+  "id": "ancient-l18",
+  "theme": "ancient",
+  "level": 18,
+  "name": "Ancient Bronze Dragon Sovereign",
+  "bossId": "ancient-bronze-dragon",
+  "bossTitle": "Brontes the Lightning-Ruler",
+  "bossHpMult": 1.7,
+  "escorts": [
+   {
+    "id": "stone-golem",
+    "count": 2
+   }
+  ],
+  "targetCR": 15,
+  "description": "A venerable bronze dragon commanding righteous lightning."
+ },
+ {
+  "id": "ancient-l19",
+  "theme": "ancient",
+  "level": 19,
+  "name": "Ancient Gold Dragon Archon",
+  "bossId": "adult-gold-dragon",
+  "bossTitle": "Solarius the Supreme",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "solar",
+    "count": 1
+   }
+  ],
+  "targetCR": 16,
+  "description": "The highest manifestation of metallic dragon power."
+ },
+ {
+  "id": "ancient-l20",
+  "theme": "ancient",
+  "level": 20,
+  "name": "Solar Celestial Overlord",
+  "bossId": "solar",
+  "bossTitle": "Seraphim Solarius",
+  "bossHpMult": 1.8,
+  "escorts": [
+   {
+    "id": "adult-gold-dragon",
+    "count": 1
+   }
+  ],
+  "targetCR": 18,
+  "description": "A radiant divine angelic celestial wielding a flying sword."
+ }
+]

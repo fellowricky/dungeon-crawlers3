@@ -88,6 +88,8 @@ export function abilitySfx(key, fx) {
 let ctx = null, sfxGain = null, narrationGain = null;
 let narrationSrc = null;     // currently-playing narration source (one at a time)
 let unlocked = false;
+/* Tools that only audition SFX (the VFX editor) start without the soundtrack. */
+let musicAllowed = true;
 const buffers = new Map();   // path → AudioBuffer | Promise
 const lastPlay = new Map();  // sfx name → performance.now() of last start
 
@@ -356,7 +358,17 @@ export function queueNarration(id, { volume = 1, delay = 0 } = {}) {
 
 /* ── music ─────────────────────────────────────────────────────────── */
 
+/* Two modes share the one <audio> element: 'title' loops the main-menu theme,
+   'playlist' is the shuffled in-game rotation. The mode can be set before the
+   first gesture — startMusic() reads it when the unlock finally lands. */
+const TITLE_TRACK = 'Title Screen.mp3';
+const MUSIC_FADE_MS = 900;
+
 let musicEl = null, playlist = [], trackI = 0, musicStarted = false, musicErrors = 0;
+let musicMode = 'playlist';
+let fadeGen = 0;             // bumped per switch so an older fade stops touching the volume
+
+const musicLevel = () => settings.music * settings.music;
 
 function shuffled() {
   const a = TRACKS.slice();
@@ -368,16 +380,22 @@ function shuffled() {
 }
 
 function nextTrack() {
-  if (trackI >= playlist.length) { playlist = shuffled(); trackI = 0; }
-  musicEl.src = encodeURI(MUSIC_DIR + playlist[trackI++]);
-  musicEl.play().catch(() => { /* resumes on next gesture via unlock */ });
+  if (musicMode === 'title') {
+    musicEl.loop = true;
+    musicEl.src = encodeURI(MUSIC_DIR + TITLE_TRACK);
+  } else {
+    musicEl.loop = false;
+    if (trackI >= playlist.length) { playlist = shuffled(); trackI = 0; }
+    musicEl.src = encodeURI(MUSIC_DIR + playlist[trackI++]);
+  }
+  if (settings.music > 0) musicEl.play().catch(() => { /* resumes on next gesture via unlock */ });
 }
 
 function startMusic() {
   if (musicStarted) { if (musicEl.paused) musicEl.play().catch(() => {}); return; }
   musicStarted = true;
   musicEl = new Audio();
-  musicEl.volume = settings.music * settings.music;
+  musicEl.volume = musicLevel();
   musicEl.addEventListener('ended', nextTrack);
   musicEl.addEventListener('playing', () => { musicErrors = 0; });
   musicEl.addEventListener('error', () => {
@@ -386,6 +404,35 @@ function startMusic() {
   playlist = shuffled();
   trackI = 0;
   nextTrack();
+}
+
+/* Ramp musicEl.volume from its current level to `to`, then call `done`. `to`
+   may be a function so a fade-in follows the volume slider if it moves mid-fade. */
+function fadeMusic(to, ms, done) {
+  const gen = ++fadeGen;
+  const from = musicEl.volume, t0 = performance.now();
+  const step = () => {
+    if (gen !== fadeGen || !musicEl) return;
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    const target = typeof to === 'function' ? to() : to;
+    musicEl.volume = from + (target - from) * k;
+    if (k < 1) requestAnimationFrame(step);
+    else if (done) done();
+  };
+  requestAnimationFrame(step);
+}
+
+/** 'title' = loop the main-menu theme; 'playlist' = shuffled game music.
+ *  Fades the current track out and the new one in when music is running. */
+export function setMusicMode(mode) {
+  if (mode === musicMode) return;
+  musicMode = mode;
+  if (!musicStarted) return;                 // startMusic() picks the mode up on unlock
+  if (musicEl.paused || settings.music <= 0) { nextTrack(); return; }
+  fadeMusic(0, MUSIC_FADE_MS, () => {
+    nextTrack();
+    fadeMusic(musicLevel, MUSIC_FADE_MS);
+  });
 }
 
 /* ── volume API ────────────────────────────────────────────────────── */
@@ -399,7 +446,7 @@ export function setSfxVolume(v) {
 export function setMusicVolume(v) {
   settings.music = v;
   save();
-  if (!musicEl) { if (v > 0 && unlocked) startMusic(); return; }
+  if (!musicEl) { if (v > 0 && unlocked && musicAllowed) startMusic(); return; }
   musicEl.volume = v * v;
   if (v <= 0) musicEl.pause();
   else if (musicEl.paused && unlocked) musicEl.play().catch(() => {});
@@ -445,11 +492,12 @@ function unlock() {
   unlocked = true;
   const c = ensureCtx();
   if (c && c.state === 'suspended') c.resume();
-  if (settings.music > 0) startMusic();
+  if (musicAllowed && settings.music > 0) startMusic();
   try { preloadCommonSFX(); } catch (e) {}
 }
 
-export function initAudio() {
+export function initAudio({ music = true } = {}) {
+  musicAllowed = music;
   window.addEventListener('pointerdown', unlock, { once: true });
   window.addEventListener('keydown', unlock, { once: true });
   /* No volume UI here any more: the three sliders moved into the shared Options

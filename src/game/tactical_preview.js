@@ -18,6 +18,7 @@
 import { mod } from './srd.js';
 import { getEffectMods, hasEffect } from './conditions.js';
 import { hasFeature } from './features.js';
+import { sightAdvantage } from './light_rules.js';
 import { provokesOA } from './turn_engine.js';
 
 /** P(d20 roll ≥ need) with nat 1 always missing and nat 20 always hitting. */
@@ -45,6 +46,9 @@ export function attackPreview(game, hero, foe, profile) {
   if (foeMods.defAdvantage) { adv += 1; reasons.push('target impaired'); }
   if (selfMods.atkDisadvantage) { adv -= 1; reasons.push(hasEffect(hero, 'prone') ? 'prone' : 'impaired'); }
   if (selfMods.atkAdvantage) { adv += 1; reasons.push(hasEffect(hero, 'inspired') ? 'inspired' : 'advantage'); }
+  const sight = sightAdvantage(hero, foe);
+  if (sight.unseenTarget) { adv -= 1; reasons.push('target unseen in the dark'); }
+  if (sight.unseenAttacker) { adv += 1; reasons.push('striking from the shadows'); }
   const advWord = adv > 0 ? 'advantage' : adv < 0 ? 'disadvantage' : '';
 
   const isCantrip = !!(profile.isSave || profile.cantripScale || profile.source === 'cantrip');
@@ -81,11 +85,21 @@ export function attackPreview(game, hero, foe, profile) {
 
   let toHit = (d.atkProf || 0) + abilityMod + (selfMods.atkBonus || 0);
   if (selfMods.blessDice) { toHit += 2.5; notes.push('bless +1d4'); }
-  const foeAc = (fd.ac || 10) + (foeMods.acBonus || 0);
+
+  const cover = (!profile.melee && game && typeof game.getCover === 'function')
+    ? game.getCover(hero, foe)
+    : { type: 'none', acBonus: 0, dexBonus: 0 };
+  if (cover.type === 'total') {
+    notes.push('blocked by cover');
+  } else if (cover.acBonus > 0) {
+    notes.push(`${cover.type === 'threeQuarters' ? '3/4' : 'half'} cover (+${cover.acBonus} AC)`);
+  }
+
+  const foeAc = (fd.ac || 10) + (foeMods.acBonus || 0) + (cover.acBonus && cover.type !== 'total' ? cover.acBonus : 0);
   const need = foeAc - toHit;
   const critRange = d.critRange || 20;
-  const hit = hitProbability(need, adv);
-  const crit = hitProbability(critRange, adv);
+  const hit = (cover.type === 'total') ? 0 : hitProbability(need, adv);
+  const crit = (cover.type === 'total') ? 0 : hitProbability(critRange, adv);
   return {
     kind: 'attack', adv, advWord, reasons, notes,
     toHit: Math.round(toHit), foeAc,

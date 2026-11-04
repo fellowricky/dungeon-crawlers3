@@ -17,6 +17,10 @@
  * The whole terrain bakes into ONE canvas texture rather than thousands of
  * quads: one draw call, and at the compound's default zoom a 32px tile lands
  * almost exactly on 32 screen pixels, so the pixel art reads at native scale.
+ *
+ * bakeOverlandGround reuses the mask, hashing and mottle for overland maps whose
+ * theme asks for `groundTiles` (holdfast), with the DCSS grass_* set: the trail
+ * becomes a dirt road.
  */
 import * as THREE from 'three';
 import { COMPOUND, STRUCTURES } from '../game/guild_layout.js';
@@ -190,15 +194,15 @@ function hash(c, r, salt = 0) {
  *    also tried and introduced a diamond lattice, so it is deliberately unused.
  *  - FRINGE tiles encode which edge the dirt is on, so they are never touched.
  */
-function drawTile(ctx, img, x, y, orient) {
-  if (!orient) { ctx.drawImage(img, x, y, TILE_PX, TILE_PX); return; }
-  const h = TILE_PX / 2;
+function drawTile(ctx, img, x, y, orient, px = TILE_PX) {
+  if (!orient) { ctx.drawImage(img, x, y, px, px); return; }
+  const h = px / 2;
   ctx.save();
   ctx.translate(x + h, y + h);
   const quarters = (orient >> 1) & 3;
   if (quarters) ctx.rotate(quarters * Math.PI / 2);
   if (orient & 1) ctx.scale(-1, 1);
-  ctx.drawImage(img, -h, -h, TILE_PX, TILE_PX);
+  ctx.drawImage(img, -h, -h, px, px);
   ctx.restore();
 }
 
@@ -221,8 +225,8 @@ function mulberry32(seed) {
  * tiles per cycle — far coarser than the tile grid, so the eye reads it as
  * ground unevenness rather than as texture, and stops locking onto the repeat.
  */
-function applyMottle(ctx, w, h, seed = 1337) {
-  const CELL = 6 * TILE_PX;
+function applyMottle(ctx, w, h, seed = 1337, tilePx = TILE_PX) {
+  const CELL = 6 * tilePx;
   const nw = Math.ceil(w / CELL) + 1, nh = Math.ceil(h / CELL) + 1;
   const noise = document.createElement('canvas');
   noise.width = nw; noise.height = nh;
@@ -320,7 +324,10 @@ export async function bakeGroundTexture(W, D, levels, anisotropy = 1) {
   }
 
   applyMottle(ctx, canvas.width, canvas.height);
+  return groundCanvasTexture(canvas, anisotropy);
+}
 
+function groundCanvasTexture(canvas, anisotropy) {
   const tex = new THREE.CanvasTexture(canvas);
   /* Crisp when magnified (that is the whole point of pixel art), but mipmapped
      when minified — the ground recedes to the horizon and unfiltered minification
@@ -331,5 +338,183 @@ export async function bakeGroundTexture(W, D, levels, anisotropy = 1) {
   tex.anisotropy = anisotropy;
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
+  return tex;
+}
+
+/* ---------------- overland tile set ----------------
+   The DCSS `grass_*` set (public/art/ground/grass/) is the inverse of the
+   compound's `dirt_*` set, measured:
+
+     grass_0 / _1 / _2   solid GRASS, darker short turf, three variants
+     grass_full          solid DIRT, a stony track
+     grass_<dir>         a DIRT tile with grass creeping in from <dir>
+
+   So here the fringe sits on the DIRT side: grass cells are plain turf and
+   every dirt cell picks its edge from which neighbours are grass.
+   Unlike the compound set, the twins are no use here: `_new` is byte-identical
+   to the base tile and `_old` is a brighter palette that patchworks the field
+   into light and dark squares (measured: turf luma 49 vs 56, track 110 vs
+   146). Only the base tiles are shipped. */
+const OVERLAND_ROOT = './art/ground/grass/';
+const OL_GRASS = ['grass_0', 'grass_1', 'grass_2'];
+const OL_DIRT = ['grass_full'];
+const OL_FRINGES = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest'];
+const OL_NAMES = [...OL_GRASS, ...OL_DIRT, ...OL_FRINGES.map(f => `grass_${f}`)];
+
+let olImages = null, olLoad = null;
+function preloadOverlandTiles() {
+  if (olLoad) return olLoad;
+  olLoad = Promise.all(OL_NAMES.map(name => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve([name, img]);
+    img.onerror = () => { console.warn(`overland ground: missing tile ${name}`); resolve([name, null]); };
+    img.src = `${OVERLAND_ROOT}${name}.png`;
+  }))).then(pairs => (olImages = Object.fromEntries(pairs)));
+  return olLoad;
+}
+
+/* Cobbled road (groundTiles.surface 'cobble', boneyard): the clean DCSS
+   cobble_blood_1-7 tiles (blood starts at 8), their lighter `_old` twins,
+   stored as cobble_0-6; the base tiles went near-black under boneyard's
+   grade (bright 0.72) and the road vanished into the turf. There is
+   no cobble fringe set, so an edge tile is a cobble with the turf pixels of
+   the matching grass_<dir> fringe laid over it: the grass creeps onto the
+   stones the same way it creeps onto holdfast's dirt. Measured on grass_north,
+   turf is the only green-dominant colour (g > 1.05 r and g > b); the odd
+   green speck inside the dirt half carries over as a weed between stones. */
+const COBBLE_ROOT = './art/ground/cobble/';
+const COBBLE_N = 7;
+let cobbleImages = null, cobbleLoad = null;
+const cobbleEdges = new Map();   // `${fringe}:${variant}` -> composited canvas
+function preloadCobbleTiles() {
+  if (cobbleLoad) return cobbleLoad;
+  cobbleLoad = Promise.all(Array.from({ length: COBBLE_N }, (_, i) => new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => { console.warn(`overland ground: missing tile cobble_${i}`); resolve(null); };
+    img.src = `${COBBLE_ROOT}cobble_${i}.png`;
+  }))).then(imgs => (cobbleImages = imgs));
+  return cobbleLoad;
+}
+function cobbleEdge(fringe, variant) {
+  const key = `${fringe}:${variant}`;
+  if (cobbleEdges.has(key)) return cobbleEdges.get(key);
+  const base = cobbleImages[variant], turf = olImages[`grass_${fringe}`];
+  let out = base;
+  if (base && turf) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = TILE_PX;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(base, 0, 0, TILE_PX, TILE_PX);
+    const tc = document.createElement('canvas');
+    tc.width = tc.height = TILE_PX;
+    const tctx = tc.getContext('2d');
+    tctx.drawImage(turf, 0, 0, TILE_PX, TILE_PX);
+    const src = tctx.getImageData(0, 0, TILE_PX, TILE_PX).data;
+    const dst = ctx.getImageData(0, 0, TILE_PX, TILE_PX);
+    for (let i = 0; i < src.length; i += 4) {
+      if (src[i + 1] > src[i] * 1.05 && src[i + 1] > src[i + 2]) {
+        dst.data[i] = src[i]; dst.data[i + 1] = src[i + 1]; dst.data[i + 2] = src[i + 2];
+      }
+    }
+    ctx.putImageData(dst, 0, 0);
+    out = cv;
+  }
+  cobbleEdges.set(key, out);
+  return out;
+}
+
+/** Tile for one cell of an overland bake (fringe on the dirt side, see above). */
+function overlandTileFor(mask, c, r) {
+  if (mask.at(c, r) === GRASS) {
+    /* Turf blades run vertically: horizontal mirror only, as for the compound grass. */
+    return { name: OL_GRASS[hash(c, r, 2) % OL_GRASS.length], orient: hash(c, r, 4) & 1 };
+  }
+  // Off-map counts as grass here, so the road never meets the map edge as a hard dirt line.
+  const g = (cc, rr) => cc < 0 || rr < 0 || cc >= mask.cols || rr >= mask.rows || mask.at(cc, rr) === GRASS;
+  const n = g(c, r - 1), s = g(c, r + 1), w = g(c - 1, r), e = g(c + 1, r);
+  let fringe = null;
+  /* A one-tile-wide stretch has grass on two OPPOSITE sides, which no tile
+     covers. Fringe from one side, chosen per cell, so the track wavers rather
+     than always hugging the same edge. */
+  if (w && e && !n && !s) fringe = hash(c, r, 7) & 1 ? 'east' : 'west';
+  else if (n && s && !w && !e) fringe = hash(c, r, 7) & 1 ? 'north' : 'south';
+  else if (n && e) fringe = 'northeast';
+  else if (n && w) fringe = 'northwest';
+  else if (s && e) fringe = 'southeast';
+  else if (s && w) fringe = 'southwest';
+  else if (n) fringe = 'north';
+  else if (s) fringe = 'south';
+  else if (e) fringe = 'east';
+  else if (w) fringe = 'west';
+  if (fringe) return { name: `grass_${fringe}`, orient: 0 };
+  /* The track is isotropic stone-and-earth noise: all 8 orientations are safe. */
+  return { name: OL_DIRT[hash(c, r, 1) % OL_DIRT.length], orient: hash(c, r, 3) % 8 };
+}
+
+/**
+ * Bake an overland map's ground: turf everywhere, a dirt track on the cells
+ * `dirt` marks (the road), autotiled from the DCSS grass_* set above.
+ * One canvas pixel row per tile row, row 0 = map row 0, and the texture is not
+ * flipped, so world-space UVs (cell / size) index it directly.
+ *
+ * The DCSS tiles are bright and saturated; `sat` and `bright` grade the whole
+ * bake toward the biome (1 = untouched).
+ *
+ * @param {number} cols, rows  map size in tiles
+ * @param {Uint8Array} dirt    1 = dirt, per cell, row-major
+ * @param {{seed?:number, sat?:number, bright?:number, anisotropy?:number}} opts
+ */
+export async function bakeOverlandGround(cols, rows, dirt, opts = {}) {
+  await preloadOverlandTiles();
+  const cobble = opts.road === 'cobble' && (await preloadCobbleTiles()).some(Boolean);
+
+  const mask = new Mask(cols, rows);
+  mask.cells.set(dirt);
+
+  /* Native 32px tiles where the GPU allows it. A ribbon map is 300 tiles long,
+     a 9600px texture, past many GPUs' limit, so step the tile size down by
+     halves until the long side fits opts.maxTexture (renderer's
+     maxTextureSize). Halving keeps the pixel art on an even grid. */
+  const limit = opts.maxTexture || 4096;
+  let px = TILE_PX;
+  while (px > 4 && Math.max(cols, rows) * px > limit) px /= 2;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = cols * px;
+  canvas.height = rows * px;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const pick = overlandTileFor(mask, c, r);
+      let img = olImages[pick.name];
+      if (cobble && mask.at(c, r) !== GRASS) {
+        /* stones are isotropic like the dirt, so the track keeps its 8 orientations;
+           edge tiles keep orient 0 (it is 0 for every fringe pick already) */
+        const v = hash(c, r, 5) % COBBLE_N;
+        img = pick.name === 'grass_full' ? cobbleImages[v] : cobbleEdge(pick.name.slice(6), v);
+      }
+      if (img) drawTile(ctx, img, c * px, r * px, pick.orient, px);
+    }
+  }
+  applyMottle(ctx, canvas.width, canvas.height, (opts.seed | 0) || 1337, px);
+
+  /* Grade in place: draw the bake back over itself through a CSS filter.
+     `sepia` first browns the turf toward dead grass (boneyard), then the
+     saturation and brightness grade runs on the result. */
+  const sat = opts.sat ?? 1, bright = opts.bright ?? 1, sepia = opts.sepia ?? 0;
+  if (sat !== 1 || bright !== 1 || sepia) {
+    const graded = document.createElement('canvas');
+    graded.width = canvas.width; graded.height = canvas.height;
+    const gctx = graded.getContext('2d');
+    gctx.filter = `${sepia ? `sepia(${sepia}) ` : ''}saturate(${sat}) brightness(${bright})`;
+    gctx.drawImage(canvas, 0, 0);
+    const tex = groundCanvasTexture(graded, opts.anisotropy || 1);
+    tex.flipY = false;
+    return tex;
+  }
+  const tex = groundCanvasTexture(canvas, opts.anisotropy || 1);
+  tex.flipY = false;
   return tex;
 }

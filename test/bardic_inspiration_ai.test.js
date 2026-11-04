@@ -54,10 +54,12 @@ describe('Bardic Inspiration & Buff Spellcasting AI', () => {
     game.runCombatReflexes(bard, [bard, ally], null);
 
     expect(bard.data.charges.bardicInspiration).toBe(2);
-    expect(hasEffect(bard, 'inspired')).toBe(true);
+    /* 5e: ONE ally gets the die — never the bard themself */
+    expect(hasEffect(bard, 'inspired')).toBe(false);
     expect(hasEffect(ally, 'inspired')).toBe(true);
+    expect(ally._effects.inspired.die).toBe(6);   // a level-1 bard's d6
 
-    // Next turn/cycle: ally is still hurt, but both already have 'inspired'
+    // Next turn/cycle: the only ally is already inspired
     bard._abilityUsedThisCycle = false;
     bard._bonusActed = false;
     game.runCombatReflexes(bard, [bard, ally], null);

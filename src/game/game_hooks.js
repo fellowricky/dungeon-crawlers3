@@ -12,7 +12,7 @@
  * entities.js, ui.js, audio.js, or three directly — they call hooks.
  */
 import * as THREE from 'three';
-import { BEAT, noteBeat, readyToAdvance, resetFxClock, hold } from './fx_clock.js';
+import { BEAT, noteBeat, readyToAdvance, resetFxClock, hold, fxVisualBusy } from './fx_clock.js';
 import { reportError } from './errors.js';
 import {
   beginInitiativeReveal, tickInitiativeReveal, finishInitiativeReveal, isRevealActive,
@@ -62,7 +62,15 @@ import {
 } from './audio.js';
 import { _v } from './shared.js';
 import { onKill } from './quest_events.js';
-import { spawnCompositeAnimation } from './vfx_animations.js';
+import { spawnCompositeAnimation, hasActiveCompositeFX } from './vfx_animations.js';
+import { groundY } from '../dungeon/elevation.js';
+import { spawnLivePixelFx, spawnLightMote, spawnManaBurst } from '../render/pixelfx_live.js';
+import { spawnBodyEffect, chestWorldY, spawnSpellCharge, SPELL_CHARGE_SECONDS } from '../render/body_fx.js';
+import { poseCast, poseHit } from './sprite_pose.js';
+import { visualOf } from './entities.js';
+import * as stormCloudFx from '../render/pfx/storm_cloud.js';
+import * as wispFx from '../render/pfx/wisp.js';
+import { PAL } from '../vendor/pixelfx/core/index.js';
 
 export const gameHookMethods = {
 
@@ -169,9 +177,15 @@ export const gameHookMethods = {
      must not keep the turn engine waiting. */
   fxDelay(delaySec, cb, opts = null) {
     if (!cb) return;
+    if (this._castLead) delaySec = (delaySec || 0) + this._castLead;
     if (!(delaySec > 0)) { cb(); return; }
     if (!opts || opts.hold !== false) hold(delaySec + 0.25);
-    (this._pendingImpacts || (this._pendingImpacts = [])).push({ t: delaySec, cb });
+    (this._pendingImpacts || (this._pendingImpacts = [])).push({ t: delaySec, cb, holds: !opts || opts.hold !== false });
+  },
+  /** Hold the turn engine while a visual that carries information — a hero's
+      spellcast — plays for `sec` combat seconds. */
+  fxHold(sec) {
+    hold(sec);
   },
   /** Advance pending impacts; fires each callback once its delay elapses. */
   tickPendingImpacts(dt) {
@@ -190,25 +204,110 @@ export const gameHookMethods = {
       into a torn-down scene. */
   clearPendingImpacts() { this._pendingImpacts = null; },
 
+  /* ── the spell charge ─────────────────────────────────────────────────
+     Every spell opens with a half-second charge at the caster's chest. The
+     cast itself still runs at once (its rules, its slot, whether it succeeded),
+     but while `_castLead` is set everything it shows — and its damage and
+     healing, combat.js — waits out the charge. */
+  fxWithSpellCharge(caster, color, cast, chargeFx = null) {
+    this._castLead = SPELL_CHARGE_SECONDS;
+    let ok;
+    try { ok = cast(); } finally { this._castLead = 0; }
+    if (ok) this.fxSpellCharge(caster, color, chargeFx);
+    return ok;
+  },
+  /* `chargeFx`: a BODY_EFFECTS name to wind up with instead of the gather at the chest.
+     `toward`: the world heading { x, z } the spell leaves along; by default the
+     heading the cast animation just turned the caster to. */
+  fxSpellCharge(caster, color, chargeFx = null, toward = null) {
+    if (chargeFx) spawnBodyEffect(chargeFx, caster);
+    else spawnSpellCharge(caster, color);
+    poseCast(visualOf(caster), toward ? toward.x : (caster.attackTargetDX || 0), toward ? toward.z : (caster.attackTargetDZ || 0), SPELL_CHARGE_SECONDS);
+    /* a soft swell that crests as the charge ends, so the spell's own sound doesn't start cold */
+    this.fxPlaySfx('spellCharge', { volume: 0.6 });
+    hold(SPELL_CHARGE_SECONDS);
+  },
+  /* Where a spell leaves the caster: the centre of the chest, on the real floor. */
+  fxChestPos(e) { return this._v3(e.x, chestWorldY(e), e.z); },
+  fxGroundY(x, z) { return groundY(this.D, x, z); },
+  /** Run `fn` after the charge if a cast is opening; true if it was deferred. */
+  _afterCastLead(fn) {
+    if (!this._castLead) return false;
+    this.fxDelay(0, fn);
+    return true;
+  },
   fxProjectile(from, to, kind, color, onHit, opts = {}) {
+    if (this._afterCastLead(() => this.fxProjectile(from, to, kind, color, onHit, opts))) return;
     noteBeat(BEAT.NOTABLE);
-    spawnProjectile(this.engine.scene, from, to, kind, color, onHit, opts);
+    const dur = spawnProjectile(this.engine.scene, from, to, kind, color, onHit, opts);
+    if (dur > 0) hold(dur);
   },
   /** Play a composite VFX animation (travel + impact layers, sounds) authored
    *  in the animation editor. `opts` may carry travelSound/impactSound overrides
    *  (or false to mute) and an onImpact callback. */
   fxCompositeAnimation(anim, from, to, opts = {}) {
+    if (this._afterCastLead(() => this.fxCompositeAnimation(anim, from, to, opts))) return null;
     noteBeat(BEAT.NOTABLE);
-    return spawnCompositeAnimation(this.engine.scene, anim, { ...opts, from, to });
+    /* `ground` impact layers sit on the terrain under the target, raised floors included. */
+    const groundAt = opts.groundAt || ((x, z) => groundY(this.D, x, z));
+    return spawnCompositeAnimation(this.engine.scene, anim, { ...opts, from, to, groundAt });
+  },
+  /** Call Lightning's storm cloud, live-drawn (pixelfx) over the floor at
+   *  (x, z): boiling, raining, flickering, never striking on its own.
+   *  Returns { glideTo(x, z, sec), flash(k), remove() }. */
+  fxStormCloud(x, z) {
+    /* the cloud gathers with the charge; only its bolts wait */
+    const at = (px, pz) => new THREE.Vector3(px, groundY(this.D, px, pz), pz);
+    const fx = spawnLivePixelFx(this.engine.scene, stormCloudFx, { pos: at(x, z), pxPerUnit: stormCloudFx.PX_PER_UNIT });
+    return {
+      glideTo: (px, pz, sec) => { const p = at(px, pz); fx.moveTo(p.x, p.y, p.z, sec); },
+      flash: (k) => fx.flash(k),
+      remove: () => fx.remove(),
+    };
+  },
+  /** A small gold wisp of Dancing Lights, live-drawn over the floor at (x, z).
+   *  Returns { glideTo(x, z, sec), place(x, z), remove() }. */
+  fxWisp(x, z, seed = 0) {
+    const at = (px, pz) => new THREE.Vector3(px, groundY(this.D, px, pz), pz);
+    const fx = spawnLivePixelFx(this.engine.scene, wispFx, {
+      pos: at(x, z), pxPerUnit: (38 / 1.1) * 3, options: { palette: PAL.gold, seed: seed + 1 },
+    });
+    return {
+      glideTo: (px, pz, sec) => { const p = at(px, pz); fx.moveTo(p.x, p.y, p.z, sec); },
+      place: (px, pz) => { const p = at(px, pz); fx.mesh.position.copy(p); },
+      remove: () => fx.remove(),
+    };
+  },
+  /** The Light cantrip's white mote (render/pfx/light_mote.js). */
+  fxLightMote(x, y, z) {
+    const fx = spawnLightMote(this.engine.scene, new THREE.Vector3(x, y, z));
+    return { place: (px, py, pz) => fx.mesh.position.set(px, py, pz), remove: () => fx.remove() };
+  },
+  /** pixelfx's Mana Burst on the floor under `e`, in a named PAL ramp. */
+  fxManaBurst(e, palette) {
+    spawnManaBurst(this.engine.scene, new THREE.Vector3(e.x, groundY(this.D, e.x, e.z), e.z), PAL[palette]);
+  },
+  /** A pixelfx effect painted onto a creature's own sprite (render/body_fx.js). */
+  fxBodyEffect(kind, creature) {
+    if (this._afterCastLead(() => this.fxBodyEffect(kind, creature))) return null;
+    return spawnBodyEffect(kind, creature);
   },
   fxBeam(from, to, opts = {}) {
+    if (this._afterCastLead(() => this.fxBeam(from, to, opts))) return;
+    /* pillars stand on the terrain under their mark */
+    if (opts.type === 'pillar' && opts.groundY == null && to) opts = { ...opts, groundY: groundY(this.D, to.x, to.z) };
+    hold(opts.duration || 0.55);
     spawnBeamEffect(this.engine.scene, from, to, opts);
   },
   fxSprite(path, pos, scale, dur) {
-    spawnSpriteEffect(this.engine.scene, path, pos, scale, dur);
+    if (this._afterCastLead(() => this.fxSprite(path, pos, scale, dur))) return;
+    const entry = spawnSpriteEffect(this.engine.scene, path, pos, scale, dur);
+    if (entry && entry.dur > 0) hold(entry.dur);
   },
   fxSheetEffect(def, pos, scale, dur) {
-    spawnSheetEffect(this.engine.scene, def, pos, scale, dur);
+    if (this._afterCastLead(() => this.fxSheetEffect(def, pos, scale, dur))) return;
+    const entry = spawnSheetEffect(this.engine.scene, def, pos, scale, dur);
+    if (entry && entry.dur > 0) hold(entry.dur);
   },
   fxSlash(pos, color, size) {
     noteBeat(BEAT.ROUTINE);
@@ -232,6 +331,11 @@ export const gameHookMethods = {
   },
   fxHitFlash(ent) {
     hitFlash(ent);
+  },
+  /* A spell landing on `e`: squashed, pushed away from `source`. */
+  fxPoseHit(e, source) {
+    if (!e || !source || source.x == null) return;
+    poseHit(visualOf(e), e.x - source.x, e.z - source.z);
   },
   fxUpdateFlash(ent, dt) {
     updateFlash(ent, dt);
@@ -282,7 +386,17 @@ export const gameHookMethods = {
   /** True when spell/projectile/attack FX animations are still playing.
    *  Headless override returns false (no FX → never blocks turn advance). */
   fxHasActiveFX() {
-    return hasActiveFX();
+    return hasActiveFX() || hasActiveCompositeFX();
+  },
+  /** True while any spell charge, delayed release, projectile flight, or hit/impact
+   *  visual is still playing. Used by actionAnimBusy(actor, game) so casters finish
+   *  their cast, charge, projectile, and hit animation before stepping away. */
+  fxActionBusy() {
+    return !!(this._castLead > 0
+      || (this._pendingImpacts && this._pendingImpacts.some(p => p.holds !== false))
+      || hasActiveFX()
+      || hasActiveCompositeFX()
+      || fxVisualBusy());
   },
   fxRichAbilityVFX(casterPos, targetPos, fx, label, opts = {}) {
     spawnRichAbilityVFX(this.engine.scene, casterPos, targetPos, fx, label, opts);

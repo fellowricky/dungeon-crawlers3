@@ -28,7 +28,7 @@ export const HELP_TABS = [
       <ul>
         <li><b>Floors.</b> A quest is several floors. Clearing one is a <b>long rest</b>: full HP and every spell slot back.</li>
         <li><b>Shrines</b> on a floor are a <b>short rest</b>: Second Wind, Action Surge, Ki, Warlock slots and short-rest features return.</li>
-        <li><b>Chests</b> spin the loot wheel. The item's <b>Power Score</b> (PS) is the quick comparison — the tooltip shows the full delta against what is equipped.</li>
+        <li><b>Chests</b> drop their loot straight into the bag. An item's <b>Power Score</b> (PS) is the quick comparison — the tooltip shows the full delta against what is equipped.</li>
         <li><b>Skill challenges</b> are the non-combat rooms: pick an approach, the best-suited hero rolls. Options can automate them.</li>
         <li><b>Downed heroes</b> stagger back up at 30% HP once the fight ends (any healing brings them up mid-fight). If everyone drops, the run is over.</li>
       </ul>
@@ -120,6 +120,7 @@ export function openHelp(tabKey = 'loop') {
     </div>
     <div class="help-body">${tab.html}</div>
     <div class="opt-actions">
+      ${_replayTutorial ? '<button id="help-replay" class="btn" title="Only from the world map, between quests">▶ Replay tutorial</button>' : ''}
       <button id="help-close" class="btn primary">↩ Back</button>
     </div>
   </div>`;
@@ -127,6 +128,12 @@ export function openHelp(tabKey = 'loop') {
   ov.querySelectorAll('.help-tab').forEach(b => b.addEventListener('click', () => openHelp(b.dataset.tab)));
   const close = ov.querySelector('#help-close');
   if (close) close.addEventListener('click', closeHelp);
+  const replay = ov.querySelector('#help-replay');
+  if (replay) replay.addEventListener('click', () => {
+    if (_replayTutorial()) { closeHelp(); return; }
+    replay.textContent = 'Finish or leave the current quest first';
+    replay.disabled = true;
+  });
   ov.addEventListener('click', e => { if (e.target === ov) closeHelp(); });
   if (!_escBound) {
     _escBound = true;
@@ -148,17 +155,37 @@ export const TIPS = {
   manual: 'Manual mode: click a square to move, a monster to attack. Hover to see hit chances; red squares provoke attacks when you leave them. E ends the turn.',
   concentration: 'That spell needs concentration: it lasts while the caster keeps it up, one at a time, and taking damage can break it.',
   shrine: 'A shrine is a short rest — Second Wind, Ki, Warlock slots and short-rest features come back. Long rests happen when a floor is cleared.',
-  chest: 'The loot wheel: the item’s Power Score is the quick read. Open the Party screen (I) to compare it against what is equipped.',
+  chest: 'Chest loot drops straight into the bag. An item’s Power Score is the quick read — open the Party screen (I) to compare it against what is equipped.',
   guild: 'The Guild is where a company grows between runs: facilities, doctrines and the armoury all persist even when a run ends.',
-  levelUp: 'A hero has points to spend. Press K for the attributes tab — the Party button pulses while something is waiting.'
+  levelUp: 'A hero has points to spend. Press K for the attributes tab — the Party button pulses while something is waiting.',
+  firstKill: 'Kills give experience. A downed hero gets back up at 30% HP when the fight ends; if everyone drops, you choose between respawning and fleeing.',
+  potion: 'A hero is below half health. Drink a potion any time, even out of turn (1, 2 or 3), or set a potion threshold in AI Priorities so heroes drink on their own turn.',
+  treasureRoom: 'A treasure room: a large chest and loose wealth, often guarded. Worth the detour.',
+  skillChallenge: 'A skill challenge: pick an approach and the best-suited hero rolls. Risky approaches pay more, and a failure can hurt.',
+  merchantCamp: 'Clearing a floor is a long rest. The camp shop sells potions; a camp event is a social check whose boon carries into the next floor.'
 };
 
 let _showTip = null;
 /** The UI registers how a tip is shown (toast + log). */
 export function onTip(fn) { _showTip = fn; }
 
+/* The tutorial (tutorial.js) claims tips while it runs: it shows them as
+   pausing cards, every time it is played. Registered from there so this
+   module never imports the tutorial. */
+let _interceptTip = null;
+export function setTipInterceptor(fn) { _interceptTip = fn; }
+
+let _replayTutorial = null;
+/** tutorial.js registers how to start a replay; returns false when it can't. */
+export function setReplayTutorial(fn) { _replayTutorial = fn; }
+
 /** Show `key`'s tip if it has never been shown. Returns true when it fired. */
 export function firstRunTip(key) {
+  if (_interceptTip && _interceptTip(key)) {
+    const seen = getSetting('seenTips') || {};
+    if (TIPS[key] && !seen[key]) setSetting('seenTips', { ...seen, [key]: true });
+    return true;
+  }
   const text = TIPS[key];
   if (!text) return false;
   const seen = getSetting('seenTips') || {};

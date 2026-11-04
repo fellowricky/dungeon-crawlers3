@@ -32,6 +32,18 @@
 /** 5e round length in "in-game" seconds — the unit every `duration:` uses. */
 export const ROUND_SECONDS = 6;
 
+/** A duration in combat-clock seconds -> the whole number of rounds it lasts.
+ *  Always rounds UP and never below 1: a rule that lasts "a bit of a round"
+ *  does not exist in a turn-based game — it lasts the round. */
+export function wholeRounds(sec) {
+  if (!(sec > 0) || !isFinite(sec)) return 0;
+  return Math.max(1, Math.ceil(sec / ROUND_SECONDS - 1e-9));
+}
+/** Snap a duration to whole rounds (Infinity and non-positive pass through). */
+export function roundDuration(sec) {
+  return (sec > 0 && isFinite(sec)) ? wholeRounds(sec) * ROUND_SECONDS : sec;
+}
+
 /* ── tiny dice helpers (avoid srd.js import to prevent circular deps) ── */
 function roll(count, sides, bonus = 0) {
   let t = bonus;
@@ -81,6 +93,12 @@ export const EFFECTS = {
     atkDisadvantage:true,
     desc:'Disadvantage on attacks while source is visible.'
   },
+  mocked: {
+    label:'Mocked', category:'debuff', color:0xf040c0, float:'#f040c0',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    atkDisadvantage:true,
+    desc:'Rattled by an insult: disadvantage on attacks.'
+  },
   poisoned: {
     label:'Poisoned', category:'debuff', color:0x4cae4c, float:'#4cae4c',
     acPenalty:0, speedMul:1, dmgMul:1,
@@ -114,7 +132,7 @@ export const EFFECTS = {
     label:'Burning', category:'dot', color:0xff7a30, float:'#ff7a30',
     acPenalty:0, speedMul:1, dmgMul:1,
     dotData:true,
-    desc:'Takes fire damage each second.'
+    desc:'Takes fire damage each round.'
   },
   prone: {
     label:'Prone', category:'debuff', color:0xbfa060, float:'#bfa060',
@@ -126,6 +144,15 @@ export const EFFECTS = {
     label:'Deafened', category:'debuff', color:0x888899, float:'#888899',
     acPenalty:0, speedMul:1, dmgMul:1,
     desc:'No combat penalty in idle mode.'
+  },
+  /* Silence: no verbal components, so no spells or cantrips. Checked by
+     resolveSpell / manualPerformSpell (heroes), the cantrip attack profile,
+     and tryMonsterCycleAbility (monster casters). */
+  silenced: {
+    label:'Silenced', category:'debuff', color:0x7a7a9a, float:'#9a9ab8',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    noSpells:true,
+    desc:'Cannot cast spells or cantrips.'
   },
   incapacitated: {
     label:'Incapacitated', category:'debuff', color:0x999999, float:'#999999',
@@ -151,6 +178,12 @@ export const EFFECTS = {
     dmgBonus:2,
     desc:'Magically enlarged: +25% damage dealt, +2 damage.'
   },
+  dreadAmbush: {
+    label:'Dread Ambush', category:'buff', color:0x4a6a5a, float:'#7fb89a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    extraAttack:1,
+    desc:'Umbral Sight: an extra attack in the opening round.'
+  },
   invisible: {
     label:'Invisible', category:'buff', color:0xaabbcc, float:'#aabbcc',
     acBonus:0, speedMul:1, dmgMul:1,
@@ -171,16 +204,55 @@ export const EFFECTS = {
     atkBonus:0, dmgBonus:2, dmgTakenMul:0.5,
     desc:'Half damage taken. +2 damage. +2 AC.'
   },
+  /* The Haste spell: doubled speed, +2 AC and one extra weapon attack per
+     turn (extraAttack is read by heroCombat's attack count). */
   hasted: {
     label:'Hasted', category:'buff', color:0xa0e0ff, float:'#a0e0ff',
-    acBonus:2, speedMul:1.4, dmgMul:1,
-    desc:'+40% speed. +2 AC.'
+    acBonus:2, speedMul:2, dmgMul:1,
+    extraAttack:1,
+    desc:'Double speed. +2 AC. One extra weapon attack each turn.'
   },
+  /* Sentinel: an opportunity-attack hit drops the target's speed to 0. */
+  rooted: {
+    label:'Rooted', category:'debuff', color:0xbfa060, float:'#bfa060',
+    acPenalty:0, speedMul:0, dmgMul:1,
+    desc:'Speed 0 until the end of the round.'
+  },
+  /* A Dash (Cunning Action, Step of the Wind): doubled movement, nothing else. */
+  dashing: {
+    label:'Dashing', category:'buff', color:0xa0e0ff, float:'#a0e0ff',
+    acBonus:0, speedMul:2, dmgMul:1,
+    desc:'Double speed this turn.'
+  },
+  /* Bardic Inspiration: the inspiration die is stored on the effect record
+     (`die`, d6 by default) and added to the next attack roll, then spent. */
   inspired: {
     label:'Inspired', category:'buff', color:0xe8a8ff, float:'#e8a8ff',
     acBonus:0, speedMul:1, dmgMul:1,
-    atkAdvantage:1, consumeOnAttack:true,
-    desc:'Advantage on next attack roll.'
+    inspireDie:true, consumeOnAttack:true,
+    desc:'Add an inspiration die to your next attack roll.'
+  },
+  /* Bless: +1d4 on attack rolls and saving throws (blessDice is read by
+     heroAttackRoll and rollSaveDetail). */
+  blessed: {
+    label:'Blessed', category:'buff', color:0xffe08a, float:'#ffe08a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    blessDice:true,
+    desc:'+1d4 to attack rolls and saving throws.'
+  },
+  /* Regenerate: 1 HP at the start of every round (tickHeroDots). */
+  regenerating: {
+    label:'Regenerating', category:'buff', color:0x6ae06a, float:'#6ae06a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    regenPerRound:1,
+    desc:'Regains 1 HP every round.'
+  },
+  /* Mirror Image: `images` on the record counts the duplicates left. A blow
+     that would land is rolled against the images first (mirrorImageIntercept). */
+  mirrorImages: {
+    label:'Mirror Image', category:'buff', color:0xc0d8ff, float:'#c0d8ff',
+    acBonus:0, speedMul:1, dmgMul:1,
+    desc:'Illusory duplicates draw attacks away from you.'
   },
   foresight: {
     label:'Foresight', category:'buff', color:0xffd9a0, float:'#ffd9a0',
@@ -195,11 +267,13 @@ export const EFFECTS = {
     acBonus:5, speedMul:1, dmgMul:1,
     desc:'+5 AC.'
   },
+  /* Channel Divinity: Sacred Weapon — +CHA modifier to attack rolls (carried
+     per-instance as `atkBonus` on the record) and the weapon counts as magical. */
   sacredWeapon: {
     label:'Sacred Weapon', category:'buff', color:0xffe08a, float:'#ffe08a',
     acBonus:0, speedMul:1, dmgMul:1,
-    atkBonus:4, sacredDice:true,
-    desc:'+4 to hit. +1d8 damage.'
+    magicWeapon:true,
+    desc:'Your Charisma modifier to attack rolls; the weapon is magical.'
   },
   bearTotem: {
     label:'Bear Totem', category:'buff', color:0xc08040, float:'#c08040',
@@ -264,6 +338,12 @@ export const EFFECTS = {
     defAdvantage:true,
     desc:'Enemies have advantage to hit.'
   },
+  guided: {
+    label:'Guided', category:'debuff', color:0xffd23c, float:'#ffd23c',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    defAdvantage:true,
+    desc:'Glittering with mystical light: attackers have advantage.'
+  },
   hexMarked: {
     label:'Hex', category:'debuff', color:0x9b59b6, float:'#9b59b6',
     acPenalty:0, speedMul:1, dmgMul:1,
@@ -290,7 +370,47 @@ export const EFFECTS = {
     label:'Wounded', category:'dot', color:0xb03030, float:'#d04040',
     acPenalty:0, speedMul:1, dmgMul:1,
     dotData:true,
-    desc:'Bleeding: loses HP each second.'
+    desc:'Bleeding: loses HP each round.'
+  },
+  /* Polymorph (on a foe): a harmless beast with its own tiny HP pool
+     (m._polyHp, see damageMonster). Cannot attack; the first real hit ends it. */
+  polymorphed: {
+    label:'Sheep', category:'debuff', color:0xf0f0f0, float:'#f0f0f0',
+    acPenalty:0, speedMul:0.6, dmgMul:1,
+    incapacitated:true,
+    desc:'Turned into a sheep. Harmless until struck.'
+  },
+  /* Banishment: gone from the field entirely — see game.banishMonster. */
+  banished: {
+    label:'Banished', category:'debuff', color:0x8090c0, float:'#a0b0e0',
+    acPenalty:0, speedMul:0, dmgMul:1,
+    incapacitated:true,
+    desc:'Sent to another plane. Cannot act or be targeted.'
+  },
+  /* Dominate Monster: the creature changes sides for the duration. The flag is
+     read by monster_ai (who it fights), initiative (_side 'ally', so it does
+     not keep a fight alive) and hero targeting (they leave it be). The caster
+     wrapper is kept on m.dominatedBy; see game.dominateMonster. */
+  dominated: {
+    label:'Dominated', category:'debuff', color:0xc084fc, float:'#c084fc',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    dominated:true,
+    desc:'Fights for the caster.'
+  },
+  /* Crusader's Mantle: the caster's allies add 1d4 radiant to weapon hits —
+     rolled in heroCombat next to Sacred Weapon's die. */
+  crusadersMantle: {
+    label:"Crusader's Mantle", category:'buff', color:0xffd700, float:'#ffd700',
+    acBonus:0, speedMul:1, dmgMul:1,
+    desc:'+1d4 radiant damage on weapon hits.'
+  },
+  /* Protection from Evil: the ward that makes the spell's "immune to charm
+     and fear" line real — applyEffect refuses those two keys while it holds. */
+  warded: {
+    label:'Warded', category:'buff', color:0xffe08a, float:'#ffe08a',
+    acBonus:0, speedMul:1, dmgMul:1,
+    immuneCharmFear:true,
+    desc:'Immune to charmed and frightened.'
   },
   /* Potion of Heroism: Bless's +1d4 on attacks (the tempHp is granted by the
      potion itself, see _usePotion). */
@@ -385,9 +505,15 @@ export function applyEffect(e, key, opts = {}) {
      the monster's condImmune array — e.g. skeleton carries "Poisoned"). */
   const condImmune = dt.statblock?.condImmune;
   if (condImmune && condImmune.length && condImmune.some(ci => ci.toLowerCase() === key)) return false;
+  /* spell-granted immunity (Protection from Evil's ward) */
+  if ((key === 'charmed' || key === 'frightened') && e._effects?.warded) return false;
 
   e._effects = e._effects || {};
-  const dur = opts.duration || null;
+  /* Every effect lasts a whole number of rounds. Callers pass combat-clock
+     seconds; anything that is not already a multiple of ROUND_SECONDS (old
+     wall-clock values in data, a x1.5 crit bonus) is rounded UP here so no
+     effect can expire part-way through a round. */
+  const dur = opts.duration ? roundDuration(opts.duration) : null;
   const until = dur != null ? (opts.elapsed || 0) + dur : null;
 
   /* stacking effects (corroded / drained): re-application adds a stack */
@@ -411,6 +537,9 @@ export function applyEffect(e, key, opts = {}) {
     tag: opts.tag || null,
     stacks: EFFECTS[key].stacking ? 1 : undefined,
   };
+  /* Per-instance numbers (Mirror Image's image count, Bardic Inspiration's
+     die, Sacred Weapon's CHA bonus) ride on the record. */
+  if (opts.data) Object.assign(e._effects[key], opts.data);
   /* 5e repeat save: target re-rolls the save every `every` seconds ("at the
      end of each of its turns") and shakes the effect off on a success. */
   if (opts.repeatSave) {
@@ -535,7 +664,7 @@ export function getEffectMods(e) {
     atkDisadvantage:false, atkAdvantage:0, autoCritMelee:false,
     wildShapeDmg:false, sacredDice:false, blessDice:false,
     cantAttackSource:null, acFloor:0, magicWeapon:false,
-    invisible:false,
+    invisible:false, extraAttack:0, regenPerRound:0,
   };
   if (!e._effects) { e._effectCache = m; return m; }
   for (const [k, eff] of Object.entries(e._effects)) {
@@ -543,7 +672,9 @@ export function getEffectMods(e) {
     /* stacking penalties (corroded: -1 AC per stack) */
     if (d.acPenaltyPerStack) m.acBonus -= d.acPenaltyPerStack * (eff.stacks || 1);
     m.acBonus += (d.acBonus||0) - (d.acPenalty||0);
-    m.atkBonus += (d.atkBonus||0) - (d.atkPenalty||0);
+    m.atkBonus += (d.atkBonus||0) - (d.atkPenalty||0) + (eff.atkBonus||0);
+    if (d.extraAttack) m.extraAttack += d.extraAttack;
+    if (d.regenPerRound) m.regenPerRound += d.regenPerRound;
     m.dmgBonus += d.dmgBonus||0;
     m.speedMul *= d.speedMul!=null ? d.speedMul : 1;
     m.dmgTakenMul *= d.dmgTakenMul!=null ? d.dmgTakenMul : 1;
@@ -579,7 +710,10 @@ export function getEffectMods(e) {
 /* Full roll breakdown — the raw d20, the save modifier, and the total — so the
    combat log can show "DEX save: 14 vs DC 15 — fail". rollSave wraps this and
    returns just the pass/fail boolean for the many call sites that only need it. */
-export function rollSaveDetail(entity, ability, dc, opts = {}) {
+/** The flat modifier `entity` adds to a saving throw of `ability` (stat mod +
+ *  proficiency where it has it) — no dice, no advantage. Shared by the real
+ *  roll below and the AI's expected-damage estimates, so the two agree. */
+export function saveModifier(entity, ability) {
   const data = entity.data || entity;
   let m = 0;
   if (data.effStats && data.effStats[ability] != null) {
@@ -593,6 +727,12 @@ export function rollSaveDetail(entity, ability, dc, opts = {}) {
   } else if (data.cr != null) {
     m = Math.max(0, Math.min(8, Math.floor(data.cr / 2)));
   }
+  return m;
+}
+
+export function rollSaveDetail(entity, ability, dc, opts = {}) {
+  const data = entity.data || entity;
+  let m = saveModifier(entity, ability);
 
   let adv = opts.adv || 0;
   /* restrained: disadvantage on DEX saves */
@@ -605,6 +745,14 @@ export function rollSaveDetail(entity, ability, dc, opts = {}) {
   }
   /* Magic Resistance (SRD trait): advantage on saving throws vs spells & magic */
   if (opts.magic && data.magicResistance) adv += 1;
+  /* Bless: +1d4 on saving throws as well as attacks */
+  if (entity._effects) {
+    for (const k in entity._effects) if (EFFECTS[k]?.blessDice) { m += roll(1, 4); break; }
+  }
+  /* Shield Master: +2 on DEX saves against spells while holding a shield */
+  if (ability === 'dex' && opts.magic && data.feats && data.feats.includes('shieldMaster')
+      && data.equipment?.offhand?.slot === 'shield') m += 2;
+  if (opts.bonus) m += opts.bonus;
 
   const a = roll(1, 20);
   let d20 = a;

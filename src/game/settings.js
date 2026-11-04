@@ -43,14 +43,17 @@ export const SETTING_DEFAULTS = Object.freeze({
   initiativeReveal: true,  // play the d20 roll-off when a fight starts (2.5s)
 
   /* ── camera ──
-     Both default ON: the director only ever pulls BACK from the zoom the
-     player last chose by hand, and hands control over entirely for three
-     seconds after any camera input, so neither can take a view away from
+     All default ON. The director treats the zoom and tilt the player last
+     chose by hand (one pair for exploring, one for fighting) as a ceiling it
+     pulls back from, and hands control over entirely for CAM_FREE_SECONDS
+     after any camera input, so none of these can take a view away from
      someone who has asked for it. */
   cameraAutoFrame: true,   // zoom out to fit the fight; heroes are never cropped
   cameraActionZoom: true,  // punch in for tighter dramatic shots on attacks and spells
   cameraAutoRotate: true,  // quarter-turn around walls standing in the way
   cameraActionRotate: true,// rotate for cooler angles along the line of action
+  cameraWallCutaway: true, // dissolve walls standing between the camera and a body
+  cameraExploreOrbit: true,// slow pendulum sway of the camera while exploring
 
   /* ── graphics & comfort ──
      The game idles for hours on whatever machine is on the desk, so the render

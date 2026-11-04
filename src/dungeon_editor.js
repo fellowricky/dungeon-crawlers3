@@ -12,14 +12,17 @@
  * instead of a flat preview, then saved into public/art/tiles.
  */
 import * as THREE from 'three';
-import { THEMES, generateDungeon } from './dungeon/dungeon_generator.js';
+import { THEMES, generateDungeon, QUEST_OVERLAND_MAP } from './dungeon/dungeon_generator.js';
+import { TOD_LIGHT_KEYS, timeOfDayTheme, buildEffectiveOverlandTheme } from './dungeon/overland_weather.js';
 import SAVED_OVERRIDES from './game/theme_overrides.json' with { type: 'json' };
 import {
   renderer, cam, camTarget, updateCam, buildScene, renderFrame, liveUpdate,
   finishAnim, applyThemeEnv, applyTorchSettings, lights, registerProp, registeredProps,
-  DEFAULT_CAM_ZOOM, MIN_CAM_ZOOM, MAX_CAM_ZOOM
+  DEFAULT_CAM_ZOOM, MIN_CAM_ZOOM, MAX_CAM_ZOOM, setSunAngle
 } from './render/dungeon_scene.js';
 import SAVED_CUSTOM_PROPS from './game/custom_props.json' with { type: 'json' };
+import { setLightDebug, lightDebugOn, tickLightDebug, lightDebugSummary, applyThemeLightLevels, DARK_CUE_DEFAULT } from './render/sprite_lighting.js';
+import { LIGHT_LEVEL_DEFAULTS } from './game/light_sources.js';
 import { matFloor, matWall, matWallCap, setTileOverride } from './render/dungeon_materials.js';
 
 /* ---------------- state ---------------- */
@@ -30,8 +33,12 @@ const state = {
   themeKey: 'ancient',
   seed: 4242,
   tab: 'generate',
+  /* overlandLayout 'quest' = exactly what quests generate (QUEST_OVERLAND_MAP:
+     a 50 x 300 ribbon, nine clearings) and ignores the size sliders; 'ribbon'
+     and 'classic' use the sliders. */
   gen: { roomCount: 16, loopChance: 0.18, decorDensity: 1, threatMult: 1,
-         level: 1, mapW: 0, mapH: 0, zones: 0 },
+         level: 1, mapW: 0, mapH: 0, zones: 0, timeOfDay: 'auto', weather: 'auto',
+         overlandLayout: 'quest' },
   zoom: DEFAULT_CAM_ZOOM,
   animate: false
 };
@@ -108,6 +115,11 @@ function forge() {
     params.mapW = state.gen.mapW;
     params.mapH = state.gen.mapH;
     params.zones = state.gen.zones;
+    const lay = state.gen.overlandLayout || 'quest';
+    if (lay === 'quest') Object.assign(params, QUEST_OVERLAND_MAP);
+    else if (lay === 'ribbon') params.layout = 'ribbon';
+    if (state.gen.timeOfDay && state.gen.timeOfDay !== 'auto') params.timeOfDay = state.gen.timeOfDay;
+    if (state.gen.weather && state.gen.weather !== 'auto') params.weather = state.gen.weather;
   }
   const t0 = performance.now();
   const d = generateDungeon(params.seed, params);
@@ -117,8 +129,9 @@ function forge() {
   cam.zoom = state.zoom;
   cam.updateProjectionMatrix();
   updateCam();
+  const weatherStr = (th.overland && d.timeOfDay && d.weather) ? ` · ${d.timeOfDay} · ${d.weather}` : '';
   el('hud').innerHTML =
-    `<b>${th.label}</b> · seed ${d.seed} · ${d.stats.rooms} rooms · ` +
+    `<b>${th.label}</b> · seed ${d.seed}${weatherStr} · ${d.stats.rooms} rooms · ` +
     `${d.stats.floorTiles} tiles · ${lights.length} lights · ` +
     `${(performance.now() - t0).toFixed(0)}ms`;
 }
@@ -231,7 +244,58 @@ function themeBinding(pathStr) {
     set: v => { setPath(TH(), pathStr, v); recordPatch(pathStr, v); }
   };
 }
-const envLive = () => applyThemeEnv(TH());
+/* ── per-time-of-day lighting (overland only) ──
+   An overland map's lighting is the base theme run through its time of day
+   (overland_weather.js timeOfDayTheme), so editing the base moved day, dusk
+   and night together. Here the Lighting tab edits the time being viewed:
+   values read from that time's derived look and are written to
+   THEMES[k].tod[time] (saved under the same path). Dungeons have one time of
+   day and keep editing the base theme. */
+const todOf = () => {
+  if (!TH().overland) return null;
+  const t = state.gen.timeOfDay;
+  return t && t !== 'auto' ? t : (lastD && lastD.timeOfDay) || 'day';
+};
+function lightGet(key) {
+  const t = todOf();
+  const v = t ? timeOfDayTheme(TH(), t)[key] : TH()[key];
+  return Array.isArray(v) ? [...v] : (v && typeof v === 'object') ? { ...v } : v;
+}
+function lightSet(key, value) {
+  const t = todOf();
+  if (!t) { TH()[key] = value; recordPatch(key, value); return; }
+  const tod = (TH().tod ||= {});
+  (tod[t] ||= {})[key] = value;
+  recordPatch(`tod.${t}.${key}`, Array.isArray(value) ? [...value] : value);
+}
+/* one element of an array-valued lighting key (hemi, dir, sunAngle, torchLight) */
+const lightAt = (key, i) => ({
+  get: () => lightGet(key)[i],
+  set: v => { const cur = lightGet(key); cur[i] = v; lightSet(key, cur); }
+});
+const lightBinding = key => ({ get: () => lightGet(key), set: v => lightSet(key, v) });
+/* light cut-offs + darkness shading: one `lightLevels` block per theme, and
+   per time of day on overland themes, like everything else on this tab */
+const levelsNow = () => ({ ...LIGHT_LEVEL_DEFAULTS, darkCue: DARK_CUE_DEFAULT, ...(lightGet('lightLevels') || {}) });
+const levelAt = k => ({
+  get: () => levelsNow()[k],
+  set: v => { const cur = levelsNow(); cur[k] = v; lightSet('lightLevels', cur); applyThemeLightLevels(liveTheme()); }
+});
+
+/* The scene draws an overland map from d.effectiveTheme (the base run through
+   time AND weather), so a live edit rebuilds that object's lighting keys in
+   place rather than applying the bare base theme. */
+function liveTheme() {
+  const d = lastD;
+  if (!TH().overland || !d || !d.effectiveTheme || !d.weatherEnv) return TH();
+  const fresh = buildEffectiveOverlandTheme(TH(), d.weatherEnv);
+  for (const k of TOD_LIGHT_KEYS) d.effectiveTheme[k] = fresh[k];
+  d.effectiveTheme.weatherDirScale = fresh.weatherDirScale;
+  d.effectiveTheme.weatherHemiScale = fresh.weatherHemiScale;
+  d.effectiveTheme.accent = fresh.accent;
+  return d.effectiveTheme;
+}
+const envLive = () => applyThemeEnv(liveTheme());
 
 /* ---------------- tabs ---------------- */
 const TABS = ['generate', 'lighting', 'palette', 'textures', 'scatter', 'assets'];
@@ -295,20 +359,33 @@ function tabGenerate() {
     const o = group('Overland');
     slider(o, 'Party level', { min: 1, max: 20, step: 1, fmt: v => v | 0,
       get: () => state.gen.level, set: v => { state.gen.level = v; } });
-    /* Ranges mirror generateOverland's own clamps (48-120 tiles, 4-12 zones).
-       They used to run to 160 and 8, so the top of the size sliders did nothing
-       and the top third of the zone range was unreachable. */
+    /* 'Quest' is what the game generates for every quest overland floor; the
+       size sliders only apply to the other two. */
+    select(o, 'Layout', ['quest', 'ribbon', 'classic'], {
+      get: () => state.gen.overlandLayout || 'quest',
+      set: v => { state.gen.overlandLayout = v; } });
+    /* Ranges mirror generateOverland's own clamps: 48-120 tiles (classic),
+       height up to 320 and width from 36 for ribbons; 4-12 zones. */
     const sizeFmt = v => (v < 48 ? 'auto (58)' : String(v | 0));
-    slider(o, 'Map width', { min: 44, max: 120, step: 4, fmt: sizeFmt,
-      get: () => state.gen.mapW, set: v => { state.gen.mapW = v < 48 ? 0 : v; } });
-    slider(o, 'Map height', { min: 44, max: 120, step: 4, fmt: sizeFmt,
+    slider(o, 'Map width', { min: 36, max: 120, step: 2, fmt: sizeFmt,
+      get: () => state.gen.mapW, set: v => { state.gen.mapW = v < 48 && state.gen.overlandLayout !== 'ribbon' ? 0 : v; } });
+    slider(o, 'Map height', { min: 44, max: 320, step: 4, fmt: sizeFmt,
       get: () => state.gen.mapH, set: v => { state.gen.mapH = v < 48 ? 0 : v; } });
     slider(o, 'Zones', { min: 0, max: 12, step: 1, fmt: v => (v ? String(v | 0) : 'auto'),
       get: () => state.gen.zones, set: v => { state.gen.zones = v; } });
-    hint(o, 'Size clamps to 48-120 tiles; below that is auto (58). Zone count is ' +
-      'auto from area unless set. Zoom out to see a size change — the camera does ' +
-      'not reframe. Blockers: ' +
+    hint(o, `Layout "quest" is exactly what quests generate (${QUEST_OVERLAND_MAP.mapW} x ` +
+      `${QUEST_OVERLAND_MAP.mapH} ribbon, ${QUEST_OVERLAND_MAP.zones} clearings) and ignores the sliders. ` +
+      '"ribbon" and "classic" use them (classic clamps to 48-120). Zoom out to see a size ' +
+      'change — the camera does not reframe. Blockers: ' +
       `${TH().blockerGeo === 'block' ? 'masonry' : 'trees'}, ground: ${TH().groundMat || 'grass'}.`);
+    select(o, 'Time of Day', ['auto', 'day', 'dusk', 'night'], {
+      get: () => state.gen.timeOfDay || 'auto',
+      set: v => { state.gen.timeOfDay = v; forge(); }
+    });
+    select(o, 'Weather', ['auto', 'clear', 'overcast', 'rain', 'fog', 'snow', 'blizzard', 'ash', 'spores'], {
+      get: () => state.gen.weather || 'auto',
+      set: v => { state.gen.weather = v; forge(); }
+    });
     select(o, 'Blocker geo', ['tree', 'block'], {
       get: () => TH().blockerGeo || 'tree',
       set: v => { TH().blockerGeo = v; recordPatch('blockerGeo', v); }
@@ -327,30 +404,111 @@ function tabGenerate() {
 }
 
 /* ---- Lighting ---- */
+/* Light debug: the game's F4 overlay — every floor tile tinted by the light
+   status the rules see (bright / dim / dark). Here it doubles as a tuning aid:
+   move the ambient and torch sliders below and watch the split change. */
+function lightDebugGroup(tod) {
+  const g = group(tod ? `Light debug (F4) — ${tod}` : 'Light debug (F4)');
+  const ctl = row(g, 'Show light levels');
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.id = 'light-debug-cb'; cb.checked = lightDebugOn();
+  cb.onchange = () => { setLightDebug(cb.checked); refreshLightDebugReadout(); };
+  ctl.append(cb);
+  const out = document.createElement('p');
+  out.className = 'hint'; out.id = 'light-debug-readout';
+  g.appendChild(out);
+  hint(g, 'Yellow = bright, blue = dim, red = dark. The party\'s own torches only light during a run, so here you see the map lights alone.');
+  /* The rules' cut-offs, saved per theme (and per time of day overland) as
+     `lightLevels`; buildScene loads them for every level. Re-setting the
+     overlay forces an immediate repaint. */
+  const thr = () => { setLightDebug(lightDebugOn()); refreshLightDebugReadout(); };
+  slider(g, 'Bright at ≥', { min: 0.05, max: 1.5, step: 0.01, live: thr, ...levelAt('bright') });
+  slider(g, 'Dim at ≥', { min: 0.01, max: 1.0, step: 0.01, live: thr, ...levelAt('dim') });
+  slider(g, 'Sky fill counts', { min: 0, max: 1, step: 0.05, live: thr, ...levelAt('skyWeight') });
+  /* The in-game cue (with F4 off): dim floor a touch cooler, dark floor a
+     darker cool blue-grey. 0 turns it off. */
+  slider(g, 'Darkness shading', { min: 0, max: 1.5, step: 0.05, live: thr, ...levelAt('darkCue') });
+  hint(g, (tod ? `Saved for ${tod} on this theme. ` : 'Saved for this theme. ') +
+    `Untouched values use the defaults (bright ${LIGHT_LEVEL_DEFAULTS.bright}, dim ${LIGHT_LEVEL_DEFAULTS.dim}, ` +
+    `sky ${LIGHT_LEVEL_DEFAULTS.skyWeight}, shading ${DARK_CUE_DEFAULT}). ` +
+    'Sky fill 0 = the Hemi sliders brighten the picture without lighting anything for the rules.');
+  refreshLightDebugReadout();
+}
+function refreshLightDebugReadout() {
+  const out = document.getElementById('light-debug-readout');
+  if (!out) return;
+  if (!lightDebugOn()) { out.textContent = 'off'; return; }
+  const sm = lightDebugSummary();
+  const pc = v => Math.round(v * 100) + '%';
+  out.textContent = sm.tiles
+    ? `bright ${pc(sm.bright)} · dim ${pc(sm.dim)} · dark ${pc(sm.dark)}  (${sm.tiles} tiles)`
+    : 'sampling…';
+}
+setInterval(refreshLightDebugReadout, 500);
+
+/* F4 here too, same as in the game; keeps the checkbox in step. */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'F4' || e.ctrlKey || e.metaKey || e.altKey) return;
+  e.preventDefault();
+  setLightDebug(!lightDebugOn());
+  const cb = document.getElementById('light-debug-cb');
+  if (cb) cb.checked = lightDebugOn();
+  refreshLightDebugReadout();
+});
+
 function tabLighting() {
-  const g = group('Ambient & sun');
-  colorRow(g, 'Background', { ...themeBinding('bg'), live: envLive });
-  colorRow(g, 'Fog colour', { ...themeBinding('fog'), live: envLive });
+  const tod = todOf();
+  if (tod) {
+    const w = group('Time of day');
+    select(w, 'Editing', ['day', 'dusk', 'night'], {
+      get: () => tod,
+      set: v => { state.gen.timeOfDay = v; },
+      live: () => { forge(); renderPanel(); }
+    });
+    const tuned = TH().tod && TH().tod[tod];
+    buttons(w, [{ label: `Reset ${tod} to derived`, onClick: () => {
+      if (TH().tod) delete TH().tod[tod];
+      const p = patchFor(state.themeKey);
+      if (p.tod) delete p.tod[tod];
+      envLive(); applyTorchSettings(liveTheme()); applyThemeLightLevels(liveTheme());
+      setLightDebug(lightDebugOn()); renderPanel();
+      setStatus(`${tod} lighting derives from the base theme again`, 'ok');
+    } }]);
+    hint(w, 'Overland lighting is tuned separately for day, dusk and night: the sliders below ' +
+      `edit ${tod} only` + (tuned ? ' (hand-tuned).' : ' (still derived from the base theme; your first edit starts its own copy).') +
+      ' Weather is layered on top afterwards, so pick Clear weather to see the plain values. ' +
+      'The light cut-offs, background, fog, ambient, sun and torch strength are per time; flame colours and the accent are shared.');
+  }
+  lightDebugGroup(tod);
+  const g = group(tod ? `Ambient & sun — ${tod}` : 'Ambient & sun');
+  colorRow(g, 'Background', { ...lightBinding('bg'), live: envLive });
+  colorRow(g, 'Fog colour', { ...lightBinding('fog'), live: envLive });
   slider(g, 'Fog density', { min: 0, max: 0.006, step: 0.0001, fmt: v => v.toFixed(4),
-    ...themeBinding('fogD'), live: envLive });
-  colorRow(g, 'Hemi sky', { get: () => TH().hemi[0], set: v => { TH().hemi[0] = v; recordPatch('hemi', [...TH().hemi]); }, live: envLive });
-  colorRow(g, 'Hemi ground', { get: () => TH().hemi[1], set: v => { TH().hemi[1] = v; recordPatch('hemi', [...TH().hemi]); }, live: envLive });
-  slider(g, 'Hemi intensity', { min: 0, max: 1.5, step: 0.01,
-    get: () => TH().hemi[2], set: v => { TH().hemi[2] = v; recordPatch('hemi', [...TH().hemi]); }, live: envLive });
-  colorRow(g, 'Sun colour', { get: () => TH().dir[0], set: v => { TH().dir[0] = v; recordPatch('dir', [...TH().dir]); }, live: envLive });
-  slider(g, 'Sun intensity', { min: 0, max: 2, step: 0.01,
-    get: () => TH().dir[1], set: v => { TH().dir[1] = v; recordPatch('dir', [...TH().dir]); }, live: envLive });
+    ...lightBinding('fogD'), live: envLive });
+  colorRow(g, 'Hemi sky', { ...lightAt('hemi', 0), live: envLive });
+  colorRow(g, 'Hemi ground', { ...lightAt('hemi', 1), live: envLive });
+  slider(g, 'Hemi intensity', { min: 0, max: 1.5, step: 0.01, ...lightAt('hemi', 2), live: envLive });
+  colorRow(g, 'Sun colour', { ...lightAt('dir', 0), live: envLive });
+  slider(g, 'Sun intensity', { min: 0, max: 2, step: 0.01, ...lightAt('dir', 1), live: envLive });
+  const sunAt = i => ({
+    get: () => (lightGet('sunAngle') || [54, 46.5])[i],
+    set: v => { const cur = [...(lightGet('sunAngle') || [54, 46.5])]; cur[i] = v; lightSet('sunAngle', cur); }
+  });
+  slider(g, 'Sun azimuth', { min: 0, max: 360, step: 1, fmt: v => `${Math.round(v)}°`,
+    ...sunAt(0), live: envLive });
+  slider(g, 'Sun elevation', { min: 10, max: 85, step: 1, fmt: v => `${Math.round(v)}°`,
+    ...sunAt(1), live: envLive });
   hint(g, 'Ambient and sun are the levers that decide whether a surface reads as its own ' +
          'material or as the light\'s colour — a neutral tile under coloured light takes the light.');
 
   const t = group('Torches');
   colorRow(t, 'Flame', themeBinding('flame'));
   colorRow(t, 'Flame core', themeBinding('flameCore'));
-  const torchLive = () => applyTorchSettings(TH());
-  slider(t, 'Torch intensity', { min: 0, max: 4, step: 0.05, live: torchLive,
-    get: () => TH().torchLight[1], set: v => { TH().torchLight[1] = v; recordPatch('torchLight', [...TH().torchLight]); } });
-  slider(t, 'Torch range', { min: 2, max: 24, step: 0.5, live: torchLive,
-    get: () => TH().torchLight[2], set: v => { TH().torchLight[2] = v; recordPatch('torchLight', [...TH().torchLight]); } });
+  const torchLive = () => applyTorchSettings(liveTheme());
+  slider(t, tod ? `Torch intensity (${tod})` : 'Torch intensity', { min: 0, max: 4, step: 0.05, live: torchLive,
+    ...lightAt('torchLight', 1) });
+  slider(t, tod ? `Torch range (${tod})` : 'Torch range', { min: 2, max: 24, step: 0.5, live: torchLive,
+    ...lightAt('torchLight', 2) });
   hint(t, 'Torch light colour follows Flame. Only the 16 nearest lit torches get a real ' +
          'light — the rest are billboards, so range matters more than intensity in big rooms.');
 
@@ -675,6 +833,7 @@ function applyBakes() {
     const b = o[slot];
     if (!b) continue;
     mat.map = b.map; mat.bumpMap = b.bump; mat.bumpScale = b.bumpScale;
+    if(mat.normalMap){ mat.normalMap = null; mat.needsUpdate = true; }
   }
 }
 
@@ -1090,9 +1249,11 @@ function editorLoop() {
   requestAnimationFrame(editorLoop);
   if (!renderer) return;
   const now = performance.now();
-  loopT += Math.min((now - loopLast) / 1000, 0.05);
+  const dt = Math.min((now - loopLast) / 1000, 0.05);
+  loopT += dt;
   loopLast = now;
   liveUpdate(loopT, Infinity);
+  tickLightDebug(dt);
   renderFrame();
 }
 

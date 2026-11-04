@@ -103,3 +103,19 @@ describe('pooled effect lights', () => {
     removeAoEVisual(scene, v);
   });
 });
+
+describe('the light COUNT never changes mid-level', () => {
+  it('extinguishCampfire dims the campfire light instead of hiding it', async () => {
+    /* Hiding a PointLight changes the visible-light count three bakes into
+       every lit shader → every lit program in the level recompiles → the
+       multi-second freeze after the camp animation. Intensity 0 is the
+       extinguish; visibility must stay put. */
+    const fs = await import('node:fs');
+    const src = fs.readFileSync('src/render/dungeon_scene.js', 'utf8');
+    const start = src.indexOf('export function extinguishCampfire');
+    const end = src.indexOf('export function', start + 10);
+    const body = src.slice(start, end);
+    expect(body).not.toMatch(/\.visible\s*=\s*false/);
+    expect(body).toMatch(/extinguished = true/);
+  });
+});

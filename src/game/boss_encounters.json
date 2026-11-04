@@ -833,35 +833,43 @@
   "id": "verdant-l5",
   "theme": "verdant",
   "level": 5,
-  "name": "Green Hag Coven Leader",
-  "bossId": "green-hag",
-  "bossTitle": "Mother Swamp-Bane",
+  "name": "The Blackbog Court",
+  "bossId": "blackbog-grandmother",
+  "bossTitle": "The Blackbog Grandmother",
   "bossHpMult": 1.5,
   "escorts": [
    {
-    "id": "will-o-wisp",
+    "id": "blackbog-blight-fairy",
     "count": 2
+   },
+   {
+    "id": "blackbog-redcap",
+    "count": 1
    }
   ],
   "targetCR": 3,
-  "description": "A sinister hag weaving illusory curses in the mist."
+  "description": "The oldest thing in the water, wearing a breastplate of stolen wedding rings, with her fairies and a redcap at her feet."
  },
  {
   "id": "verdant-l6",
   "theme": "verdant",
   "level": 6,
-  "name": "Young Green Dragon Drake",
-  "bossId": "young-green-dragon",
-  "bossTitle": "Thornwing",
+  "name": "The Old Growth",
+  "bossId": "old-growth-elder",
+  "bossTitle": "The Elder",
   "bossHpMult": 1.5,
   "escorts": [
    {
-    "id": "giant-spider",
-    "count": 3
+    "id": "old-growth-sapling",
+    "count": 2
+   },
+   {
+    "id": "old-growth-heartwood",
+    "count": 1
    }
   ],
-  "targetCR": 3.5,
-  "description": "A cunning green dragon exhaling poisonous vapors."
+  "targetCR": 4,
+  "description": "The room was not built to hold it. It got in by being here first, and it has just finished deciding about you."
  },
  {
   "id": "verdant-l7",

@@ -1,18 +1,45 @@
 /**
- * Dungeon Loading Screen Overlay
- * Provides a clean, atmospheric loading curtain during level generation,
- * shader compilation, and entity placement to eliminate initial pop-in and stutter.
+ * Dungeon loading curtain.
+ *
+ * The curtain covers level generation, shader compilation, and entity
+ * placement. Progress is the party walking the bottom edge of the screen,
+ * left to right. Reported percent often jumps (the floor forge is one long
+ * turn, and the first paint used to land already near 70%), so the walk
+ * eases toward the reported value at a fixed pace and the curtain stays up
+ * until the party has caught up.
  */
 
 let overlayEl = null;
 let titleEl = null;
 let subtitleEl = null;
-let barFillEl = null;
-let percentEl = null;
+let partyEl = null;
 let hideTimer = null;
 let isVisible = false;
 let showStartTime = 0;
+let targetPct = 0;
+let shownPct = 0;
+let marching = false;
+let marchRaf = 0;
+let lastMarchTs = 0;
+let partyToken = 0;
+let marchers = [];
+
 export const MIN_LOADING_TIME_MS = 1400;
+/* Full left-to-right crossing. A reported jump (0 → 70) takes the same
+   fraction of this, so the party never teleports to wherever the loader is. */
+export const MARCH_FULL_MS = 2200;
+const MARCH_DT_CAP_SEC = 0.05;
+const WALK_FPS = 8;
+
+function clampPct(n) {
+  return Math.min(100, Math.max(0, Math.round(Number(n) || 0)));
+}
+
+function publishMarch() {
+  if (!overlayEl || typeof overlayEl.setAttribute !== 'function') return;
+  overlayEl.setAttribute('data-loading-target', String(targetPct));
+  overlayEl.setAttribute('data-loading-shown', String(Math.round(shownPct)));
+}
 
 function ensureElements() {
   if (typeof document === 'undefined' || !document.body) return null;
@@ -26,16 +53,6 @@ function ensureElements() {
     const content = document.createElement('div');
     content.className = 'dungeon-loading-content';
 
-    const crest = document.createElement('div');
-    crest.className = 'dungeon-loading-crest';
-    const spinner = document.createElement('div');
-    spinner.className = 'dungeon-loading-spinner';
-    const icon = document.createElement('span');
-    icon.className = 'dungeon-loading-icon';
-    icon.textContent = '⚔️';
-    crest.appendChild(spinner);
-    crest.appendChild(icon);
-
     titleEl = document.createElement('div');
     titleEl.id = 'dungeon-loading-title';
     titleEl.className = 'dungeon-loading-title';
@@ -46,55 +63,199 @@ function ensureElements() {
     subtitleEl.className = 'dungeon-loading-subtitle';
     subtitleEl.textContent = 'Preparing level & illuminating depths...';
 
-    const barTrack = document.createElement('div');
-    barTrack.className = 'dungeon-loading-bar-track';
-    barFillEl = document.createElement('div');
-    barFillEl.id = 'dungeon-loading-bar-fill';
-    barFillEl.className = 'dungeon-loading-bar-fill';
-    barTrack.appendChild(barFillEl);
-
-    percentEl = document.createElement('div');
-    percentEl.id = 'dungeon-loading-percent';
-    percentEl.className = 'dungeon-loading-percent';
-    percentEl.textContent = '0%';
-
-    content.appendChild(crest);
     content.appendChild(titleEl);
     content.appendChild(subtitleEl);
-    content.appendChild(barTrack);
-    content.appendChild(percentEl);
-    el.appendChild(content);
 
+    const march = document.createElement('div');
+    march.id = 'dungeon-loading-march';
+    march.className = 'dungeon-loading-march';
+
+    const road = document.createElement('div');
+    road.className = 'dungeon-loading-road';
+
+    partyEl = document.createElement('div');
+    partyEl.id = 'dungeon-loading-party';
+    partyEl.className = 'dungeon-loading-party';
+
+    march.appendChild(road);
+    march.appendChild(partyEl);
+    el.appendChild(content);
+    el.appendChild(march);
     document.body.appendChild(el);
   } else {
     titleEl = document.getElementById('dungeon-loading-title');
     subtitleEl = document.getElementById('dungeon-loading-subtitle');
-    barFillEl = document.getElementById('dungeon-loading-bar-fill');
-    percentEl = document.getElementById('dungeon-loading-percent');
+    partyEl = document.getElementById('dungeon-loading-party');
   }
   overlayEl = el;
   return overlayEl;
 }
 
-/**
- * Update the loading screen progress percentage and optional status message.
- */
-export function updateLoadingProgress(percent = 0, statusText = null) {
-  ensureElements();
-  const pct = Math.min(100, Math.max(0, Math.round(percent)));
-  if (barFillEl) {
-    if (barFillEl.style) barFillEl.style.width = `${pct}%`;
+function orderParty(list) {
+  const members = (list || []).filter(h => h && !h.temp && !h.companion);
+  const g = (typeof window !== 'undefined') ? window.game : null;
+  let leader = null;
+  if (g && typeof g.partyLeader === 'function') {
+    try {
+      leader = g.partyLeader(members.filter(h => h.data && h.data.hp > 0));
+    } catch (e) { leader = null; }
   }
-  if (percentEl) {
-    percentEl.textContent = `${pct}%`;
-  }
-  if (statusText && subtitleEl) {
-    subtitleEl.textContent = statusText;
+  if (!leader || !members.includes(leader)) return members;
+  return [leader, ...members.filter(h => h !== leader)];
+}
+
+function liveParty() {
+  const g = (typeof window !== 'undefined') ? window.game : null;
+  if (!g || !Array.isArray(g.heroes)) return [];
+  const list = typeof g.realHeroes === 'function' ? g.realHeroes() : g.heroes;
+  return orderParty(list);
+}
+
+function clearParty() {
+  partyToken++;
+  marchers = [];
+  if (!partyEl) return;
+  if (typeof partyEl.replaceChildren === 'function') partyEl.replaceChildren();
+}
+
+function paintMarchers(nowSec) {
+  for (const fig of marchers) {
+    const sheet = fig._sheet;
+    if (!sheet || !fig._ctx) continue;
+    const frame = 1 + Math.floor((nowSec + fig._phase) * WALK_FPS) % 8;
+    if (frame === fig._frame) continue;
+    fig._frame = frame;
+    const cell = sheet.cell;
+    const ctx = fig._ctx;
+    ctx.clearRect(0, 0, fig.width, fig.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+      sheet.canvas,
+      frame * cell, sheet.rightRow * cell, cell, cell,
+      0, 0, fig.width, fig.height
+    );
   }
 }
 
+function applyMarchPosition() {
+  publishMarch();
+  if (!partyEl || !partyEl.style) return;
+  const track = (typeof document !== 'undefined')
+    ? document.getElementById('dungeon-loading-march')
+    : null;
+  const trackW = track && track.clientWidth ? track.clientWidth : 0;
+  const partyW = partyEl.offsetWidth || 0;
+  if (!trackW) {
+    partyEl.style.transform = `translateX(${shownPct}%)`;
+    return;
+  }
+  const travel = Math.max(0, trackW - partyW);
+  partyEl.style.transform = `translateX(${(shownPct / 100) * travel}px)`;
+}
+
 /**
- * Show the loading screen curtain with optional title and subtitle.
+ * Move the party toward the reported percent. `dtSec` is capped so a stall
+ * on the main thread (the floor forge) cannot fling them across the screen
+ * on the next frame.
+ */
+export function advanceLoadingMarch(dtSec, nowSec = 0) {
+  const dt = Math.min(MARCH_DT_CAP_SEC, Math.max(0, dtSec || 0));
+  const rate = 100 / (MARCH_FULL_MS / 1000);
+  if (shownPct < targetPct) shownPct = Math.min(targetPct, shownPct + rate * dt);
+  applyMarchPosition();
+  if (nowSec) paintMarchers(nowSec);
+  return shownPct;
+}
+
+export function loadingMarch() {
+  return { shown: shownPct, target: targetPct };
+}
+
+function startMarch() {
+  if (marching) return;
+  if (typeof requestAnimationFrame !== 'function') return;
+  marching = true;
+  lastMarchTs = 0;
+  const step = (ts) => {
+    if (!marching) return;
+    const dt = lastMarchTs ? (ts - lastMarchTs) / 1000 : 0;
+    lastMarchTs = ts;
+    advanceLoadingMarch(dt, ts / 1000);
+    marchRaf = requestAnimationFrame(step);
+  };
+  marchRaf = requestAnimationFrame(step);
+}
+
+function stopMarch() {
+  marching = false;
+  if (marchRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(marchRaf);
+  marchRaf = 0;
+}
+
+function sheetFromHero(hero) {
+  const tex = hero && hero.ent && hero.ent.anim && hero.ent.anim.textures
+    ? hero.ent.anim.textures.walk
+    : null;
+  const img = tex && tex.image;
+  if (!img || !(img.width > 8)) return null;
+  const cell = tex._cell || (img.height / 4) || 64;
+  return { canvas: img, cell, rightRow: 3 };
+}
+
+let composeImport = null;
+function composeSheet(hero) {
+  const live = sheetFromHero(hero);
+  if (live) return Promise.resolve(live);
+  const rec = (hero && (hero.visual || hero.equipment)) ? hero : (hero && hero.data);
+  if (!rec) return Promise.resolve(null);
+  if (!composeImport) composeImport = import('../game/sprite_animator.js');
+  return composeImport.then(m => m.composeHeroWalkSheet(rec)).catch(() => null);
+}
+
+function mountParty(heroes) {
+  const el = ensureElements();
+  if (!el || !partyEl) return;
+  const members = orderParty(heroes);
+  clearParty();
+  if (!members.length || typeof document === 'undefined' || !document.createElement) return;
+  const token = partyToken;
+  members.forEach((hero, i) => {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'dungeon-loading-hero';
+    canvas.width = 64;
+    canvas.height = 64;
+    canvas._phase = i * 0.13;
+    canvas._frame = -1;
+    partyEl.appendChild(canvas);
+    marchers.push(canvas);
+    composeSheet(hero).then(sheet => {
+      if (token !== partyToken || !sheet || !sheet.canvas) return;
+      const cell = sheet.cell || 64;
+      canvas.width = cell;
+      canvas.height = cell;
+      canvas._sheet = sheet;
+      canvas._ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+      canvas._frame = -1;
+    });
+  });
+}
+
+/**
+ * Update the reported load percent and optional status line.
+ * The party walks toward this value; it does not snap to it.
+ */
+export function updateLoadingProgress(percent = 0, statusText = null) {
+  ensureElements();
+  targetPct = clampPct(percent);
+  publishMarch();
+  if (statusText && subtitleEl) subtitleEl.textContent = statusText;
+}
+
+/**
+ * Show the loading curtain. `opts.party` is the hero list to march (wrappers
+ * or hero records). `opts.theme` is the floor theme key, kept for the biome
+ * plate. Opening the curtain always starts the party at the left edge, even
+ * when the loader has already reported a high percent.
  */
 export function showLoadingScreen(opts = {}) {
   const el = ensureElements();
@@ -105,18 +266,38 @@ export function showLoadingScreen(opts = {}) {
     hideTimer = null;
   }
 
-  showStartTime = Date.now();
+  const opening = !isVisible;
+  if (opening) {
+    shownPct = 0;
+    showStartTime = Date.now();
+    lastMarchTs = 0;
+  }
+  /* A fresh show starts the report at 0 (or opts.progress). The walk position
+     is only rewound when the curtain was hidden — embark paints the curtain,
+     then the floor load shows it again a frame later, and the party should
+     not pop back to the left. */
+  targetPct = typeof opts.progress === 'number' ? clampPct(opts.progress) : 0;
 
-  const title = opts.title || 'ENTERING DUNGEON';
-  const subtitle = opts.subtitle || (opts.floor ? `Descend into Floor ${opts.floor}` : 'Illuminating dark corridors...');
+  const title = opts.title || (opening ? 'ENTERING DUNGEON' : (titleEl && titleEl.textContent));
+  const subtitle = opts.subtitle
+    || (opts.floor ? `Descend into Floor ${opts.floor}` : null)
+    || (opening ? 'Illuminating dark corridors...' : (subtitleEl && subtitleEl.textContent));
 
-  if (titleEl) titleEl.textContent = title;
-  if (subtitleEl) subtitleEl.textContent = subtitle;
-  updateLoadingProgress(opts.progress || 0, subtitle);
+  if (titleEl && title) titleEl.textContent = title;
+  if (subtitleEl && subtitle) subtitleEl.textContent = subtitle;
+  if (opts.theme) el.setAttribute('data-theme', opts.theme);
+  else if (opening) el.setAttribute('data-theme', '');
+  publishMarch();
+
+  const party = opts.party || (opening ? liveParty() : null);
+  /* Embark shows the curtain, then the floor load shows it again. Remounting
+     would throw away walk sheets that are already decoding. */
+  if (party && (opening || marchers.length === 0)) mountParty(party);
 
   el.classList.remove('hidden', 'fade-out');
   el.classList.add('active');
   isVisible = true;
+  startMarch();
 }
 
 /**
@@ -146,6 +327,11 @@ export function nextPaint() {
   });
 }
 
+/** Run `fn` after the curtain has been painted. Sync forge work belongs here. */
+export function scheduleAfterPaint(fn) {
+  nextPaint().then(fn);
+}
+
 /**
  * Show the loading curtain and wait until it is genuinely on screen.
  *
@@ -159,9 +345,10 @@ export async function showLoadingScreenPainted(opts = {}) {
 }
 
 /**
- * Hide the loading screen with a smooth cross-fade once rendering and asset warmup have settled.
- * Supports an optional readyPromise (e.g. GPU shader compile & texture decode) to ensure everything
- * is fully ready before revealing the scene.
+ * Hide the curtain once three things are true: the minimum time has elapsed,
+ * the caller's ready promise has settled, and the party has walked up to the
+ * reported percent. The last one is what keeps a 70% jump from dismissing
+ * the screen while the party is still on the left.
  */
 export function hideLoadingScreen(readyPromiseOrDuration = MIN_LOADING_TIME_MS, minDurationMs = MIN_LOADING_TIME_MS) {
   const el = ensureElements();
@@ -169,19 +356,16 @@ export function hideLoadingScreen(readyPromiseOrDuration = MIN_LOADING_TIME_MS, 
 
   if (hideTimer) clearTimeout(hideTimer);
 
-  let readyPromise = null;
+  let readyDone = true;
   let duration = MIN_LOADING_TIME_MS;
 
   if (readyPromiseOrDuration && typeof readyPromiseOrDuration.then === 'function') {
-    readyPromise = readyPromiseOrDuration;
+    readyDone = false;
     duration = typeof minDurationMs === 'number' ? minDurationMs : MIN_LOADING_TIME_MS;
+    Promise.resolve(readyPromiseOrDuration).then(() => { readyDone = true; }, () => { readyDone = true; });
   } else if (typeof readyPromiseOrDuration === 'number') {
     duration = readyPromiseOrDuration;
   }
-
-  const now = Date.now();
-  const elapsed = showStartTime > 0 ? (now - showStartTime) : duration;
-  const waitMs = Math.max(50, duration - elapsed);
 
   const dismiss = () => {
     try {
@@ -190,29 +374,27 @@ export function hideLoadingScreen(readyPromiseOrDuration = MIN_LOADING_TIME_MS, 
       }
     } catch (e) {}
 
-    // Wait an additional animation frame so WebGL pipeline renders first buffer cleanly
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => {
-        el.classList.add('fade-out');
-        setTimeout(() => {
-          el.classList.remove('active', 'fade-out');
-          el.classList.add('hidden');
-          isVisible = false;
-        }, 380);
-      });
-    } else {
-      el.classList.remove('active');
-      el.classList.add('hidden');
-      isVisible = false;
-    }
+    const finishHide = () => {
+      el.classList.add('fade-out');
+      setTimeout(() => {
+        el.classList.remove('active', 'fade-out');
+        el.classList.add('hidden');
+        isVisible = false;
+        stopMarch();
+      }, 380);
+    };
+
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finishHide);
+    else finishHide();
   };
 
-  if (readyPromise) {
-    Promise.all([
-      new Promise(res => { hideTimer = setTimeout(res, waitMs); }),
-      Promise.resolve(readyPromise).catch(() => {})
-    ]).then(dismiss);
-  } else {
-    hideTimer = setTimeout(dismiss, waitMs);
-  }
+  const tickHide = () => {
+    if (!isVisible) return;
+    const elapsed = showStartTime > 0 ? (Date.now() - showStartTime) : duration;
+    const minOk = elapsed >= duration;
+    const marchOk = shownPct >= targetPct - 0.75;
+    if (minOk && marchOk && readyDone) dismiss();
+    else hideTimer = setTimeout(tickHide, 40);
+  };
+  hideTimer = setTimeout(tickHide, 40);
 }

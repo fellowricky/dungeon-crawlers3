@@ -12,7 +12,7 @@ import { iconHtml } from './icons.js';
 import { log, showBanner, buildPartyFrames, updatePartyFrames, updateResources, layoutRightRail } from './ui.js';
 import { makeHero, recalc, grantXp } from './srd.js';
 import { rollItem, addToInventory } from './items.js';
-import { generateSequelQuest, DUNGEON_THEMES } from './quests.js';
+import { generateSequelQuest, DUNGEON_THEMES, questSize } from './quests.js';
 import { fireChallenge } from './skills.js';
 import { queueNarration } from './audio.js';
 import { trackGold, trackLoot } from './run_stats.js';
@@ -666,7 +666,8 @@ export function onQuestCompleted(game, q) {
     theme: q.theme,
     mapLocation: (q.mapLocation && typeof q.mapLocation.x === 'number' && typeof q.mapLocation.y === 'number') ? q.mapLocation : null,
     baseSeed: (q.chain && q.chain.baseSeed) || q.seed,
-    level: q.level, floors: q.floors,
+    /* dungeonSize, not floors, sets the sequel's size: floors now include the travel days. */
+    level: q.level, floors: q.floors, dungeonSize: questSize(q),
     unlockedAt: Date.now()
   };
   game.questChains.active = game.questChains.active.filter(e => e.chainId !== entry.chainId);

@@ -73,6 +73,104 @@ export function isConsumable(it){
   return !!(it && (it.scroll || it.potion || it.spellKey || it.buffKey || it.potionPool || it.cures));
 }
 
+/* A torch or lantern: carried in the trinket slot, never spent. Kept apart
+   from the consumable test on purpose — the hero AI drinks and reads what is
+   in that slot, and a light must never look like something to use up. The
+   field is `lightSource`, not `light`: weapons already use `light` for the
+   5e light-weapon property, and migrateItem backfills that one. */
+export function isLightSource(it){
+  return !!(it && it.lightSource);
+}
+
+export function isRune(it){
+  return !!(it && (it.slot === 'rune' || it.kind === 'rune'));
+}
+
+/** Bag record for a crafted guild rune. Stacks with the same runeKey. */
+export function runeFitsItem(rune, item){
+  if (!isRune(rune) || !item || isRune(item) || item.slot === 'dye') return false;
+  const type = rune.runeSlotType || rune.slotType;
+  if (type === 'weapon') return item.slot === 'weapon';
+  if (type === 'armor') return ['armor', 'shield', 'helm', 'gloves', 'boots'].includes(item.slot);
+  if (type === 'worn') {
+    return ['armor', 'shield', 'helm', 'gloves', 'boots', 'ring', 'amulet', 'trinket'].includes(item.slot);
+  }
+  return false;
+}
+
+/** common → uncommon → rare → epic. Legendary never takes a rune. */
+export const RUNE_PROMOTE = { common: 'uncommon', uncommon: 'rare', rare: 'epic' };
+
+export function itemRunes(item){
+  if (!item) return [];
+  if (Array.isArray(item.inscribedRunes) && item.inscribedRunes.length) return item.inscribedRunes;
+  if (item.inscribedRune) return [item.inscribedRune];
+  return [];
+}
+
+export function equippedRunes(hero){
+  const out = [];
+  for (const it of Object.values(hero?.equipment || {})) {
+    for (const r of itemRunes(it)) out.push(r);
+  }
+  return out;
+}
+
+export function canInscribeRune(item){
+  if (!item || isRune(item) || item.slot === 'dye') return false;
+  const r = item.rarity || 'common';
+  return !!RUNE_PROMOTE[r];
+}
+
+export function promoteItemRarity(item){
+  const next = RUNE_PROMOTE[item.rarity || 'common'];
+  if (!next) return false;
+  item.rarity = next;
+  const R = RARITIES[next];
+  if (R && R.color) item.color = R.color;
+  return true;
+}
+
+export function runeBonusTotals(hero){
+  const b = { hp: 0, ac: 0, move: 0, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0, resists: new Set() };
+  for (const r of equippedRunes(hero)) {
+    const e = r.effect;
+    if (!e) continue;
+    if (e.type === 'hp') b.hp += e.n | 0;
+    else if (e.type === 'ac') b.ac += e.n | 0;
+    else if (e.type === 'move') b.move += e.n | 0;
+    else if (e.type === 'stat' && b[e.stat] != null) b[e.stat] += e.n | 0;
+    else if (e.type === 'resist' && e.dmgType) b.resists.add(e.dmgType);
+  }
+  return b;
+}
+
+export function applyRuneResist(hero, dmg, dmgType){
+  if (!hero || !dmgType || !dmg) return dmg;
+  const b = runeBonusTotals(hero);
+  if (b.resists.has(dmgType)) return Math.floor(dmg / 2);
+  return dmg;
+}
+
+export function makeRuneItem(recipe){
+  if (!recipe) return null;
+  return {
+    id: `rune_${recipe.id || recipe.runeKey}_${Date.now()}`,
+    slot: 'rune',
+    kind: 'rune',
+    runeKey: recipe.id || recipe.runeKey,
+    runeSlotType: recipe.slotType || recipe.runeSlotType || 'weapon',
+    name: recipe.name,
+    icon: recipe.icon,
+    desc: recipe.desc || '',
+    effect: recipe.effect ? { ...recipe.effect } : null,
+    rarity: 'rare',
+    color: '#bb86fc',
+    value: Math.max(50, Math.floor((recipe.goldCost || 0) * 0.2)),
+    qty: 1
+  };
+}
+
 /* ─── Stacking ────────────────────────────────────────────────────────────
    Dyes and consumables are interchangeable within a kind: two Crimson Dyes
    are the same thing, and so are two fresh Scrolls of Fireball. They share
@@ -81,11 +179,12 @@ export function isConsumable(it){
    Scroll stacks key on the charges left, so a half-read scroll does not
    merge back into the fresh ones when it is unequipped. */
 export function isStackable(it){
-  return !!(it && (it.slot === 'dye' || isConsumable(it)));
+  return !!(it && (it.slot === 'dye' || isRune(it) || isConsumable(it)));
 }
 export function stackKey(it){
   if(!isStackable(it)) return null;
   if(it.slot === 'dye') return `dye|${it.rarity}|${it.dyeColor}`;
+  if(isRune(it)) return `rune|${it.runeKey || it.name}`;
   return `${it.slot}|${it.baseKey || it.name}|${it.charges | 0}`;
 }
 export function qtyOf(it){ return it ? Math.max(1, it.qty | 0) : 0; }
@@ -143,6 +242,7 @@ export function itemCategory(it){
      them beside amulets and rings left the accessory tab full of things the
      PS sort and filter could say nothing about. They get their own tab. */
   if(isConsumable(it)) return 'consumable';
+  if(isRune(it)) return 'other';
   switch(it.slot){
     case 'weapon': return 'weapon';
     case 'helm': case 'armor': case 'gloves': case 'boots': case 'shield': return 'armor';
@@ -150,6 +250,14 @@ export function itemCategory(it){
     case 'dye': return 'other';
     default: return 'other'; /* kit + anything unforeseen */
   }
+}
+
+/** Only worn gear goes to the blacksmith's scrap pile. Dyes carry slot 'dye'
+ *  (no kind), and scrolls/potions sit in the trinket slot, so a slot check
+ *  alone let both through. */
+export function isSalvageable(it){
+  const cat = itemCategory(it);
+  return cat === 'weapon' || cat === 'armor' || cat === 'accessory';
 }
 
 /* Skill display labels — mirrors SKILLS in srd.js, duplicated here to keep
@@ -174,6 +282,7 @@ export const WEAPON_RANK = { simple:0, martial:1 };
    affixes = how many secondary stat rolls it gets on top of the base.
    Legendary is quest-only and never appears in weighted random rolls. */
 import ITEMS_DATA from './items.json' with { type: 'json' };
+import { LIGHT_SOURCES, TORCH_STACK_START, TORCH_BURN_SEC } from './light_sources.js';
 import {
   getTuning, bonusesCost, baseCost, itemBudget, affixBudget, baseAffordable,
   rarityWeight, rarityHasPerk, affixSlotsFor, sourceIlvl, bonusLabel, slotLevelOf,
@@ -219,16 +328,16 @@ export function perkDescFor(id, ilvl){
     case 'cleave':      return `On hit, deal ${Math.round(m*100)}% damage to a nearby foe.`;
     case 'lifesteal':   return `Heal for ${Math.round(m*100)}% of damage dealt on hit.`;
     case 'execute':     return `+${Math.round((m-1)*100)}% damage vs enemies below 30% HP.`;
-    case 'burn':        return `Hits ignite the foe for ${m} fire damage per second.`;
+    case 'burn':        return `Hits ignite the foe for ${m} fire damage per round.`;
     case 'firstStrike': return `Your opening blow each fight deals +${Math.round((m-1)*100)}% damage.`;
     case 'critSurge':   return `Critical hits deal +${m} bonus damage.`;
     case 'chain':       return `Ranged/magic hits have a ${Math.round(m*100)}% chance to arc to a second foe.`;
     case 'manaFont':    return `${Math.round(m*100)}% chance on hit to restore a spell slot.`;
     case 'riposte':     return `When hit in melee, retaliate for ${m} damage.`;
     case 'thorns':      return `Attackers take ${m} damage.`;
-    case 'phaseStep':   return `On kill, briefly gain +${m} AC for 3 seconds.`;
+    case 'phaseStep':   return `On kill, gain +${m} AC for 1 round.`;
     case 'arcaneBurst': return `Hits release an arcane explosion dealing ${m || 8} force damage in 2m.`;
-    case 'frostBite':   return `Hits chill the target, slowing movement speed for 3 seconds.`;
+    case 'frostBite':   return `Hits chill the target, slowing it for 1 round.`;
     case 'holySmite':   return `Hits strike with holy light for +${m || 10} bonus radiant damage.`;
     default:            return PERKS[id]?.desc || '';
   }
@@ -405,7 +514,7 @@ export function recomputeItemBonuses(item){
   /* Scrolls & potion trinkets are plain records: their name, gold value and
      charges are fixed at generation and must survive saves/migration, so they
      skip the whole base+affix recompute path. */
-  if(item.scroll || item.potion || base?.spellKey || base?.potion){
+  if(item.scroll || item.potion || base?.spellKey || base?.potion || item.lightSource || base?.lightSource){
     item.bonuses = item.bonuses || {};
     return item;
   }
@@ -713,6 +822,7 @@ function makeItemRecord(slot, base, rarityKey, ilvl, affixes, perk, rng){
  *   luck        multiplier on non-common drop weights (chests, hoards)
  *   forceRarity skip the rarity roll entirely
  *   noLegendary re-roll legendaries down to epic (quest rewards handle their own)
+ *   baseKey     force a named base (guild forge catalog); still rolls affixes
  */
 export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   const t = Math.max(0, tier|0);
@@ -722,6 +832,9 @@ export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit'
     : rng() < TRINKET_DROP_RATE ? 'trinket'
     : pick(BASE_SLOTS_NONKIT, rng));
+  /* Driftglobe (docs/LIGHT_IDEAS.md 25): a rare find — a sixth or so of the
+     random kit drops past the shallow floors. */
+  if (!forceSlot && slot === 'kit' && ilvl >= 3 && rng() < 0.15) return makeLightSourceItem('driftglobe');
 
   let rarityKey = opts.forceRarity || rollRarity(t, rng, opts.luck != null ? opts.luck : 1);
   if(rarityKey === 'legendary' && opts.noLegendary) rarityKey = 'epic';
@@ -735,14 +848,20 @@ export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   /* Adventuring-gear tool: no affixes, its whole budget buys skill ranks
      (see recomputeItemBonuses). */
   if(slot === 'kit'){
-    const base = pick(BASES.kit, rng);
+    const base = pick(BASES.kit.filter(b => !b.noDrop), rng);
     return makeItemRecord('kit', base, rarityKey, ilvl, [], null, rng);
   }
 
   /* `weaponKind` narrows a weapon roll to melee / ranged / focus — what the
-     shop's shelf guarantee and the forge's category buttons ask for. */
+     shop's shelf guarantee and the forge's category buttons ask for.
+     `baseKey` pins a named template (the blacksmith catalog). */
   const kindFilter = (slot === 'weapon' && opts.weaponKind) ? (b => weaponKindOf(b) === opts.weaponKind) : null;
-  const base = pickAffordableBase(slot, ilvl, rarityKey, rng, kindFilter);
+  let base = null;
+  if (opts.baseKey) {
+    const forced = getBase(slot, opts.baseKey);
+    if (forced && (!kindFilter || kindFilter(forced))) base = forced;
+  }
+  if (!base) base = pickAffordableBase(slot, ilvl, rarityKey, rng, kindFilter);
   if(!base) return null;
   const affixes = rollAffixes(slot, ilvl, rarityKey, base, rng);
   /* Only the top rarity carries a perk — that, not raw numbers, is what sets it
@@ -780,7 +899,8 @@ export function trinketFamily(b){
   return 'potion';
 }
 export function trinketPool(ilvl, rarityKey){
-  const list = (BASES.trinket || []).filter(b => (b.minIlvl | 0) <= ilvl);
+  /* noDrop: the torch everyone starts with and the shop's lantern never roll as loot */
+  const list = (BASES.trinket || []).filter(b => (b.minIlvl | 0) <= ilvl && !b.noDrop);
   const pool = list.filter(b => b.rarity === rarityKey);
   return pool.length ? pool : list;
 }
@@ -798,7 +918,54 @@ function rollTrinket(ilvl, rarityKey, rng){
   for(const f of present){ r -= TRINKET_FAMILY_SHARE[f] || 0; if(r <= 0){ family = fams[f]; break; } }
   const base = pick(family && family.length ? family : eligible, rng);
   if(!base) return null;
-  const R = RARITIES[base.rarity] || RARITIES[rarityKey] || RARITIES.common;
+  return makeConsumableFromBase(base, lvl);
+}
+
+/** A torch or lantern record from its trinket base (`kind` = the base's
+ *  lightSource key). Plain like the consumables: no affixes, no budget. */
+export function makeLightSourceItem(kind, count = null) {
+  let base = null, slot = 'trinket';
+  for (const s of ['trinket', 'kit']) {
+    const b = (BASES[s] || []).find(x => x.lightSource === kind);
+    if (b) { base = b; slot = s; break; }
+  }
+  if (!base) return null;
+  const R = RARITIES[base.rarity] || RARITIES.common;
+  const extra = kind === 'torch'
+    ? { charges: count != null ? count : TORCH_STACK_START, burn: TORCH_BURN_SEC }
+    : {};
+  return {
+    ...extra,
+    id: 'i'+(_uid++),
+    baseKey: base.name,
+    name: base.name,
+    slot,
+    icon: base.icon,
+    rarity: base.rarity,
+    color: R.color,
+    ilvl: 0,
+    floor: 0,
+    lightSource: base.lightSource,
+    casterOnly: false,
+    value: base.value | 0,
+    bonuses: {},
+    affixes: [],
+    _migrated: true
+  };
+}
+
+/** Drinkable potions the Apothecary can brew — not scrolls, not thrown vials. */
+export function isBrewablePotion(b) {
+  if (!b) return false;
+  if (b.thrown || b.spellKey) return false;
+  return !!(b.potionPool || b.buffKey || (b.cures && b.cures.length));
+}
+
+/** Build a bag/flask consumable from a trinket base (no random affixes). */
+export function makeConsumableFromBase(base, ilvl = 0) {
+  if (!base) return null;
+  const R = RARITIES[base.rarity] || RARITIES.common;
+  const lvl = Math.max(0, ilvl | 0);
   return {
     id: 'i'+(_uid++),
     baseKey: base.name,
@@ -808,13 +975,11 @@ function rollTrinket(ilvl, rarityKey, rng){
     rarity: base.rarity,
     color: R.color,
     ilvl: lvl,
-    floor: lvl, // legacy field kept for saves/UI
+    floor: lvl,
     charges: Math.max(1, base.charges | 0),
     spellKey: base.spellKey || null,
     buffKey: base.buffKey || null,
     buffDuration: base.buffDuration || 60,
-    /* extra potion payloads: cures a list of conditions, grants temp HP, or
-       tops up the shared healing pool on pickup (see addToInventory) */
     cures: base.cures || null,
     tempHp: base.tempHp | 0,
     potionPool: base.potionPool || null,
@@ -1051,6 +1216,13 @@ export function rollChestLoot(tier, rng=Math.random, questFloor=0){
 
 /** Human-readable one-line summary of an item's bonuses. */
 export function bonusText(item, heroLevel=null){
+  /* A torch or lantern has no stats; what it does is its light. */
+  if(item && item.lightSource && LIGHT_SOURCES[item.lightSource]){
+    const L = LIGHT_SOURCES[item.lightSource];
+    const stack = item.lightSource === 'torch' && item.charges != null
+      ? ` · ${item.charges} torch${item.charges === 1 ? '' : 'es'} (each burns ~${Math.round(TORCH_BURN_SEC / 60)} min)` : '';
+    return `Light: bright to ${L.bright} tiles, dim to ${L.dim}${stack}`;
+  }
   /* Fixed order for the classic stats, then the newer families in a stable
      order so tooltips don't shuffle between renders. */
   const order = ['ac','atk','dmg','hp','crit','heal','str','dex','con','int','wis','cha','move','speed'];

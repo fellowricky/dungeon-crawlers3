@@ -7,6 +7,7 @@
 
 import { MONSTERS_RAW, MONSTERS_ALL, applyCRScalingToMonster, fmtMod, getThemeForMonster, MONSTER_THEMES, DUNGEON_MONSTER_MAP, BOSS_ENCOUNTERS_RAW, getCuratedBossEncounters, TACTICAL_ROOMS_RAW, getCuratedTacticalRooms, PLAYABLE_RACES } from './game/srd.js';
 import { STORY_MISSIONS_BASE } from './game/story.js';
+import { overlandSpawnLevel } from './game/overland_prologue.js';
 import {
   storyLanes, storyPoolIds, storySpawnCost, defaultStoryBudget, planStoryFloorCast
 } from './game/srd.js';
@@ -167,8 +168,15 @@ const DUNGEON_OPTIONS = Object.keys(THEMES).map(key => {
   const t = THEMES[key] || {};
   const raw = t.label || key;
   const label = raw.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-  return { key, label, accent: t.accent || '#d9a441' };
+  return { key, label, accent: t.accent || '#d9a441', overland: !!t.overland };
 });
+
+/* The dungeon level a theme's rooms actually spawn at for a quest of `level`:
+   overland floors of generated quests run at half strength. */
+function drSpawnLevel(themeKey, level) {
+  return DUNGEON_OPTIONS.find(d => d.key === themeKey)?.overland
+    ? overlandSpawnLevel(level, SPAWN_BUDGET) : level;
+}
 
 /* Dungeon themes this creature's creature-type family already maps to — the
    seed default shown in the editor when a creature has no saved picks yet. */
@@ -5042,8 +5050,15 @@ let drCurrentTheme = DUNGEON_OPTIONS[0]?.key || 'ancient';
 let drSearch = '';
 let drFamilyFilter = 'all';
 let drMembershipFilter = 'all';
+let drAnimFilter = 'all';
 let drCrMin = null;
 let drCrMax = null;
+
+/* The animated creatures are the purpose-built rosters; the static ones are the
+   first-wave SRD sprites the tiers are replacing. */
+function drIsAnimated(m) {
+  return !!(m.animations && (m.animations.idle || m.animations.attack));
+}
 
 /** A creature's effective roster membership (explicit list, never derived — an
  *  unset list means "spawns nowhere themed", same as the generator reads it). */
@@ -5101,6 +5116,10 @@ function setupDungeonRostersTab() {
   });
   document.getElementById('dr-membership-filter')?.addEventListener('change', (e) => {
     drMembershipFilter = e.target.value;
+    renderDungeonRosterGrid();
+  });
+  document.getElementById('dr-anim-filter')?.addEventListener('change', (e) => {
+    drAnimFilter = e.target.value;
     renderDungeonRosterGrid();
   });
   document.getElementById('dr-cr-min')?.addEventListener('change', (e) => {
@@ -5200,7 +5219,11 @@ function renderDungeonRosterHeader() {
     const spread = crs.length ? `CR ${formatCR(crs[0])} – ${formatCR(crs[crs.length - 1])}` : 'no creatures';
     const famIdx = DUNGEON_MONSTER_MAP[drCurrentTheme] || [];
     const fams = famIdx.map(i => MONSTER_THEMES[i]?.name).filter(Boolean).join(', ');
-    subEl.textContent = `${spread}${fams ? ` · family hint: ${fams}` : ''}`;
+    const animated = roster.filter(drIsAnimated).length;
+    const statics = roster.length - animated ? ` · ${animated} animated, ${roster.length - animated} static` : ` · all animated`;
+    const overland = DUNGEON_OPTIONS.find(d => d.key === drCurrentTheme)?.overland
+      ? ` · overland: spawns at half strength (quest L20 fields CR ≤ ${formatCR(maxCrForDungeonLevel(drSpawnLevel(drCurrentTheme, 20)))})` : '';
+    subEl.textContent = `${spread}${roster.length ? statics : ''}${overland}${fams ? ` · family hint: ${fams}` : ''}`;
   }
 }
 
@@ -5213,15 +5236,16 @@ function renderDungeonRosterCoverage() {
   let cells = '';
   let lvls = '';
   for (let lvl = 1; lvl <= 20; lvl++) {
-    const hit = ids.length ? poolHitRate(ids, lvl) : 0;
+    const spawnLvl = drSpawnLevel(drCurrentTheme, lvl);
+    const hit = ids.length ? poolHitRate(ids, spawnLvl) : 0;
     const pct = Math.round(hit * 100);
     const cls = pct >= 95 ? '' : pct >= 50 ? 'thin' : 'none';
-    const cap = maxCrForDungeonLevel(lvl);
+    const cap = maxCrForDungeonLevel(spawnLvl);
     const inBand = ids.filter(id => {
       const m = getMonsterById(id);
       return m && (m.cr ?? 0) <= cap;
     }).length;
-    cells += `<div class="dr-cov-cell ${cls}" title="Level ${lvl}: ${pct}% of CR rolls can be filled from this roster. ${inBand} creature(s) sit at or under the level ceiling (CR ${formatCR(cap)}).">${pct}</div>`;
+    cells += `<div class="dr-cov-cell ${cls}" title="Level ${lvl}${spawnLvl !== lvl ? ` (overland, spawns as level ${spawnLvl})` : ''}: ${pct}% of CR rolls can be filled from this roster. ${inBand} creature(s) sit at or under the level ceiling (CR ${formatCR(cap)}).">${pct}</div>`;
     lvls += `<div class="dr-cov-lvl">${lvl}</div>`;
   }
   el.innerHTML = cells;
@@ -5239,7 +5263,7 @@ function renderDungeonRosterWarnings() {
   } else {
     const weak = [];
     for (let lvl = 1; lvl <= 20; lvl++) {
-      const hit = poolHitRate(roster.map(m => m.id), lvl);
+      const hit = poolHitRate(roster.map(m => m.id), drSpawnLevel(drCurrentTheme, lvl));
       if (hit < 0.95) weak.push({ lvl, hit });
     }
     if (weak.length) {
@@ -5268,6 +5292,8 @@ function drFilteredMonsters() {
     const inRoster = drMonsterIn(m, drCurrentTheme);
     if (drMembershipFilter === 'in' && !inRoster) return false;
     if (drMembershipFilter === 'out' && inRoster) return false;
+    if (drAnimFilter === 'animated' && !drIsAnimated(m)) return false;
+    if (drAnimFilter === 'static' && drIsAnimated(m)) return false;
     const cr = m.cr ?? 0;
     if (drCrMin != null && cr < drCrMin) return false;
     if (drCrMax != null && cr > drCrMax) return false;
@@ -5289,9 +5315,11 @@ function renderDungeonRosterGrid() {
 
   el.innerHTML = list.map(m => {
     const on = drMonsterIn(m, drCurrentTheme);
+    const anim = drIsAnimated(m);
     return `
-      <label class="dr-mob-row ${on ? 'on' : ''}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)}">
+      <label class="dr-mob-row ${on ? 'on' : ''} ${anim ? 'animated' : 'static'}" data-id="${m.id}" title="${m.name} — CR ${formatCR(m.cr)} · ${getThemeForMonster(m)} · ${anim ? 'animated' : 'static sprite'}">
         <input type="checkbox" ${on ? 'checked' : ''}>
+        <span class="dr-mob-anim">${anim ? '▶' : '■'}</span>
         <span class="dr-mob-name">${m.name}</span>
         <span class="dr-mob-fam">${getThemeForMonster(m)}</span>
         <span class="dr-mob-cr">CR ${formatCR(m.cr)}</span>

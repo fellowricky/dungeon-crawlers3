@@ -4,8 +4,10 @@
  * expeditions, research, runecrafting, and tactical war preparations.
  */
 
-import { grantXp, XP_TABLE } from './srd.js';
-import { rollItem, itemPoints, addToInventory } from './items.js';
+import { grantXp, XP_TABLE, recalc } from './srd.js';
+import { rollItem, itemPoints, addToInventory, takeFromInventory, BASES, weaponKindOf,
+         isBrewablePotion, makeConsumableFromBase, makeRuneItem, isRune, runeFitsItem,
+         canInscribeRune, promoteItemRarity, itemRunes, isSalvageable } from './items.js';
 
 /* Forge categories that are really the weapon slot narrowed to a kind, so a
    ranger who sold their only bow can always make another one. */
@@ -13,6 +15,11 @@ const CRAFT_WEAPON_KINDS = { ranged: 'ranged', focus: 'focus' };
 
 /** Armory storage slots granted per facility level (level 10 → 120 slots). */
 export const ARMORY_SLOTS_PER_LEVEL = 12;
+
+/** Stored-hero bunks: 6 base + 2 per Living Quarters level (level 1 → 8, level 10 → 26). */
+export function storedHeroCap(level) {
+  return 6 + Math.max(0, level | 0) * 2;
+}
 
 export const FACILITY_DEFINITIONS = {
   living_quarters: {
@@ -23,7 +30,7 @@ export const FACILITY_DEFINITIONS = {
     baseCost: 200,
     costMultiplier: 1.8,
     maxLevel: 10,
-    getEffectText: (lvl) => `Max Stored Heroes: ${6 + lvl * 2} · Rested XP Bonus: +${lvl * 2}%`
+    getEffectText: (lvl) => `Max Stored Heroes: ${storedHeroCap(lvl)} · Rested XP Bonus: +${lvl * 2}%`
   },
   armory: {
     id: 'armory',
@@ -33,17 +40,19 @@ export const FACILITY_DEFINITIONS = {
     baseCost: 250,
     costMultiplier: 1.7,
     maxLevel: 10,
+    assignable: false,
     getEffectText: (lvl) => `Storage Slots: ${lvl * ARMORY_SLOTS_PER_LEVEL}`
   },
   training_grounds: {
     id: 'training_grounds',
     name: 'Training Grounds',
     icon: '⚔️',
-    description: 'Assigned idle heroes passively train to catch up to the active party level.',
+    description: 'Buy training gear, assign a hero to each piece, and raise their ability scores.',
     baseCost: 350,
     costMultiplier: 2.0,
-    maxLevel: 10,
-    getEffectText: (lvl) => `Catch-up XP Rate: ${5 + lvl}% of dungeon XP (Capped at Party Level)`
+    maxLevel: 1,
+    assignable: false,
+    getEffectText: () => `Stations raise STR · DEX · CON · INT · WIS · CHA (cap 20)`
   },
   blacksmith: {
     id: 'blacksmith',
@@ -63,27 +72,7 @@ export const FACILITY_DEFINITIONS = {
     baseCost: 450,
     costMultiplier: 2.1,
     maxLevel: 10,
-    getEffectText: (lvl) => `Brewing Discount: ${lvl * 4}% · Auto-Brew Yield: ${Math.min(5, 2 + Math.floor(lvl * 0.3))} potions/10 fl`
-  },
-  infirmary: {
-    id: 'infirmary',
-    name: 'The Infirmary',
-    icon: '🩺',
-    description: 'Treat injured heroes returning from dungeon wipes or trauma.',
-    baseCost: 400,
-    costMultiplier: 2.0,
-    maxLevel: 10,
-    getEffectText: (lvl) => `Recovery Speed: +${lvl * 15}% · Miracle Salve Discount: ${lvl * 5}%`
-  },
-  crypt: {
-    id: 'crypt',
-    name: 'The Crypt',
-    icon: '🪦',
-    description: 'Memorialize fallen heroes and attune to powerful Ancestral Relics.',
-    baseCost: 600,
-    costMultiplier: 2.5,
-    maxLevel: 10,
-    getEffectText: (lvl) => `Global Roster Max HP: +${lvl * 2}% · Soul Token Discount: ${lvl * 6}%`
+    getEffectText: (lvl) => `Brewing Discount: ${lvl * 4}% · Auto-Brew: ${Math.min(5, 2 + Math.floor(lvl * 0.3))} flasks/10 fl · Recipe tier ${lvl}`
   },
   enchanter: {
     id: 'enchanter',
@@ -93,7 +82,7 @@ export const FACILITY_DEFINITIONS = {
     baseCost: 800,
     costMultiplier: 2.4,
     maxLevel: 10,
-    getEffectText: (lvl) => `Runic Power: +${lvl * 5}% · Disenchant Dust Yield: +${lvl * 10}%`
+    getEffectText: (lvl) => `Recipe tier ${lvl} · Disenchant Dust Yield: +${lvl * 10}%`
   },
   academy: {
     id: 'academy',
@@ -125,20 +114,6 @@ export const FACILITY_DEFINITIONS = {
     maxLevel: 10,
     getEffectText: (lvl) => `Slaying Order Bonus: +${10 + lvl * 2}% Dmg/Def vs Target Family`
   }
-};
-
-export const INJURY_TYPES = {
-  fractured_rib: { id: 'fractured_rib', name: 'Fractured Rib', penaltyText: '-1 CON', baseFloors: 10, healCost: 120 },
-  severed_tendon: { id: 'severed_tendon', name: 'Severed Tendon', penaltyText: '-2 DEX', baseFloors: 12, healCost: 150 },
-  concussion: { id: 'concussion', name: 'Brain Concussion', penaltyText: '-2 INT', baseFloors: 10, healCost: 140 },
-  gash_wound: { id: 'gash_wound', name: 'Deep Gash Wound', penaltyText: '-10% Max HP', baseFloors: 8, healCost: 100 }
-};
-
-export const ANCESTRAL_RELICS = {
-  tomb_guard: { id: 'tomb_guard', name: 'Tomb of the Iron Guard', statBonus: '+10% Armor Defense', key: 'armorBonus', val: 0.10 },
-  tomb_shadow: { id: 'tomb_shadow', name: 'Tomb of the Shadow', statBonus: '+8% Evasion / Dodge', key: 'dodgeBonus', val: 0.08 },
-  tomb_warlock: { id: 'tomb_warlock', name: 'Tomb of the Spellweaver', statBonus: '+12% Arcane Damage', key: 'spellBonus', val: 0.12 },
-  tomb_slayer: { id: 'tomb_slayer', name: 'Tomb of the Slayer', statBonus: '+10% Critical Strike Chance', key: 'critBonus', val: 0.10 }
 };
 
 /* ── Academy Research Tree ───────────────────────────────────────────── */
@@ -216,33 +191,143 @@ export const TECH_TREE = {
   }
 };
 
-/* ── Enchanter Runes ─────────────────────────────────────────────────── */
-export const RUNE_RECIPES = {
-  rune_flame: {
-    id: 'rune_flame', name: 'Rune of Searing Flame', slotType: 'weapon', icon: '🔥',
-    desc: '+1d6 Bonus Fire Damage on hit', dustCost: 6, essenceKey: 'fire', essenceCost: 2, goldCost: 150
-  },
-  rune_frost: {
-    id: 'rune_frost', name: 'Rune of Bitter Frost', slotType: 'weapon', icon: '❄️',
-    desc: '+1d4 Cold Damage & 20% Chance to slow targets on hit', dustCost: 6, essenceKey: 'frost', essenceCost: 2, goldCost: 150
-  },
-  rune_thunder: {
-    id: 'rune_thunder', name: 'Rune of Crackling Thunder', slotType: 'weapon', icon: '⚡',
-    desc: '+1d6 Lightning Damage & 10% Chance to stun on hit', dustCost: 6, essenceKey: 'lightning', essenceCost: 2, goldCost: 150
-  },
-  rune_vampire: {
-    id: 'rune_vampire', name: 'Rune of the Bloodfeeder', slotType: 'weapon', icon: '🩸',
-    desc: '+6% Lifesteal on physical attacks', dustCost: 10, essenceKey: 'shadow', essenceCost: 3, goldCost: 250
-  },
-  rune_titan: {
-    id: 'rune_titan', name: 'Rune of the Colossus', slotType: 'armor', icon: '🗿',
-    desc: '+25 Maximum HP when equipped', dustCost: 8, essenceKey: 'radiant', essenceCost: 2, goldCost: 200
-  },
-  rune_warding: {
-    id: 'rune_warding', name: 'Rune of the Aegis Ward', slotType: 'armor', icon: '🛡️',
-    desc: '+2 Armor Class & +10% Resistance to magical damage', dustCost: 10, essenceKey: 'radiant', essenceCost: 3, goldCost: 250
+/* ── Enchanter Runes ───────────────────────────────────────────────────
+   One effect each. Gold 2k / 6k / 18k by tier. Spire level gates the shelf. */
+const _RG = [0, 2000, 6000, 18000];
+const _RD = [0, 6, 12, 24];
+const _RE = [0, 2, 3, 5];
+const _RN = ['', 'I', 'II', 'III'];
+
+export const RUNE_RECIPES = (() => {
+  const out = {};
+  const add = (r) => { out[r.id] = r; };
+
+  const dmg = (id, name, icon, elem, ess, tier, minLevel) => add({
+    id, name: `${name} ${_RN[tier]}`, icon, slotType: 'weapon', minLevel,
+    goldCost: _RG[tier], dustCost: _RD[tier], essenceKey: ess, essenceCost: _RE[tier],
+    effect: { type: 'elemDice', elem, dice: [1, [0, 4, 6, 8][tier]] },
+    desc: `+1d${[0, 4, 6, 8][tier]} ${elem} on hit`
+  });
+  dmg('flame_1', 'Searing Flame', '🔥', 'fire', 'fire', 1, 1);
+  dmg('flame_2', 'Searing Flame', '🔥', 'fire', 'fire', 2, 4);
+  dmg('flame_3', 'Searing Flame', '🔥', 'fire', 'fire', 3, 7);
+  dmg('frost_1', 'Bitter Frost', '❄️', 'cold', 'frost', 1, 1);
+  dmg('frost_2', 'Bitter Frost', '❄️', 'cold', 'frost', 2, 4);
+  dmg('frost_3', 'Bitter Frost', '❄️', 'cold', 'frost', 3, 7);
+  dmg('thunder_1', 'Crackling Thunder', '⚡', 'lightning', 'lightning', 1, 1);
+  dmg('thunder_2', 'Crackling Thunder', '⚡', 'lightning', 'lightning', 2, 4);
+  dmg('thunder_3', 'Crackling Thunder', '⚡', 'lightning', 'lightning', 3, 7);
+  dmg('venom_1', 'Venom', '☠️', 'poison', 'shadow', 1, 1);
+  dmg('venom_2', 'Venom', '☠️', 'poison', 'shadow', 2, 4);
+  dmg('venom_3', 'Venom', '☠️', 'poison', 'shadow', 3, 7);
+
+  const proc = (id, name, icon, ess, cond, tier, minLevel) => add({
+    id, name: `${name} ${_RN[tier]}`, icon, slotType: 'weapon', minLevel,
+    goldCost: _RG[tier], dustCost: _RD[tier], essenceKey: ess, essenceCost: _RE[tier],
+    effect: { type: 'saveProc', save: 'con', dc: [0, 12, 14, 16][tier], condition: cond },
+    desc: `On hit, CON save DC ${[0, 12, 14, 16][tier]} or ${cond} 1 round`
+  });
+  proc('numbing_1', 'Numbing', '❄️', 'frost', 'slowed', 1, 3);
+  proc('numbing_2', 'Numbing', '❄️', 'frost', 'slowed', 2, 8);
+  proc('numbing_3', 'Numbing', '❄️', 'frost', 'slowed', 3, 10);
+  proc('shocking_1', 'Shocking', '⚡', 'lightning', 'stunned', 1, 3);
+  proc('shocking_2', 'Shocking', '⚡', 'lightning', 'stunned', 2, 8);
+  proc('shocking_3', 'Shocking', '⚡', 'lightning', 'stunned', 3, 10);
+
+  const feed = (id, tier, minLevel) => add({
+    id, name: `Bloodfeeder ${_RN[tier]}`, icon: '🩸', slotType: 'weapon', minLevel,
+    goldCost: _RG[tier], dustCost: _RD[tier], essenceKey: 'shadow', essenceCost: _RE[tier],
+    effect: { type: 'healDice', dice: [1, [0, 4, 6, 8][tier]] },
+    desc: `On hit, heal 1d${[0, 4, 6, 8][tier]}`
+  });
+  feed('blood_1', 1, 6);
+  feed('blood_2', 2, 9);
+  feed('blood_3', 3, 10);
+
+  const col = (id, n, tier, minLevel) => add({
+    id, name: `Colossus ${_RN[tier]}`, icon: '🗿', slotType: 'armor', minLevel,
+    goldCost: _RG[tier], dustCost: _RD[tier], essenceKey: 'radiant', essenceCost: _RE[tier],
+    effect: { type: 'hp', n },
+    desc: `+${n} maximum HP`
+  });
+  col('colossus_1', 10, 1, 1);
+  col('colossus_2', 20, 2, 7);
+  col('colossus_3', 30, 3, 10);
+
+  const aegis = (id, n, tier, minLevel) => add({
+    id, name: `Aegis ${_RN[tier]}`, icon: '🛡️', slotType: 'armor', minLevel,
+    goldCost: _RG[tier], dustCost: _RD[tier], essenceKey: 'radiant', essenceCost: _RE[tier],
+    effect: { type: 'ac', n },
+    desc: `+${n} Armor Class`
+  });
+  aegis('aegis_1', 1, 1, 1);
+  aegis('aegis_2', 2, 2, 7);
+  aegis('aegis_3', 3, 3, 10);
+
+  const swift = (id, ft, tier, minLevel) => add({
+    id, name: `Swift ${_RN[tier]}`, icon: '💨', slotType: 'worn', minLevel,
+    goldCost: _RG[tier], dustCost: _RD[tier], essenceKey: 'lightning', essenceCost: _RE[tier],
+    effect: { type: 'move', n: ft },
+    desc: `+${ft} ft movement`
+  });
+  swift('swift_1', 5, 1, 3);
+  swift('swift_2', 10, 2, 6);
+  swift('swift_3', 15, 3, 10);
+
+  const stats = [
+    ['might', 'Might', '💪', 'str', 'fire'],
+    ['grace', 'Grace', '🪶', 'dex', 'lightning'],
+    ['ironhide', 'Ironhide', '🪨', 'con', 'radiant'],
+    ['wit', 'Wit', '📘', 'int', 'frost'],
+    ['sight', 'Sight', '👁', 'wis', 'frost'],
+    ['presence', 'Presence', '👑', 'cha', 'radiant']
+  ];
+  for (const [id, name, icon, stat, ess] of stats) {
+    add({
+      id: `${id}_1`, name: `${name} I`, icon, slotType: 'worn', minLevel: 2,
+      goldCost: _RG[1], dustCost: _RD[1], essenceKey: ess, essenceCost: _RE[1],
+      effect: { type: 'stat', stat, n: 1 },
+      desc: `+1 ${stat.toUpperCase()}`
+    });
+    add({
+      id: `${id}_2`, name: `${name} II`, icon, slotType: 'worn', minLevel: 9,
+      goldCost: _RG[2], dustCost: _RD[2], essenceKey: ess, essenceCost: _RE[2],
+      effect: { type: 'stat', stat, n: 2 },
+      desc: `+2 ${stat.toUpperCase()}`
+    });
   }
-};
+
+  const wards = [
+    ['fire', '🔥', 'fire', 5],
+    ['cold', '❄️', 'frost', 5],
+    ['lightning', '⚡', 'lightning', 5],
+    ['acid', '🧪', 'shadow', 5],
+    ['poison', '☠️', 'shadow', 5],
+    ['bludgeoning', '🔨', 'radiant', 8],
+    ['slashing', '⚔️', 'radiant', 8],
+    ['piercing', '🏹', 'radiant', 8],
+    ['necrotic', '💀', 'shadow', 9],
+    ['radiant', '✨', 'radiant', 9]
+  ];
+  for (const [dmgType, icon, ess, minLevel] of wards) {
+    add({
+      id: `ward_${dmgType}`, name: `Ward of ${dmgType[0].toUpperCase()}${dmgType.slice(1)}`,
+      icon, slotType: 'worn', minLevel,
+      goldCost: 3500, dustCost: 10, essenceKey: ess, essenceCost: 3,
+      effect: { type: 'resist', dmgType },
+      desc: `Resistance to ${dmgType} (half damage)`
+    });
+  }
+
+  /* Old save keys still resolve for inscribed gear from before the rework. */
+  out.rune_flame = out.flame_1;
+  out.rune_frost = out.frost_1;
+  out.rune_thunder = out.thunder_1;
+  out.rune_vampire = out.blood_1;
+  out.rune_titan = out.colossus_1;
+  out.rune_warding = out.aegis_2;
+  return out;
+})();
 
 /* ── War Room Slaying Orders & Doctrines ──────────────────────────────── */
 export const SLAYING_ORDERS = {
@@ -287,12 +372,65 @@ export const EXPEDITION_TEMPLATES = [
   }
 ];
 
-export function getApothecaryBrewOutput(apothecaryLevel, heroInt, floors = 10) {
-  const lvlRatio = Math.min(1.0, Math.max(0.1, apothecaryLevel / 10));
-  const intRatio = Math.min(1.0, Math.max(0.5, heroInt / 20));
-  const powerScore = (lvlRatio * 0.5) + (intRatio * 0.5);
+/** Pieces of yard gear. Buy each one, park a hero, raise that ability. */
+export const TRAINING_GEAR = {
+  pell:   { id: 'pell',   name: 'Pell Post',      stat: 'str', cost: 200, upgradeCost: 160, desc: 'A striking dummy. Builds Strength.' },
+  track:  { id: 'track',  name: 'Sand Track',     stat: 'dex', cost: 220, upgradeCost: 170, desc: 'Sprints and footwork. Builds Dexterity.' },
+  stones: { id: 'stones', name: 'Burden Stones',  stat: 'con', cost: 240, upgradeCost: 180, desc: 'Haul and hold. Builds Constitution.' },
+  slate:  { id: 'slate',  name: 'Drill Slate',    stat: 'int', cost: 260, upgradeCost: 190, desc: 'Forms and counts. Builds Intelligence.' },
+  shrine: { id: 'shrine', name: 'Quiet Shrine',   stat: 'wis', cost: 260, upgradeCost: 190, desc: 'Stillness and breath. Builds Wisdom.' },
+  ring:   { id: 'ring',   name: 'Sparring Ring',  stat: 'cha', cost: 240, upgradeCost: 180, desc: 'Presence under eyes. Builds Charisma.' }
+};
+export const TRAINING_STAT_CAP = 20;
+export const TRAINING_GEAR_MAX_LEVEL = 5;
+export const TRAINING_MAX_STATIONS = 8;
 
-  const quantityPer10 = Math.max(2, Math.min(5, Math.round(2 + ((powerScore - 0.30) / 0.70) * 3)));
+/** Floors to gain +1 in `statValue` on a piece of level `gearLevel`. */
+export function trainingFloorsForGain(statValue, gearLevel = 1) {
+  const stat = Math.max(1, statValue | 0);
+  const lvl = Math.max(1, Math.min(TRAINING_GEAR_MAX_LEVEL, gearLevel | 0));
+  return Math.max(6, 8 + (stat - 10) * 3 - (lvl - 1) * 2);
+}
+
+/** Apothecary facility level required to brew this trinket base. */
+export function brewUnlockLevel(base) {
+  if (!base) return 99;
+  if (base.potionPool === 'heal') return 1;
+  if (base.potionPool === 'greater') return 4;
+  if (base.potionPool === 'superior') return 8;
+  return Math.max(1, Math.min(10, (base.minIlvl | 0) || 1));
+}
+
+export function brewPowerScore(apothecaryLevel, heroInt) {
+  const lvlRatio = Math.min(1.0, Math.max(0.1, apothecaryLevel / 10));
+  const intRatio = Math.min(1.0, Math.max(0.5, (heroInt || 10) / 20));
+  return (lvlRatio * 0.5) + (intRatio * 0.5);
+}
+
+/** Floors a batch takes. Higher still / smarter alchemist finishes sooner. */
+export function getBrewDuration(base, apothecaryLevel, heroInt) {
+  const rarityFloors = { common: 8, uncommon: 10, rare: 12, epic: 16 };
+  let baseFloors = rarityFloors[base?.rarity] || 10;
+  if (base?.potionPool === 'heal') baseFloors = 10;
+  else if (base?.potionPool === 'greater') baseFloors = 12;
+  else if (base?.potionPool === 'superior') baseFloors = 14;
+  const speed = Math.floor((apothecaryLevel || 1) * 0.4)
+    + Math.max(0, Math.floor(((heroInt || 10) - 10) / 4));
+  return Math.max(4, baseFloors - speed);
+}
+
+/** How many bottles a finished batch yields. */
+export function getBrewQuantity(base, apothecaryLevel, heroInt) {
+  const ps = brewPowerScore(apothecaryLevel, heroInt);
+  if (base?.potionPool) {
+    return Math.max(2, Math.min(5, Math.round(2 + ((ps - 0.30) / 0.70) * 3)));
+  }
+  return Math.max(1, Math.min(3, Math.round(1 + ps * 2)));
+}
+
+export function getApothecaryBrewOutput(apothecaryLevel, heroInt, floors = 10) {
+  const powerScore = brewPowerScore(apothecaryLevel, heroInt);
+  const quantityPer10 = getBrewQuantity({ potionPool: 'heal' }, apothecaryLevel, heroInt);
   const totalQuantity = Math.floor(quantityPer10 * (floors / 10));
 
   let potionTier = 'heal';
@@ -315,9 +453,11 @@ export class GuildManager {
     this.facilityLevels = {};
     this.heroAssignments = {}; // { heroName: facilityId }
     this.apothecaryFloors = 0;
-    this.infirmaryTreatments = {}; // { heroName: { injuryId, floorsRemaining } }
-    this.consecratedTombs = []; // [{ heroName, classKey, relicId }]
-    this.activeAncestralRelic = 'tomb_guard';
+    this.apothecaryRecipe = 'Potion of Healing';
+    this.trainingStations = []; // [{ id, key, level }]
+    this.stationAssignments = {}; // { stationId: heroName }
+    this.stationProgress = {}; // { stationId: floors }
+    this._stationSeq = 1;
     this.storedItems = [];      // Armory: gear parked between delves
 
     // Resource Economy
@@ -348,9 +488,10 @@ export class GuildManager {
       facilityLevels: { ...this.facilityLevels },
       heroAssignments: { ...this.heroAssignments },
       apothecaryFloors: this.apothecaryFloors || 0,
-      infirmaryTreatments: { ...this.infirmaryTreatments },
-      consecratedTombs: [ ...this.consecratedTombs ],
-      activeAncestralRelic: this.activeAncestralRelic || 'tomb_guard',
+      apothecaryRecipe: this.apothecaryRecipe || 'Potion of Healing',
+      trainingStations: (this.trainingStations || []).map(s => ({ ...s })),
+      stationAssignments: { ...this.stationAssignments },
+      stationProgress: { ...this.stationProgress },
       storedItems: [ ...this.storedItems ],
       materials: { ...this.materials },
       essences: { ...this.essences },
@@ -367,22 +508,31 @@ export class GuildManager {
     if (!data) return;
     if (data.facilityLevels) {
       this.facilityLevels = { ...this.facilityLevels, ...data.facilityLevels };
+      for (const k of Object.keys(this.facilityLevels)) {
+        if (!FACILITY_DEFINITIONS[k]) delete this.facilityLevels[k];
+      }
     }
     if (data.heroAssignments) {
       this.heroAssignments = { ...data.heroAssignments };
     }
+    this.stripUnassignableJobs();
     if (typeof data.apothecaryFloors === 'number') {
       this.apothecaryFloors = data.apothecaryFloors;
     }
-    if (data.infirmaryTreatments) {
-      this.infirmaryTreatments = { ...data.infirmaryTreatments };
+    if (data.apothecaryRecipe) {
+      this.apothecaryRecipe = data.apothecaryRecipe;
     }
-    if (data.consecratedTombs) {
-      this.consecratedTombs = [ ...data.consecratedTombs ];
+    if (Array.isArray(data.trainingStations)) {
+      this.trainingStations = data.trainingStations.filter(s => s && TRAINING_GEAR[s.key]).map(s => ({
+        id: s.id, key: s.key, level: Math.max(1, s.level | 0)
+      }));
+      this._stationSeq = this.trainingStations.reduce((n, s) => {
+        const m = /^tg_(\d+)$/.exec(s.id || '');
+        return m ? Math.max(n, (+m[1]) + 1) : n;
+      }, this._stationSeq || 1);
     }
-    if (data.activeAncestralRelic) {
-      this.activeAncestralRelic = data.activeAncestralRelic;
-    }
+    if (data.stationAssignments) this.stationAssignments = { ...data.stationAssignments };
+    if (data.stationProgress) this.stationProgress = { ...data.stationProgress };
     if (Array.isArray(data.storedItems)) {
       this.storedItems = data.storedItems.filter(Boolean);
     }
@@ -398,8 +548,14 @@ export class GuildManager {
     if (Array.isArray(data.unlockedTechs)) {
       this.unlockedTechs = new Set(data.unlockedTechs);
     }
-    if (Array.isArray(data.craftedRunes)) {
-      this.craftedRunes = [ ...data.craftedRunes ];
+    if (Array.isArray(data.craftedRunes) && data.craftedRunes.length) {
+      if (!this.game.inventory) this.game.inventory = [];
+      for (const rn of data.craftedRunes) {
+        const recipe = RUNE_RECIPES[rn.runeKey] || rn;
+        const item = makeRuneItem(recipe);
+        if (item) addToInventory(this.game.inventory, item);
+      }
+      this.craftedRunes = [];
     }
     if (data.activeSlayingOrder) {
       this.activeSlayingOrder = data.activeSlayingOrder;
@@ -419,6 +575,20 @@ export class GuildManager {
 
   isUnlocked(facilityId) {
     return this.getFacilityLevel(facilityId) > 0;
+  }
+
+  /* ── Living Quarters bunks ─────────────────────────────────────────── */
+  getStoredHeroCap() {
+    return storedHeroCap(this.getFacilityLevel('living_quarters'));
+  }
+
+  getStoredHeroFreeSlots() {
+    const used = (this.game.storedHeroes || []).length;
+    return Math.max(0, this.getStoredHeroCap() - used);
+  }
+
+  canStoreHero() {
+    return this.getStoredHeroFreeSlots() > 0;
   }
 
   getUpgradeCost(facilityId) {
@@ -446,11 +616,33 @@ export class GuildManager {
   assignHero(heroNameOrId, facilityId) {
     if (!facilityId) {
       delete this.heroAssignments[heroNameOrId];
+      this._clearHeroStations(heroNameOrId);
       return true;
     }
+    if (FACILITY_DEFINITIONS[facilityId]?.assignable === false) return false;
     if (!this.isUnlocked(facilityId)) return false;
+    if (facilityId !== 'training_grounds') this._clearHeroStations(heroNameOrId);
     this.heroAssignments[heroNameOrId] = facilityId;
     return true;
+  }
+
+  _clearHeroStations(heroName) {
+    for (const [sid, name] of Object.entries(this.stationAssignments || {})) {
+      if (name === heroName) delete this.stationAssignments[sid];
+    }
+  }
+
+  /** Drop jobs on buildings that no longer take a worker (e.g. Armory). */
+  stripUnassignableJobs() {
+    let n = 0;
+    for (const [hero, fac] of Object.entries(this.heroAssignments)) {
+      const def = FACILITY_DEFINITIONS[fac];
+      if (!def || def.assignable === false) {
+        delete this.heroAssignments[hero];
+        n++;
+      }
+    }
+    return n;
   }
 
   getAssignedHeroes(facilityId) {
@@ -669,6 +861,19 @@ export class GuildManager {
   }
 
   /* ── Enchanter Disenchanting & Runecrafting ─────────────────────────── */
+  getDisenchantPreview(item) {
+    const rarity = item?.rarity || 'common';
+    let dust = 3;
+    let essencePool = null;
+    if (rarity === 'uncommon') dust = 6;
+    else if (rarity === 'rare') { dust = 12; essencePool = ['fire', 'frost', 'lightning']; }
+    else if (rarity === 'epic') { dust = 24; essencePool = ['shadow', 'radiant', 'fire', 'frost']; }
+    else if (rarity === 'legendary') { dust = 50; essencePool = ['shadow', 'radiant']; }
+    const enchLvl = this.getFacilityLevel('enchanter');
+    dust = Math.round(dust * (1 + enchLvl * 0.10));
+    return { dust, essencePool };
+  }
+
   disenchantItem(item) {
     if (!this.isUnlocked('enchanter')) return { ok: false, reason: 'Enchanter is locked.' };
     if (!item) return { ok: false, reason: 'No item selected.' };
@@ -677,71 +882,117 @@ export class GuildManager {
     const idx = inv.indexOf(item);
     if (idx < 0) return { ok: false, reason: 'Item not in inventory.' };
 
+    const preview = this.getDisenchantPreview(item);
     inv.splice(idx, 1);
 
-    const rarity = item.rarity || 'common';
-    let dustGain = 3;
-    let essenceKey = null;
+    const essenceKey = preview.essencePool
+      ? preview.essencePool[Math.floor(Math.random() * preview.essencePool.length)]
+      : null;
 
-    if (rarity === 'uncommon') dustGain = 6;
-    else if (rarity === 'rare') { dustGain = 12; essenceKey = ['fire', 'frost', 'lightning'][Math.floor(Math.random() * 3)]; }
-    else if (rarity === 'epic') { dustGain = 24; essenceKey = ['shadow', 'radiant', 'fire', 'frost'][Math.floor(Math.random() * 4)]; }
-    else if (rarity === 'legendary') { dustGain = 50; essenceKey = ['shadow', 'radiant'][Math.floor(Math.random() * 2)]; }
-
-    const enchLvl = this.getFacilityLevel('enchanter');
-    dustGain = Math.round(dustGain * (1 + enchLvl * 0.10));
-
-    this.essences.dust = (this.essences.dust || 0) + dustGain;
+    this.essences.dust = (this.essences.dust || 0) + preview.dust;
     if (essenceKey) {
       this.essences[essenceKey] = (this.essences[essenceKey] || 0) + 1;
     }
 
-    return { ok: true, dust: dustGain, essence: essenceKey };
+    return { ok: true, dust: preview.dust, essence: essenceKey };
+  }
+
+  runeEffect(runeKey) {
+    return RUNE_RECIPES[runeKey]?.effect || null;
+  }
+
+  listRuneRecipes() {
+    const seen = new Set();
+    const list = [];
+    const lvl = this.getFacilityLevel('enchanter');
+    for (const r of Object.values(RUNE_RECIPES)) {
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      list.push({
+        ...r,
+        unlocked: lvl >= (r.minLevel || 1),
+        goldCost: this.getRuneGoldCost(r)
+      });
+    }
+    list.sort((a, b) => (a.minLevel || 1) - (b.minLevel || 1) || a.name.localeCompare(b.name));
+    return list;
+  }
+
+  getRuneGoldCost(recipe) {
+    const list = recipe.goldCost || 0;
+    const mage = this.getAssignedHeroes('enchanter')[0];
+    let int = 10;
+    if (mage) {
+      const hero = this.findHeroRecord(mage);
+      int = hero?.stats?.int || hero?.stats?.INT || 10;
+    }
+    const intMod = Math.max(0, Math.floor((int - 10) / 2));
+    return Math.max(Math.ceil(list * 0.5), list - 10 * intMod);
   }
 
   craftRune(runeKey) {
     if (!this.isUnlocked('enchanter')) return { ok: false, reason: 'Enchanter is locked.' };
     const recipe = RUNE_RECIPES[runeKey];
     if (!recipe) return { ok: false, reason: 'Invalid rune recipe.' };
+    const minLevel = recipe.minLevel || 1;
+    if (this.getFacilityLevel('enchanter') < minLevel) {
+      return { ok: false, reason: `Requires Enchanter level ${minLevel}.` };
+    }
 
-    if (this.game.gold < recipe.goldCost) return { ok: false, reason: 'Not enough gold.' };
+    const goldCost = this.getRuneGoldCost(recipe);
+    if (this.game.gold < goldCost) return { ok: false, reason: 'Not enough gold.' };
     if ((this.essences.dust || 0) < recipe.dustCost) return { ok: false, reason: 'Not enough Arcane Dust.' };
     if ((this.essences[recipe.essenceKey] || 0) < recipe.essenceCost) return { ok: false, reason: `Not enough ${recipe.essenceKey} essence.` };
 
-    this.game.gold -= recipe.goldCost;
+    this.game.gold -= goldCost;
     this.essences.dust -= recipe.dustCost;
     this.essences[recipe.essenceKey] -= recipe.essenceCost;
 
-    const runeObj = {
-      id: `${runeKey}_${Date.now()}`,
-      runeKey,
-      name: recipe.name,
-      icon: recipe.icon,
-      slotType: recipe.slotType,
-      desc: recipe.desc
-    };
-    this.craftedRunes.push(runeObj);
-    return { ok: true, rune: runeObj };
+    const runeItem = makeRuneItem(recipe);
+    if (!this.game.inventory) this.game.inventory = [];
+    addToInventory(this.game.inventory, runeItem);
+    return { ok: true, rune: runeItem };
   }
 
-  applyRuneToItem(item, runeId) {
+  applyRuneToItem(item, runeRef) {
     if (!this.isUnlocked('enchanter')) return { ok: false, reason: 'Enchanter is locked.' };
-    const rIdx = this.craftedRunes.findIndex(r => r.id === runeId);
-    if (rIdx < 0) return { ok: false, reason: 'Rune not in inventory.' };
-    const rune = this.craftedRunes[rIdx];
-
-    const isWeapon = item.slot === 'weapon' || item.kind === 'weapon';
-    const isArmor = ['armor', 'shield', 'head', 'boots', 'glove'].includes(item.slot);
-
-    if (rune.slotType === 'weapon' && !isWeapon) {
-      return { ok: false, reason: 'This rune can only be inscribed on weapons.' };
+    if (!item) return { ok: false, reason: 'No item selected.' };
+    if (!canInscribeRune(item)) {
+      return { ok: false, reason: 'That piece cannot take another rune (Ancient or Fabled).' };
     }
-    if (rune.slotType === 'armor' && !isArmor) {
-      return { ok: false, reason: 'This rune can only be inscribed on armor/shields.' };
+    const inv = this.game.inventory || [];
+    let runeItem = null;
+    if (typeof runeRef === 'string') {
+      runeItem = inv.find(i => i && isRune(i) && (i.id === runeRef || i.runeKey === runeRef)) || null;
+    } else if (isRune(runeRef)) {
+      runeItem = runeRef;
+    }
+    if (!runeItem || !inv.includes(runeItem)) {
+      return { ok: false, reason: 'Rune not in inventory.' };
+    }
+    if (!runeFitsItem(runeItem, item)) {
+      const t = runeItem.runeSlotType;
+      const want = t === 'weapon' ? 'a weapon'
+        : t === 'worn' ? 'worn gear'
+        : 'armor, a helm, gloves, boots, or a shield';
+      return { ok: false, reason: `This rune can only be inscribed on ${want}.` };
     }
 
-    item.inscribedRune = { ...rune };
-    this.craftedRunes.splice(rIdx, 1);
+    const spent = takeFromInventory(inv, runeItem, 1);
+    if (!spent) return { ok: false, reason: 'Rune not in inventory.' };
+
+    const entry = {
+      runeKey: spent.runeKey,
+      name: spent.name,
+      icon: spent.icon,
+      slotType: spent.runeSlotType,
+      desc: spent.desc,
+      effect: spent.effect || this.runeEffect(spent.runeKey)
+    };
+    const existing = itemRunes(item);
+    item.inscribedRunes = existing.concat([entry]);
+    delete item.inscribedRune;
+    promoteItemRarity(item);
     return { ok: true };
   }
 
@@ -782,6 +1033,23 @@ export class GuildManager {
     return { bonusPS, heroName, statVal, heroLevel: heroObj.level || 1 };
   }
 
+  /** Bases the forge can pin for a craft category (`weapon` = melee, etc.). */
+  listCraftBases(slot) {
+    const kind = slot === 'weapon' ? 'melee' : (CRAFT_WEAPON_KINDS[slot] || null);
+    const rollSlot = kind ? 'weapon' : slot;
+    const list = BASES[rollSlot] || [];
+    const filtered = kind ? list.filter(b => weaponKindOf(b) === kind) : list;
+    return filtered.map(b => ({
+      name: b.name,
+      icon: b.icon,
+      slot: rollSlot,
+      kind: kind || weaponKindOf(b),
+      dmg: b.dmg || null,
+      twoHanded: !!b.twoHanded,
+      prof: b.prof || null
+    }));
+  }
+
   getCraftingCosts(slot, targetPS) {
     const discount = this.getEquipmentDiscountPercent();
     const ps = Math.max(10, targetPS || 20);
@@ -795,7 +1063,7 @@ export class GuildManager {
     return { goldCost, ironCost, leatherCost, isMetal };
   }
 
-  craftEquipment(slot, targetPS) {
+  craftEquipment(slot, targetPS, baseKey = null) {
     if (!this.isUnlocked('blacksmith')) return { ok: false, reason: 'Blacksmith is locked.' };
     const maxPS = this.getMaxCraftablePS();
     if (targetPS > maxPS) return { ok: false, reason: `Target PS ${targetPS} exceeds Blacksmith limit (${maxPS}). Upgrade Blacksmith to forge higher tiers.` };
@@ -804,6 +1072,11 @@ export class GuildManager {
     if (this.game.gold < costs.goldCost) return { ok: false, reason: `Not enough gold! (Need 🪙${costs.goldCost}g)` };
     if ((this.materials.iron || 0) < costs.ironCost) return { ok: false, reason: `Not enough Iron Ingots! (Need 🔩${costs.ironCost})` };
     if ((this.materials.leather || 0) < costs.leatherCost) return { ok: false, reason: `Not enough Hardened Leather! (Need 🪵${costs.leatherCost})` };
+
+    const catalog = this.listCraftBases(slot);
+    if (baseKey && !catalog.some(b => b.name === baseKey)) {
+      return { ok: false, reason: `${baseKey} is not in this forge category.` };
+    }
 
     // Deduct costs
     this.game.gold -= costs.goldCost;
@@ -817,9 +1090,11 @@ export class GuildManager {
     const effectiveTier = baseTier + bonusTier;
 
     // Roll the crafted item
-    const weaponKind = CRAFT_WEAPON_KINDS[slot] || null;
+    const weaponKind = slot === 'weapon' ? 'melee' : (CRAFT_WEAPON_KINDS[slot] || null);
     const rollSlot = weaponKind ? 'weapon' : slot;
-    const rolled = rollItem(effectiveTier, Math.random, rollSlot, { source: 'boss', luck: 1.5, weaponKind });
+    const rolled = rollItem(effectiveTier, Math.random, rollSlot, {
+      source: 'boss', luck: 1.5, weaponKind, baseKey: baseKey || undefined
+    });
     if (!rolled) {
       return { ok: false, reason: 'Crafting failed to generate an item.' };
     }
@@ -845,6 +1120,7 @@ export class GuildManager {
     if (!this.isUnlocked('blacksmith')) return { ok: false, reason: 'Blacksmith is locked.' };
     if (!item) return { ok: false, reason: 'No item selected.' };
     if (item.locked) return { ok: false, reason: 'Cannot salvage a locked item.' };
+    if (!isSalvageable(item)) return { ok: false, reason: 'Only weapons, armor and accessories can be salvaged.' };
 
     const inv = this.game.inventory || [];
     const idx = inv.indexOf(item);
@@ -870,11 +1146,11 @@ export class GuildManager {
     let totalLeather = 0;
     let salvagedCount = 0;
 
-    // Filter items to salvage: must have slot, not potion/dye, not locked, and itemPoints(item) <= threshold
+    // Filter items to salvage: weapons/armor/accessories only, not locked, and itemPoints(item) <= threshold
     const toSalvage = [];
     for (let i = 0; i < inv.length; i++) {
       const item = inv[i];
-      if (!item || !item.slot || item.kind === 'potion' || item.kind === 'dye' || item.locked) continue;
+      if (!isSalvageable(item) || item.locked) continue;
       const ps = typeof itemPoints === 'function' ? itemPoints(item) : 0;
       if (ps <= threshold) {
         toSalvage.push(item);
@@ -913,47 +1189,14 @@ export class GuildManager {
 
   /* ── Dungeon Floor Progression Hook ────────────────────────────────── */
   onFloorCleared() {
-    // 1. Apothecary auto-brewing
+    // 1. Apothecary still
     if (this.isUnlocked('apothecary')) {
-      const assignedNames = this.getAssignedHeroes('apothecary');
-      if (assignedNames.length > 0) {
-        this.apothecaryFloors = (this.apothecaryFloors || 0) + 1;
-        if (this.apothecaryFloors >= 10) {
-          const heroName = assignedNames[0];
-          const heroObj = (this.game.storedHeroes || []).find(h => h.name === heroName) ||
-                          (this.game.heroes || []).map(h => h.data).find(h => h.name === heroName);
-
-          const heroInt = heroObj?.stats?.int || heroObj?.stats?.INT || 10;
-          const apLvl = this.getFacilityLevel('apothecary');
-          const brew = getApothecaryBrewOutput(apLvl, heroInt, 10);
-
-          this.game.potions[brew.potionTier] = (this.game.potions[brew.potionTier] || 0) + brew.quantity;
-          this.apothecaryFloors -= 10;
-
-          if (typeof window !== 'undefined' && window.log) {
-            window.log(`🧪 ${heroName} brewed ${brew.quantity}x ${brew.tierLabel} at the Apothecary!`, 'item');
-          }
-        }
-      }
+      this.tickApothecaryStill();
     }
 
-    // 2. Infirmary recovery beds
-    if (this.isUnlocked('infirmary') && this.infirmaryTreatments) {
-      for (const [heroName, tData] of Object.entries(this.infirmaryTreatments)) {
-        if (!tData || tData.floorsRemaining <= 0) continue;
-        tData.floorsRemaining -= 1;
-        if (tData.floorsRemaining <= 0) {
-          delete this.infirmaryTreatments[heroName];
-          const heroObj = (this.game.storedHeroes || []).find(h => h.name === heroName) ||
-                          (this.game.heroes || []).map(h => h.data).find(h => h.name === heroName);
-          if (heroObj && heroObj.injuries) {
-            heroObj.injuries = heroObj.injuries.filter(i => i.id !== tData.injuryId);
-          }
-          if (typeof window !== 'undefined' && window.log) {
-            window.log(`🩺 ${heroName} has fully recovered from their injury at the Infirmary!`, 'gold');
-          }
-        }
-      }
+    // 2. Training Grounds stations
+    if (this.isUnlocked('training_grounds')) {
+      this.tickTrainingStations();
     }
 
     // 3. Cartographer Expeditions Progress
@@ -983,107 +1226,12 @@ export class GuildManager {
     }
   }
 
-  assignInfirmaryBed(heroName, injuryId) {
-    if (!this.isUnlocked('infirmary')) return false;
-    const def = INJURY_TYPES[injuryId];
-    if (!def) return false;
-    const infLvl = this.getFacilityLevel('infirmary');
-    const chirurgeonHeroName = this.getAssignedHeroes('infirmary')[0];
-    let wisBonus = 0;
-    if (chirurgeonHeroName) {
-      const cHero = (this.game.storedHeroes || []).find(h => h.name === chirurgeonHeroName);
-      wisBonus = Math.floor(((cHero?.stats?.wis || 10) - 10) / 2);
-    }
-    const floorsNeeded = Math.max(3, def.baseFloors - Math.floor(infLvl * 0.8) - wisBonus);
-    this.infirmaryTreatments[heroName] = { injuryId, floorsRemaining: floorsNeeded };
-    return true;
-  }
-
-  cureWithMiracleSalve(heroName, injuryId) {
-    const def = INJURY_TYPES[injuryId];
-    if (!def) return false;
-    const infLvl = this.getFacilityLevel('infirmary');
-    const cost = Math.max(30, Math.floor(def.healCost * (1 - infLvl * 0.05)));
-    if (this.game.gold < cost) return false;
-
-    this.game.gold -= cost;
-    delete this.infirmaryTreatments[heroName];
-
-    const heroObj = (this.game.storedHeroes || []).find(h => h.name === heroName) ||
-                    (this.game.heroes || []).map(h => h.data).find(h => h.name === heroName);
-    if (heroObj && heroObj.injuries) {
-      heroObj.injuries = heroObj.injuries.filter(i => i.id !== injuryId);
-    }
-    return true;
-  }
-
-  consecrateTomb(heroName, classKey, relicId) {
-    if (!this.isUnlocked('crypt')) return false;
-    if (!ANCESTRAL_RELICS[relicId]) return false;
-    this.consecratedTombs.push({ heroName, classKey, relicId, date: Date.now() });
-    this.activeAncestralRelic = relicId;
-    return true;
-  }
-
-  craftSoulToken() {
-    if (!this.isUnlocked('crypt')) return false;
-    const cryptLvl = this.getFacilityLevel('crypt');
-    const cost = Math.max(100, 250 - cryptLvl * 15);
-    if (this.game.gold < cost) return false;
-    this.game.gold -= cost;
-    this.game.soulTokens = (this.game.soulTokens || 0) + 1;
-    return true;
-  }
-
-  dispatchDungeonXp(totalXpGained) {
-    if (!this.isUnlocked('training_grounds')) return;
-    if (!totalXpGained || totalXpGained <= 0) return;
-
-    const trainingLevel = this.getFacilityLevel('training_grounds');
-    const xpPercent = 0.05 + (trainingLevel * 0.01); // 6% at lvl 1, scaling to 15% at lvl 10
-    const idleXp = Math.floor(totalXpGained * xpPercent);
-    if (idleXp <= 0) return;
-
-    const assignedHeroNames = this.getAssignedHeroes('training_grounds');
-    if (assignedHeroNames.length === 0 || !this.game.storedHeroes) return;
-
-    // Cap: Idle heroes in Training Grounds cannot exceed the active party's max/average level
-    const maxAllowedLevel = this.game.heroes && this.game.heroes.length > 0
-      ? Math.max(...this.game.heroes.map(h => h.data?.level || 1))
-      : (typeof this.game.partyLevel === 'function' ? this.game.partyLevel() : (this.game.effectiveLevel || 1));
-
-    for (const storedHero of this.game.storedHeroes) {
-      const identifier = storedHero.name || storedHero.id;
-      if (assignedHeroNames.includes(identifier)) {
-        const curLevel = storedHero.level || 1;
-        if (curLevel >= maxAllowedLevel) continue; // Capped at party level
-
-        const capXp = (XP_TABLE && XP_TABLE[maxAllowedLevel]) ? XP_TABLE[maxAllowedLevel] : 999999;
-        const curXp = storedHero.xp || 0;
-        const xpToGrant = Math.min(idleXp, Math.max(0, capXp - curXp));
-
-        if (xpToGrant > 0) {
-          if (typeof grantXp === 'function') {
-            grantXp(storedHero, xpToGrant, null);
-          } else {
-            storedHero.xp = curXp + xpToGrant;
-            while (storedHero.level < maxAllowedLevel && XP_TABLE && storedHero.xp >= (XP_TABLE[storedHero.level + 1] || Infinity)) {
-              storedHero.level = (storedHero.level || 1) + 1;
-            }
-          }
-          if (storedHero.level > maxAllowedLevel) {
-            storedHero.level = maxAllowedLevel;
-          }
-        }
-      }
-    }
+  dispatchDungeonXp(_totalXpGained) {
+    /* Catch-up drip retired — the yard trains ability scores on stations. */
   }
 
   getGlobalHpBonusPercent() {
-    let total = 0;
-    if (this.isUnlocked('crypt')) total += this.getFacilityLevel('crypt') * 0.02;
-    total += this.getTechBonus('hpBonus');
-    return total;
+    return this.getTechBonus('hpBonus');
   }
 
   getGlobalXpBonusPercent() {
@@ -1099,9 +1247,208 @@ export class GuildManager {
     return total;
   }
 
+  findHeroRecord(name) {
+    return (this.game.storedHeroes || []).find(h => h.name === name) ||
+           (this.game.heroes || []).map(h => h.data).find(h => h && h.name === name) ||
+           null;
+  }
+
+  buyTrainingGear(key) {
+    if (!this.isUnlocked('training_grounds')) return { ok: false, reason: 'Training Grounds are locked.' };
+    const def = TRAINING_GEAR[key];
+    if (!def) return { ok: false, reason: 'Unknown equipment.' };
+    if ((this.trainingStations || []).length >= TRAINING_MAX_STATIONS) {
+      return { ok: false, reason: `The yard is full (${TRAINING_MAX_STATIONS} pieces).` };
+    }
+    if ((this.game.gold || 0) < def.cost) {
+      return { ok: false, reason: `Not enough gold! (Need 🪙${def.cost}g)` };
+    }
+    this.game.gold -= def.cost;
+    const id = `tg_${this._stationSeq++}`;
+    this.trainingStations.push({ id, key, level: 1 });
+    this.stationProgress[id] = 0;
+    return { ok: true, id };
+  }
+
+  upgradeTrainingGear(stationId) {
+    const st = (this.trainingStations || []).find(s => s.id === stationId);
+    if (!st) return { ok: false, reason: 'No such equipment.' };
+    const def = TRAINING_GEAR[st.key];
+    if (!def) return { ok: false, reason: 'Unknown equipment.' };
+    if ((st.level || 1) >= TRAINING_GEAR_MAX_LEVEL) return { ok: false, reason: 'Already masterwork.' };
+    const cost = def.upgradeCost * (st.level || 1);
+    if ((this.game.gold || 0) < cost) {
+      return { ok: false, reason: `Not enough gold! (Need 🪙${cost}g)` };
+    }
+    this.game.gold -= cost;
+    st.level = (st.level || 1) + 1;
+    return { ok: true, level: st.level };
+  }
+
+  assignToStation(stationId, heroName) {
+    if (!this.isUnlocked('training_grounds')) return { ok: false, reason: 'Training Grounds are locked.' };
+    const st = (this.trainingStations || []).find(s => s.id === stationId);
+    if (!st) return { ok: false, reason: 'No such equipment.' };
+    if (!heroName) {
+      const prev = this.stationAssignments[stationId];
+      delete this.stationAssignments[stationId];
+      if (prev && !Object.values(this.stationAssignments).includes(prev)) {
+        if (this.heroAssignments[prev] === 'training_grounds') delete this.heroAssignments[prev];
+      }
+      return { ok: true };
+    }
+    const hero = this.findHeroRecord(heroName);
+    if (!hero) return { ok: false, reason: 'No such hero.' };
+    this._clearHeroStations(heroName);
+    this.stationAssignments[stationId] = heroName;
+    this.heroAssignments[heroName] = 'training_grounds';
+    this.stationProgress[stationId] = this.stationProgress[stationId] || 0;
+    return { ok: true };
+  }
+
+  tickTrainingStations() {
+    const results = [];
+    for (const st of this.trainingStations || []) {
+      const name = this.stationAssignments[st.id];
+      if (!name) continue;
+      const hero = this.findHeroRecord(name);
+      if (!hero) continue;
+      const def = TRAINING_GEAR[st.key];
+      if (!def) continue;
+      if (!hero.stats) hero.stats = {};
+      const stat = def.stat;
+      const cur = hero.stats[stat] || 10;
+      if (cur >= TRAINING_STAT_CAP) continue;
+
+      this.stationProgress[st.id] = (this.stationProgress[st.id] || 0) + 1;
+      const needed = trainingFloorsForGain(cur, st.level || 1);
+      if (this.stationProgress[st.id] < needed) continue;
+      this.stationProgress[st.id] -= needed;
+      hero.stats[stat] = cur + 1;
+      if (hero.classKey && typeof recalc === 'function') recalc(hero);
+      results.push({ name, stat, value: hero.stats[stat], gear: def.name });
+      if (typeof window !== 'undefined' && window.log) {
+        window.log(`⚔️ ${name}'s ${stat.toUpperCase()} rose to ${hero.stats[stat]} at the ${def.name}.`, 'level');
+      }
+    }
+    return results;
+  }
+
+  applyTrainingBuffsOnEmbark(heroes) {
+    for (const wrap of heroes || []) {
+      const h = wrap?.data || wrap;
+      if (!h?.drillBuff) continue;
+      h.drillBuff.active = true;
+      h.drillBuff.ready = false;
+      if (h.drillBuff.tempHp) {
+        h.tempHp = Math.max(h.tempHp || 0, h.drillBuff.tempHp);
+      }
+      if (h.classKey && typeof recalc === 'function') recalc(h);
+    }
+  }
+
+  consumeTrainingBuffs(heroes) {
+    for (const wrap of heroes || []) {
+      const h = wrap?.data || wrap;
+      if (!h?.drillBuff?.active) continue;
+      delete h.drillBuff;
+      if (h.classKey && typeof recalc === 'function') recalc(h);
+    }
+  }
+
   getPotionDiscountPercent() {
     if (!this.isUnlocked('apothecary')) return 0;
     return this.getFacilityLevel('apothecary') * 0.04;
+  }
+
+  /* ── Apothecary still ──────────────────────────────────────────────── */
+  getAssignedAlchemist() {
+    const name = this.getAssignedHeroes('apothecary')[0];
+    if (!name) return null;
+    const hero = (this.game.storedHeroes || []).find(h => h.name === name) ||
+                 (this.game.heroes || []).map(h => h.data).find(h => h && h.name === name);
+    const int = hero?.stats?.int || hero?.stats?.INT || 10;
+    return { name, int, hero };
+  }
+
+  getStillPreview(baseKey = this.apothecaryRecipe) {
+    const base = (BASES.trinket || []).find(b => b.name === baseKey);
+    const alch = this.getAssignedAlchemist();
+    const apLvl = this.getFacilityLevel('apothecary');
+    const heroInt = alch?.int || 10;
+    return {
+      base,
+      baseKey: baseKey || 'Potion of Healing',
+      duration: getBrewDuration(base, apLvl, heroInt),
+      quantity: getBrewQuantity(base, apLvl, heroInt),
+      floors: this.apothecaryFloors || 0,
+      alchemist: alch
+    };
+  }
+
+  listBrewRecipes() {
+    const lvl = this.getFacilityLevel('apothecary');
+    const alch = this.getAssignedAlchemist();
+    const heroInt = alch?.int || 10;
+    const list = (BASES.trinket || []).filter(isBrewablePotion);
+    return list.map(b => {
+      const minLevel = brewUnlockLevel(b);
+      return {
+        baseKey: b.name,
+        name: b.name,
+        icon: b.icon,
+        rarity: b.rarity || 'common',
+        minLevel,
+        unlocked: lvl >= minLevel,
+        selected: (this.apothecaryRecipe || 'Potion of Healing') === b.name,
+        duration: getBrewDuration(b, lvl, heroInt),
+        quantity: getBrewQuantity(b, lvl, heroInt),
+        potionPool: b.potionPool || null,
+        buffKey: b.buffKey || null,
+        cures: b.cures || null
+      };
+    }).sort((a, b) => a.minLevel - b.minLevel || a.name.localeCompare(b.name));
+  }
+
+  setBrewRecipe(baseKey) {
+    if (!this.isUnlocked('apothecary')) return { ok: false, reason: 'Apothecary is locked.' };
+    const rec = this.listBrewRecipes().find(r => r.baseKey === baseKey);
+    if (!rec) return { ok: false, reason: 'Unknown recipe.' };
+    if (!rec.unlocked) {
+      return { ok: false, reason: `Requires Apothecary level ${rec.minLevel}.` };
+    }
+    if (this.apothecaryRecipe === baseKey) return { ok: true, unchanged: true };
+    this.apothecaryRecipe = baseKey;
+    this.apothecaryFloors = 0;
+    return { ok: true };
+  }
+
+  tickApothecaryStill() {
+    const alch = this.getAssignedAlchemist();
+    if (!alch) return null;
+    const key = this.apothecaryRecipe || 'Potion of Healing';
+    const base = (BASES.trinket || []).find(b => b.name === key);
+    if (!base || !isBrewablePotion(base)) return null;
+    if (brewUnlockLevel(base) > this.getFacilityLevel('apothecary')) return null;
+
+    this.apothecaryFloors = (this.apothecaryFloors || 0) + 1;
+    const apLvl = this.getFacilityLevel('apothecary');
+    const needed = getBrewDuration(base, apLvl, alch.int);
+    if (this.apothecaryFloors < needed) return null;
+
+    this.apothecaryFloors -= needed;
+    const qty = getBrewQuantity(base, apLvl, alch.int);
+    if (!this.game.inventory) this.game.inventory = [];
+    let lastItem = null;
+    for (let i = 0; i < qty; i++) {
+      const item = makeConsumableFromBase(base, apLvl);
+      if (!item) continue;
+      lastItem = addToInventory(this.game.inventory, item, this.game);
+    }
+    if (typeof window !== 'undefined' && window.log) {
+      window.log(`🧪 ${alch.name} brewed ${qty}× ${base.name} at the Apothecary!`, 'item');
+    }
+    return { quantity: qty, name: base.name, item: lastItem };
   }
 }
 

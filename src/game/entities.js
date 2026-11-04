@@ -5,7 +5,16 @@
  */
 import * as THREE from 'three';
 import { CLASSES, WILD_SHAPE_FORMS } from './srd.js';
-import { HeroSprite, WolfSprite, BeastSprite, configureSpriteMaterial } from './sprite_animator.js';
+import { HeroSprite, WolfSprite, BeastSprite, configureSpriteMaterial, pickFlip } from './sprite_animator.js';
+import { tickPose } from './sprite_pose.js';
+
+/* A twin sprite (x-ray ghost, hit overlay) bends with its body. */
+function copyPose(from, to) {
+  const a = from.userData && from.userData.sprPose, b = to.userData && to.userData.sprPose;
+  if (!a || !b) return;
+  b.pose.value.copy(a.pose.value);
+  b.dir.value.copy(a.dir.value);
+}
 import { measureFrameAnchor, resolveAtlasAnchor, applyAtlasAnchor, atlasDuration, attackImpactDelay as atlasAttackImpactDelay,
          sharedSheetTexture, sharedSheetFromLoader, warmSharedSheet, evictSharedSheets, nextAnimPhase } from './sprite_atlas.js';
 import { GIGAPACK_REGISTRY } from './gigapack_registry.js';
@@ -13,10 +22,16 @@ import LIB from './vfx_animations.json' with { type: 'json' };
 import { isIdentityColorBalance, loadBalancedCanvas, colorBalanceKey } from './color_balance.js';
 import { playNixieEffect, stopNixieEffect, warmupNixieVfx } from '../render/nixie_vfx.js';
 import { spawnPixelVfx, updatePixelVfx, clearPixelVfx, PIXEL_VFX_PRESETS } from '../render/pixel_vfx.js';
+import { clearLivePixelFx, spawnLiveBeam, spawnLivePixelFx } from '../render/pixelfx_live.js';
+import * as holyPillarFx from '../vendor/pixelfx/fx/holy/holy-pillar.js';
+import * as flamePillarFx from '../vendor/pixelfx/fx/fire/flame-pillar.js';
+import { rampFrom } from '../render/pfx/ramps.js';
+import { syncStatusAuras } from '../render/status_auras.js';
 import { preloadCommonSFX } from './audio.js';
 import { updateLoadingProgress } from '../ui/loading_screen.js';
 import { DAMAGE_TYPE_ICONS } from './constants.js';
 import { reportError } from './errors.js';
+import { spanRibbon, cameraBasisFromYawPitch, cameraBasisFromMatrix } from './span_ribbon.js';
 
 const _c = new THREE.Color();
 
@@ -147,11 +162,22 @@ export function drawStatusTray(tray, entity) {
     weakenedDmg: '🥀',
     baned: '📉',
     faerieFire: '🧚',
+    guided: '✦',
     hexMarked: '🔮',
     huntersMarked: '🎯',
     bloodlust: '🩸',
     patientDefense: '🛡️',
-    enlarged: '💪'
+    enlarged: '💪',
+    silenced: '🤫',
+    warded: '🔰',
+    crusadersMantle: '✝️',
+    dominated: '🧠',
+    blessed: '🙏',
+    dashing: '💨',
+    regenerating: '🌿',
+    mirrorImages: '🪞',
+    polymorphed: '🐑',
+    banished: '🌀'
   };
 
   g.font = 'bold 44px Arial, sans-serif';
@@ -280,6 +306,7 @@ export function attachXrayGhost(anim, tint) {
     const hadMap = mat.map != null;
     mat.map = sm.map;
     mat.rotation = sm.rotation;
+    copyPose(sm, mat);
     ghost.center.copy(src.center);
     /* Gaining or losing a map flips the USE_MAP define, and only THAT needs a
        recompile. Setting needsUpdate on every frame swap would rebuild the
@@ -489,8 +516,11 @@ function buildMonsterAnimator(mon, fallbackSprite, cb) {
       this._frame = 0;
       this._apply();
     },
-    setDirection(dx, dz) {
-      const flip = mon.flipX ? !(dx > 0.1) : (dx > 0.1);
+    setDirection(dx, dz, band) {
+      /* Hysteresis on the heading (see pickFlip), before the sheet's mirroring. */
+      const inv = !!mon.flipX;
+      const right = pickFlip(this._flipX == null ? null : (this._flipX !== inv), dx, dz, band);
+      const flip = inv ? !right : right;
       if (flip === this._flipX) return;
       this._flipX = flip;
       this._apply();
@@ -1476,6 +1506,7 @@ export function attachHitOverlay(anim) {
     const hadMap = mat.map != null;
     mat.map = sm.map;
     mat.rotation = sm.rotation;
+    copyPose(sm, mat);
     ov.center.copy(src.center);
     if ((sm.map != null) !== hadMap) mat.needsUpdate = true;
   };
@@ -1514,6 +1545,7 @@ export function hitFlash(ent){
 
 export function updateFlash(ent, dt){
   const v = visualOf(ent);
+  tickPose(v, dt);
   if (!v || v.flashT === undefined || v.flashT <= 0) return;
   v.flashT -= dt;
 
@@ -2127,6 +2159,9 @@ const CANTRIP_PROJ_SHEETS = {
 
 /** Fire a projectile from `from` to `to`; calls onHit() when it lands. */
 export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
+  if (typeof globalThis.setCombatActionFocus === 'function') {
+    globalThis.setCombatActionFocus(from, to, 1.05);
+  }
   if (kind === 'arrow') {
     const geo = _projGeo.arrow;
     const mat = new THREE.MeshBasicMaterial({ color }); mat.toneMapped = false;
@@ -2136,7 +2171,7 @@ export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
     scene.add(mesh);
     const dur = Math.max(0.08, from.distanceTo(to)/16);
     projectiles.push({ mesh, mat, glowMat: null, from: from.clone(), to: to.clone(), t: 0, dur, onHit, kind });
-    return;
+    return dur;
   }
 
   /* Magic Bolt / Cantrip Animated Sprite Projectile */
@@ -2209,6 +2244,7 @@ export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
   const dur = Math.max(0.20, from.distanceTo(to) / 10.5);
   const curve = opts.curve || null;
   projectiles.push({ mesh, mat, glowMat, glowMesh, tex, sheetDef, scale, curve, from: from.clone(), to: to.clone(), t: 0, dur, onHit, kind });
+  return dur;
 }
 
 /** A quick expanding procedural pixel slash / spell burst. */
@@ -2908,6 +2944,9 @@ export function spawnMeleeHitVFX(scene, targetPos, attackerPos, isCrit = false, 
 
 /** Rich Multi-Layered Animated Spell & Ability VFX Burst */
 export function spawnRichAbilityVFX(scene, casterPos, targetPos, fx, label, opts = {}) {
+  if (typeof globalThis.setCombatActionFocus === 'function' && targetPos) {
+    globalThis.setCombatActionFocus(casterPos || targetPos, targetPos, 0.95, opts.aoe ? 0.28 : 0.18);
+  }
   const tX = targetPos.x, tZ = targetPos.z;
   const cX = casterPos ? casterPos.x : tX;
   const cZ = casterPos ? casterPos.z : tZ;
@@ -3088,13 +3127,62 @@ export function spawnSheetEffect(scene, def, pos, scale = null, dur = null, opts
   mat.toneMapped = false;
   const mesh = new THREE.Sprite(mat);
   const s = scale != null ? scale : (def.scale || 1.5);
-  mesh.scale.set(s, s, 1);
+  /* Scale is the frame's height; a non-square frame (pixelfx sheets) keeps
+     its width:height. `pivot` [u, v] from the bottom-left puts the effect's
+     own origin — a blast's floor line, a bolt's head — on `pos`. */
+  const aspect = def.fw && def.fh ? def.fw / def.fh : 1;
+  mesh.scale.set(s * aspect, s, 1);
+  if (def.pivot) mesh.center.set(def.pivot[0], def.pivot[1]);
   mesh.position.copy(pos);
   mesh.renderOrder = opts.renderOrder != null ? opts.renderOrder : 30;
   scene.add(mesh);
   const rawDur = dur != null ? dur : (def.dur != null ? def.dur : (def.frames && def.fps ? def.frames / def.fps : 0.45));
   const d = (rawDur && rawDur > 0) ? rawDur : 0.45;
   const entry = { mesh, mat, tex, def, t: 0, dur: d, baseOpacity: opts.opacity != null ? opts.opacity : 1 };
+  sheetEffects.push(entry);
+  return entry;
+}
+
+/* -------- sheet laid from caster to target (span_ribbon.js) --------
+   For a sheet that is itself a line — a ray whose source is the frame's left
+   edge and whose tip is its right edge. The frame is stretched over a ribbon
+   along the real from→to line, rebuilt from the rendering camera every frame
+   it draws, so it stays on the beam while the camera sways or turns. Played
+   and faded by the same loop as spawnSheetEffect. `thickness` is the ribbon's
+   width across the line, in world units. */
+export function spawnSpanSheetEffect(scene, def, from, to, thickness = 1, dur = null, opts = {}){
+  const base = getOrLoadSheetTexture(def.url);
+  const tex = base ? base.clone() : new THREE.Texture();
+  tex.needsUpdate = true;
+  tex.repeat.set(sheetFrameRepeat(def).x, sheetFrameRepeat(def).y);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, depthWrite: false, opacity: 0, side: THREE.DoubleSide,
+    blending: opts.blend || (opts.additive ? THREE.AdditiveBlending : THREE.NormalBlending)
+  });
+  mat.toneMapped = false;
+  const geo = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(new Float32Array(12), 3);
+  posAttr.setUsage(THREE.DynamicDrawUsage);
+  geo.setAttribute('position', posAttr);
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
+  geo.setIndex([0, 1, 2, 0, 2, 3]);
+  const mesh = new THREE.Mesh(geo, mat);
+  /* The vertices are world positions written per frame; the mesh itself never
+     moves, so its bounds say nothing — never cull it. */
+  mesh.frustumCulled = false;
+  mesh.renderOrder = opts.renderOrder != null ? opts.renderOrder : 30;
+  const span = { from: from.clone(), to: to.clone(), halfWidth: Math.max(0.05, thickness) / 2 };
+  const basis = cameraBasisFromYawPitch(Math.PI / 4, 0.64);   // until the first draw
+  spanRibbon(span.from, span.to, basis.right, basis.up, span.halfWidth, posAttr.array);
+  mesh.onBeforeRender = (_renderer, _scene, camera) => {
+    const b = cameraBasisFromMatrix(camera.matrixWorld.elements);
+    spanRibbon(span.from, span.to, b.right, b.up, span.halfWidth, posAttr.array);
+    posAttr.needsUpdate = true;
+  };
+  scene.add(mesh);
+  const rawDur = dur != null ? dur : (def.dur != null ? def.dur : (def.frames && def.fps ? def.frames / def.fps : 0.45));
+  const d = (rawDur && rawDur > 0) ? rawDur : 0.45;
+  const entry = { mesh, mat, tex, geo, def, span, t: 0, dur: d, baseOpacity: opts.opacity != null ? opts.opacity : 1 };
   sheetEffects.push(entry);
   return entry;
 }
@@ -3141,6 +3229,9 @@ function getBeamTexture() {
 /* -------- 3D Continuous Beam VFX System -------- */
 const activeBeams = [];
 
+const PIXELFX_BEAM_TYPES = new Set(['ray', 'laser', 'drain', 'lightning']);
+/* the holy pillar's sun opens ~165 art px over its floor mark: ~5.5 units up */
+const PILLAR_PX_PER_UNIT = 30;
 export function spawnBeamEffect(scene, from, to, opts = {}) {
   const type = opts.type || 'ray';
   const color = opts.color || 0xff7a30;
@@ -3150,10 +3241,43 @@ export function spawnBeamEffect(scene, from, to, opts = {}) {
   const scrollSpeed = opts.scrollSpeed !== undefined ? opts.scrollSpeed : 5.0;
   const onHit = opts.onHit || null;
 
+  if (typeof globalThis.setCombatActionFocus === 'function' && from && to) {
+    globalThis.setCombatActionFocus(from, to, duration + 0.35);
+  }
+
   // Execute onHit immediately so impact damage & hit numbers trigger cleanly
   /* An impact callback is damage, a log line and a hit number — if it throws,
      the spell silently did nothing. */
   if (onHit) { try { onHit(); } catch(e){ reportError('beam impact', e); } }
+
+  /* Rays, lasers, drains and lightning are the pixelfx beam (render/pfx/beam.js,
+     drawn live), in a palette built from the spell's own colour and core
+     colour: a drain's pulses run back into the caster, lightning crackles.
+     It has its own source and impact flares, so the old Gigapack bursts are
+     left out. Pillars and chains keep the renderers below. */
+  if (PIXELFX_BEAM_TYPES.has(type)) {
+    spawnLiveBeam(scene, from, to, {
+      palette: opts.palette || rampFrom(color, coreColor),
+      flow: type === 'drain' ? -1 : 1,
+      jag: type === 'lightning' ? 1 : 0,
+      width, duration, opacity: opts.opacity,
+    });
+    return;
+  }
+
+  /* A pillar is light breaking through from above onto the mark (pixelfx
+     holy/holy-pillar: a sun opens, shafts converge on a burning floor sigil)
+     in the spell's colours — Moonbeam pale silver. `flame` layers a column of
+     fire erupting through it (fire/flame-pillar): Flame Strike's divine fire.
+     Both stand on the floor under `to` (opts.groundY, from the caller who
+     knows the terrain), drawn live, and end on their own. */
+  if (type === 'pillar') {
+    const at = new THREE.Vector3(to.x, opts.groundY != null ? opts.groundY : Math.max(0, (to.y || 0) - 0.4), to.z);
+    const base = { pos: at, pxPerUnit: PILLAR_PX_PER_UNIT, fadeIn: 0.05, opacity: opts.opacity };
+    spawnLivePixelFx(scene, holyPillarFx, { ...base, options: { palette: opts.palette || rampFrom(color, coreColor) } });
+    if (opts.flame) spawnLivePixelFx(scene, flamePillarFx, base);
+    return;
+  }
 
   // 1. Optional Pixel Art Source & Target Bursts
   if (opts.casterBurst && GIGAPACK_REGISTRY[opts.casterBurst]) {
@@ -3605,16 +3729,21 @@ export function updateProjectiles(scene, dt){
     const e = sheetEffects[i];
     e.t += dt;
     const k = e.t / e.dur, d = e.def;
-    const f = Math.floor(e.t * (d.fps * 0.70)) % d.frames;
+    /* `once` sheets (one-shot pixelfx effects) animate in by themselves: no
+       fade-in over their first frames, and they hold the last frame rather
+       than restarting if the layer outlasts them. */
+    const fRaw = Math.floor(e.t * (d.fps * 0.70));
+    const f = d.once ? Math.min(fRaw, d.frames - 1) : fRaw % d.frames;
     const _offE = sheetFrameOffset(d, f);
     e.tex.offset.set(_offE.x, _offE.y);
-    if(k < 0.15) e.mat.opacity = (k / 0.15) * (e.baseOpacity ?? 1);
+    if(k < 0.15 && !d.once) e.mat.opacity = (k / 0.15) * (e.baseOpacity ?? 1);
     else if(k > 0.75) e.mat.opacity = ((1 - k) / 0.25) * (e.baseOpacity ?? 1);
     else e.mat.opacity = (e.baseOpacity ?? 1);
     if(k >= 1){
       scene.remove(e.mesh);
       e.mat.dispose();
       e.tex.dispose();
+      if(e.geo) e.geo.dispose();
       sheetEffects.splice(i,1);
     }
   }
@@ -3921,7 +4050,7 @@ export function updateExitIndicator(ind, frac, active, time) {
 
   tex.needsUpdate = true;
 
-  if (active) {
+  if (active && (!ind.mesh || ind.mesh.visible)) {
     if (!ind._nixieInst && ind.mesh) {
       ind._nixieInst = playNixieEffect('portal_vortex', ind.mesh.position, { scale: 0.9, duration: null });
     }
@@ -3945,40 +4074,19 @@ export function disposeExitIndicator(ind) {
 
 /** Continuous dynamic status auras for entities (poison, bless, rage, haste). */
 export function updateEntityStatusAuras(entities = [], dt = 0.016) {
-  if (!entities || !entities.length) return;
-  for (const e of entities) {
-    if (!e || e.dead || (e.data && e.data.hp <= 0)) continue;
-    const effs = e._effects || (e.data && e.data._effects);
-    if (!effs) continue;
-
-    e._auraCooldown = (e._auraCooldown || 0) + dt;
-    if (e._auraCooldown < 0.45) continue;
-    e._auraCooldown = 0;
-
-    const ePos = new THREE.Vector3(e.x || 0, 0.25, e.z || 0);
-
-    if (effs.poisoned) {
-      playNixieEffect('aura_poison', ePos, { scale: 1.0, duration: 0.55 });
-    }
-    if (effs.blessed || effs.shieldOfFaith) {
-      playNixieEffect('aura_bless', ePos, { scale: 1.0, duration: 0.55 });
-    }
-    if (effs.raging || effs.bloodlust) {
-      playNixieEffect('aura_rage', ePos, { scale: 1.0, duration: 0.5 });
-    }
-    if (effs.hasted && e.moving) {
-      playNixieEffect('hit_sparks', ePos, { scale: 0.8, duration: 0.4 });
-    }
-  }
+  /* A live pixelfx effect for as long as each status lasts (render/status_auras.js).
+     It replaced the old Nixie pulses for poisoned / blessed / raging / hasted. */
+  syncStatusAuras(entities || []);
 }
 
 /** Drop all live effects (called when a level unloads or on combat reset). */
 export function clearEffects(scene){
   if (!scene) return;
+  clearLivePixelFx();
   for(const p of projectiles){ scene.remove(p.mesh); if(p.mat) p.mat.dispose(); if(p.glowMat) p.glowMat.dispose(); if(p.tex) p.tex.dispose(); }
   for(const s of slashes){ scene.remove(s.m); if(s.mat) s.mat.dispose(); }
   for(const e of spriteEffects){ scene.remove(e.mesh); if(e.mat) e.mat.dispose(); }
-  for(const e of sheetEffects){ scene.remove(e.mesh); if(e.mat) e.mat.dispose(); if(e.tex) e.tex.dispose(); }
+  for(const e of sheetEffects){ scene.remove(e.mesh); if(e.mat) e.mat.dispose(); if(e.tex) e.tex.dispose(); if(e.geo) e.geo.dispose(); }
   for(const b of activeBeams){ scene.remove(b.group); if(b.glowMat) b.glowMat.dispose(); if(b.coreMat) b.coreMat.dispose(); if(b.glowTex) b.glowTex.dispose(); if(b.coreTex) b.coreTex.dispose(); if(b.light) releasePooledLight(scene, b.light); if(b.extraGeos) for(const g of b.extraGeos) g.dispose(); }
   for(const p of fountainPool){ scene.remove(p.spr); if(p.spr.material) p.spr.material.dispose(); }
   for(const t of telegraphPool){ scene.remove(t.mesh); if(t.mat) t.mat.dispose(); if(t.geom) t.geom.dispose(); }

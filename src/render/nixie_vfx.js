@@ -1178,6 +1178,7 @@ function createSampleEffect(type) {
 const activeEffects = new Map(); // instance -> remainingLifetime
 const effectLibrary = new Map();
 const persistentInstances = [];
+const persistentSpecs = [];
 
 // Prepopulate standard effect presets
 const PRESET_KEYS = [
@@ -1321,6 +1322,7 @@ export function clearPersistentNixieEffects() {
     stopNixieEffect(inst);
   }
   persistentInstances.length = 0;
+  persistentSpecs.length = 0;
   for (const inst of activeEffects.keys()) {
     stopNixieEffect(inst);
   }
@@ -1331,26 +1333,40 @@ export function clearPersistentNixieEffects() {
  * Register a continuous particle emitter (e.g. campfire).
  */
 export function registerPersistentNixieEffect(effectKey, position, options = {}) {
-  const inst = playNixieEffect(effectKey, position, { ...options, duration: null });
-  if (inst) {
-    inst._pos = position;
-    persistentInstances.push(inst);
+  const spec = { effectKey, position, options, inst: null };
+  persistentSpecs.push(spec);
+
+  const g = typeof globalThis !== 'undefined' ? globalThis.game : null;
+  const needGate = options.roomId !== undefined && g && g.visitedRooms;
+  if (!needGate || g.visitedRooms[options.roomId]) {
+    const inst = playNixieEffect(effectKey, position, { ...options, duration: null });
+    if (inst) {
+      inst._pos = position;
+      inst._spec = spec;
+      spec.inst = inst;
+      persistentInstances.push(inst);
+      return inst;
+    }
   }
-  return inst;
+  return null;
 }
 
 /**
  * Stop persistent particle effects near a world position (e.g. extinguishing a campfire).
  */
 export function stopPersistentNixieEffectsNear(x, z, radius = 2.5) {
-  for (let i = persistentInstances.length - 1; i >= 0; i--) {
-    const inst = persistentInstances[i];
-    if (inst && inst._pos) {
-      const dist = Math.hypot(inst._pos.x - x, inst._pos.z - z);
-      if (dist <= radius) {
-        stopNixieEffect(inst);
-        persistentInstances.splice(i, 1);
+  for (let i = persistentSpecs.length - 1; i >= 0; i--) {
+    const spec = persistentSpecs[i];
+    const pos = spec.position;
+    const px = Array.isArray(pos) ? pos[0] : (pos?.x ?? 0);
+    const pz = Array.isArray(pos) ? pos[2] : (pos?.z ?? 0);
+    if (Math.hypot(px - x, pz - z) <= radius) {
+      if (spec.inst) {
+        stopNixieEffect(spec.inst);
+        const idx = persistentInstances.indexOf(spec.inst);
+        if (idx >= 0) persistentInstances.splice(idx, 1);
       }
+      persistentSpecs.splice(i, 1);
     }
   }
 }
@@ -1360,6 +1376,28 @@ export function stopPersistentNixieEffectsNear(x, z, radius = 2.5) {
  */
 export function updateNixieVfx(dt) {
   if (!vfxRenderer) return;
+
+  const g = typeof globalThis !== 'undefined' ? globalThis.game : null;
+  if (g && g.visitedRooms) {
+    for (const spec of persistentSpecs) {
+      if (spec.options.roomId !== undefined) {
+        const vis = !!g.visitedRooms[spec.options.roomId];
+        if (vis && !spec.inst) {
+          spec.inst = playNixieEffect(spec.effectKey, spec.position, { ...spec.options, duration: null });
+          if (spec.inst) {
+            spec.inst._pos = spec.position;
+            spec.inst._spec = spec;
+            persistentInstances.push(spec.inst);
+          }
+        } else if (!vis && spec.inst) {
+          stopNixieEffect(spec.inst);
+          const idx = persistentInstances.indexOf(spec.inst);
+          if (idx >= 0) persistentInstances.splice(idx, 1);
+          spec.inst = null;
+        }
+      }
+    }
+  }
 
   // Advance lifetimes and clean up expired instances
   const step = Math.min(dt || 0.016, 0.05);

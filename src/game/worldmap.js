@@ -4,10 +4,12 @@
 import { generateQuests } from './quests.js';
 import { showLoadingScreenPainted, hideLoadingScreen } from '../ui/loading_screen.js';
 import { prologueSummary } from './overland_prologue.js';
+import { WORLD, HUB } from './world_regions.js';
+import { THEMES } from '../dungeon/dungeon_generator.js';
 import { storyMissionState, makeStoryQuest } from './story.js';
 import { showBriefing } from './story_dialog.js';
 import { getSequelOffers } from './quest_events.js';
-import { rollItem, itemPoints, makeDye, perkText, bonusText, ilvlText, migrateItem, addToInventory, qtyOf, weaponKindOf } from './items.js';
+import { rollItem, itemPoints, makeDye, perkText, bonusText, ilvlText, migrateItem, addToInventory, qtyOf, weaponKindOf, isSalvageable } from './items.js';
 import { SPELLS } from './spells.js';
 import { EFFECTS } from './conditions.js';
 import { makeHero, normalizeHero, RACES, CLASSES, PLAYABLE_RACES, PLAYABLE_CLASSES,
@@ -17,9 +19,10 @@ import { HAIR_VALUES, HAIR_EXTENSION_VALUES, FACIAL_HAIR_VALUES, HAIR_COLORS,
          skinColorsFor, getRaceDefaults } from './appearance.js';
 import { log, updateResources } from './ui.js';
 import { playNarration, stopNarration } from './audio.js';
-import { refreshMenus, openMenu } from './menus.js';
-import { FACILITY_DEFINITIONS, getApothecaryBrewOutput, INJURY_TYPES, ANCESTRAL_RELICS,
-         TECH_TREE, RUNE_RECIPES, SLAYING_ORDERS, BATTLE_DOCTRINES, EXPEDITION_TEMPLATES } from './guild.js';
+import { refreshMenus, openMenu, bindItemHoverTooltip, hideItemTooltip } from './menus.js';
+import { FACILITY_DEFINITIONS,
+         TECH_TREE, RUNE_RECIPES, SLAYING_ORDERS, BATTLE_DOCTRINES, EXPEDITION_TEMPLATES,
+         TRAINING_GEAR, trainingFloorsForGain } from './guild.js';
 import { showSaveSlotsModal } from './ui_save_slots.js';
 import { getActiveSlot } from './save_slots.js';
 import { firstRunTip } from './help_ui.js';
@@ -36,6 +39,7 @@ let activeShopFilter = 'all';
 let selTavernHero = null;
 let selTavernHeroType = null; // 'active' | 'stored' | 'hire'
 let craftSelectedSlot = 'weapon';
+let craftSelectedBase = null; // base name, or null = smith's choice
 let craftTargetPS = 30;
 let selSalvageItem = null;
 let salvagePSThreshold = 30;
@@ -52,7 +56,8 @@ function partyLevel() {
 
 function itemIconHTML(icon, className="") {
   if (icon && icon.includes('/')) {
-    return `<img class="${className}" src="./${icon}" style="width:28px;height:28px;image-rendering:pixelated;vertical-align:middle;margin-right:4px;" />`;
+    const cls = className ? `item-ico ${className}` : 'item-ico';
+    return `<img class="${cls}" src="./${icon}" style="image-rendering:pixelated;vertical-align:middle;margin-right:4px;" />`;
   }
   return icon || '';
 }
@@ -333,10 +338,51 @@ function renderActiveTab(tab) {
   }
 }
 
+/* The guild's own marker on the map, at the heart of the painted holdfast
+   (world_regions.HUB). Every quest's road starts here; clicking it opens the
+   Guild tab. */
+function hubNodeHTML() {
+  return `<div class="wm-hub-node" id="wm-hub-node" style="left:${HUB.x}%; top:${HUB.y}%;" title="The Guildhall — every road starts here">
+    <div class="wm-hub-icon">⌂</div>
+    <div class="wm-hub-label">The Guildhall</div>
+  </div>`;
+}
+
+/**
+ * Draw the selected quest's road on the map: one dashed stretch per day,
+ * tinted by the biome that day's overland floor uses, with a camp dot where
+ * each day ends. Quests without a route (saved before the painted map) draw nothing.
+ */
+function renderRoute(q) {
+  const svg = $('wm-route-layer');
+  if (!svg) return;
+  svg.setAttribute('viewBox', `0 0 ${WORLD.cols} ${WORLD.rows}`);
+  const route = q && q.route;
+  if (!route || !Array.isArray(route.path) || route.path.length < 4) { svg.innerHTML = ''; return; }
+  const pts = [];
+  for (let i = 0; i < route.path.length; i += 2) pts.push([route.path[i] + 0.5, route.path[i + 1] + 0.5]);
+  const ends = [...(route.camps || []), pts.length - 1];
+  let html = '', start = 0;
+  ends.forEach((end, d) => {
+    const colour = THEMES[route.legs[d]]?.accent || '#d7c18f';
+    const seg = pts.slice(start, end + 1).map(p => p.join(',')).join(' ');
+    html += `<polyline class="wm-route-day" points="${seg}" stroke="${colour}" />`;
+    start = end;
+  });
+  for (const k of route.camps || []) {
+    const [x, y] = pts[k];
+    html += `<circle class="wm-route-camp" cx="${x}" cy="${y}" r="0.45" fill="#e2cc97" />`;
+  }
+  svg.innerHTML = html;
+}
+
 function renderNodes() {
   const root = $('wm-quest-nodes');
   if (!root) return;
-  root.innerHTML = quests.map((q, i) => {
+  const stage = $('wm-map-stage');
+  if (stage) stage.style.setProperty('--map-aspect', String(WORLD.art.w / WORLD.art.h));
+  renderRoute(selected);
+  root.innerHTML = hubNodeHTML() + quests.map((q, i) => {
     const loc = (q && q.mapLocation && typeof q.mapLocation.x === 'number' && typeof q.mapLocation.y === 'number')
       ? q.mapLocation
       : { x: 20 + (i * 12) % 60, y: 30 + (i * 15) % 40 };
@@ -358,6 +404,8 @@ function renderNodes() {
       renderDetail(selected);
     });
   });
+  const hub = $('wm-hub-node');
+  if (hub) hub.addEventListener('click', () => document.querySelector('.wm-tab[data-tab="guild"]')?.click());
 }
 
 function showPlaceholder() {
@@ -387,6 +435,12 @@ function renderDetail(q) {
   let xhtml = '';
   if (q.chain) {
     xhtml += `<div class="wm-chain-banner">📜 Chapter ${q.chain.part} of 3 — ${q.chain.arcTitle}</div>`;
+  }
+  /* The road: one overland floor per day, in the country crossed most that day. */
+  if (q.route && Array.isArray(q.route.legs)) {
+    xhtml += `<div class="wm-rumor-head">THE ROAD</div>`
+      + `<div class="wm-route-days">${q.route.legs.map((b, d) =>
+        `<span style="color:${THEMES[b]?.accent || '#d7c18f'}">Day ${d + 1}: ${cap(b)}</span>`).join(' → ')}</div>`;
   }
   if (q.phases && q.phases.length) {
     xhtml += `<div class="wm-rumor-head">RUMORS</div>`
@@ -518,7 +572,10 @@ async function launchStoryQuest(q) {
   hideWorldMap();
   /* startQuest() forges the floor synchronously — show the curtain and let it
      paint first so embarking acknowledges the click immediately. */
-  await showLoadingScreenPainted({ title: q.name || 'EMBARKING', subtitle: 'The party sets out...' });
+  await showLoadingScreenPainted({
+    title: q.name || 'EMBARKING', subtitle: 'The party sets out...',
+    party: G && G.heroes
+  });
   G.startQuest(q);
   log(`📖 Chapter ${q.chapter}: ${q.name} — the party sets out for ${q.place}.`, 'sys');
   if (q.embarkText) {
@@ -528,11 +585,28 @@ async function launchStoryQuest(q) {
   updateResources(G);
 }
 
+/** Embark on the tutorial quest (tutorial.js) — from the new-party offer or
+ *  a replay from How to Play. Same curtain-then-forge order as a story quest. */
+export async function launchTutorialQuest(q) {
+  hideWorldMap();
+  await showLoadingScreenPainted({
+    title: q.name || 'EMBARKING', subtitle: 'The party sets out...',
+    party: G && G.heroes
+  });
+  G.startQuest(q);
+  log(`📘 Tutorial: ${q.name} — the party sets out for ${q.place}.`, 'sys');
+  if (q.embarkText) log(q.embarkText, 'story');
+  updateResources(G);
+}
+
 async function embarkSelected() {
   if (!selected || !G) return;
   const q = selected;
   hideWorldMap();
-  await showLoadingScreenPainted({ title: q.name || 'EMBARKING', subtitle: 'The party sets out...' });
+  await showLoadingScreenPainted({
+    title: q.name || 'EMBARKING', subtitle: 'The party sets out...',
+    party: G && G.heroes
+  });
   G.startQuest(q);
   log(`🗺️ The party embarks on ${q.name} (${q.floors} floor${q.floors > 1 ? 's' : ''}, Lv ${q.level}).`, 'sys');
   if (q.embarkText) log(q.embarkText, 'story');
@@ -794,6 +868,9 @@ function initGuildSubtabs() {
 function renderGuildPanel() {
   firstRunTip('guild');
   initGuildSubtabs();
+  if (G?.guild && typeof G.guild.stripUnassignableJobs === 'function') {
+    G.guild.stripUnassignableJobs();
+  }
   const rosterPanel = $('guild-subpanel-roster');
   const facilityPanel = $('guild-subpanel-facility');
   if (!rosterPanel || !facilityPanel) return;
@@ -833,10 +910,13 @@ function renderFacilityView(facilityId) {
   let actionHtml = '';
 
   if (!isUnlocked) {
+    const unlockHint = fac.assignable === false
+      ? `Build and unlock ${fac.name} to access its features.`
+      : `Build and unlock ${fac.name} to assign heroes and access facility features.`;
     actionHtml = `
       <div style="background: rgba(220, 53, 69, 0.15); border: 2px solid #dc3545; padding: 16px; border-radius: 4px; text-align: center;">
         <h4 style="color: #ff6b6b; margin-top: 0;">🔒 Facility Locked (Level 0)</h4>
-        <p style="color: #b0bec5; font-size: 13px; margin-bottom: 14px;">Build and unlock ${fac.name} to assign heroes and access facility features.</p>
+        <p style="color: #b0bec5; font-size: 13px; margin-bottom: 14px;">${unlockHint}</p>
         <button class="btn primary btn-upgrade-fac-lg" style="padding: 10px 20px; font-size: 13px;" ${canAfford ? '' : 'disabled'}>
           Build / Unlock Facility (🪙 ${cost}g)
         </button>
@@ -970,37 +1050,31 @@ function renderFacilityView(facilityId) {
       `;
     } else if (facilityId === 'enchanter') {
       const ess = G.guild.essences || {};
-      const invGear = (G.inventory || []).filter(i => i && i.slot && i.kind !== 'potion' && i.kind !== 'dye');
-      const runes = G.guild.craftedRunes || [];
+      const invGear = (G.inventory || []).filter(i => i && i.slot && i.kind !== 'potion' && i.kind !== 'dye' && i.slot !== 'rune' && i.kind !== 'rune');
 
-      const runesListHtml = Object.values(RUNE_RECIPES).map(r => {
-        const canCraft = G.gold >= r.goldCost && (ess.dust || 0) >= r.dustCost && (ess[r.essenceKey] || 0) >= r.essenceCost;
+      const recipes = G.guild.listRuneRecipes();
+      const runesListHtml = recipes.map(r => {
+        const canCraft = r.unlocked && G.gold >= r.goldCost && (ess.dust || 0) >= r.dustCost && (ess[r.essenceKey] || 0) >= r.essenceCost;
+        const slot = r.slotType === 'weapon' ? 'weapon' : r.slotType === 'worn' ? 'worn' : 'armor';
         return `
-          <div style="background: rgba(0,0,0,0.3); border: 1px solid #444; padding: 8px; border-radius: 4px; margin-bottom: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <strong style="color: #bb86fc; font-size: 12px;">${r.icon} ${r.name}</strong>
-              <span style="font-size: 10px; color: #8a9ba8;">Slot: ${r.slotType}</span>
+          <div class="rune-row${r.unlocked ? '' : ' locked'}">
+            <span class="rune-ico">${r.icon}</span>
+            <div class="rune-body">
+              <div class="rune-name">${r.name}</div>
+              <div class="rune-desc">${r.unlocked ? r.desc : `Unlocks at Enchanter ${r.minLevel}`}</div>
             </div>
-            <div style="font-size: 11px; color: #cfd8dc; margin: 2px 0;">${r.desc}</div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-              <span style="font-size: 10px; color: #ffb74d;">Cost: 🪙${r.goldCost}g · ✨${r.dustCost} Dust · 🔮${r.essenceCost} ${r.essenceKey}</span>
-              <button class="btn primary btn-craft-rune" data-rune-key="${r.id}" style="padding: 2px 8px; font-size: 10px;" ${canCraft ? '' : 'disabled'}>Craft Rune</button>
-            </div>
+            <div class="rune-cost">${r.unlocked ? `${r.goldCost}g · ${r.dustCost} dust · ${r.essenceCost} ${r.essenceKey}` : slot}</div>
+            <button class="btn primary btn-craft-rune" data-rune-key="${r.id}" ${canCraft ? '' : 'disabled'}>
+              ${r.unlocked ? 'Craft' : `Lv ${r.minLevel}`}
+            </button>
           </div>
         `;
       }).join('');
 
       const disenchantGridHtml = invGear.length === 0 ? '<div style="color:#8a9ba8; font-size:12px; padding:10px;">No unequipped gear to disenchant.</div>' : invGear.map((item, idx) => `
-        <div class="bag-item" data-disenchant-idx="${idx}" title="Disenchant ${item.name}" style="border-color:${item.color || '#ccc'}; cursor: pointer;">
+        <div class="bag-item" data-disenchant-idx="${idx}" style="border-color:${item.color || '#ccc'}; cursor: pointer;">
           <span class="bag-ico">${itemIconHTML(item.icon)}</span>
           <span class="bag-r" style="background:${item.color || '#ccc'}"></span>
-        </div>
-      `).join('');
-
-      const ownedRunesHtml = runes.length === 0 ? '<div style="color:#8a9ba8; font-size:11px;">No crafted runes in storage.</div>' : runes.map((rn, idx) => `
-        <div style="background: rgba(187, 134, 252, 0.1); border: 1px solid #bb86fc; padding: 6px; border-radius: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 11px; color: #fff;">${rn.icon} ${rn.name} (${rn.slotType})</span>
-          <button class="btn primary btn-inscribe-rune" data-rune-idx="${idx}" style="padding: 2px 6px; font-size: 10px;">Inscribe</button>
         </div>
       `).join('');
 
@@ -1014,8 +1088,9 @@ function renderFacilityView(facilityId) {
             <span>🩸 Shadow: <strong style="color:#ab47bc;">${ess.shadow || 0}</strong></span>
             <span>🛡️ Radiant: <strong style="color:#fff176;">${ess.radiant || 0}</strong></span>
           </div>
+          <p class="armory-hint" style="margin:0 0 8px">Crafted runes go to your bag. Open Party (I) and drag a rune onto gear to inscribe it.</p>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; flex: 1; min-height: 0;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0;">
             <div style="display: flex; flex-direction: column; min-height: 0;">
               <h5 style="color: var(--px-gold); margin: 0 0 6px 0; font-size: 12px;">🔮 Runecrafting Recipes:</h5>
               <div style="overflow-y: auto; flex: 1;">${runesListHtml}</div>
@@ -1024,11 +1099,6 @@ function renderFacilityView(facilityId) {
             <div style="display: flex; flex-direction: column; min-height: 0;">
               <h5 style="color: var(--px-gold); margin: 0 0 6px 0; font-size: 12px;">✨ Disenchant Gear (Click Item):</h5>
               <div class="bag-grid" id="disenchant-grid" style="overflow-y: auto; flex: 1;">${disenchantGridHtml}</div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; min-height: 0;">
-              <h5 style="color: var(--px-gold); margin: 0 0 6px 0; font-size: 12px;">📦 Crafted Runes In Storage:</h5>
-              <div style="overflow-y: auto; flex: 1;">${ownedRunesHtml}</div>
             </div>
           </div>
           <div id="enchanter-action-feedback" style="margin-top: 6px; font-size: 12px; color: #4caf50;"></div>
@@ -1095,29 +1165,44 @@ function renderFacilityView(facilityId) {
       const canAffordCraft = G.gold >= costs.goldCost && (mats.iron || 0) >= costs.ironCost && (mats.leather || 0) >= costs.leatherCost;
 
       const slots = [
-        { id: 'weapon', label: '⚔️ Weapon' },
-        { id: 'ranged', label: '🏹 Ranged' },
-        { id: 'focus', label: '🪄 Wand' },
-        { id: 'armor', label: '🛡️ Armor' },
-        { id: 'shield', label: '🛡️ Shield' },
-        { id: 'helm', label: '🪖 Helm' },
-        { id: 'boots', label: '👢 Boots' },
-        { id: 'gloves', label: '🧤 Gloves' },
-        { id: 'ring', label: '💍 Ring' },
-        { id: 'amulet', label: '📿 Amulet' }
+        { id: 'weapon', label: 'Weapon' },
+        { id: 'ranged', label: 'Ranged' },
+        { id: 'focus', label: 'Focus' },
+        { id: 'armor', label: 'Armor' },
+        { id: 'shield', label: 'Shield' },
+        { id: 'helm', label: 'Helm' },
+        { id: 'boots', label: 'Boots' },
+        { id: 'gloves', label: 'Gloves' },
+        { id: 'ring', label: 'Ring' },
+        { id: 'amulet', label: 'Amulet' }
       ];
+      const slotLabel = slots.find(s => s.id === craftSelectedSlot)?.label || 'Gear';
+
+      const catalog = G.guild.listCraftBases(craftSelectedSlot);
+      if (craftSelectedBase && !catalog.some(b => b.name === craftSelectedBase)) {
+        craftSelectedBase = null;
+      }
 
       const slotButtonsHtml = slots.map(s => `
-        <button class="btn btn-select-craft-slot ${craftSelectedSlot === s.id ? 'primary' : ''}" data-slot="${s.id}" style="padding: 4px 8px; font-size: 11px; margin: 2px;">
+        <button class="btn btn-select-craft-slot smith-slot-btn ${craftSelectedSlot === s.id ? 'primary' : ''}" data-slot="${s.id}">
           ${s.label}
         </button>
       `).join('');
 
-      const invItems = (G.inventory || []).filter(i => i && i.kind !== 'potion' && i.kind !== 'dye' && i.slot);
+      const baseChipsHtml = `
+        <button class="smith-base ${craftSelectedBase ? '' : 'sel'}" data-base="">Any ${slotLabel.toLowerCase()}</button>
+        ${catalog.map(b => `
+          <button class="smith-base ${craftSelectedBase === b.name ? 'sel' : ''}" data-base="${b.name}" title="${b.name}">
+            ${itemIconHTML(b.icon, 'smith-base-ico')}
+            <span class="smith-base-name">${b.name}</span>
+          </button>
+        `).join('')}
+      `;
+
+      const invItems = (G.inventory || []).filter(isSalvageable);
+      const scrapCount = invItems.filter(i => !i.locked && (itemPoints(i) || 0) <= salvagePSThreshold).length;
       const itemsGridHtml = invItems.length === 0 ? `
-        <div style="color: #8a9ba8; font-size: 11px; text-align: center; padding: 15px;">
-          No unequipped gear to salvage.
-        </div>
+        <div class="armory-hint" style="padding:16px;text-align:center">No unequipped gear to salvage.</div>
       ` : invItems.map((item, idx) => {
         const color = item.color || '#ccc';
         const isSel = selSalvageItem === item;
@@ -1129,93 +1214,74 @@ function renderFacilityView(facilityId) {
         `;
       }).join('');
 
+      const forgeLabel = craftSelectedBase || `any ${slotLabel.toLowerCase()}`;
+
       featureHtml = `
-        <div class="facility-interactive-box">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <h4 style="color: var(--px-gold); margin: 0;">⚒️ Equipment Forge & Salvage Yard</h4>
-            <span style="font-size: 11px; color: #fff;">
-              🔩 Iron Ingots: <strong style="color: #b0bec5;">${mats.iron || 0}</strong> | 🪵 Leather: <strong style="color: #d7ccc8;">${mats.leather || 0}</strong>
-            </span>
+        <div class="facility-interactive-box smith-box">
+          <div class="smith-mats">
+            <div class="smith-mat">
+              <span class="smith-mat-label">Iron</span>
+              <span class="smith-mat-val">${mats.iron || 0}</span>
+            </div>
+            <div class="smith-mat">
+              <span class="smith-mat-label">Leather</span>
+              <span class="smith-mat-val">${mats.leather || 0}</span>
+            </div>
+            <div class="smith-mat">
+              <span class="smith-mat-label">Gold</span>
+              <span class="smith-mat-val">${G.gold}</span>
+            </div>
           </div>
-          <p style="font-size: 11px; color: #b0bec5; margin: 0 0 10px 0;">
-            Craft new custom equipment tuned to target Power Score (PS), or salvage unwanted dungeon loot into forging materials.
-          </p>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; min-height: 0; height: 100%;">
-            <!-- Crafting Workbench -->
-            <div style="background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 8px;">
-              <h5 style="color: var(--px-gold); margin: 0; font-size: 12px;">⚒️ Craft Equipment:</h5>
-              
-              <div>
-                <label style="font-size: 11px; color: #8a9ba8; display: block; margin-bottom: 2px;">Equipment Slot:</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 2px;">
-                  ${slotButtonsHtml}
-                </div>
-              </div>
 
-              <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <label style="font-size: 11px; color: #8a9ba8;">Target Power Score (PS):</label>
-                  <strong style="color: #4caf50; font-size: 13px;">PS ${craftTargetPS} <span style="font-size: 10px; color: #8a9ba8;">(Max: ${maxCraftablePS})</span></strong>
+          <div class="armory-panes smith-panes">
+            <div class="armory-pane smith-pane-forge">
+              <h5>Forge</h5>
+              <div class="smith-slots">${slotButtonsHtml}</div>
+              <div class="smith-base-list">${baseChipsHtml}</div>
+              <div class="smith-quality">
+                <div class="smith-quality-row">
+                  <span>Quality</span>
+                  <strong>PS ${craftTargetPS} <em>/ ${maxCraftablePS}</em></strong>
                 </div>
-                <input id="craft-ps-slider" type="range" min="15" max="${maxCraftablePS}" value="${craftTargetPS}" style="width: 100%;">
+                <input id="craft-ps-slider" type="range" min="15" max="${maxCraftablePS}" value="${craftTargetPS}">
               </div>
-
-              <div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 4px; font-size: 11px;">
-                <div style="color: #64b5f6;">
-                  ⚒️ <strong>Artisan Hero Bonus:</strong> ${heroBonus.heroName ? `${heroBonus.heroName} (+${heroBonus.bonusPS} PS Quality)` : 'None assigned (+0 PS)'}
-                </div>
-                <div style="color: #ffd54f; margin-top: 2px;">
-                  Estimated Result: <strong>PS ~${craftTargetPS + heroBonus.bonusPS}</strong>
-                </div>
+              <div class="smith-artisan">
+                ${heroBonus.heroName
+                  ? `${heroBonus.heroName} at the anvil · +${heroBonus.bonusPS} PS`
+                  : 'No artisan assigned · +0 PS'}
               </div>
-
-              <div style="margin-top: auto; padding-top: 6px; border-top: 1px solid #333;">
-                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #cfd8dc; margin-bottom: 6px;">
-                  <span>🪙 Gold: <strong>${costs.goldCost}g</strong></span>
-                  <span>🔩 Iron: <strong>${costs.ironCost}</strong></span>
-                  <span>🪵 Leather: <strong>${costs.leatherCost}</strong></span>
+              <div class="smith-forge-foot">
+                <div class="smith-cost">
+                  <span>${costs.goldCost}g</span>
+                  <span>${costs.ironCost} iron</span>
+                  <span>${costs.leatherCost} leather</span>
                 </div>
-                <button id="btn-forge-craft" class="btn primary" style="width: 100%; padding: 8px; font-size: 12px;" ${canAffordCraft ? '' : 'disabled'}>
-                  ⚒️ Forge ${slots.find(s => s.id === craftSelectedSlot)?.label || 'Gear'} (Target PS ${craftTargetPS})
+                <button id="btn-forge-craft" class="btn primary" ${canAffordCraft ? '' : 'disabled'}>
+                  Forge ${forgeLabel}
                 </button>
               </div>
             </div>
 
-            <!-- Salvage Yard -->
-            <div style="background: rgba(0,0,0,0.3); border: 1px solid #444; border-radius: 4px; padding: 10px; display: flex; flex-direction: column; min-height: 0;">
-              <h5 style="color: var(--px-gold); margin: 0 0 6px 0; font-size: 12px;">🪵 Salvage Yard (Scrap Gear):</h5>
-              
-              <!-- Bulk Scrap by PS Score Bar -->
-              <div style="background: rgba(255,255,255,0.04); border: 1px solid #555; padding: 8px; border-radius: 4px; margin-bottom: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <span style="font-size: 11px; color: #b0bec5;">Bulk Scrap Gear ≤ PS:</span>
-                  <strong style="color: #ffb74d; font-size: 12px;">PS ${salvagePSThreshold}</strong>
+            <div class="armory-pane smith-pane-salvage">
+              <h5>Salvage</h5>
+              <div class="smith-quality">
+                <div class="smith-quality-row">
+                  <span>Scrap unlocked gear ≤</span>
+                  <strong>PS ${salvagePSThreshold}</strong>
                 </div>
-                <input id="salvage-ps-slider" type="range" min="10" max="${Math.max(100, maxCraftablePS)}" value="${salvagePSThreshold}" style="width: 100%; margin-bottom: 6px;">
-                <button id="btn-bulk-salvage-ps" class="btn" style="width: 100%; padding: 6px; font-size: 11px; color: #ffcc80;" ${invItems.filter(i => !i.locked && (itemPoints(i) || 0) <= salvagePSThreshold).length > 0 ? '' : 'disabled'}>
-                  🪵 Scrap All Unlocked Gear ≤ PS ${salvagePSThreshold} (${invItems.filter(i => !i.locked && (itemPoints(i) || 0) <= salvagePSThreshold).length} items)
+                <input id="salvage-ps-slider" type="range" min="10" max="${Math.max(100, maxCraftablePS)}" value="${salvagePSThreshold}">
+                <button id="btn-bulk-salvage-ps" class="btn" ${scrapCount ? '' : 'disabled'}>
+                  Scrap ${scrapCount} item${scrapCount === 1 ? '' : 's'}
                 </button>
               </div>
-
-              <div class="forge-inventory-grid" id="forge-inventory-grid" style="flex: 1; overflow-y: auto; max-height: 120px;">${itemsGridHtml}</div>
-              
-              <div style="margin-top: 6px;">
+              <div class="bag-grid" id="forge-inventory-grid">${itemsGridHtml}</div>
+              <div class="smith-salvage-sel">
                 ${selSalvageItem ? `
-                  <div style="font-size: 11px; color: ${selSalvageItem.color || '#fff'}; margin-bottom: 4px; display: flex; justify-content: space-between;">
-                    <span>Selected: <strong>${selSalvageItem.name}</strong> (PS ${itemPoints(selSalvageItem)})</span>
-                    <span style="color: #8a9ba8;">${selSalvageItem.rarity || 'common'}</span>
-                  </div>
-                  <button id="btn-forge-salvage" class="btn" style="width: 100%; padding: 5px; font-size: 11px;">
-                    🪵 Salvage Selected Item
-                  </button>
-                ` : `
-                  <div style="font-size: 10px; color: #8a9ba8; text-align: center; padding: 4px;">
-                    Click any item in your grid to inspect / scrap individually.
-                  </div>
-                `}
+                  <span style="color:${selSalvageItem.color || '#fff'}">${selSalvageItem.name} · PS ${itemPoints(selSalvageItem)}</span>
+                  <button id="btn-forge-salvage" class="btn">Salvage this</button>
+                ` : `<span class="armory-hint">Click a piece to scrap it alone.</span>`}
               </div>
-              <div id="blacksmith-action-feedback" style="margin-top: 6px; font-size: 11px; color: #4caf50;"></div>
+              <div id="blacksmith-action-feedback" class="armory-feedback" style="color:#4caf50"></div>
             </div>
           </div>
         </div>
@@ -1238,31 +1304,38 @@ function renderFacilityView(facilityId) {
       };
       const empty = msg => `<div style="color: #8a9ba8; font-size: 12px; grid-column: 1 / -1; text-align: center; padding: 20px;">${msg}</div>`;
 
-      const invGridHtml = invGear.length === 0 ? empty('No unequipped gear to store.') : invGear.map((it, i) => cell(it, i, 'data-armory-dep')).join('');
-      const storedGridHtml = stored.length === 0 ? empty('The Armory is empty.') : stored.map((it, i) => cell(it, i, 'data-armory-wd')).join('');
+      const invGridHtml = invGear.length === 0
+        ? empty('No unequipped gear to stash.')
+        : invGear.map((it, i) => cell(it, i, 'data-armory-dep')).join('');
+      const storedCells = [];
+      for (let i = 0; i < cap; i++) {
+        const it = stored[i];
+        storedCells.push(it
+          ? cell(it, i, 'data-armory-wd')
+          : `<div class="bag-item armory-slot-empty" title="Empty slot"></div>`);
+      }
 
       featureHtml = `
-        <div class="facility-interactive-box">
-          <h4 style="color: var(--px-gold); margin: 0 0 4px 0;">🗄️ Armory Storage</h4>
-          <p style="font-size: 11px; color: #b0bec5; margin: 0 0 10px 0;">
-            Click gear to move it in or out of storage. Stored gear persists across every delve.
-            <strong style="color:${free === 0 ? '#e0483a' : '#4caf50'};">${stored.length} / ${cap} slots used</strong>
-          </p>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; min-height: 0; height: 100%;">
-            <div style="display: flex; flex-direction: column; min-height: 0; height: 100%;">
-              <h5 style="color: #8a9ba8; margin: 0 0 8px 0; font-size: 12px;">Party Inventory → deposit:</h5>
-              <div class="bag-grid" id="armory-inv-grid" style="overflow-y: auto; flex: 1; min-height: 0;">${invGridHtml}</div>
-              <button id="btn-armory-deposit-all" class="btn" style="margin-top: 8px; padding: 6px; font-size: 11px;" ${invGear.length && free ? '' : 'disabled'}>
-                ⬇ Deposit All Gear
-              </button>
+        <div class="facility-interactive-box armory-box">
+          <div class="armory-toolbar">
+            <span class="armory-count${free === 0 ? ' is-full' : ''}">${stored.length} / ${cap} slots</span>
+            <button id="btn-armory-deposit-all" class="btn" ${invGear.length && free ? '' : 'disabled'}>
+              Stash all gear
+            </button>
+          </div>
+          <div class="armory-panes">
+            <div class="armory-pane armory-pane-inv">
+              <h5>Party Inventory</h5>
+              <p class="armory-hint">Click an item to stash it</p>
+              <div class="bag-grid" id="armory-inv-grid">${invGridHtml}</div>
             </div>
-            <div style="display: flex; flex-direction: column; min-height: 0; height: 100%;">
-              <h5 style="color: #8a9ba8; margin: 0 0 8px 0; font-size: 12px;">Armory → withdraw:</h5>
-              <div class="bag-grid" id="armory-stored-grid" style="overflow-y: auto; flex: 1; min-height: 0;">${storedGridHtml}</div>
-              <div id="armory-action-feedback" style="margin-top: 8px; font-size: 12px; color: #e0483a; min-height: 16px;"></div>
+            <div class="armory-pane armory-pane-store">
+              <h5>Armory Vault</h5>
+              <p class="armory-hint">Click an item to withdraw it</p>
+              <div class="bag-grid" id="armory-stored-grid">${storedCells.join('')}</div>
             </div>
           </div>
+          <div id="armory-action-feedback" class="armory-feedback"></div>
         </div>
       `;
     } else if (facilityId === 'apothecary') {
@@ -1279,142 +1352,140 @@ function renderFacilityView(facilityId) {
         }
       }
 
-      const brewInfo = getApothecaryBrewOutput(lvl, heroInt, 10);
-      const floorsProgress = G.guild.apothecaryFloors || 0;
-      const progressPercent = Math.min(100, Math.round((floorsProgress / 10) * 100));
+      const still = G.guild.getStillPreview();
+      const floorsProgress = still.floors;
+      const needed = still.duration;
+      const progressPercent = Math.min(100, Math.round((floorsProgress / Math.max(1, needed)) * 100));
+      const pots = G.potions || {};
+      const recipes = G.guild.listBrewRecipes();
+      const hasAlch = !!assignedHeroName;
 
-      featureHtml = `
-        <div class="facility-interactive-box" style="margin-top: 12px; gap: 10px;">
-          <h4 style="color: var(--px-gold); margin-top: 0;">🧪 Automated Potion Alchemy & Concoction Lab</h4>
-          <p style="font-size: 12px; color: #b0bec5; margin-bottom: 8px;">
-            Assigned Alchemist brews potions automatically every <strong>10 dungeon floors cleared</strong> based on Apothecary Level (Lvl ${lvl}) and Hero Intelligence (${heroInt} INT).
-          </p>
-
-          <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 4px; border: 1px solid #333; display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; justify-content: space-between; font-size: 12px;">
-              <span><strong>Alchemist:</strong> ${heroNameDisplay}</span>
-              <span style="color: #4caf50; font-weight: bold;">Next Batch Yield: ${brewInfo.quantityPer10}x ${brewInfo.tierLabel}</span>
-            </div>
-
-            <div>
-              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #8a9ba8; margin-bottom: 4px;">
-                <span>Floor Progress:</span>
-                <span>${floorsProgress} / 10 Floors</span>
-              </div>
-              <div style="background: #101418; border: 1px solid #333; height: 14px; border-radius: 7px; overflow: hidden;">
-                <div style="background: linear-gradient(90deg, #2e7d32, #4caf50); height: 100%; width: ${progressPercent}%; transition: width 0.3s ease;"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    } else if (facilityId === 'infirmary') {
-      const assignedHeroName = assignedHeroes[0];
-      let chirurgeonWis = 10;
-      let chirurgeonNameDisplay = 'None Assigned';
-
-      if (assignedHeroName) {
-        const heroObj = (G.storedHeroes || []).find(h => h.name === assignedHeroName) ||
-                        (G.heroes || []).map(h => h.data).find(h => h.name === assignedHeroName);
-        if (heroObj) {
-          chirurgeonWis = heroObj.stats?.wis || heroObj.stats?.WIS || 10;
-          chirurgeonNameDisplay = `${heroObj.name} (WIS: ${chirurgeonWis})`;
-        }
-      }
-
-      const activeTreatments = G.guild.infirmaryTreatments || {};
-      const activeTreatmentsList = Object.entries(activeTreatments).map(([hName, tData]) => {
-        const def = INJURY_TYPES[tData.injuryId] || { name: tData.injuryId, penaltyText: '', healCost: 100 };
-        const salveCost = Math.max(30, Math.floor(def.healCost * (1 - lvl * 0.05)));
-        const canAffordSalve = G.gold >= salveCost;
+      const recipeHtml = recipes.map(r => {
+        const blurb = r.unlocked
+          ? `${r.quantity}× every ${r.duration} floors`
+          : `Unlocks at Apothecary ${r.minLevel}`;
+        const btn = !r.unlocked ? `Lv ${r.minLevel}` : r.selected ? 'On the still' : 'Set still';
         return `
-          <div style="background: rgba(0,0,0,0.3); border: 1px solid #444; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div>
-              <strong style="color: #ff6b6b;">${hName}</strong> — <span style="color: #cfd8dc;">${def.name} (${def.penaltyText})</span>
-              <div style="font-size: 11px; color: #4caf50; margin-top: 2px;">Floors Remaining in Bed: ${tData.floorsRemaining} floors</div>
+          <div class="apo-recipe${r.unlocked ? '' : ' locked'}${r.selected ? ' sel' : ''}">
+            <div class="apo-recipe-ico">${itemIconHTML(r.icon, 'apo-recipe-img')}</div>
+            <div class="apo-recipe-body">
+              <div class="apo-recipe-name">${r.name}</div>
+              <div class="apo-recipe-meta">${blurb}</div>
             </div>
-            <button class="btn primary btn-miracle-salve" data-hero="${hName}" data-injury="${tData.injuryId}" style="padding: 6px 12px; font-size: 11px;" ${canAffordSalve ? '' : 'disabled'}>
-              🧪 Miracle Salve (🪙 ${salveCost}g)
+            <button class="btn${r.selected ? ' primary' : ''} btn-apo-still" data-base="${r.baseKey}" ${r.unlocked ? '' : 'disabled'}>
+              ${btn}
             </button>
-          </div>
-        `;
+          </div>`;
       }).join('');
 
       featureHtml = `
-        <div class="facility-interactive-box">
-          <h4 style="color: var(--px-gold); margin: 0 0 4px 0;">🩺 Head Chirurgeon Triage & Recovery Beds</h4>
-          <p style="font-size: 11px; color: #b0bec5; margin: 0 0 10px 0;">
-            Head Chirurgeon: <strong>${chirurgeonNameDisplay}</strong>. Assigned beds passively heal trauma over dungeon floor clears, or use Miracle Salves for instant recovery.
-          </p>
-
-          <div style="flex: 1; overflow-y: auto; min-height: 0;">
-            <h5 style="color: #8a9ba8; margin: 0 0 8px 0; font-size: 12px;">Active Patient Recovery Beds:</h5>
-            ${activeTreatmentsList || '<div style="color: #8a9ba8; font-size: 12px; text-align: center; padding: 20px;">No heroes currently in treatment beds. Injured heroes can be assigned here for recovery.</div>'}
-          </div>
-          <div id="infirmary-action-feedback" style="margin-top: 8px; font-size: 12px; color: #4caf50;"></div>
-        </div>
-      `;
-    } else if (facilityId === 'crypt') {
-      const activeRelic = G.guild.activeAncestralRelic || 'tomb_guard';
-      const soulTokens = G.soulTokens || 0;
-      const tokenCost = Math.max(100, 250 - lvl * 15);
-      const canAffordToken = G.gold >= tokenCost;
-
-      const relicOptionsHtml = Object.values(ANCESTRAL_RELICS).map(rel => {
-        const isSelected = activeRelic === rel.id;
-        return `
-          <div class="relic-card ${isSelected ? 'selected' : ''}" data-relic="${rel.id}" style="background: ${isSelected ? 'rgba(232, 194, 90, 0.15)' : 'rgba(0,0,0,0.3)'}; border: 1px solid ${isSelected ? '#e8c25a' : '#444'}; padding: 10px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <div>
-              <strong style="color: ${isSelected ? '#e8c25a' : '#fff'}; font-size: 13px;">${rel.name}</strong>
-              <div style="font-size: 11px; color: #8a9ba8;">${rel.statBonus}</div>
+        <div class="facility-interactive-box apo-box">
+          <div class="smith-mats">
+            <div class="smith-mat">
+              <span class="smith-mat-label">Heal</span>
+              <span class="smith-mat-val">${pots.heal || 0}</span>
             </div>
-            ${isSelected ? '<span style="color: #e8c25a; font-size: 11px; font-weight: bold;">[ACTIVE RELIC]</span>' : '<button class="btn primary btn-select-relic" data-relic="' + rel.id + '" style="padding: 4px 8px; font-size: 10px;">Equip</button>'}
-          </div>
-        `;
-      }).join('');
-
-      featureHtml = `
-        <div class="facility-interactive-box">
-          <h4 style="color: var(--px-gold); margin: 0 0 4px 0;">🪦 Ancestral Reliquary & Soul Tokens</h4>
-          <p style="font-size: 11px; color: #b0bec5; margin: 0 0 10px 0;">
-            Equip ancestral relic blessings for your active party and craft mid-run Soul Resurrect Tokens.
-          </p>
-
-          <div style="display: grid; grid-template-columns: 1fr 280px; gap: 16px; flex: 1; min-height: 0;">
-            <div style="display: flex; flex-direction: column; gap: 4px; overflow-y: auto; min-height: 0;">
-              <h5 style="color: #8a9ba8; margin: 0 0 4px 0; font-size: 12px;">Active Party Ancestral Relics:</h5>
-              ${relicOptionsHtml}
+            <div class="smith-mat">
+              <span class="smith-mat-label">Greater</span>
+              <span class="smith-mat-val">${pots.greater || 0}</span>
             </div>
-
-            <div style="background: rgba(0,0,0,0.3); border: 1px solid #444; padding: 12px; border-radius: 4px; display: flex; flex-direction: column; gap: 10px; justify-content: space-between;">
-              <div>
-                <h5 style="color: var(--px-gold); margin: 0 0 6px 0; font-size: 13px;">🔮 Soul Resurrect Tokens</h5>
-                <div style="font-size: 12px; color: #cfd8dc;">Owned Tokens: <strong style="color: #4caf50;">${soulTokens}</strong></div>
-                <div style="font-size: 11px; color: #8a9ba8; margin-top: 4px;">Soul tokens allow 1 mid-dungeon party revive when wiped.</div>
-              </div>
-
-              <button id="btn-craft-soul-token" class="btn primary" style="padding: 8px; font-size: 11px;" ${canAffordToken ? '' : 'disabled'}>
-                Forge Soul Token (🪙 ${tokenCost}g)
-              </button>
+            <div class="smith-mat">
+              <span class="smith-mat-label">Superior</span>
+              <span class="smith-mat-val">${pots.superior || 0}</span>
             </div>
           </div>
-          <div id="crypt-action-feedback" style="margin-top: 8px; font-size: 12px; color: #4caf50;"></div>
+
+          <div class="apo-still">
+            <div class="apo-still-row">
+              <span>Still · ${heroNameDisplay}</span>
+              <strong>${still.quantity}× ${still.baseKey} / ${needed} floors</strong>
+            </div>
+            <div class="apo-still-bar">
+              <div class="apo-still-fill" style="width:${progressPercent}%"></div>
+            </div>
+            <div class="apo-still-hint">${
+              hasAlch
+                ? `${floorsProgress} / ${needed} floors · yield scales with still level and alchemist INT`
+                : 'Assign an alchemist — the still is cold until someone works it'
+            }</div>
+          </div>
+
+          <div class="apo-recipes">${recipeHtml}</div>
+          <div id="apothecary-action-feedback" class="armory-feedback" style="color:#4caf50"></div>
         </div>
       `;
     } else if (facilityId === 'training_grounds') {
-      const pl = typeof G.partyLevel === 'function' ? G.partyLevel() : (G.effectiveLevel || 1);
+      const stored = G.storedHeroes || [];
+      const stations = G.guild.trainingStations || [];
+      const STAT_LABEL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
+
+      const stationHtml = stations.length === 0
+        ? `<div class="armory-hint" style="padding:12px;text-align:center">The yard is empty. Buy a piece of gear below.</div>`
+        : stations.map(st => {
+            const def = TRAINING_GEAR[st.key];
+            if (!def) return '';
+            const heroName = G.guild.stationAssignments[st.id] || '';
+            const hero = heroName ? stored.find(h => h.name === heroName) : null;
+            const cur = hero?.stats?.[def.stat] || (hero ? 10 : 0);
+            const needed = hero ? trainingFloorsForGain(cur, st.level || 1) : 0;
+            const prog = G.guild.stationProgress[st.id] || 0;
+            const pct = hero && cur < 20 ? Math.min(100, Math.round((prog / Math.max(1, needed)) * 100)) : 0;
+            const maxed = hero && cur >= 20;
+            const upCost = def.upgradeCost * (st.level || 1);
+            const canUp = (st.level || 1) < 5 && G.gold >= upCost;
+            const opts = [`<option value="">— empty —</option>`]
+              .concat(stored.map(h => {
+                const busy = G.guild.stationAssignments && Object.entries(G.guild.stationAssignments).find(([sid, n]) => n === h.name && sid !== st.id);
+                const label = busy ? `${h.name} (busy)` : h.name;
+                return `<option value="${h.name}" ${h.name === heroName ? 'selected' : ''}>${label} · ${STAT_LABEL[def.stat]} ${h.stats?.[def.stat] || 10}</option>`;
+              }));
+            return `
+              <div class="tg-station">
+                <div class="tg-station-head">
+                  <div>
+                    <div class="apo-recipe-name">${def.name} <span class="tg-stat">${STAT_LABEL[def.stat]}</span></div>
+                    <div class="apo-recipe-meta">Lv ${st.level} · ${def.desc}</div>
+                  </div>
+                  <button class="btn btn-tg-upgrade" data-id="${st.id}" ${(st.level || 1) >= 5 ? 'disabled' : ''}>
+                    ${(st.level || 1) >= 5 ? 'Masterwork' : canUp ? `Upgrade ${upCost}g` : `${upCost}g`}
+                  </button>
+                </div>
+                <select class="tg-station-assign" data-id="${st.id}">${opts.join('')}</select>
+                <div class="apo-still-bar"><div class="apo-still-fill" style="width:${pct}%"></div></div>
+                <div class="apo-still-hint">${
+                  !hero ? 'Assign a hero to begin.'
+                  : maxed ? `${heroName}'s ${STAT_LABEL[def.stat]} is capped at 20.`
+                  : `${heroName} ${STAT_LABEL[def.stat]} ${cur} → ${cur + 1} · ${prog}/${needed} floors`
+                }</div>
+              </div>`;
+          }).join('');
+
+      const catalogHtml = Object.values(TRAINING_GEAR).map(def => {
+        const can = G.gold >= def.cost && stations.length < 8;
+        return `
+          <button class="btn btn-tg-buy" data-key="${def.id}" ${can ? '' : 'disabled'}>
+            ${def.name} · ${STAT_LABEL[def.stat]} · ${def.cost}g
+          </button>`;
+      }).join('');
+
       featureHtml = `
-        <div class="facility-interactive-box" style="margin-top: 16px;">
-          <h4 style="color: var(--px-gold); margin-top: 0;">⚔️ Active Training Overview</h4>
-          <p style="font-size: 12px; color: #b0bec5; margin-bottom: 6px;">
-            Assigned idle heroes passively receive <strong>${5 + lvl}% of active party dungeon XP</strong> to catch up.
-          </p>
-          <div style="font-size: 11px; color: #ffb74d; margin-bottom: 6px;">
-            🔒 <strong>Level Cap:</strong> Idle heroes cannot exceed active party level (<strong>Level ${pl}</strong>).
+        <div class="facility-interactive-box tg-box">
+          <div class="smith-mats">
+            <div class="smith-mat">
+              <span class="smith-mat-label">Gold</span>
+              <span class="smith-mat-val">${G.gold}</span>
+            </div>
+            <div class="smith-mat">
+              <span class="smith-mat-label">Stations</span>
+              <span class="smith-mat-val">${stations.length}/8</span>
+            </div>
           </div>
-          <div style="font-size: 12px; color: #4caf50;">
-            Currently Training (${assignedHeroes.length} heroes): ${assignedHeroes.length > 0 ? assignedHeroes.join(', ') : 'None'}
+          <div class="tg-stations">${stationHtml}</div>
+          <div class="tg-section">
+            <h5>Buy equipment</h5>
+            <div class="tg-row">${catalogHtml}</div>
           </div>
+          <div id="training-action-feedback" class="armory-feedback" style="color:#4caf50"></div>
         </div>
       `;
     } else if (facilityId === 'living_quarters') {
@@ -1441,13 +1512,14 @@ function renderFacilityView(facilityId) {
               <div class="facility-desc-lg">${fac.description}</div>
             </div>
           </div>
+          ${fac.assignable === false || fac.assignable === 'multi' ? '' : `
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
             <label style="font-size: 11px; color: var(--px-gold); font-weight: bold;">Assigned Hero:</label>
             <select id="fac-hero-assign-select" style="padding: 4px 8px; background: #14181d; color: #fff; border: 1px solid #444; font-size: 11px; max-width: 240px;">
               <option value="">-- Unassigned --</option>
               ${availableStoredHeroes.map(h => `<option value="${h.name}" ${assignedHeroes.includes(h.name) ? 'selected' : ''}>${h.name} (Lv ${h.level})</option>`).join('')}
             </select>
-          </div>
+          </div>`}
         </div>
 
         <div class="facility-status-box">
@@ -1455,9 +1527,10 @@ function renderFacilityView(facilityId) {
             <div style="font-size: 15px; font-weight: bold; color: var(--px-gold);">Level ${lvl} / ${fac.maxLevel}</div>
             <div style="font-size: 12px; color: #4caf50; font-weight: bold; margin-top: 2px;">${fac.getEffectText(lvl)}</div>
           </div>
+          ${facilityId === 'training_grounds' ? '' : `
           <button class="btn primary btn-upgrade-fac-lg" style="padding: 8px 16px; font-size: 11px;" ${canAfford ? '' : 'disabled'}>
             ${maxed ? 'MAX LEVEL' : `Upgrade Facility (🪙 ${cost}g)`}
-          </button>
+          </button>`}
         </div>
       </div>
 
@@ -1552,6 +1625,14 @@ function renderFacilityView(facilityId) {
   container.querySelectorAll('.btn-select-craft-slot').forEach(btn => {
     btn.addEventListener('click', () => {
       craftSelectedSlot = btn.dataset.slot;
+      craftSelectedBase = null;
+      renderFacilityView('blacksmith');
+    });
+  });
+
+  container.querySelectorAll('.smith-base').forEach(btn => {
+    btn.addEventListener('click', () => {
+      craftSelectedBase = btn.dataset.base || null;
       renderFacilityView('blacksmith');
     });
   });
@@ -1569,7 +1650,7 @@ function renderFacilityView(facilityId) {
   const craftBtn = container.querySelector('#btn-forge-craft');
   if (craftBtn) {
     craftBtn.addEventListener('click', () => {
-      const res = G.guild.craftEquipment(craftSelectedSlot, craftTargetPS);
+      const res = G.guild.craftEquipment(craftSelectedSlot, craftTargetPS, craftSelectedBase);
       const feedback = container.querySelector('#blacksmith-action-feedback');
       if (res.ok) {
         log(`⚒️ Blacksmith forged [${res.item.name}] (${res.item.rarity.toUpperCase()} · PS ${res.finalPS})!`, 'treasure');
@@ -1613,7 +1694,7 @@ function renderFacilityView(facilityId) {
   container.querySelectorAll('.bag-item[data-salvage-idx]').forEach(el => {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.salvageIdx, 10);
-      const invItems = (G.inventory || []).filter(i => i && i.kind !== 'potion' && i.kind !== 'dye' && i.slot);
+      const invItems = (G.inventory || []).filter(isSalvageable);
       selSalvageItem = invItems[idx] || null;
       renderFacilityView('blacksmith');
     });
@@ -1682,10 +1763,12 @@ function renderFacilityView(facilityId) {
   if (disenchantGrid) {
     const invGear = (G.inventory || []).filter(i => i && i.slot && i.kind !== 'potion' && i.kind !== 'dye');
     disenchantGrid.querySelectorAll('[data-disenchant-idx]').forEach(el => {
+      bindItemHoverTooltip(el, () => invGear[+el.dataset.disenchantIdx], { compare: false, disenchant: true });
       el.addEventListener('click', () => {
         const item = invGear[+el.dataset.disenchantIdx];
         const res = G.guild.disenchantItem(item);
         if (res.ok) {
+          hideItemTooltip();
           log(`🔮 Disenchanted ${item.name} into +${res.dust} Arcane Dust${res.essence ? ` and +1 ${res.essence} essence` : ''}!`, 'gold');
           G.saveGame();
           renderFacilityView('enchanter');
@@ -1699,7 +1782,7 @@ function renderFacilityView(facilityId) {
       const runeKey = btn.dataset.runeKey;
       const res = G.guild.craftRune(runeKey);
       if (res.ok) {
-        log(`🔮 Crafted ${res.rune.name} at the Enchanter's Spire!`, 'gold');
+        log(`🔮 Crafted ${res.rune.name} — it's in your bag. Drag it onto gear in the Party screen.`, 'gold');
         const goldVal = $('wm-header-gold-val');
         if (goldVal) goldVal.textContent = G.gold;
         G.saveGame();
@@ -1708,25 +1791,7 @@ function renderFacilityView(facilityId) {
     });
   });
 
-  container.querySelectorAll('.btn-inscribe-rune').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const runeIdx = +btn.dataset.runeIdx;
-      const rune = (G.guild.craftedRunes || [])[runeIdx];
-      if (!rune) return;
-      const targetGear = (G.inventory || []).find(i => i && i.slot && (rune.slotType === 'weapon' ? (i.slot === 'weapon' || i.kind === 'weapon') : ['armor', 'shield', 'head', 'boots'].includes(i.slot)));
-      if (targetGear) {
-        const res = G.guild.applyRuneToItem(targetGear, rune.id);
-        if (res.ok) {
-          log(`✨ Inscribed ${rune.name} onto ${targetGear.name}!`, 'gold');
-          G.saveGame();
-          renderFacilityView('enchanter');
-        }
-      } else {
-        const fb = container.querySelector('#enchanter-action-feedback');
-        if (fb) fb.textContent = `No eligible unequipped ${rune.slotType} in inventory to inscribe.`;
-      }
-    });
-  });
+
 
   // Bind War Room Orders and Doctrines
   container.querySelectorAll('.btn-set-slaying-order').forEach(btn => {
@@ -1751,44 +1816,67 @@ function renderFacilityView(facilityId) {
     });
   });
 
-  // Bind Infirmary Miracle Salve buttons
-  container.querySelectorAll('.btn-miracle-salve').forEach(btn => {
+  container.querySelectorAll('.btn-tg-buy').forEach(btn => {
     btn.addEventListener('click', () => {
-      const heroName = btn.dataset.hero;
-      const injuryId = btn.dataset.injury;
-      if (G.guild.cureWithMiracleSalve(heroName, injuryId)) {
-        log(`🩺 Head Chirurgeon applied Miracle Salve to cure ${heroName}!`, 'gold');
-        const goldVal = $('wm-header-gold-val');
-        if (goldVal) goldVal.textContent = G.gold;
-        renderFacilityView('infirmary');
-      }
-    });
-  });
-
-  // Bind Crypt Ancestral Relic selection
-  container.querySelectorAll('.btn-select-relic').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const relicId = btn.dataset.relic;
-      G.guild.activeAncestralRelic = relicId;
-      log(`🪦 Equipped Ancestral Relic: ${ANCESTRAL_RELICS[relicId]?.name}`, 'gold');
-      G.saveGame();
-      renderFacilityView('crypt');
-    });
-  });
-
-  // Bind Crypt Soul Token craft button
-  const soulTokenBtn = container.querySelector('#btn-craft-soul-token');
-  if (soulTokenBtn) {
-    soulTokenBtn.addEventListener('click', () => {
-      if (G.guild.craftSoulToken()) {
-        log(`🔮 Forged 1x Soul Resurrect Token at the Crypt!`, 'gold');
+      const res = G.guild.buyTrainingGear(btn.dataset.key);
+      const feedback = container.querySelector('#training-action-feedback');
+      if (res.ok) {
+        const def = TRAINING_GEAR[btn.dataset.key];
+        log(`⚔️ Installed a ${def?.name || 'training piece'} in the yard.`, 'sys');
         const goldVal = $('wm-header-gold-val');
         if (goldVal) goldVal.textContent = G.gold;
         G.saveGame();
-        renderFacilityView('crypt');
+        renderFacilityView('training_grounds');
+      } else if (feedback) {
+        feedback.textContent = res.reason || 'Could not buy that.';
       }
     });
-  }
+  });
+
+  container.querySelectorAll('.btn-tg-upgrade').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const res = G.guild.upgradeTrainingGear(btn.dataset.id);
+      const feedback = container.querySelector('#training-action-feedback');
+      if (res.ok) {
+        log(`⚔️ Training gear improved to level ${res.level}.`, 'sys');
+        const goldVal = $('wm-header-gold-val');
+        if (goldVal) goldVal.textContent = G.gold;
+        G.saveGame();
+        renderFacilityView('training_grounds');
+      } else if (feedback) {
+        feedback.textContent = res.reason || 'Could not upgrade.';
+      }
+    });
+  });
+
+  container.querySelectorAll('.tg-station-assign').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const res = G.guild.assignToStation(sel.dataset.id, sel.value || null);
+      const feedback = container.querySelector('#training-action-feedback');
+      if (res.ok) {
+        G.saveGame();
+        renderFacilityView('training_grounds');
+      } else if (feedback) {
+        feedback.textContent = res.reason || 'Could not assign.';
+      }
+    });
+  });
+
+  // Bind Apothecary still recipe
+  container.querySelectorAll('.btn-apo-still').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const res = G.guild.setBrewRecipe(btn.dataset.base);
+      const feedback = container.querySelector('#apothecary-action-feedback');
+      if (res.ok && !res.unchanged) {
+        log(`🧪 The still is now brewing ${btn.dataset.base}.`, 'sys');
+        G.saveGame();
+        renderFacilityView('apothecary');
+      } else if (!res.ok && feedback) {
+        feedback.textContent = res.reason || 'Could not set the still.';
+      }
+    });
+  });
+
 }
 
 // ===== Town Guild & Hero Roster Logic =====
@@ -1798,8 +1886,20 @@ function renderTavernPanel() {
   const hireList = $('wm-tavern-hire-list');
   const detail = $('wm-tavern-detail-content');
   const activeCount = $('wm-tavern-active-count');
+  const storedCount = $('wm-tavern-stored-count');
+  const storedCapEl = $('wm-tavern-stored-cap');
+  const storedHeading = $('wm-tavern-stored-heading');
 
   if (!activeList || !storedList || !hireList || !detail || !activeCount) return;
+
+  const bunkCap = G.guild && typeof G.guild.getStoredHeroCap === 'function'
+    ? G.guild.getStoredHeroCap()
+    : 8;
+  const bunkUsed = (G.storedHeroes || []).length;
+  const bunksFull = bunkUsed >= bunkCap;
+  if (storedCount) storedCount.textContent = bunkUsed;
+  if (storedCapEl) storedCapEl.textContent = bunkCap;
+  if (storedHeading) storedHeading.classList.toggle('is-full', bunksFull);
 
   /* Companions that survived the delve ride along in G.heroes; the tavern
      roster is for the people, so they are neither counted nor listed. */
@@ -1912,10 +2012,14 @@ function renderTavernPanel() {
 
     if (selTavernHeroType === 'active') {
       btnText = 'Send to Stored (Tavern)';
-      allowed = G.realHeroes().length > 1; // Must have at least 1 real hero active
-      if (!allowed) warnMsg = 'Cannot store the last active hero.';
+      const lastHero = G.realHeroes().length <= 1;
+      const noBunk = G.guild && typeof G.guild.canStoreHero === 'function' && !G.guild.canStoreHero();
+      allowed = !lastHero && !noBunk;
+      if (lastHero) warnMsg = 'Cannot store the last active hero.';
+      else if (noBunk) warnMsg = 'Bunks are full.';
 
       clickHandler = () => {
+        if (G.guild && typeof G.guild.canStoreHero === 'function' && !G.guild.canStoreHero()) return;
         const wrap = G.heroes.find(h => h.data === selTavernHero);
         if (wrap) {
           /* keep the leader designation pinned to the same hero across the
@@ -1954,17 +2058,22 @@ function renderTavernPanel() {
 
     } else if (selTavernHeroType === 'hire') {
       btnText = `Hire for ${price}g`;
-      allowed = G.gold >= price;
-      if (!allowed) warnMsg = 'Not enough gold.';
+      const needsBunk = G.realHeroes().length >= 4;
+      const noBunk = needsBunk && G.guild && typeof G.guild.canStoreHero === 'function' && !G.guild.canStoreHero();
+      allowed = G.gold >= price && !noBunk;
+      if (G.gold < price) warnMsg = 'Not enough gold.';
+      else if (noBunk) warnMsg = 'Bunks are full.';
 
       clickHandler = () => {
         const idx = G.townTavernHirePool.indexOf(selTavernHero);
         if (idx >= 0 && G.gold >= price) {
+          const partyFull = G.realHeroes().length >= 4;
+          if (partyFull && G.guild && typeof G.guild.canStoreHero === 'function' && !G.guild.canStoreHero()) return;
           G.gold -= price;
           G.townTavernHirePool.splice(idx, 1);
 
           // Add directly to active party if there is room, otherwise stored
-          if (G.realHeroes().length < 4) {
+          if (!partyFull) {
             G.heroes.push({ data: selTavernHero });
             log(`🍻 Hired ${selTavernHero.name} (joined the active party).`, 'sys');
           } else {
@@ -2021,7 +2130,7 @@ function renderTavernPanel() {
             <label style="font-size: 11px; color: var(--px-gold); display: block; margin-bottom: 4px;">Assign to Guild Facility:</label>
             <select id="guild-facility-select" style="width: 100%; background: #1a1e24; color: #fff; border: 1px solid #444; padding: 4px; font-family: inherit; font-size: 12px;">
               <option value="">None (Unassigned)</option>
-              ${Object.values(FACILITY_DEFINITIONS).map(fac => {
+              ${Object.values(FACILITY_DEFINITIONS).filter(fac => fac.assignable !== false).map(fac => {
                 const isAssigned = G.guild.heroAssignments[selTavernHero.name] === fac.id;
                 return `<option value="${fac.id}" ${isAssigned ? 'selected' : ''}>${fac.icon} ${fac.name}</option>`;
               }).join('')}

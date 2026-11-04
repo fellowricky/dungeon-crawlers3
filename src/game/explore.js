@@ -3,6 +3,9 @@
  * Mixed onto Game — uses pathfinding (findPath, stepAlong, nearFloorCell).
  */
 import * as THREE from 'three';
+import { lightStateOf } from './light_sources.js';
+import { perceptionAdv } from './light_rules.js';
+import { rollItem, addToInventory } from './items.js';
 import { subclassOf, CLASSES, roll } from './srd.js';
 import { drawBar, createSearchIndicator, updateSearchIndicator, disposeSearchIndicator } from './entities.js';
 import { rollChestLoot } from './items.js';
@@ -17,6 +20,24 @@ import { FLOOR, HERO_SPEED,
   STUCK_SIDESTEP_T, STUCK_REPATH_T, STUCK_TELEPORT_T, STUCK_SIDESTEP_DIST
 } from './constants.js';
 import { firstRunTip } from './help_ui.js';
+
+/** The room the leader is standing in, or -1 (corridor, doorway, off-grid). */
+function _leaderRoom(game, leader) {
+  const c = game.cellOf(leader.x, leader.z);
+  return (c >= 0 && game.D.roomId) ? game.D.roomId[c] : -1;
+}
+
+/** A standable square beside an unused campfire in the leader's room, or -1
+ *  when there is no fire to go to (none here, used, or the room still holds
+ *  living monsters — fights come first). */
+function _campDetourCell(game, leader) {
+  const rid = _leaderRoom(game, leader);
+  if (rid < 0) return -1;
+  const s = game.shrines.find(sh => sh.roomId === rid && !sh.used);
+  if (!s) return -1;
+  if (game.monsters.some(m => m.roomId === rid && m.data.hp > 0)) return -1;
+  return game.nearFloorCell(s.y * game.D.W + s.x, 2);
+}
 
 export const exploreMethods = {
 
@@ -238,6 +259,12 @@ export const exploreMethods = {
         if (this.targetRoom >= 0) goalCell = this.roomTargetCell(this.targetRoom, leader);
       }
     }
+    /* Stepping into a campsite room detours to the fire, in either control
+       mode and even on the way to a clicked destination (which resumes once
+       camp is struck). The room picker only chose rooms as destinations, so a
+       campsite the route merely passed through was walked straight past. */
+    const campCell = _campDetourCell(this, leader);
+    if (campCell >= 0) goalCell = campCell;
 
     let strayMax = 0;
     for (const h of alive) {
@@ -471,9 +498,14 @@ export const exploreMethods = {
     for (const ch of this.chests) if (ch.roomId === rid && !ch.looted)
       return this.nearFloorCell(ch.y * W + ch.x, 2);
     for (const s of this.shrines) if (s.roomId === rid && !s.used) {
+      /* The campfire is a SOLID prop standing on a floor cell. Aiming at that
+         cell (as this used to whenever the grid said FLOOR) asked for a path
+         into the fire: none exists, so the room was written off as
+         unreachable and the party walked on past it. Stand beside it —
+         checkInteractables lights the camp from 2.5 away. */
       const sCell = s.y * W + s.x;
-      if (this.D && this.D.grid && this.D.grid[sCell] === FLOOR) return sCell;
-      return typeof this.nearFloorCell === 'function' ? this.nearFloorCell(sCell, 1) : sCell;
+      const beside = typeof this.nearFloorCell === 'function' ? this.nearFloorCell(sCell, 2) : sCell;
+      return beside >= 0 ? beside : sCell;
     }
     if (this.floorExit && this.floorExit.active && !this.floorExit.entered && this.floorExit.roomId === rid) {
       const exitCell = this.floorExit.y * W + this.floorExit.x;
@@ -717,7 +749,10 @@ export const exploreMethods = {
            the monster-attack check, otherwise a monster standing near the
            pending destination intercepts the confirm click and you attack
            instead of moving. Same-cell re-click = commit to the move. */
-        if (this.pendingMoveState && this.pendingMoveState.active && this.pendingMoveState.hero === cur && this.pendingMoveState.goalCell === cell) {
+        /* The re-click may land on the square the budget stops at OR on the
+           square originally aimed at (beyond reach) — both mean "go". */
+        const pms = this.pendingMoveState;
+        if (pms && pms.active && pms.hero === cur && (pms.goalCell === cell || pms.targetCell === cell)) {
           const { path, costFt } = this.pendingMoveState;
           this.setEntityPath(cur, path);
           cur.moving = true;
@@ -746,16 +781,15 @@ export const exploreMethods = {
           return;
         }
 
-        /* 1st click (or clicking a new cell): preview path and distance cost */
-        const rawPath = this.findPath(this.cellOf(cur.x, cur.z), cell, { mover: cur });
-        if (!rawPath || rawPath.length < 2) return;
+        /* 1st click (or clicking a new cell): preview path and distance cost.
+           Same planner as the hover preview (planManualMove), so what is
+           armed here is exactly the arrow the player was looking at. */
+        const plan = this.planManualMove(cur, rawCell);
+        if (!plan) return;
+        const costFt = plan.costFt;
 
-        const maxSteps = Math.min(cur.moveLeft || this.cellsForSpeed(cur), rawPath.length - 1);
-        const actualPath = rawPath.slice(0, maxSteps + 1);
-        const costFt = maxSteps * 5;
-        const actualGoalCell = actualPath[actualPath.length - 1];
-
-        this.setPendingMove(cur, actualGoalCell, actualPath, costFt);
+        this.setPendingMove(cur, plan.goalCell, plan.path, costFt);
+        this.pendingMoveState.targetCell = plan.targetCell;
         log(`🦶 Target ${costFt} ft move. Click target square again to confirm movement (Esc to cancel).`, 'sys');
         return;
       }
@@ -873,6 +907,12 @@ export const exploreMethods = {
       if (near) {
         s.used = true;
         firstRunTip('shrine');
+        /* the Shrine of Light (docs/LIGHT_IDEAS.md 47): at most one per
+           floor, flagged by the generator (chooseLightShrine) */
+        if (s.lightShrine) {
+          this._lightBlessedD = this.D;
+          log('☀️ The shrine blazes — its light settles on the party. Your lights burn twice as far on this floor.', 'treasure');
+        }
         if (typeof this.beginCampAnimation === 'function') {
           this.beginCampAnimation(sx, sz, alive);
         } else {
@@ -880,6 +920,39 @@ export const exploreMethods = {
         }
       }
     }
+  },
+
+  /* Light-only secrets (docs/LIGHT_IDEAS.md 45): about a third of rooms hide
+     a cache. In bright light the search finds it; in dim light it takes a
+     Perception check (DC 13, rolled at disadvantage there); in the dark the
+     party only senses something is there — bring a light and search again. */
+  searchSecretCache(rid, leader, alive) {
+    const D = this.D;
+    if (!D) return;
+    const has = ((((D.seed || 0) ^ (rid * 2654435761)) >>> 0) % 3) === 0;
+    if (!has) return;
+    this._secretCacheFound = this._secretCacheFound || {};
+    if (this._secretCacheFound[rid]) return;
+    const st = lightStateOf(leader);
+    let found = st === 'bright';
+    if (st === 'dim') {
+      const best = Math.max(...alive.map(h => {
+        const a = 1 + Math.floor(Math.random() * 20), b = 1 + Math.floor(Math.random() * 20);
+        const d20 = perceptionAdv(h) < 0 ? Math.min(a, b) : a;
+        return d20 + Math.floor(((h.data.effStats?.wis ?? h.data.stats?.wis ?? 10) - 10) / 2) + (h.data.skillRanks?.perception || 0);
+      }));
+      found = best >= 13;
+      if (!found) log('⛅ Something seems hidden here, but the light is too poor to find it.', 'sys');
+    } else if (st === 'dark') {
+      log('🌙 You sense a hidden cache in the dark — come back with a light to search properly.', 'sys');
+      this._cachePending = this._cachePending || {};
+      this._cachePending[rid] = true;      // checked again when someone brings light (updateSearch)
+      return;
+    }
+    if (!found) return;
+    this._secretCacheFound[rid] = true;
+    const item = rollItem(this.dungeonLevel || 1, Math.random, null, { source: 'chest' });
+    if (item) { addToInventory(this.inventory, item, this); log(`🗝 A hidden cache! ${item.name}.`, 'treasure'); }
   },
 
   updateSearch(dt, alive, leader) {
@@ -898,6 +971,11 @@ export const exploreMethods = {
     const leaderCell = this.cellOf(leader.x, leader.z);
     if (leaderCell < 0) return;
     const rid = this.D.roomId[leaderCell];
+    /* a cache sensed in the dark: look again once the leader stands in light */
+    if (this._cachePending && this._cachePending[rid] && lightStateOf(leader) !== 'dark') {
+      delete this._cachePending[rid];
+      this.searchSecretCache(rid, leader, alive);
+    }
 
     const monstersDead = !this.monsters.some(m => m.roomId === rid && m.data.hp > 0);
 
@@ -952,6 +1030,8 @@ export const exploreMethods = {
           let foundGold = roll(2, 10) + 5 * this.dungeonLevel;
           this.gold += foundGold;
           log(`🔍 Room searched! Found ${foundGold} hidden gold.`, 'treasure');
+          this.searchSecretCache(rid, leader, alive);
+          firstRunTip('roomSearched');
           let hasPotion = false;
           if (Math.random() < 0.25) {
             hasPotion = true;

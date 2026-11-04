@@ -14,16 +14,31 @@ import * as THREE from 'three';
 import { makeHero, MONSTERS_ALL } from './game/srd.js';
 import {
   makeHeroMesh, makeMonsterMesh, updateProjectiles, updateWorldFx, updateFloatTexts,
-  spawnAoEVisual,
+  spawnAoEVisual, makeFloatText, spawnBeamEffect, spawnProjectile, spawnSpriteEffect, spawnSheetEffect,
+  hitFlash, updateFlash, visualOf
 } from './game/entities.js';
+import { poseCast, poseHit } from './game/sprite_pose.js';
 import { GIGAPACK_REGISTRY } from './game/gigapack_registry.js';
-import { SOUND_META, playSfx, initAudio, getSfxVolume, setSfxVolume, getMusicVolume, setMusicVolume, SPELL_SFX } from './game/audio.js';
-import { SPELLS } from './game/spells.js';
+import { THEMES, FLOOR, generateDungeon } from './dungeon/dungeon_generator.js';
+import { groundY } from './dungeon/elevation.js';
+import {
+  renderer, scene, cam, camTarget, yaw, updateCam, setYawPitch, buildScene, finishAnim,
+  liveUpdate, renderFrame, BASE_HALF, DEFAULT_CAM_ZOOM, MAX_CAM_ZOOM,
+} from './render/dungeon_scene.js';
+import { SOUND_META, playSfx, initAudio, getSfxVolume, setSfxVolume, SPELL_SFX } from './game/audio.js';
+import { SPELLS, clearDancingLights } from './game/spells.js';
 import { ABILITY_FX } from './game/combat.js';
 import {
   VFX_LIB, VFX_ANIMS, VFX_SHEET_LIBRARY, CANTRIP_ANIM_BINDINGS,
   spawnCompositeAnimation, updateCompositeFX,
 } from './game/vfx_animations.js';
+import { spawnLivePixelFx, spawnLightMote, spawnManaBurst } from './render/pixelfx_live.js';
+import * as stormCloudFx from './render/pfx/storm_cloud.js';
+import * as wispFx from './render/pfx/wisp.js';
+import { PAL } from './vendor/pixelfx/core/index.js';
+import { syncStatusAuras, STATUS_AURAS } from './render/status_auras.js';
+import { EFFECTS as STATUS_DEFS, clearAllEffects } from './game/conditions.js';
+import { spawnBodyEffect, chestWorldY, spawnSpellCharge, SPELL_CHARGE_SECONDS } from './render/body_fx.js';
 
 /* ─────────────────────────────────────────────────────────────
    DOM
@@ -32,9 +47,9 @@ const $ = id => document.getElementById(id);
 const el = {
   animSelect: $('anim-select'), animName: $('anim-name'), animNameInput: $('anim-name-input'),
   playBtn: $('play-btn'), loopCb: $('loop-cb'), interval: $('interval'), intervalVal: $('interval-val'),
-  skipTravelCb: $('skip-travel-cb'), sfxCb: $('sfx-cb'),
+  skipTravelCb: $('skip-travel-cb'), areaCb: $('area-cb'), sfxCb: $('sfx-cb'),
   attackerSelect: $('attacker-select'), targetSelect: $('target-select'),
-  themeSelect: $('theme-select'), camPreset: $('cam-preset'), resetCamBtn: $('reset-cam-btn'),
+  themeSelect: $('theme-select'), targetsSelect: $('targets-select'), levelSelect: $('level-select'), statusSelect: $('status-select'), rerollBtn: $('reroll-btn'), camPreset: $('cam-preset'), resetCamBtn: $('reset-cam-btn'),
   infoLabel: $('info-label'),
   animNew: $('anim-new'), animDup: $('anim-dup'), animDel: $('anim-del'),
   travelDur: $('travel-dur'), travelDurVal: $('travel-dur-val'),
@@ -42,148 +57,114 @@ const el = {
   travelSound: $('travel-sound'), impactSound: $('impact-sound'),
   playTravelSound: $('play-travel-sound'), playImpactSound: $('play-impact-sound'),
   sfxVol: $('sfx-vol'), sfxVolVal: $('sfx-vol-val'),
-  musicVol: $('music-vol'), musicVolVal: $('music-vol-val'), testSound: $('test-sound'),
+  testSound: $('test-sound'),
   layersContainer: $('layers-container'),
   saveBtn: $('save-btn'), downloadBtn: $('download-btn'), loadBtn: $('load-btn'), loadFile: $('load-file'),
   saveStatus: $('save-status'),
 };
 
 /* ─────────────────────────────────────────────────────────────
-   Three.js scene + camera (same scaffolding as the old test page)
-   ───────────────────────────────────────────────────────────── */
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
-renderer.setClearColor(0x090a10);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.25;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
-document.body.prepend(renderer.domElement);
+   Scene: a real forged level drawn by the shipping renderer
+   ─────────────────────────────────────────────────────────────
+   dungeon_scene.js owns the renderer, scene, orthographic camera, lights,
+   post-processing and the orbit / pan / zoom input, exactly as in play, so a
+   spell is judged against the lighting and scale it will really get. */
+let attackerUnit = null, targetUnit = null;
+const DUNGEON_THEME_KEYS = Object.keys(THEMES).filter(k => !THEMES[k].overland);
+const STAGE_GAP = 6;           // tiles between caster and target
+let stageD = null;             // the forged level
+let stage = null;              // { a: {x, z}, b: {x, z} } world positions
+let stageSeed = 4242;
 
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0c0e18, 0.015);
-
-const cam = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 120);
-let yaw = Math.PI / 4, pitch = 0.55, camDistance = 16.5;
-const camTarget = new THREE.Vector3(0, 0.6, 0);
-
-function updateCamera() {
-  const cp = Math.cos(pitch), sp = Math.sin(pitch);
-  cam.position.set(
-    camTarget.x + cp * Math.sin(yaw) * camDistance,
-    camTarget.y + sp * camDistance,
-    camTarget.z + cp * Math.cos(yaw) * camDistance
-  );
-  cam.lookAt(camTarget);
+for (const k of DUNGEON_THEME_KEYS) {
+  const o = document.createElement('option');
+  o.value = k;
+  o.textContent = THEMES[k].label || k;
+  el.themeSelect.appendChild(o);
 }
-updateCamera();
+el.themeSelect.value = DUNGEON_THEME_KEYS.includes('ancient') ? 'ancient' : DUNGEON_THEME_KEYS[0];
 
-const canvas = renderer.domElement;
-let isDragging = false, isOrbiting = false, lastX = 0, lastY = 0;
-canvas.addEventListener('pointerdown', e => {
-  isOrbiting = e.button === 2 || (e.button === 0 && e.shiftKey);
-  isDragging = e.button === 0 && !e.shiftKey;
-  lastX = e.clientX; lastY = e.clientY;
-});
-canvas.addEventListener('pointermove', e => {
-  if (!isDragging && !isOrbiting) return;
-  const dx = e.clientX - lastX, dy = e.clientY - lastY;
-  if (isOrbiting) { yaw -= dx * 0.006; pitch = Math.max(0.1, Math.min(1.4, pitch + dy * 0.006)); }
-  else {
-    const panSpeed = camDistance * 0.0008;
-    camTarget.x -= Math.cos(yaw) * dx * panSpeed;
-    camTarget.z += Math.sin(yaw) * dx * panSpeed;
-    camTarget.y += dy * panSpeed;
+const cellToWorld = (d, gx, gy) => ({ x: gx - d.W / 2 + 0.5, z: gy - d.H / 2 + 0.5 });
+const floorY = (x, z) => groundY(stageD, x, z);
+
+/** Two floor cells STAGE_GAP apart on one row of a room, with clear floor
+ *  between them and no prop on either — the longest clean run near a room's
+ *  middle, biggest rooms first. */
+function findStage(d) {
+  const propAt = new Set(d.props.map(p => p.y * d.W + p.x));
+  const clear = (gx, gy) => gx >= 0 && gy >= 0 && gx < d.W && gy < d.H
+    && d.grid[gy * d.W + gx] === FLOOR && !propAt.has(gy * d.W + gx);
+  const rooms = [...d.rooms].sort((p, q) => q.w * q.h - p.w * p.h);
+  for (const r of rooms) {
+    for (let dy = 0; dy <= Math.floor(r.h / 2); dy++) {
+      for (const gy of [r.cy + dy, r.cy - dy]) {
+        let run = 0;
+        for (let gx = r.cx - Math.floor(r.w / 2); gx <= r.cx + Math.floor(r.w / 2); gx++) {
+          run = clear(gx, gy) ? run + 1 : 0;
+          if (run === STAGE_GAP + 1) {
+            return { a: cellToWorld(d, gx - STAGE_GAP, gy), b: cellToWorld(d, gx, gy) };
+          }
+        }
+      }
+    }
   }
-  lastX = e.clientX; lastY = e.clientY;
-  updateCamera();
-});
-window.addEventListener('pointerup', () => { isDragging = false; isOrbiting = false; });
-canvas.addEventListener('contextmenu', e => e.preventDefault());
-canvas.addEventListener('wheel', e => {
-  e.preventDefault();
-  camDistance = Math.max(4, Math.min(36, camDistance + e.deltaY * 0.012));
-  updateCamera();
-}, { passive: false });
+  return { a: cellToWorld(d, d.rooms[0].cx - 3, d.rooms[0].cy), b: cellToWorld(d, d.rooms[0].cx + 3, d.rooms[0].cy) };
+}
+
+function forgeStage() {
+  const themeKey = el.themeSelect.value;
+  stageD = generateDungeon(stageSeed, { seed: stageSeed, themeKey });
+  buildScene(stageD);
+  finishAnim();
+  stage = findStage(stageD);
+  frameStage();
+  if (attackerUnit) placeUnits();
+}
+
+/** Centre the caster→target pair in the part of the view the editor panel
+ *  leaves uncovered: slide the look-at point along screen-right by half the
+ *  panel's width, in world units. */
+function frameStage() {
+  if (!stage) return;
+  const panel = document.getElementById('editor-panel');
+  const covered = panel ? Math.max(0, innerWidth - panel.getBoundingClientRect().left) : 0;
+  const shift = (covered / 2) * (cam.right - cam.left) / cam.zoom / innerWidth;
+  camTarget.set(
+    (stage.a.x + stage.b.x) / 2 + Math.cos(yaw) * shift, 0,
+    (stage.a.z + stage.b.z) / 2 - Math.sin(yaw) * shift);
+  updateCam();
+}
+el.themeSelect.addEventListener('change', forgeStage);
+el.rerollBtn?.addEventListener('click', () => { stageSeed = (Math.random() * 1e9) >>> 0; forgeStage(); });
 
 const CAM_PRESETS = {
-  iso: { yaw: Math.PI / 4, pitch: 0.55, dist: 16.5 },
-  front: { yaw: 0, pitch: 0.2, dist: 14.0 },
-  top: { yaw: 0, pitch: 1.35, dist: 18.0 },
-  close: { yaw: Math.PI / 6, pitch: 0.35, dist: 8.5 },
+  iso: { yaw: Math.PI / 4, pitch: 0.64, zoom: DEFAULT_CAM_ZOOM },
+  front: { yaw: 0, pitch: 0.3, zoom: DEFAULT_CAM_ZOOM },
+  top: { yaw: 0, pitch: 1.35, zoom: DEFAULT_CAM_ZOOM },
+  close: { yaw: Math.PI / 6, pitch: 0.45, zoom: MAX_CAM_ZOOM },
 };
 function setCamPreset(key) {
   const p = CAM_PRESETS[key] || CAM_PRESETS.iso;
-  yaw = p.yaw; pitch = p.pitch; camDistance = p.dist;
-  updateCamera();
+  cam.zoom = p.zoom;
+  cam.updateProjectionMatrix();
+  setYawPitch(p.yaw, p.pitch);
+  frameStage();
 }
 el.camPreset?.addEventListener('change', () => setCamPreset(el.camPreset.value));
-el.resetCamBtn?.addEventListener('click', () => { el.camPreset.value = 'iso'; setCamPreset('iso'); });
+el.resetCamBtn?.addEventListener('click', () => {
+  el.camPreset.value = 'iso';
+  setCamPreset('iso');
+});
 window.addEventListener('resize', () => {
-  cam.aspect = innerWidth / innerHeight;
-  cam.updateProjectionMatrix();
+  if (!renderer) return;
   renderer.setSize(innerWidth, innerHeight);
+  const aspect = innerWidth / innerHeight;
+  cam.left = -BASE_HALF * aspect; cam.right = BASE_HALF * aspect;
+  cam.top = BASE_HALF; cam.bottom = -BASE_HALF;
+  cam.updateProjectionMatrix();
 });
 
-/* ── room + theme (trimmed from the test page) ───────────────────────── */
-const roomGroup = new THREE.Group();
-scene.add(roomGroup);
-const ambientLight = new THREE.AmbientLight(0x283044, 1.2);
-scene.add(ambientLight);
-const hemiLight = new THREE.HemisphereLight(0x3a4868, 0x0c0e18, 0.9);
-scene.add(hemiLight);
-const dirLight = new THREE.DirectionalLight(0xffedd4, 1.8);
-dirLight.position.set(8, 14, 10);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(2048, 2048);
-dirLight.shadow.bias = -0.0005;
-scene.add(dirLight);
-
-const floorMaterials = [];
-let wallMaterial;
-function buildFloor() {
-  const tileGeom = new THREE.BoxGeometry(1.35 * 0.96, 0.12, 1.35 * 0.96);
-  wallMaterial = new THREE.MeshStandardMaterial({ color: 0x181c2d, roughness: 0.9, metalness: 0.1 });
-  for (let x = -8; x < 8; x++) {
-    for (let z = -8; z < 8; z++) {
-      const shade = (Math.abs(x + z) % 2 === 0) ? 0x1d2236 : 0x181c2d;
-      const mat = new THREE.MeshStandardMaterial({ color: shade, roughness: 0.82, metalness: 0.1 });
-      floorMaterials.push(mat);
-      const tile = new THREE.Mesh(tileGeom, mat);
-      tile.position.set(x * 1.35 + 0.675, -0.06, z * 1.35 + 0.675);
-      tile.receiveShadow = true;
-      roomGroup.add(tile);
-    }
-  }
-}
-buildFloor();
-const backWall = new THREE.Mesh(new THREE.BoxGeometry(22, 6, 0.6), wallMaterial);
-backWall.position.set(0, 3, -10.5);
-backWall.receiveShadow = true; backWall.castShadow = true;
-roomGroup.add(backWall);
-
-const THEME_CONFIGS = {
-  ancient: { bg: 0x090a10, floor1: 0x1d2236, floor2: 0x181c2d, wall: 0x181c2d, hemiUp: 0x3a4868, hemiDown: 0x0c0e18, dir: 0xffedd4 },
-  necropolis: { bg: 0x050b10, floor1: 0x12202e, floor2: 0x0c1722, wall: 0x0e1b28, hemiUp: 0x205068, hemiDown: 0x050c12, dir: 0x8ce0ff },
-  inferno: { bg: 0x120606, floor1: 0x2d1717, floor2: 0x221010, wall: 0x241111, hemiUp: 0x682828, hemiDown: 0x120606, dir: 0xff8844 },
-  overgrown: { bg: 0x061009, floor1: 0x172b1d, floor2: 0x112115, wall: 0x122416, hemiUp: 0x3a6842, hemiDown: 0x061009, dir: 0xd4ffaa },
-};
-function applyTheme(key) {
-  const cfg = THEME_CONFIGS[key] || THEME_CONFIGS.ancient;
-  renderer.setClearColor(cfg.bg);
-  scene.fog.color.set(cfg.bg);
-  if (wallMaterial) wallMaterial.color.set(cfg.wall);
-  floorMaterials.forEach((m, i) => m.color.set(i % 2 === 0 ? cfg.floor1 : cfg.floor2));
-  hemiLight.color.set(cfg.hemiUp);
-  hemiLight.groundColor.set(cfg.hemiDown);
-  dirLight.color.set(cfg.dir);
-}
-el.themeSelect?.addEventListener('change', () => applyTheme(el.themeSelect.value));
-applyTheme('ancient');
-
 /* ── units (caster + target) ──────────────────────────────────────────── */
-let attackerUnit = null, targetUnit = null;
 
 function createHero(name, raceKey, classKey, visual = {}) {
   const heroData = makeHero(name, raceKey, classKey, {
@@ -194,7 +175,8 @@ function createHero(name, raceKey, classKey, visual = {}) {
 }
 
 function createMonster(name, sprite, scale = 1.0, fullData = {}) {
-  const mon = { hp: 100, maxHp: 100, ...fullData, name, sprite, scale };
+  /* bestiary rows give hp as dice ([n, die, bonus]); a bench unit needs a number */
+  const mon = { ...fullData, name, sprite, scale, hp: 100, maxHp: 100 };
   const mesh = makeMonsterMesh(mon);
   return { ent: mesh, data: mon, x: 0, z: 0, isMonster: true };
 }
@@ -211,6 +193,8 @@ function createDummy() {
   const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), mat);
   head.position.y = 1.7; head.castShadow = true;
   grp.add(head);
+  /* Built at the old bench's scale; shrink it to a hero's height on the real tile grid. */
+  grp.scale.setScalar(0.65);
   return { ent: { grp }, data: { name: 'Target Dummy', scale: 1.0 }, x: 0, z: 0, isMonster: true, isDummy: true };
 }
 
@@ -224,32 +208,146 @@ const HERO_PRESETS = {
 };
 
 function buildUnit(presetKey) {
+  /* Hero presets first: the bestiary has its own `wizard` (the Evil Wizard),
+     which used to stand in for the Wizard caster. */
+  if (HERO_PRESETS[presetKey]) {
+    return createHero(...HERO_PRESETS[presetKey]);
+  }
   const normKey = (presetKey || '').replace(/-/g, '_');
   const monData = MONSTERS_ALL.find(m => m.id === presetKey || m.id.replace(/-/g, '_') === normKey);
   if (monData) {
     return createMonster(monData.name, monData.sprite, monData.scale || 1.0, monData);
   }
-  if (HERO_PRESETS[presetKey]) {
-    return createHero(...HERO_PRESETS[presetKey]);
-  }
   return createDummy();
 }
 
-function setupUnits() {
-  if (attackerUnit) scene.remove(attackerUnit.ent.grp);
-  if (targetUnit) scene.remove(targetUnit.ent.grp);
-  attackerUnit = buildUnit(el.attackerSelect.value);
-  targetUnit = buildUnit(el.targetSelect.value);
-  attackerUnit.x = -3.5; attackerUnit.z = 0;
-  targetUnit.x = 3.5; targetUnit.z = 0;
-  attackerUnit.ent.grp.position.set(attackerUnit.x, 0, attackerUnit.z);
-  targetUnit.ent.grp.position.set(targetUnit.x, 0, targetUnit.z);
-  scene.add(attackerUnit.ent.grp);
-  scene.add(targetUnit.ent.grp);
+let extraTargets = [];     // the second and third targets when Targets is 3
+let allyUnit = null;       // stands beside the caster, for spells that land on the party
+const allTargets = () => [targetUnit, ...extraTargets].filter(Boolean);
+
+/** A clear floor cell (no prop) at world (x, z) on the forged level. */
+function clearFloorAt(x, z) {
+  const d = stageD;
+  const gx = Math.round(x + d.W / 2 - 0.5), gy = Math.round(z + d.H / 2 - 0.5);
+  if (gx < 0 || gy < 0 || gx >= d.W || gy >= d.H || d.grid[gy * d.W + gx] !== FLOOR) return false;
+  return !d.props.some(p => p.x === gx && p.y === gy);
 }
+
+/** Stand the caster and target on the stage's two floor cells, and any extra
+ *  targets beside the target: 3 tiles off to its sides, so each is its own
+ *  Call Lightning strike (2.2) yet all sit inside a Fireball (4) or the cone. */
+function placeUnits() {
+  for (const [u, p] of [[attackerUnit, stage.a], [targetUnit, stage.b]]) {
+    u.x = p.x; u.z = p.z;
+    u.ent.grp.position.set(u.x, floorY(u.x, u.z), u.z);
+  }
+  const spots = [[0, 3], [0, -3], [-1, 3], [-1, -3], [1, 3], [1, -3], [-2, 2], [-2, -2]]
+    .map(([dx, dz]) => ({ x: stage.b.x + dx, z: stage.b.z + dz }))
+    .filter(p => clearFloorAt(p.x, p.z));
+  /* one tile from the caster, on the first clear floor */
+  const allySpot = [[0, 1], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0]]
+    .map(([dx, dz]) => ({ x: stage.a.x + dx, z: stage.a.z + dz }))
+    .find(p => clearFloorAt(p.x, p.z)) || { x: stage.a.x, z: stage.a.z + 1 };
+  allyUnit.x = allySpot.x; allyUnit.z = allySpot.z;
+  allyUnit.ent.grp.position.set(allyUnit.x, floorY(allyUnit.x, allyUnit.z), allyUnit.z);
+  extraTargets.forEach((u, i) => {
+    const p = spots[i] || { x: stage.b.x, z: stage.b.z + (i ? -3 : 3) };
+    u.x = p.x; u.z = p.z;
+    u.ent.grp.position.set(u.x, floorY(u.x, u.z), u.z);
+  });
+  drawHitArea();
+}
+
+/* ── hit area: the spell's real area of effect, outlined on the floor ── */
+let areaLine = null;
+let areaReady = false;   // the editor state it reads is declared further down
+let castPreviewReady = false;   // likewise for the cast preview's state
+const AREA_COLOR = 0x7dffb0;
+/** Outline SPELLS[id].area (or a circle of ai.aoeRadius) under the stage:
+ *  circles centre on the target, cones open from the caster toward it — the
+ *  same geometry the cast tests creatures against. */
+function drawHitArea() {
+  if (areaLine) { scene.remove(areaLine); areaLine.geometry.dispose(); areaLine = null; }
+  if (!areaReady) return;
+  const sp = SPELLS[currentId];
+  const area = sp && (sp.area || (sp.ai && sp.ai.aoeRadius ? { shape: 'circle', radius: sp.ai.aoeRadius } : null));
+  if (!el.areaCb.checked || !area || !attackerUnit || !targetUnit) return;
+  const pts = [];
+  const lift = 0.06;
+  const at = (x, z) => new THREE.Vector3(x, floorY(x, z) + lift, z);
+  if (area.shape === 'cone') {
+    const a = attackerUnit, aim = Math.atan2(targetUnit.z - a.z, targetUnit.x - a.x);
+    pts.push(at(a.x, a.z));
+    for (let i = 0; i <= 32; i++) {
+      const th = aim - area.halfAngle + (2 * area.halfAngle * i) / 32;
+      pts.push(at(a.x + Math.cos(th) * area.range, a.z + Math.sin(th) * area.range));
+    }
+    pts.push(at(a.x, a.z));
+  } else {
+    const t = targetUnit;
+    for (let i = 0; i <= 64; i++) {
+      const th = (i / 64) * Math.PI * 2;
+      pts.push(at(t.x + Math.cos(th) * area.radius, t.z + Math.sin(th) * area.radius));
+    }
+  }
+  const mat = new THREE.LineBasicMaterial({ color: AREA_COLOR, transparent: true, opacity: 0.8, depthTest: false });
+  mat.toneMapped = false;
+  areaLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+  areaLine.renderOrder = 999;
+  scene.add(areaLine);
+}
+el.areaCb.addEventListener('change', drawHitArea);
+
+/** Face `u` toward `other` and advance its animation, the way the game's
+ *  visual loop does: facing is picked relative to the camera, and an LPC hero
+ *  drops back to idle once a cast has played out. */
+function tickUnit(u, other, dt) {
+  const anim = u && u.ent.anim;
+  if (!anim) return;
+  if (typeof anim.setDirection === 'function' && other) {
+    const camAngle = Math.atan2(cam.position.x - camTarget.x, cam.position.z - camTarget.z);
+    const c = Math.cos(camAngle), s = Math.sin(camAngle);
+    const dx = other.x - u.x, dz = other.z - u.z;
+    anim.setDirection(dx * c - dz * s, dx * s + dz * c);
+  }
+  if (typeof anim.update === 'function') anim.update(dt);
+  if (!u.isMonster && anim.state === 'walk' && typeof anim.play === 'function') anim.play('idle');
+}
+
+function setupUnits() {
+  if (typeof resetCastPreview === 'function' && castPreviewReady) resetCastPreview();
+  for (const u of [attackerUnit, allyUnit, targetUnit, ...extraTargets]) if (u) scene.remove(u.ent.grp);
+  attackerUnit = buildUnit(el.attackerSelect.value);
+  if (el.levelSelect) attackerUnit.data.level = parseInt(el.levelSelect.value, 10) || 1;
+  allyUnit = buildUnit('fighter');
+  targetUnit = buildUnit(el.targetSelect.value);
+  const n = Math.max(1, parseInt(el.targetsSelect.value, 10) || 1);
+  extraTargets = Array.from({ length: n - 1 }, () => buildUnit(el.targetSelect.value));
+  placeUnits();
+  for (const u of [attackerUnit, allyUnit, targetUnit, ...extraTargets]) scene.add(u.ent.grp);
+  if (el.statusSelect && el.statusSelect.value) applyReviewStatus();
+}
+forgeStage();
 setupUnits();
 el.attackerSelect.addEventListener('change', setupUnits);
 el.targetSelect.addEventListener('change', setupUnits);
+el.targetsSelect.addEventListener('change', setupUnits);
+el.levelSelect.addEventListener('change', setupUnits);
+
+/* ── Status review: any mapped status, held on the targets' real sprites.
+   Clearing it plays the aura's release (stone shattering off, roots
+   crumbling) the way the status ending would in a fight. ── */
+for (const key of Object.keys(STATUS_AURAS)) {
+  const o = document.createElement('option');
+  o.value = key;
+  o.textContent = (STATUS_DEFS[key] && STATUS_DEFS[key].label) || key;
+  el.statusSelect.appendChild(o);
+}
+function applyReviewStatus() {
+  const key = el.statusSelect.value;
+  for (const u of allTargets()) u._effects = key ? { [key]: { duration: 1e9 } } : {};
+}
+el.statusSelect.addEventListener('change', applyReviewStatus);
 
 /* ─────────────────────────────────────────────────────────────
    Editor state
@@ -352,6 +450,8 @@ function selectAnim(id) {
   if (!lib.anims[id]) return;
   currentId = id;
   editing = lib.anims[id];
+  resetCastPreview();
+  drawHitArea();
   /* Normalize any hand-edited/loaded animation that lacks a phase. */
   const dflt = defaultAnim();
   editing.travel = editing.travel || JSON.parse(JSON.stringify(dflt.travel));
@@ -523,6 +623,32 @@ function buildTypeControls(container, key) {
     if (!layer.sheet && sel.options[0]) layer.sheet = sel.options[0].value;
     const fps = numControl(layer.fps || 30, 1, 90, 1, v => { markModified(currentId); layer.fps = v; });
     container.appendChild(trow('FPS', fps));
+    /* For a sheet that is itself a ray (source on the left edge, tip on the
+       right): stretch it from caster to target instead of a sprite at one
+       point. Scale becomes its thickness. */
+    const span = document.createElement('input');
+    span.type = 'checkbox';
+    span.checked = !!layer.span;
+    span.addEventListener('change', () => { markModified(currentId); layer.span = span.checked; });
+    container.appendChild(trow('Span caster→target', span));
+    /* An area spell's reach in tiles (Cone of Cold: 12), so the span shows
+       the real hit area rather than stopping at whoever was targeted. */
+    const spanLen = numControl(layer.spanLength || 0, 0, 24, 0.5, v => { markModified(currentId); layer.spanLength = v || undefined; });
+    container.appendChild(trow('Span length (0 = to target)', spanLen));
+    /* A travel sheet drawn facing right (a bolt with its tail behind it):
+       turn it to point along the flight, caster to target. */
+    if (key.startsWith('travel.')) {
+      const orient = document.createElement('input');
+      orient.type = 'checkbox';
+      orient.checked = !!layer.orient;
+      orient.addEventListener('change', () => { markModified(currentId); layer.orient = orient.checked; });
+      container.appendChild(trow('Orient to target', orient));
+    }
+  } else if (layer.type === 'live') {
+    const kind = selControl([['missile', 'Missile'], ['magicMissile', 'Magic Missile'], ['beam', 'Beam']], layer.fx || 'missile', v => { markModified(currentId); layer.fx = v; });
+    container.appendChild(trow('Effect', kind));
+    const pal = selControl(Object.keys(PAL).map(k => [k, k]), layer.palette || 'arcane', v => { markModified(currentId); layer.palette = v; });
+    container.appendChild(trow('Palette', pal));
   } else if (layer.type === 'sprite') {
     const path = document.createElement('input');
     path.type = 'text';
@@ -571,8 +697,21 @@ function buildCommonControls(container, key) {
   const blend = selControl([['normal', 'Normal'], ['additive', 'Additive']], layer.blend === 'additive' ? 'additive' : 'normal', v => { markModified(currentId); layer.blend = v; });
   container.appendChild(trow('Blend', blend));
 
-  const scale = numControl(layer.scale != null ? layer.scale : 1.5, 0.2, 6, 0.1, v => { markModified(currentId); layer.scale = v; });
+  const scale = numControl(layer.scale != null ? layer.scale : 1.5, 0.2, 16, 0.1, v => { markModified(currentId); layer.scale = v; });
   container.appendChild(trow('Scale', scale));
+
+  /* An impact that stands on its own floor line (a ground blast): put it on
+     the floor under the target rather than at body height. */
+  if (key.startsWith('impact.')) {
+    /* Start this layer a beat after the landing (seconds). */
+    const delay = numControl(layer.delay || 0, 0, 3, 0.05, v => { markModified(currentId); layer.delay = v || undefined; });
+    container.appendChild(trow('Delay (s)', delay));
+    const ground = document.createElement('input');
+    ground.type = 'checkbox';
+    ground.checked = !!layer.ground;
+    ground.addEventListener('change', () => { markModified(currentId); layer.ground = ground.checked; });
+    container.appendChild(trow('On the ground', ground));
+  }
 
   const dur = numControl(layer.dur != null ? layer.dur : 0.5, 0.1, 3, 0.05, v => { markModified(currentId); layer.dur = v; });
   container.appendChild(trow('Duration', dur));
@@ -598,7 +737,7 @@ function renderLayerSection(key) {
   title.textContent = `${PHASE_LABELS[phase]} ${slot === 'back' ? 'Back' : 'Front'}`;
   summary.appendChild(title);
 
-  const typeSel = selControl([['none', 'None'], ['sheet', 'Sprite Sheet'], ['sprite', 'Sprite'], ['procedural', 'Procedural']], layer ? layer.type : 'none', v => {
+  const typeSel = selControl([['none', 'None'], ['sheet', 'Sprite Sheet'], ['live', 'Live Effect'], ['sprite', 'Sprite'], ['procedural', 'Procedural']], layer ? layer.type : 'none', v => {
     if (!layer) return;
     markModified(currentId);
     layer.type = v;
@@ -664,18 +803,201 @@ const PERSISTENT_ZONE_SPELLS = new Set([
   'faerieFire', 'grease', 'flamingSphere', 'cloudkill', 'spikeGrowth'
 ]);
 
+/* Spells previewed through their real cast(): a stand-in game hands them the
+   caster, the targets and the hooks combat would, so who gets hit, when the
+   damage lands, what the cloud does each round — all of it plays as in a
+   fight. Damage shows as floating numbers; the stand-ins never die. */
+const CAST_PREVIEW_SPELLS = new Set([
+  'fireball', 'coneOfCold', 'iceStorm', 'callLightning', 'blight', 'sleep', 'hex',
+  /* the beam and ray spells (pixelfx beam, via fxBeam) */
+  'scorchingRay', 'rayOfEnfeeblement', 'lightningBolt', 'vampiricTouch', 'guidingBolt',
+  'rayOfSickness', 'disintegrate', 'chainLightning', 'sunbeam', 'eldritchBlast',
+  /* pillars of light (and fire) from above */
+  'moonbeam', 'flameStrike',
+  /* the rest of the cantrips and level 1 spells with a cast of their own */
+  'dancingLights', 'chillTouch', 'viciousMockery', 'magicMissile', 'shield', 'bless', 'entangle', 'healingWord', 'chaosBolt',
+  'dragonBreathSpell', 'armsOfHadar', 'thunderousSmite', 'huntersMark', 'bane', 'faerieFire',
+  'hideousLaughter', 'protectionFromEvil', 'grease', 'inflictWounds', 'thunderwave',
+  'cureWounds', 'shieldOfFaith', 'chromaticOrb', 'findFamiliar',
+]);
+const PREVIEW_HP = 5;      // low enough for Sleep's pool to put every stand-in under
+let previewCloud = null;   // Call Lightning's live cloud
+let castPreview = null;    // { game, targets, next } — the stand-in fight a cast runs in
+
+let previewMote = null;
+function resetCastPreview() {
+  if (previewCloud) { previewCloud.remove(); previewCloud = null; }
+  if (previewMote) { previewMote.remove(); previewMote = null; }
+  if (attackerUnit) { attackerUnit.conc = null; clearDancingLights(attackerUnit); clearAllEffects(attackerUnit); }
+  if (allyUnit) clearAllEffects(allyUnit);
+  castPreview = null;
+}
+
 function playNow() {
   if (!editing || !attackerUnit || !targetUnit) return;
-  const from = new THREE.Vector3(attackerUnit.x, 0.55, attackerUnit.z);
-  const to = new THREE.Vector3(targetUnit.x, 0.5 * (targetUnit.data.scale || 1) + 0.4, targetUnit.z);
+  const from = new THREE.Vector3(attackerUnit.x, chestWorldY(attackerUnit), attackerUnit.z);
+  const to = new THREE.Vector3(targetUnit.x, floorY(targetUnit.x, targetUnit.z) + 0.5 * (targetUnit.data.scale || 1) + 0.4, targetUnit.z);
   const sound = el.sfxCb.checked;
-  spawnCompositeAnimation(scene, buildPreview(editing), {
-    from, to,
-    travelSound: sound ? undefined : false,
-    impactSound: sound ? undefined : false,
-    skipTravel: el.skipTravelCb.checked,
+  /* Light has no cast: Play shows its mote at the caster's shoulder (spells.js tickLightMotes). */
+  if (currentId === 'light') {
+    if (previewMote) return;      // it stays lit; Loop must not restart it
+    resetCastPreview();
+    previewMote = spawnLightMote(scene, new THREE.Vector3(attackerUnit.x + 0.3, chestWorldY(attackerUnit) + 0.3, attackerUnit.z - 0.25));
+    return;
+  }
+  if (CAST_PREVIEW_SPELLS.has(currentId) && SPELLS[currentId] && typeof SPELLS[currentId].cast === 'function') {
+    previewCast();
+    return;
+  }
+  resetCastPreview();
+  /* The caster plays its spellcast, as heroStartCastAnim does in combat. */
+  const anim = attackerUnit.ent.anim;
+  if (anim && typeof anim.play === 'function') anim.play(anim.anims ? 'attack' : 'spellcast', true);
+  /* the charge at the chest, then the spell, as in combat */
+  spawnSpellCharge(attackerUnit, previewColor());
+  poseCast(visualOf(attackerUnit), targetUnit.x - attackerUnit.x, targetUnit.z - attackerUnit.z, SPELL_CHARGE_SECONDS);
+  if (sound) playSfx('spellCharge', { volume: 0.6 });
+  const preview = buildPreview(editing);
+  setTimeout(() => {
+    spawnCompositeAnimation(scene, preview, {
+      from, to, groundAt: floorY,
+      travelSound: sound ? undefined : false,
+      impactSound: sound ? undefined : false,
+      skipTravel: el.skipTravelCb.checked,
+      onImpact: () => {
+        hitFlash(targetUnit.ent);
+        poseHit(visualOf(targetUnit), targetUnit.x - attackerUnit.x, targetUnit.z - attackerUnit.z);
+      },
+    });
+    previewPersistentZone();
+  }, SPELL_CHARGE_SECONDS * 1000);
+}
+
+/** The colour a spell charges in: its own, else its animation's first glow. */
+function previewColor() {
+  const sp = SPELLS[currentId];
+  if (sp && sp.color != null) return sp.color;
+  const glow = editing && editing.travel && editing.travel.back;
+  return glow && glow.color ? parseInt(String(glow.color).replace('#', ''), 16) : 0xc0a060;
+}
+
+/** Run the spell's own cast() in a stand-in fight. A concentration spell that
+ *  is still up (Call Lightning's storm) gets its next round instead — the
+ *  druid's turn — so Play / Loop walks the cloud from target to target. */
+function previewCast() {
+  const h = attackerUnit, spell = SPELLS[currentId];
+  if (castPreview && h.conc && typeof h.conc.onTurn === 'function') {
+    h.actUsed = false;
+    h.conc.onTurn(castPreview.game, h);
+    return;
+  }
+  resetCastPreview();
+  const targets = allTargets().map(u => ({
+    x: u.x, z: u.z, active: true, dead: false, ent: u.ent,
+    data: { ...u.data, hp: PREVIEW_HP, maxHp: PREVIEW_HP },
+  }));
+  castPreview = { targets, next: 1, game: castGame(h, targets) };
+  const preview = castPreview;
+  const a = h.ent && h.ent.anim;
+  if (a && typeof a.play === 'function') a.play(a.anims ? 'attack' : 'spellcast', true);
+  if (spell.chargeFx) spawnBodyEffect(spell.chargeFx, h);
+  else spawnSpellCharge(h, spell.color);
+  {
+    const t = targets[0];
+    poseCast(visualOf(h), t ? t.x - h.x : 0, t ? t.z - h.z : 0, SPELL_CHARGE_SECONDS);
+  }
+  if (el.sfxCb.checked) playSfx('spellCharge', { volume: 0.6 });
+  setTimeout(() => {
+    if (castPreview !== preview) return;
+    try { spell.cast(preview.game, h, targets[0], [h, allyUnit], spell.level || 1); }
+    catch (err) { console.warn('[vfx editor] cast preview:', err); }
+  }, SPELL_CHARGE_SECONDS * 1000);
+}
+
+/** The slice of the combat API the previewed spells call, played into the
+ *  editor scene. Anything else a cast reaches for (an fx/trigger hook this
+ *  bench has no use for) is a no-op rather than a throw. */
+function castGame(h, targets) {
+  const sfx = () => (el.sfxCb.checked ? undefined : false);
+  const body = t => new THREE.Vector3(t.x, floorY(t.x, t.z) + 0.5 * ((t.data && t.data.scale) || 1) + 0.4, t.z);
+  const animFor = k => (k === currentId ? buildPreview(editing) : VFX_ANIMS[k]);
+  const api = {
+    D: {}, heroes: [h, allyUnit], monsters: targets, fxNow: 0,
+    _v3: (x, y, z) => new THREE.Vector3(x, y, z),
+    fxChestPos: e => new THREE.Vector3(e.x, chestWorldY(e), e.z),
+    fxGroundY: (x, z) => floorY(x, z),
+    markSpellUsed() {}, fxLog() {},
+    concentrate(caster, key, applied, zone) { caster.conc = { key, targets: applied || [], zone }; },
+    spellSave() { return Math.random() < 0.5; },
+    spellDamage(m, dmg) {
+      makeFloatText(scene, String(dmg), new THREE.Vector3(m.x, floorY(m.x, m.z) + 1.3, m.z), '#ff6a5a');
+      hitFlash(m.ent);
+      poseHit(visualOf(m), m.x - h.x, m.z - h.z);
+    },
+    fxText(text, pos, color) { makeFloatText(scene, text, pos, color); },
+    fxDelay(sec, cb) { setTimeout(cb, sec * 1000); },
+    fxSchedule(ms, cb) { setTimeout(cb, ms); },
+    fxProjectile(from, to, kind, color, onHit, opts = {}) { spawnProjectile(scene, from, to, kind, color, onHit, opts); },
+    fxSprite(path, pos, scale, dur) { spawnSpriteEffect(scene, path, pos, scale, dur); },
+    fxSheetEffect(def, pos, scale, dur) { spawnSheetEffect(scene, def, pos, scale, dur); },
+    fxBeam(from, to, opts = {}) {
+      if (opts.type === 'pillar' && opts.groundY == null && to) opts = { ...opts, groundY: floorY(to.x, to.z) };
+      spawnBeamEffect(scene, from, to, opts);
+    },
+    spawnAoEZone(_c, k, x, z, radius, options = {}) {
+      spawnAoEVisual(scene, { x, y: floorY(x, z), z }, options.color || 0xffffff, radius, 4.0, { ...options });
+      return { id: 'preview', caster: h, spellKey: k, x, z, radius, options, savesThisTurn: new Set() };
+    },
+    fxBodyEffect(kind, creature) { return spawnBodyEffect(kind, creature); },
+    fxManaBurst(e, palette) { spawnManaBurst(scene, new THREE.Vector3(e.x, floorY(e.x, e.z), e.z), PAL[palette]); },
+    hasLOS() { return true; },
+    healHero(who, amt) { makeFloatText(scene, '+' + amt, new THREE.Vector3(who.x, floorY(who.x, who.z) + 1.3, who.z), '#6ae06a'); },
+    /* Each round's bolt goes to the next stand-in, as the druid would pick a fresh target. */
+    findMonsterTarget() { return targets[castPreview.next++ % targets.length]; },
+    fxWisp(x, z, seed = 0) {
+      const fx = spawnLivePixelFx(scene, wispFx, {
+        pos: new THREE.Vector3(x, floorY(x, z), z), pxPerUnit: (38 / 1.1) * 3, options: { palette: PAL.gold, seed: seed + 1 },
+      });
+      return {
+        glideTo: (px, pz, sec) => fx.moveTo(px, floorY(px, pz), pz, sec),
+        place: (px, pz) => fx.mesh.position.set(px, floorY(px, pz), pz),
+        remove: () => fx.remove(),
+      };
+    },
+    fxStormCloud(x, z) {
+      if (previewCloud) previewCloud.remove();
+      const fx = spawnLivePixelFx(scene, stormCloudFx, {
+        pos: new THREE.Vector3(x, floorY(x, z), z), pxPerUnit: stormCloudFx.PX_PER_UNIT,
+      });
+      previewCloud = fx;
+      return { glideTo: (px, pz, sec) => fx.moveTo(px, floorY(px, pz), pz, sec), flash: k => fx.flash(k), remove: () => fx.remove() };
+    },
+    /* combat.playAbilityFx's composite path: travel caster→target, impact on
+       arrival, the other targets' impacts landing with it. */
+    playAbilityFx(caster, k, opts = {}) {
+      const at = opts.at || caster;
+      const anim = animFor(k);
+      if (!anim) { if (opts.onImpact) opts.onImpact(opts.toPos || at); return; }
+      const from = opts.fromPos || new THREE.Vector3(caster.x, chestWorldY(caster), caster.z);
+      spawnCompositeAnimation(scene, anim, {
+        from, to: opts.toPos || body(at), groundAt: floorY, curve: opts.curve, follow: opts.follow, travelSound: sfx(), impactSound: sfx(),
+        onImpact: (pos) => {
+          for (const t of opts.alsoAt || []) {
+            if (!t || t === at) continue;
+            spawnCompositeAnimation(scene, anim, { from, to: body(t), groundAt: floorY, skipTravel: true, travelSound: false, impactSound: false });
+          }
+          if (opts.onImpact) opts.onImpact(pos);
+        },
+      });
+    },
+  };
+  return new Proxy(api, {
+    get(t, k) {
+      if (k in t) return t[k];
+      if (typeof k === 'string' && /^(fx|trigger|refresh|note|resolve|log)/.test(k)) return () => null;
+      return undefined;
+    },
   });
-  previewPersistentZone();
 }
 
 /** 4-second preview of the persistent ground zone (vines, beam, web, …)
@@ -699,7 +1021,7 @@ function previewPersistentZone() {
     spellSave() { return true; },
     concentrate() {},
     spawnAoEZone(_c, _k, x, z, radius, options = {}) {
-      spawnAoEVisual(scene, { x, y: 0, z }, options.color || 0xffffff, radius, 4.0, { ...options });
+      spawnAoEVisual(scene, { x, y: floorY(x, z), z }, options.color || 0xffffff, radius, 4.0, { ...options });
       return { id: 'preview', caster: h, spellKey: _k, x, z, radius, options, savesThisTurn: new Set() };
     }
   };
@@ -767,7 +1089,6 @@ function initVolume(slider, valEl, get, set) {
   });
 }
 initVolume(el.sfxVol, el.sfxVolVal, getSfxVolume, setSfxVolume);
-initVolume(el.musicVol, el.musicVolVal, getMusicVolume, setMusicVolume);
 el.testSound.addEventListener('click', () => playSfx('spellImpact', { volume: 1 }));
 
 /* ── New / Duplicate / Delete ──────────────────────────────── */
@@ -868,23 +1189,49 @@ el.loadFile.addEventListener('change', async () => {
 /* ─────────────────────────────────────────────────────────────
    Main loop
    ───────────────────────────────────────────────────────────── */
-let lastTime = performance.now();
+let lastTime = performance.now(), loopT = 0;
 function animate(time) {
   requestAnimationFrame(animate);
+  if (!renderer) return;
   const dt = Math.min((time - lastTime) / 1000, 0.1);
   lastTime = time;
+  loopT += dt;
+  /* The scene module's own tick() drives game.update(), which this page never
+     initialises — so, like the dungeon editor, run just the visual half. */
+  liveUpdate(loopT, Infinity, dt);
+  tickUnit(attackerUnit, targetUnit, dt);
+  tickUnit(targetUnit, attackerUnit, dt);
+  for (const u of extraTargets) tickUnit(u, attackerUnit, dt);
+  /* Statuses a previewed cast left on its stand-ins (Sleep's Zs) persist
+     until the next cast, as they would until something wakes them. */
+  syncStatusAuras([...(castPreview ? castPreview.targets : []), ...allTargets(), attackerUnit, allyUnit].filter(Boolean));
   updateProjectiles(scene, dt);
   updateWorldFx(scene, dt);
   updateFloatTexts(scene, cam);
   updateCompositeFX(scene, dt);
-  renderer.render(scene, cam);
+  for (const u of [attackerUnit, allyUnit, ...allTargets()]) if (u) updateFlash(u.ent, dt);
+  renderFrame(dt);
 }
 
-initAudio();
+/* Handle for scripted checks — a dynamic re-import would get a second module
+   instance (and a second renderer), as in the dungeon editor. */
+window.__vfxEditor = {
+  renderer, scene, cam, lib, playNow, forgeStage,
+  get stage() { return stage; }, get dungeon() { return stageD; },
+  get units() { return { attacker: attackerUnit, ally: allyUnit, target: targetUnit, extras: extraTargets }; },
+  get castPreview() { return castPreview; }, get cloud() { return previewCloud; },
+  /* the frame just drawn, for side-by-side review (the canvas clears after compositing) */
+  grab(ctx, sx, sy, sw, sh, dx, dy, dw, dh) { renderFrame(0); ctx.drawImage(renderer.domElement, sx, sy, sw, sh, dx, dy, dw, dh); },
+};
+
+/* SFX only — this is an effects bench, the soundtrack just gets in the way. */
+initAudio({ music: false });
 /* Warm the audio pipeline on the very first interaction — registered after
    initAudio so its unlock listener runs first, making the first real SFX
    play instantly (fetch/decode already in cache). */
 window.addEventListener('pointerdown', () => playSfx('spellImpact', { volume: 0 }), { once: true });
 repopulateAnimSelect();
+areaReady = true;
+castPreviewReady = true;
 selectAnim(currentId);
 requestAnimationFrame(animate);

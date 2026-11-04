@@ -17,6 +17,7 @@ import { SPELLS, SPELL_POOLS } from './spells.js';
    reference below resolves only by accident inside the bundled build and
    throws a ReferenceError under native ESM (dev server, tests). */
 import { CLASSES, WILD_SHAPE_FORMS, profBonus } from './srd.js';
+import { ROUND_SECONDS } from './conditions.js';   // leaf module — no cycle
 const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
 const ABILITY_LABEL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
 const MELEE_CLASSES = new Set(['fighter', 'barbarian', 'monk', 'paladin', 'rogue', 'bard']);
@@ -27,14 +28,46 @@ export const SKILL_POINTS_PER_LEVEL = 1;
 /* ================================================================
    Fighting styles (Fighter L1, Ranger L2, Paladin L2, etc.)
    ================================================================ */
+/* `pb` here is only the part of a style that is unconditional (Defense's AC).
+   Everything else is evaluated per attack by styleAttackBonus / styleDamage
+   below, so Archery cannot buff a sword and Dueling cannot buff a bow — which
+   is exactly what happened when these were flat pb bonuses. */
 export const FIGHTING_STYLES = {
-  archery:  { label: 'Archery',  desc: '+2 to ranged attack rolls.', pb: { atk: 2 }, rangedOnly: true },
+  archery:  { label: 'Archery',  desc: '+2 to attack rolls with ranged weapons.', pb: {}, rangedOnly: true },
   defense:  { label: 'Defense',  desc: '+1 AC while wearing armor.', pb: { ac: 1 } },
-  dueling:  { label: 'Dueling',  desc: '+2 damage with a one-handed melee weapon.', pb: { dmg: 2 }, meleeOnly: true },
-  greatWeapon: { label: 'Great Weapon Fighting', desc: '+1 attack and +1 damage with two-handed weapons.', pb: { atk: 1, dmg: 1 }, meleeOnly: true },
-  protection: { label: 'Protection', desc: '+1 AC; allies near you gain a soft shield feel.', pb: { ac: 1 } },
-  twoWeapon: { label: 'Two-Weapon Fighting', desc: '+1 attack; nimble dual-wield tempo.', pb: { atk: 1 }, meleeOnly: true }
+  dueling:  { label: 'Dueling',  desc: '+2 damage when wielding a one-handed melee weapon and nothing in the other hand.', pb: {}, meleeOnly: true },
+  greatWeapon: { label: 'Great Weapon Fighting', desc: 'Two-handed melee weapons: reroll damage dice that show a 1 or 2.', pb: {}, meleeOnly: true },
+  protection: { label: 'Protection', desc: 'Reaction, with a shield: an attack against an ally next to you is made at disadvantage.', pb: {} },
+  twoWeapon: { label: 'Two-Weapon Fighting', desc: 'Your off-hand attack adds your ability modifier to its damage.', pb: {}, meleeOnly: true }
 };
+
+const PHYSICAL_TYPES = new Set(['bludgeoning', 'piercing', 'slashing']);
+/** Is the hero wielding a shield (shields live in the offhand slot)? */
+export function hasShieldEquipped(h) {
+  const oh = h && h.equipment && h.equipment.offhand;
+  return !!(oh && oh.slot === 'shield');
+}
+/** Attack-roll bonus from the fighting style for THIS profile. */
+export function styleAttackBonus(h, profile) {
+  if (!h || !h.fightingStyle || !profile) return 0;
+  if (h.fightingStyle === 'archery' && profile.source === 'weapon' && profile.melee === false && !profile.thrown) return 2;
+  return 0;
+}
+/** Flat damage bonus from the fighting style for THIS profile (Dueling). */
+export function styleDamageBonus(h, profile) {
+  if (!h || !h.fightingStyle || !profile) return 0;
+  if (h.fightingStyle === 'dueling' && profile.source === 'weapon' && profile.melee && !profile.offhand) {
+    const oh = h.equipment && h.equipment.offhand;
+    const otherWeapon = !!(oh && oh.slot === 'weapon');
+    if (!profile.twoHanded && !otherWeapon) return 2;
+  }
+  return 0;
+}
+/** Great Weapon Fighting: reroll 1s and 2s on a two-handed melee weapon's dice. */
+export function styleRerollsLowDice(h, profile) {
+  if (!h || h.fightingStyle !== 'greatWeapon' || !profile || profile.source !== 'weapon' || !profile.melee) return false;
+  return !!profile.twoHanded;
+}
 
 /* ================================================================
    Feats — pickable at ASI levels instead of a raw +2 ability
@@ -47,30 +80,34 @@ export const FEATS = {
     hpPerLevel: 2
   },
   resilient: {
-    label: 'Resilient',
-    desc: '+1 AC and +4 max HP.',
-    pb: { ac: 1, hp: 4 }
+    label: 'Resilient (Constitution)',
+    desc: '+1 CON and proficiency in Constitution saving throws.',
+    pb: { con: 1 },
+    saveProficiency: 'con'
   },
   weaponMaster: {
     label: 'Weapon Master',
-    desc: '+1 to attack rolls and weapon damage.',
-    pb: { atk: 1, dmg: 1 }
+    desc: '+1 DEX and proficiency with all martial weapons.',
+    pb: { dex: 1 },
+    grantWeapon: 'martial'
   },
   mobile: {
     label: 'Mobile',
-    desc: '+10 ft Move (2 tiles) and +1 AC while moving through danger.',
-    pb: { move: 10, ac: 1 }
+    desc: '+10 ft Move (2 tiles). A creature you hit in melee this turn cannot make opportunity attacks against you.',
+    pb: { move: 10 },
+    noOAFromMeleeTargets: true
   },
   alert: {
     label: 'Alert',
-    desc: '+1 to attack rolls; harder for ambushes to land.',
-    pb: { atk: 1 }
+    desc: "+5 to initiative. Attackers you can't see gain no advantage against you.",
+    pb: {},
+    initiativeBonus: 5
   },
   mageSlayer: {
     label: 'Mage Slayer',
-    desc: '+1 damage; +2 damage vs elites and bosses (combat hook).',
-    pb: { dmg: 1 },
-    eliteBonusDmg: 2
+    desc: 'Advantage on saves against spells cast by an adjacent creature, and a reaction melee attack when an adjacent creature casts a spell.',
+    pb: {},
+    mageSlayer: true
   },
   healer: {
     label: 'Healer',
@@ -79,21 +116,24 @@ export const FEATS = {
   },
   warCaster: {
     label: 'War Caster',
-    desc: '+1 spell attack and +1 spell damage; casters only.',
-    pb: { atk: 1, dmg: 1 },
-    castersOnly: true
+    desc: 'Advantage on the Constitution save to keep concentration when you take damage; casters only.',
+    pb: {},
+    castersOnly: true,
+    concentrationAdvantage: true
   },
   elementalAdept: {
     label: 'Elemental Adept',
-    desc: '+2 spell damage; your bolts hit harder.',
-    pb: { dmg: 2 },
-    castersOnly: true
+    desc: "Your spells ignore resistance to your class's element (fire for wizards and druids, radiant for clerics, necrotic for sorcerers, force for warlocks).",
+    pb: {},
+    castersOnly: true,
+    ignoreResistance: 'classElement'
   },
   savageAttacker: {
     label: 'Savage Attacker',
-    desc: '+2 weapon damage on melee hits.',
-    pb: { dmg: 2 },
-    meleeOnly: true
+    desc: 'Once per turn, reroll a melee weapon hit\'s damage dice and take the higher result.',
+    pb: {},
+    meleeOnly: true,
+    rerollDamage: true
   },
   lucky: {
     label: 'Lucky',
@@ -103,8 +143,9 @@ export const FEATS = {
   },
   durable: {
     label: 'Durable',
-    desc: '+6 max HP and Second Wind-style grit (+1 AC).',
-    pb: { hp: 6, ac: 1 }
+    desc: '+1 CON and +1 max HP per level (hardy constitution).',
+    pb: { con: 1 },
+    hpPerLevel: 1
   },
 
   /* ---- Equipment-proficiency feats ------------------------------------
@@ -143,80 +184,75 @@ export const FEATS = {
      through the feat* helpers further down — feats stay pure data. */
   greatWeaponMaster: {
     label: 'Great Weapon Master',
-    desc: 'Heavy two-handed swings hit harder (+1 damage per 2 levels).',
+    desc: 'Heavy weapons: a bonus-action attack after a critical hit or a kill, and you may take -5 to hit for +10 damage when the odds favour it.',
     pb: {}, meleeOnly: true,
-    bonusDmg: { when: 'twoHanded', perLevel: 0.5 }
+    powerAttack: { when: 'heavy' },
+    bonusAttackOn: 'critOrKill'
   },
   sharpshooter: {
     label: 'Sharpshooter',
-    desc: '+3 damage on ranged weapon attacks.',
+    desc: 'Ranged weapons: no penalty at long range, and you may take -5 to hit for +10 damage when the odds favour it.',
     pb: {}, rangedOnly: true,
-    bonusDmg: { when: 'ranged', flat: 3 }
+    powerAttack: { when: 'ranged' }
   },
   crossbowExpert: {
     label: 'Crossbow Expert',
-    desc: 'Ranged weapons: a chance at a bonus shot each turn.',
+    desc: 'Crossbows: no disadvantage at point-blank range, and a bonus-action crossbow shot each turn.',
     pb: {}, rangedOnly: true,
-    extraAttack: { when: 'ranged', chance: 0.35 }
+    bonusAttack: { when: 'crossbow' }
   },
   polearmMaster: {
     label: 'Polearm Master',
-    desc: 'Polearms: a chance at a bonus butt-end strike each turn.',
+    desc: 'Polearms: a bonus-action butt-end strike (1d4 + ability) each turn.',
     pb: {}, meleeOnly: true,
-    extraAttack: { when: 'polearm', chance: 0.40 }
+    bonusAttack: { when: 'polearm', dmg: [1, 4], dmgType: 'bludgeoning' }
   },
   charger: {
     label: 'Charger',
-    desc: 'Your opening strike on a fresh foe deals +1 damage per level.',
+    desc: 'After moving at least 10 ft (2 tiles) toward a foe this turn, a bonus-action melee attack for +5 damage.',
     pb: {}, meleeOnly: true,
-    bonusDmg: { when: 'firstStrike', perLevel: 1 }
+    bonusAttack: { when: 'charged', extraDmg: 5 }
   },
   sentinel: {
     label: 'Sentinel',
-    desc: 'Melee hits have a chance to root the foe in place.',
+    desc: 'Your opportunity attacks root the target (speed 0) for the round, Disengage does not stop them, and you get a reaction attack when an adjacent enemy attacks someone else.',
     pb: {}, meleeOnly: true,
-    onHit: { when: 'melee', effect: 'slowed', chance: 0.25, duration: 3 }
+    sentinel: true
   },
   shieldMaster: {
     label: 'Shield Master',
-    desc: '+1 AC; with a shield equipped, melee hits can shove foes prone.',
-    pb: { ac: 1 }, meleeOnly: true,
-    onHit: { when: 'shield', effect: 'prone', chance: 0.20, duration: 4 }
+    desc: 'With a shield: a bonus-action shove that knocks a foe prone, +2 on DEX saves against spells, and no damage when you pass a DEX save for half.',
+    pb: {}, meleeOnly: true,
+    shieldMaster: true
   },
   grappler: {
     label: 'Grappler',
     desc: '+1 STR. On-hit chance to grapple (slow); +2 damage vs slowed or prone foes.',
     pb: { str: 1 }, meleeOnly: true,
-    onHit: { when: 'melee', effect: 'slowed', chance: 0.20, duration: 2.5 },
+    onHit: { when: 'melee', effect: 'slowed', chance: 0.20, rounds: 1 },
     bonusDmg: { when: 'vsImpaired', flat: 2 }
   },
   tavernBrawler: {
     label: 'Tavern Brawler',
     desc: '+1 STR; your blows can stagger (slow) foes.',
     pb: { str: 1 },
-    onHit: { when: 'melee', effect: 'slowed', chance: 0.15, duration: 2 }
+    onHit: { when: 'melee', effect: 'slowed', chance: 0.15, rounds: 1 }
   },
   martialAdept: {
     label: 'Martial Adept',
-    desc: 'Critical hits unleash a maneuver: bonus damage and knock the foe prone.',
+    desc: 'Trip Attack: critical hits deal +1d8 and knock the foe prone.',
     pb: {},
-    onHit: { when: 'crit', effect: 'prone', chance: 1, duration: 3, dmg: [1, 8] }
-  },
-  mountedCombatant: {
-    label: 'Mounted Combatant',
-    desc: 'Charging momentum: +1 damage per level vs elites and bosses.',
-    pb: {},
-    bonusDmg: { when: 'vsElite', perLevel: 1 }
+    onHit: { when: 'crit', effect: 'prone', chance: 1, rounds: 1, dmg: [1, 8] }
   },
   spellSniper: {
     label: 'Spell Sniper',
-    desc: 'Casters: +2 spell damage and your spells crit more easily.',
-    pb: { crit: 1 }, castersOnly: true,
-    bonusDmg: { when: 'spell', flat: 2 }
+    desc: 'Casters: your attack cantrip has double range.',
+    pb: {}, castersOnly: true,
+    cantripRangeMul: 2
   },
   skulker: {
     label: 'Skulker',
-    desc: '+1 DEX. Ranged: your opening shot deals +1 damage per level.',
+    desc: '+1 DEX. Ranged: your opening shot deals +1 damage per level. You can Hide in dim light or darkness, dim light never hinders your Perception, and missing from hiding keeps you hidden.',
     pb: { dex: 1 }, rangedOnly: true,
     bonusDmg: { when: 'firstStrikeRanged', perLevel: 1 }
   },
@@ -224,9 +260,9 @@ export const FEATS = {
   /* ---- Defensive feats ------------------------------------------------ */
   heavyArmorMaster: {
     label: 'Heavy Armor Master',
-    desc: '+1 STR. While in heavy armor, reduce all incoming damage by 3.',
+    desc: '+1 STR. While in heavy armor, nonmagical bludgeoning, piercing and slashing damage you take is reduced by 3.',
     pb: { str: 1 },
-    incomingDR: { flat: 3, when: 'heavyArmor' }
+    incomingDR: { flat: 3, when: 'heavyArmor', physicalOnly: true }
   },
   mediumArmorMaster: {
     label: 'Medium Armor Master',
@@ -243,9 +279,9 @@ export const FEATS = {
   },
   defensiveDuelist: {
     label: 'Defensive Duelist',
-    desc: '+3 AC while wielding a finesse weapon (parrying stance).',
+    desc: 'Reaction, with a finesse weapon: add your proficiency bonus to AC against one melee attack that would hit you.',
     pb: {},
-    acBonus: { flat: 3, when: 'finesse' }
+    parryReaction: true
   },
   inspiringLeader: {
     label: 'Inspiring Leader',
@@ -292,7 +328,7 @@ export const FEATS = {
   },
   dungeonDelver: {
     label: 'Dungeon Delver',
-    desc: 'Ever-watchful: +5 ft Move (1 tile) and sharper on skill challenges.',
+    desc: 'Ever-watchful: +5 ft Move (1 tile), sharper on skill challenges, and dim light never hinders your Perception.',
     pb: { move: 5 },
     skillBonus: 1
   }
@@ -348,21 +384,69 @@ export function featBonusDamage(h, ctx) {
   return bonus;
 }
 
-/** How many bonus attacks feats grant this swing (rolled here). */
-export function featExtraAttacks(h) {
-  const wpn = h.equipment && h.equipment.weapon;
-  const vw = (wpn && wpn.visualWeapon) || '';
-  let count = 0;
+/** The bonus-action attack a feat grants this turn, or null.
+ *  ctx = { movedCells, weaponProfile, lastHitCrit, lastHitKilled }
+ *  Returns { profile, extraDmg, label } — the caller owns the bonus action. */
+export function featBonusActionAttack(h, ctx = {}) {
+  const wp = ctx.weaponProfile || h.weaponProfile;
+  if (!wp) return null;
+  const vw = wp.visualWeapon || (h.equipment && h.equipment.weapon && h.equipment.weapon.visualWeapon) || '';
   for (const key of h.feats || []) {
     const f = FEATS[key];
-    if (!f || !f.extraAttack) continue;
-    const ea = f.extraAttack;
-    let ok = false;
-    if (ea.when === 'polearm') ok = vw.startsWith('polearm/');
-    else if (ea.when === 'ranged') ok = !!wpn && wpn.melee === false;
-    if (ok && Math.random() < ea.chance) count++;
+    if (!f) continue;
+    const ba = f.bonusAttack;
+    if (ba) {
+      if (ba.when === 'crossbow' && vw.includes('crossbow') && wp.melee === false)
+        return { profile: wp, extraDmg: 0, label: 'Crossbow Expert' };
+      if (ba.when === 'polearm' && vw.startsWith('polearm/') && wp.melee)
+        return { profile: { ...wp, name: 'Butt-end', dmg: ba.dmg.slice(), dmgType: ba.dmgType || wp.dmgType }, extraDmg: 0, label: 'Polearm Master' };
+      if (ba.when === 'charged' && wp.melee && (ctx.movedCells || 0) >= 2)
+        return { profile: wp, extraDmg: ba.extraDmg || 5, label: 'Charger' };
+    }
+    if (f.bonusAttackOn === 'critOrKill' && wp.melee && wp.heavy && (ctx.lastHitCrit || ctx.lastHitKilled))
+      return { profile: wp, extraDmg: 0, label: 'Great Weapon Master' };
   }
-  return count;
+  return null;
+}
+
+/** -5 to hit / +10 damage (Great Weapon Master, Sharpshooter) — available for
+ *  this profile? The caller decides whether the trade is worth it. */
+export function featPowerAttackAvailable(h, profile) {
+  if (!profile || profile.source !== 'weapon') return false;
+  for (const key of h.feats || []) {
+    const pa = FEATS[key] && FEATS[key].powerAttack;
+    if (!pa) continue;
+    if (pa.when === 'heavy' && profile.melee && profile.heavy) return true;
+    if (pa.when === 'ranged' && profile.melee === false && !profile.thrown) return true;
+  }
+  return false;
+}
+
+/** Feat-granted initiative bonus (Alert). */
+export function featInitiativeBonus(h) {
+  let b = 0;
+  for (const key of h.feats || []) { const f = FEATS[key]; if (f && f.initiativeBonus) b += f.initiativeBonus; }
+  return b;
+}
+
+/** Ability the hero's feats make save-proficient (Resilient), or null. */
+export function featSaveProficiencies(h) {
+  const out = [];
+  for (const key of h.feats || []) { const f = FEATS[key]; if (f && f.saveProficiency) out.push(f.saveProficiency); }
+  return out;
+}
+
+/** Multiplier on the attack cantrip's range (Spell Sniper). */
+export function featCantripRangeMul(h) {
+  let m = 1;
+  for (const key of h.feats || []) { const f = FEATS[key]; if (f && f.cantripRangeMul) m *= f.cantripRangeMul; }
+  return m;
+}
+
+/** Savage Attacker: reroll this melee weapon hit's dice and keep the higher? */
+export function featRerollsDamage(h, profile) {
+  if (!profile || profile.source !== 'weapon' || !profile.melee) return false;
+  return (h.feats || []).some(k => FEATS[k] && FEATS[k].rerollDamage);
 }
 
 /** On-hit riders (status effects + bonus damage) for a landed hit.
@@ -378,27 +462,33 @@ export function featOnHit(h, ctx) {
     if (oh.when === 'shield' && !(ctx.melee && ctx.hasShield)) continue;
     if (oh.when === 'crit'   && !ctx.crit) continue;
     if (Math.random() >= (oh.chance == null ? 1 : oh.chance)) continue;
-    if (oh.effect) out.effects.push({ key: oh.effect, duration: oh.duration || 3 });
+    /* `rounds` is a whole number of combat rounds; the effect system wants it
+       in combat-clock seconds (ROUND_SECONDS per round). */
+    if (oh.effect) out.effects.push({ key: oh.effect, duration: ROUND_SECONDS * (oh.rounds || 1) });
     if (oh.dmg) out.bonusDmg += _dsum(oh.dmg[0], oh.dmg[1]);
   }
   return out;
 }
 
-/** Reduce incoming damage by feat flat DR (Heavy Armor Master). */
-export function featIncomingDamage(h, dmg) {
+/** Reduce incoming damage by feat flat DR (Heavy Armor Master: nonmagical
+ *  bludgeoning / piercing / slashing only). A missing dmgType is treated as a
+ *  plain weapon blow. */
+export function featIncomingDamage(h, dmg, dmgType = null, magical = false) {
   let d = dmg;
   const armor = h.equipment && h.equipment.armor;
   const heavy = !!armor && armor.prof === 'heavy';
+  const physical = !magical && (dmgType == null || PHYSICAL_TYPES.has(dmgType));
   for (const key of h.feats || []) {
     const f = FEATS[key];
     if (!f || !f.incomingDR) continue;
     if (f.incomingDR.when === 'heavyArmor' && !heavy) continue;
+    if (f.incomingDR.physicalOnly && !physical) continue;
     d -= (f.incomingDR.flat || 0);
   }
   return Math.max(0, d);
 }
 
-/** Conditional AC from feats (Dual Wielder / Medium Armor Master / Defensive Duelist). */
+/** Conditional AC from feats (Dual Wielder / Medium Armor Master). */
 export function featACBonus(h) {
   const eqp = h.equipment || {};
   const armor = eqp.armor;
@@ -482,7 +572,7 @@ export const FEATURES = {
   },
   cunningActionClass: {
     label: 'Cunning Action',
-    desc: 'When bloodied, dash clear: +4 AC and +40% speed briefly.',
+    desc: 'Bonus action every turn: Dash and Disengage (double movement, no opportunity attacks).',
     combat: 'cunningAction'
   },
   uncannyDodge: {
@@ -492,8 +582,8 @@ export const FEATURES = {
   },
   evasion: {
     label: 'Evasion',
-    desc: '+2 AC (you slip blasts and swings).',
-    pb: { ac: 2 }
+    desc: 'Against effects that allow a DEX save for half damage, you take none on a success and half on a failure.',
+    pb: {}
   },
   rage: {
     label: 'Rage',
@@ -502,7 +592,7 @@ export const FEATURES = {
   },
   recklessAttack: {
     label: 'Reckless Attack',
-    desc: 'While raging, +2 to hit.',
+    desc: 'While raging, advantage on your attacks.',
     combat: 'reckless'
   },
   brutalCritical: {
@@ -547,7 +637,7 @@ export const FEATURES = {
   },
   divineSmite: {
     label: 'Divine Smite',
-    desc: 'Once per short rest, add +2d8 radiant on a hit vs elite/boss.',
+    desc: 'On a melee hit, spend a spell slot for +2d8 radiant (+1d8 per slot level above 1st, +1d8 vs undead and fiends).',
     combat: 'divineSmite'
   },
   layOnHands: {
@@ -572,7 +662,7 @@ export const FEATURES = {
   },
   bardicInspiration: {
     label: 'Bardic Inspiration',
-    desc: 'Once per short rest, grant all allies advantage on their next attack (does not expire).',
+    desc: 'Bonus action: give one ally an inspiration die (d6, d8 at 5, d10 at 10, d12 at 15) to add to their next attack roll.',
     combat: 'bardicInspiration'
   },
   songOfRest: {
@@ -582,12 +672,12 @@ export const FEATURES = {
   },
   wildShapeClass: {
     label: 'Wild Shape',
-    desc: 'Once per short rest: +15 temp HP and claw strikes briefly.',
+    desc: 'Once per short rest: take a beast form with its own HP pool and claw strikes.',
     combat: 'wildShape'
   },
   tidesOfChaos: {
     label: 'Tides of Chaos',
-    desc: 'Once per short rest: +5 to hit on an attack.',
+    desc: 'Once per long rest: advantage on an attack roll.',
     combat: 'tidesOfChaos'
   },
   metamagic: {
@@ -905,8 +995,9 @@ export const INVOCATIONS = {
   },
   devilsSight: {
     label: "Devil's Sight",
-    desc: 'See normally in darkness: +1 to attack rolls.',
-    pb: { atk: 1 }
+    /* light_rules.js senseRanges: 24 tiles, and it pierces magical Darkness */
+    desc: 'See normally in darkness, even magical Darkness, out to 120 ft.',
+    pb: {}
   },
   beguilingInfluence: {
     label: 'Beguiling Influence',
@@ -1449,7 +1540,6 @@ const CHARGE_DEFS = {
      game's simplified ki model (see runCombatReflexes in combat.js). */
   flurryOfBlows:      { max: 'pb', recharge: 'short' },
   bardicInspiration:  { max: 'pb', recharge: 'short' },
-  cunningActionClass: { max: 'pb', recharge: 'short' },
   indomitable:        { max: 1, recharge: 'long' },
   rallyingCry:        { max: 1, recharge: 'long' },
   preserveLife:       { max: 1, recharge: 'long' },
@@ -1464,6 +1554,8 @@ const CHARGE_DEFS = {
   bearTotem:          { max: 1, recharge: 'short' },
   quiveringPalm:      { max: 1, recharge: 'short' },
   shadowStep:         { max: 1, recharge: 'short' },
+  radiantFlare:       { max: 1, recharge: 'short' },
+  blindingFlash:      { max: 1, recharge: 'short' },
   sacredWeapon:       { max: 1, recharge: 'short' },
   vowOfEnmity:        { max: 1, recharge: 'short' },
   colossusSlayer:     { max: 1, recharge: 'short' },
@@ -1822,6 +1914,26 @@ function applySubclassMilestone(h, level, log) {
 }
 
 /**
+ * Does this class level hand out a talent point?  Every odd level does.  Even
+ * levels normally carry a choice (ASI/feat, spell, fighting style, invocation,
+ * subclass) — when the class table has nothing but auto features or a silent
+ * subclass milestone (e.g. martial L2, most classes at L6), the talent tree is
+ * the fallback so no level-up ever passes without a decision to make.
+ */
+export function levelGrantsTalent(classKey, level) {
+  if (level % 2 === 1) return true;
+  const grants = (CLASS_PROGRESSION[classKey] && CLASS_PROGRESSION[classKey][level]) || [];
+  return !grants.some(g => g.type === 'choice' || g.type === 'subclass');
+}
+
+/** Total talent points a hero of this class should have earned by `level`. */
+export function talentPointsThrough(classKey, level) {
+  let n = 0;
+  for (let lv = 1; lv <= Math.max(1, level); lv++) if (levelGrantsTalent(classKey, lv)) n++;
+  return n;
+}
+
+/**
  * Apply all grants for a single level.
  * @param {object} h hero data
  * @param {number} level
@@ -1841,8 +1953,9 @@ export function applyLevelGrants(h, level, log = null, opts = {}) {
     if (log) log(`📘 ${h.name} gained ${SKILL_POINTS_PER_LEVEL === 1 ? '1 skill point' : `${SKILL_POINTS_PER_LEVEL} skill points`}.`, 'level');
   }
 
-  /* Class talents: 1 point earned on every odd level (including level 1). */
-  if (!opts.autosOnly && (level % 2 === 1)) {
+  /* Class talents: 1 point on every odd level (including level 1), plus any
+     even level where the class table offers no choice — see levelGrantsTalent. */
+  if (!opts.autosOnly && levelGrantsTalent(h.classKey, level)) {
     h.pendingSkill = (h.pendingSkill || 0) + 1;
     if (log) log(`⭐ ${h.name} gained a talent point.`, 'level');
   }
@@ -2026,6 +2139,11 @@ export function migrateProgression(h) {
   syncMissingArcana(h);
   syncMissingInvocations(h);
   syncMissingSpellChoices(h);
+  /* A pending pick keeps a SNAPSHOT of its options (label + desc) from the
+     moment it was queued, and that snapshot lives in the save. Rebuild it on
+     every load so a feat that was renamed, rewritten or removed since the
+     hero last levelled is shown as it is now, not as it was. */
+  refreshPendingOptions(h);
   if (h.progressionVersion >= 1) return;
   for (let lv = 1; lv <= h.level; lv++) {
     applyLevelGrants(h, lv, null, { autosOnly: true });

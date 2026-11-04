@@ -4,14 +4,16 @@
  * by Wizards of the Coast LLC, licensed under CC-BY-4.0.
  */
 import {
-  aggregateEquipment, PROF_RANK, WEAPON_RANK, makeStarterItem,
-  migrateItem, getBase
+  aggregateEquipment, PROF_RANK, WEAPON_RANK, makeStarterItem, makeLightSourceItem,
+  migrateItem, getBase, runeBonusTotals
 } from './items.js';
 import {
   featureBonuses, spellSlotsFor, seedNewHeroProgression, migrateProgression,
   applyLevelGrants, initProgressionFields, pendingChoiceCount, hasFeature,
   totalSlots, equipmentGrants, hasDualWielder, featACBonus, isCasterClass,
-  SKILL_POINTS_PER_LEVEL
+  SKILL_POINTS_PER_LEVEL, talentPointsThrough,
+  featSaveProficiencies, featCantripRangeMul, featRerollsDamage,
+  styleDamageBonus, styleRerollsLowDice
 } from './features.js';
 export { SKILL_POINTS_PER_LEVEL };
 import { getRaceDefaults, migrateVisualColors } from './appearance.js';
@@ -243,7 +245,9 @@ export const CLASSES = {
       { key:'deadlyAim',  name:'Deadly Aim', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
       { key:'assassin',   name:'Assassin',   max:2, desc:'Crit range widens by 1 per rank (crit on 19, then 18).', b:{crit:1} },
       { key:'evasion',    name:'Evasion',    max:4, desc:'+1 AC per rank.',               b:{ac:1} },
-      { key:'fleetfoot',  name:'Fleet-Foot', max:4, desc:'+5 ft Move (1 tile) per rank.',      b:{move:5} }
+      { key:'fleetfoot',  name:'Fleet-Foot', max:4, desc:'+5 ft Move (1 tile) per rank.',      b:{move:5} },
+      /* combat.js heroAttackRoll; docs/LIGHT_IDEAS.md 7 */
+      { key:'shadowStrike', name:'Shadow Strike', max:2, desc:'Your first attack each fight, made from dim light or darkness: +1 Sneak Attack die per rank, no ally needed.', b:{} }
     ],
     skillChoices: {
       count: 4,
@@ -261,7 +265,9 @@ export const CLASSES = {
       { key:'blessedHealer', name:'Blessed Healer', max:5, desc:'+3 healing per rank.',        b:{heal:3} },
       { key:'divineFavor',   name:'Divine Favor',   max:5, desc:'+1 Sacred Flame damage per rank.', b:{dmg:1} },
       { key:'sanctuary',     name:'Sanctuary',      max:3, desc:'+1 AC per rank.',              b:{ac:1} },
-      { key:'devotion',      name:'Devotion',       max:4, desc:'+5 max HP per rank.',          b:{hp:5} }
+      { key:'devotion',      name:'Devotion',       max:4, desc:'+5 max HP per rank.',          b:{hp:5} },
+      /* combat.js lightAbilities; docs/LIGHT_IDEAS.md 50 */
+      { key:'radiantFlare',  name:'Radiant Flare',  max:1, desc:'Once per short rest: a burst of holy light floods 4 tiles with bright light and sears undead and shadow creatures for 2d8 radiant.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -383,7 +389,9 @@ export const CLASSES = {
       { key:'archeryStyle', name:'Archery Style', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
       { key:'huntersPrey', name:'Hunters Prey', max:5, desc:'+1 weapon damage per rank.', b:{dmg:1} },
       { key:'natureSurvival', name:'Nature Survival', max:5, desc:'+5 max HP per rank.', b:{hp:5} },
-      { key:'elusive', name:'Elusive', max:3, desc:'+1 AC per rank.', b:{ac:1} }
+      { key:'elusive', name:'Elusive', max:3, desc:'+1 AC per rank.', b:{ac:1} },
+      /* light_rules.js canSee + combat.js subclassCombatStart; docs/LIGHT_IDEAS.md 49 */
+      { key:'umbralSight', name:'Umbral Sight', max:1, desc:'While you stand in darkness, creatures relying on darkvision cannot see you. You make an extra attack in the first round of each fight.', b:{} }
     ],
     skillChoices: {
       count: 3,
@@ -470,7 +478,7 @@ export const SUBCLASSES = {
     champion: { label:'Champion', srd:true,
       passive:'Improved Critical: crit on 19–20. Survivor: every critical hit heals you.', pb:{crit:1}, passiveKey:'survivor',
       active:{ key:'remarkableAthlete', name:'Remarkable Athlete', recharge:'short',
-        desc:'Perform at peak physical capacity: +10% speed and +2 AC for 30 seconds.' } },
+        desc:'Perform at peak physical capacity: +10% speed and +2 AC for 5 rounds.' } },
     guardian: { label:'Banneret',
       passive:'Hold the Line: +1 AC, and +2 more AC while a nearby ally is bloodied.', pb:{ac:1}, passiveKey:'holdTheLine',
       active:{ key:'rallyingCry', name:'Rallying Cry', recharge:'long',
@@ -480,7 +488,7 @@ export const SUBCLASSES = {
     thief: { label:'Thief', srd:true,
       passive:'Fast Hands: +5 ft Move (1 tile), +25% gold. Opportunist: +1d4 damage to wounded foes.', pb:{move:5}, chestGold:0.25, passiveKey:'opportunist',
       active:{ key:'fastHands', name:'Fast Hands', recharge:'short',
-        desc:'Use sleight of hand to throw a smoke bomb, blinding all nearby enemies for 6s.' } },
+        desc:'Use sleight of hand to throw a smoke bomb, blinding all nearby enemies for 1 round.' } },
     /* internal key stays 'nightblade' to preserve existing saves; the SRD/PHB
        subclass this maps to is the Assassin (auto-crit = Assassinate). */
     nightblade: { label:'Assassin',
@@ -516,23 +524,23 @@ export const SUBCLASSES = {
     totem: { label:'Totem Warrior',
       passive:'Aspect of the Bear: +1 AC, and take 20% less damage while below half health.', pb:{ac:1}, passiveKey:'bearSpirit',
       active:{ key:'bearTotem', name:'Bear Totem', recharge:'short',
-        desc:'Summon the bear spirit, halving all incoming damage for 8 seconds.' } }
+        desc:'Summon the bear spirit, halving all incoming damage for 10 rounds.' } }
   },
   bard: {
     lore: { label:'College of Lore', srd:true,
       passive:'Peerless Skill: +1 to attack rolls, and +1d4 to hit against elites and bosses.', pb:{atk:1}, passiveKey:'peerlessSkill',
       active:{ key:'cuttingWords', name:'Cutting Words', recharge:'short',
-        desc:'Lower an elite or boss\'s AC by 4 and speed by 30% for 6 seconds.' } },
+        desc:'Lower an elite or boss\'s AC by 4 and blunt its blows for 1 round.' } },
     valor: { label:'College of Valor',
       passive:'Combat Inspiration: +1 AC, and each kill heals your most-wounded ally.', pb:{ac:1}, passiveKey:'songOfVictory',
       active:{ key:'combatInspiration', name:'Combat Inspiration', recharge:'short',
-        desc:'Play a battle song, granting all allies +3 to hit for 8 seconds.' } }
+        desc:'Play a battle song: one ally gains an inspiration die to add to their next attack roll.' } }
   },
   druid: {
     land: { label:'Circle of the Land', srd:true,
       passive:'Natural Recovery: +1 spell attack; your kills sometimes restore a spell slot.', pb:{atk:1}, passiveKey:'naturalRecovery',
       active:{ key:'entangle', name:'Entangle', recharge:'short',
-        desc:'Roots all nearby enemies for 4 seconds, dealing 1d6 damage.' } },
+        desc:'Cast Entangle for free once per short rest: grasping weeds restrain foes in a 20-ft area (STR save; concentration).' } },
     moon: { label:'Circle of the Moon',
       passive:'Primal Strike: +1 claw damage, and a hide of temporary HP at the start of each fight.', pb:{dmg:1}, passiveKey:'thickHide',
       active:{ key:'wildShape', name:'Wild Shape', recharge:'short',
@@ -552,7 +560,7 @@ export const SUBCLASSES = {
     devotion: { label:'Oath of Devotion', srd:true,
       passive:'Sacred Weapon: +1 to attack rolls, and +1d6 radiant damage vs undead and fiends.', pb:{atk:1}, passiveKey:'sacredWrath',
       active:{ key:'sacredWeapon', name:'Sacred Weapon', recharge:'short',
-        desc:'Bless your blade, adding +4 to hit and +1d8 radiant damage for 8s.' } },
+        desc:'Channel Divinity: add your Charisma modifier to attack rolls for 10 rounds; the weapon counts as magical.' } },
     vengeance: { label:'Oath of Vengeance',
       passive:'Relentless Avenger: +1 weapon damage, and +2 more against wounded foes.', pb:{dmg:1}, passiveKey:'relentless',
       active:{ key:'vowOfEnmity', name:'Vow of Enmity', recharge:'short',
@@ -586,7 +594,7 @@ export const SUBCLASSES = {
     archfey: { label:'The Archfey',
       passive:'Beguiling Defenses: +1 AC; your hits sometimes leave foes frightened.', pb:{ac:1}, passiveKey:'beguiling',
       active:{ key:'feyPresence', name:'Fey Presence', recharge:'short',
-        desc:'Charm all nearby enemies, preventing them from attacking for 3 seconds.' } }
+        desc:'Nearby enemies make a WIS save or are charmed for 1 round, unable to attack you.' } }
   }
 };
 export const RECHARGE_LABEL = { short:'1 / short rest', long:'1 / long rest', day:'1 / long rest', slot:'spell slots' };
@@ -1598,6 +1606,10 @@ export function makeHero(name, raceKey, classKey, baseStats = {}, visual = null,
     h.equipment.weapon = makeStarterItem('weapon', st.weapon);
     h.equipment.armor = makeStarterItem('armor', st.armor, st.look);
   }
+  /* Every hero sets out with a torch in the trinket slot. Companions built on
+     makeHero (wolf, familiar) replace the whole equipment block afterwards. */
+  h.equipment.trinket = makeLightSourceItem('torch');
+  h.torchGranted = true;
 
   seedNewHeroProgression(h);
   recalc(h);
@@ -1808,9 +1820,10 @@ export function normalizeHero(h){
   migrateVisualColors(h.visual, h.raceKey);
   if(h.pendingAbility === undefined) h.pendingAbility = 0;
   if(h.pendingSkill === undefined) h.pendingSkill = 0;
-  /* Class talents: ensure heroes have banked/spent points for odd levels reached (Lv 1, 3, 5...) */
+  /* Class talents: ensure heroes have banked/spent every point their class
+     should have earned so far (odd levels + choice-less even levels). */
   if (!CLASSES[h.classKey]?.internal) {
-    const totalTalentsExpected = Math.ceil(Math.max(1, h.level || 1) / 2);
+    const totalTalentsExpected = talentPointsThrough(h.classKey, h.level || 1);
     const spentTalents = Object.values(h.skills || {}).reduce((sum, r) => sum + (r || 0), 0);
     const currentTotal = (h.pendingSkill || 0) + spentTalents;
     if (currentTotal < totalTalentsExpected) {
@@ -1834,6 +1847,18 @@ export function normalizeHero(h){
   }
   if(h.abilityUsed.long === undefined) h.abilityUsed.long = false;
   if(!h.charges) h.charges = {};
+  /* Heroes from before torches existed get one: in the trinket slot if it is
+     free, otherwise owed to the party bag (game.js pays `_torchOwed` out once
+     the inventory is loaded). Companions carry no gear. */
+  /* torches predating consumable stacks */
+  const tr = h.equipment && h.equipment.trinket;
+  if (tr && tr.lightSource === 'torch' && tr.charges === undefined) { tr.charges = 10; tr.burn = 300; }
+  if (!h.torchGranted && !RACES[h.raceKey]?.internal && !CLASSES[h.classKey]?.internal) {
+    if (!h.equipment.trinket) h.equipment.trinket = makeLightSourceItem('torch');
+    else if (!h.equipment.trinket.lightSource) h._torchOwed = true;
+    h.torchGranted = true;
+  }
+
   /* Legacy saves: the old bespoke Cure Wounds pool is gone — healers now cast
      the level-1 slot spell like everyone else. */
   delete h.healSlots;
@@ -1920,10 +1945,11 @@ export function recalc(h){
   const sc = h.subclass ? SUBCLASSES[h.classKey][h.subclass] : null;
   const ft = featureBonuses(h);
   const sum = k => (eq[k]||0) + (sk[k]||0) + ((sc && sc.pb && sc.pb[k])||0) + (ft[k]||0);
+  const rb = runeBonusTotals(h);
 
   /* effective ability scores (base already includes racial + spent points) */
   const eff = {};
-  for(const ab of ABILITIES) eff[ab] = h.stats[ab] + sum(ab);
+  for(const ab of ABILITIES) eff[ab] = h.stats[ab] + sum(ab) + (rb[ab] || 0);
   if (h.inWildShape && h.wildShapeActiveForm && WILD_SHAPE_FORMS[h.wildShapeActiveForm]) {
     const wf = WILD_SHAPE_FORMS[h.wildShapeActiveForm];
     if (wf.statBonus) {
@@ -1938,6 +1964,8 @@ export function recalc(h){
      shape as monster stat-block saves so rollSave treats both alike */
   h.saves = {};
   for(const ab of (CLASS_SAVES[h.classKey] || [])) h.saves[ab] = mod(eff[ab]) + profBonus(h.level);
+  /* Resilient: proficiency in one more save */
+  for(const ab of featSaveProficiencies(h)) h.saves[ab] = Math.max(h.saves[ab] ?? -99, mod(eff[ab]) + profBonus(h.level));
   /* Gear `saveStr…saveCha` affixes. These apply to EVERY ability, including the
      ones the class isn't proficient in — that's the point of the affix, and it's
      why a save bonus is cheap: it never touches attack or AC math. A
@@ -1953,7 +1981,7 @@ export function recalc(h){
      The flat +8 "adventurer's grit" keeps level-1 heroes from being one-shot
      by a lucky crit (SRD level 1 is glass); it fades to noise at high level. */
   const avg = Math.ceil((cls.hitDie+1)/2);
-  h.maxHp = cls.hitDie + 8 + (h.level-1)*avg + h.level*(conM + (race.hpPerLevel||0)) + sum('hp');
+  h.maxHp = cls.hitDie + 8 + (h.level-1)*avg + h.level*(conM + (race.hpPerLevel||0)) + sum('hp') + (rb.hp || 0);
   /* life-drain (monster ability): drained max HP stays gone until a rest */
   h.maxHp -= (h.hpDrain || 0);
   h.maxHp = Math.max(1, h.maxHp);
@@ -1990,6 +2018,8 @@ export function recalc(h){
     if(h.classKey === 'monk')      h.ac = Math.max(h.ac, 10 + dexM + mod(eff.wis) + acChassis + sum('ac'));
   }
   h.ac += featACBonus(h);
+  if (h.drillBuff?.ac) h.ac += h.drillBuff.ac;
+  if (rb.ac) h.ac += rb.ac;
 
   /* weapon-driven attack profiles — cached so combat reads them ~60×/s without
      rebuilding. weaponProfile comes from the equipped weapon; offhandProfile is
@@ -2004,7 +2034,7 @@ export function recalc(h){
   h.offhandProfile = (oh && oh.slot === 'weapon' && !oh.twoHanded
       && mh && !mh.twoHanded
       && (dw || (oh.light && mh.light)))
-    ? buildWeaponProfile(h, oh, { offhand:true, noAbilityMod:true })
+    ? buildWeaponProfile(h, oh, { offhand:true, noAbilityMod: h.fightingStyle !== 'twoWeapon' })   // 5e TWF style: add the mod
     : null;
   h.cantripProfile = buildCantripProfile(h);
 
@@ -2017,9 +2047,11 @@ export function recalc(h){
   const wpnAb = h.weaponProfile ? h.weaponProfile.ability
     : (h.classKey === 'monk' ? 'dex' : 'str');
   h.atkBonus = h.atkProf + mod(eff[wpnAb]);
+  if (h.drillBuff?.atk) h.atkBonus += h.drillBuff.atk;
   h.cantripAtkBonus = h.cantripProfile
     ? h.atkProf + mod(eff[cls.attack.ability])
     : h.atkBonus;
+  if (h.drillBuff?.atk && h.cantripProfile) h.cantripAtkBonus += h.drillBuff.atk;
 
   /* casting ability for spell DCs / spell mods (consumed by spells.js) */
   h._classAtk = cls.attack.ability;
@@ -2031,7 +2063,7 @@ export function recalc(h){
      without re-importing RACES. Defaults to 30 ft for legacy/unknown races. */
   /* Gear `move` affixes add feet of COMBAT movement — distinct from `speed`
      above, which is the exploration movement multiplier. */
-  h.speedFt = (race.speedFt || 30) + sum('move');
+  h.speedFt = (race.speedFt || 30) + sum('move') + (rb.move || 0);
 
   /* Flat bonus damage by type from gear (`elemFire`…`elemPsychic`), applied on
      every damaging hit — see heroDamage. Kept as a map so resistance handling
@@ -2162,6 +2194,9 @@ export function buildWeaponProfile(h, item, opts = {}){
     focus: !!item.focus,
     thrown: !!item.thrown,
     light: !!item.light,
+    twoHanded: !!item.twoHanded,
+    heavy: !!item.heavy,
+    visualWeapon: item.visualWeapon || null,
     ...opts
   };
 }
@@ -2192,8 +2227,9 @@ export function buildCantripProfile(h){
   const cls = CLASSES[h.classKey];
   if (!cls.attack || !cls.attack.cantripScale) return null;
   const a = cls.attack;
-  /* Eldritch Spear: the invocation exists to outrange everything else. */
-  const range = a.range + (hasFeature(h, 'eldritchSpear') ? 4 : 0);
+  /* Eldritch Spear: the invocation exists to outrange everything else.
+     Spell Sniper doubles the cantrip's range on top. */
+  const range = (a.range + (hasFeature(h, 'eldritchSpear') ? 4 : 0)) * featCantripRangeMul(h);
   /* Eldritch Blast is the one cantrip that does NOT scale by adding dice to a
      single attack — it adds whole beams, each its own attack roll and each
      carrying Agonizing Blast's CHA on its own. Rolling 4d10 once at level 17
@@ -2245,7 +2281,10 @@ export function pickAttackProfile(h){
     const ms = h.aiPrefs && h.aiPrefs.movementStyle;
     rp = ms === 'kite' ? 0.85 : (ms === 'hold' ? 0.2 : 0.5);
   }
-  if (h.cantripProfile) {
+  /* Silenced: no verbal components, so no cantrip — swing the weapon or fists.
+     (_effects is mirrored onto the hero record by applyEffect.) */
+  const silenced = !!(h._effects && h._effects.silenced);
+  if (h.cantripProfile && !silenced) {
     // Focus weapons (wand/staff) keep the caster on their cantrip
     if (!h.weaponProfile || h.weaponProfile.focus) return h.cantripProfile;
     return Math.random() < rp ? h.cantripProfile : h.weaponProfile;
@@ -2284,7 +2323,22 @@ export function heroDamage(h, crit, profile){
      landed. A landed blow that does nothing reads as a bug to the player even
      when the arithmetic is defensible — and a negative would have HEALED the
      target, since both application paths use `hp -= d`. */
-  return Math.max(1, roll(dice, p.dmg[1], abilityBonus + h.dmgBonus + (h.elemDamageTotal || 0)));
+  /* Great Weapon Fighting rerolls each die that shows a 1 or 2 (once);
+     Savage Attacker rolls the whole set twice and keeps the higher. */
+  const sides = p.dmg[1];
+  const gwf = styleRerollsLowDice(h, p);
+  const rollSet = () => {
+    let t = 0;
+    for (let i = 0; i < dice; i++) {
+      let v = 1 + Math.floor(Math.random() * sides);
+      if (gwf && v <= 2) v = 1 + Math.floor(Math.random() * sides);
+      t += v;
+    }
+    return t;
+  };
+  let diceTotal = rollSet();
+  if (featRerollsDamage(h, p)) diceTotal = Math.max(diceTotal, rollSet());
+  return Math.max(1, diceTotal + abilityBonus + h.dmgBonus + (h.elemDamageTotal || 0) + styleDamageBonus(h, p));
 }
 
 /* level-up: HP grows via recalc; class progression grants features / choices

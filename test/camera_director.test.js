@@ -18,7 +18,12 @@ import {
   CAM_YAW_TURN, CAM_YAW_MARGIN, CAM_OCCLUSION_TILES,
   CAM_ACTION_ZOOM_MAX, CAM_ACTION_MARGIN, CAM_COMBAT_YAW_DWELL, CAM_TURN_COOLDOWN,
   CAM_DEFAULT_PITCH, CAM_ACTION_PITCH, CAM_TACTICAL_PITCH,
-  entityOcclusion, CAM_FREE_SECONDS, CAM_FOCUS_DEADBAND
+  CAM_PITCH_DEADBAND, CAM_PITCH_DWELL, CAM_PITCH_COOLDOWN,
+  entityOcclusion, CAM_FREE_SECONDS, CAM_FOCUS_DEADBAND,
+  groundShift, framingBox, leadPoint, pickClash,
+  CAM_AIM_HEIGHT, CAM_EXPLORE_MARGIN, CAM_EXPLORE_MARGIN_FRAC, CAM_LEAD_MAX, CAM_SUBJECT_HOLD,
+  occlusionTiles, CAM_WALL_HEIGHT, CAM_ORBIT_AMPLITUDE, CAM_ORBIT_PERIOD, CAM_ORBIT_EASE,
+  smoothDamp, CAM_FOCUS_SMOOTH, CAM_EXHALE_HOLD, CAM_EXHALE_EASE, CAM_YAW_TURN_EXPLORE
 } from '../src/game/camera_director.js';
 
 /* The live camera's numbers, so the fit maths is checked at the shape of
@@ -644,5 +649,430 @@ describe('focus smoothing & manual control timeout', () => {
 
   it('provides a generous 7.0s manual control grace period', () => {
     expect(CAM_FREE_SECONDS).toBe(7.0);
+  });
+});
+
+describe('pitch stabilization & oscillation damping', () => {
+  it('absorbs single-frame occlusion flickering without jittering tilt', () => {
+    const st = fresh();
+    const hero = { x: 10, z: 10 };
+    const wallAtZ13 = (x, z) => (x === 10 && z === 13);
+    const clearSight = () => false;
+
+    const p = port({
+      party: [hero], foes: [], entities: [hero],
+      yaw: 0, pitch: CAM_DEFAULT_PITCH
+    });
+
+    let currentPitch = CAM_DEFAULT_PITCH;
+    // Simulate 30 frames of alternating blocked/unblocked flickers (e.g. walking along a picket/tree border)
+    for (let frame = 0; frame < 30; frame++) {
+      const isBlocked = (frame % 2 === 0) ? wallAtZ13 : clearSight;
+      const out = driveCamera(st, { ...p, isBlocked, pitch: currentPitch }, 1 / 60);
+      currentPitch = out.pitch;
+    }
+
+    // Because dwell delay (CAM_PITCH_DWELL) absorbs the flicker, pitch should remain steady at base
+    expect(Math.abs(currentPitch - CAM_DEFAULT_PITCH)).toBeLessThan(0.005);
+  });
+
+  it('smoothly elevates tilt under sustained occlusion after dwell delay', () => {
+    const st = fresh();
+    const hero = { x: 10, z: 10 };
+    const wallAtZ13 = (x, z) => (x === 10 && z === 13);
+
+    const p = port({
+      party: [hero], foes: [], entities: [hero],
+      yaw: 0, pitch: CAM_DEFAULT_PITCH, isBlocked: wallAtZ13
+    });
+
+    let currentPitch = CAM_DEFAULT_PITCH;
+    // Run for 1.2s (72 frames at 60fps) — well past CAM_PITCH_DWELL (0.40s)
+    for (let frame = 0; frame < 72; frame++) {
+      const out = driveCamera(st, { ...p, pitch: currentPitch }, 1 / 60);
+      currentPitch = out.pitch;
+    }
+
+    // After sustained dwell, pitch cleanly rises to look over the wall
+    expect(currentPitch).toBeGreaterThan(CAM_DEFAULT_PITCH + 0.05);
+  });
+});
+
+/* ─────────────── Exploration framing ───────────────
+ * Out of combat the camera centres the party's on-screen box instead of a
+ * floor point, with a margin proportional to the group. These pin down why:
+ * the old fit could not reach MAX zoom even for one hero at a low tilt. */
+describe('screen-box framing', () => {
+  const LOW = 0.45;
+  const explore = (party, over = {}) => frameCamera({
+    party, foes: [], aspect: ASPECT, baseHalf: BASE_HALF, yaw: YAW, pitch: LOW,
+    minZoom: MIN_ZOOM, maxZoom: MAX_ZOOM, restZoom: MAX_ZOOM,
+    framing: 'box', margin: CAM_EXPLORE_MARGIN, marginFrac: CAM_EXPLORE_MARGIN_FRAC, ...over
+  });
+  const clump = [{ x: 0, z: 0 }, { x: 1, z: 0 }, { x: 0, z: 1 }, { x: 1, z: 1 }];
+
+  it('groundShift moves the screen centre by exactly the requested amount', () => {
+    const u = groundShift(1.5, -0.7, YAW, LOW);
+    const o = screenOffset(0, 0, 0, u.x, u.z, YAW, LOW);
+    expect(o.sx).toBeCloseTo(-1.5, 6);
+    expect(o.sy).toBeCloseTo(0.7, 6);
+  });
+
+  it('centres the box: feet and head sit equally far from the middle', () => {
+    const box = framingBox([{ x: 3, z: -2 }], YAW, LOW);
+    const feet = screenOffset(3, 0, -2, box.x, box.z, YAW, LOW);
+    const head = screenOffset(3, 2.4, -2, box.x, box.z, YAW, LOW);
+    expect(feet.sy).toBeCloseTo(-head.sy, 6);
+    expect(box.hy).toBeCloseTo(1.2 * Math.cos(LOW), 6);
+  });
+
+  it('reaches MAX zoom on a lone hero where the floor-point fit cannot', () => {
+    const solo = [{ x: 0, z: 0 }];
+    const old = frameCamera({ party: solo, foes: [], aspect: ASPECT, yaw: YAW, pitch: LOW,
+                              maxZoom: MAX_ZOOM, restZoom: MAX_ZOOM });
+    expect(old.zoomParty).toBeLessThan(MAX_ZOOM);
+    expect(explore(solo).zoom).toBeCloseTo(MAX_ZOOM, 6);
+  });
+
+  it('reaches MAX zoom on a clump of four at a low tilt', () => {
+    const r = explore(clump);
+    expect(r.zoom).toBeCloseTo(MAX_ZOOM, 6);
+    // …and everyone really is inside the frustum, heads included
+    for (const p of clump) for (const h of [0, 2.4]) {
+      const o = screenOffset(p.x, h, p.z, r.x, r.z, YAW, LOW);
+      expect(Math.abs(o.sx)).toBeLessThanOrEqual((BASE_HALF * ASPECT) / r.zoom);
+      expect(Math.abs(o.sy)).toBeLessThanOrEqual(BASE_HALF / r.zoom);
+    }
+  });
+
+  it('still stops at the exploration zoom the player chose', () => {
+    expect(explore(clump, { restZoom: 6 }).zoom).toBeCloseTo(6, 6);
+  });
+
+  it('pulls back for a strung-out party rather than cropping it', () => {
+    const line = [{ x: 0, z: 0 }, { x: 4, z: 4 }, { x: 8, z: 8 }, { x: 12, z: 12 }];
+    const r = explore(line);
+    expect(r.zoom).toBeLessThan(MAX_ZOOM);
+    for (const p of line) {
+      const o = screenOffset(p.x, 2.4, p.z, r.x, r.z, YAW, LOW);
+      expect(Math.abs(o.sy)).toBeLessThanOrEqual(BASE_HALF / r.zoom);
+    }
+  });
+
+  it('leans the frame toward the look-ahead point', () => {
+    const still = explore([{ x: 0, z: 0 }]);
+    const walking = explore([{ x: 0, z: 0 }], { lead: { x: 2, z: 0, h: 0 } });
+    expect(walking.x).toBeGreaterThan(still.x);
+  });
+
+  it('frames a hero on raised ground by their actual head', () => {
+    const flat = framingExtent([{ x: 0, z: 0 }], 0, 0, YAW, PITCH);
+    const dais = framingExtent([{ x: 0, z: 0, y: 2 }], 0, 0, YAW, PITCH);
+    expect(dais.hy).toBeCloseTo(flat.hy + 2 * Math.cos(PITCH), 6);
+  });
+});
+
+describe('combat aim height', () => {
+  it('aiming at mid-body lets a lone hero be framed tighter', () => {
+    const solo = [{ x: 0, z: 0 }];
+    const feet = frameCamera({ party: solo, foes: [], restZoom: 99, maxZoom: 99 });
+    const mid  = frameCamera({ party: solo, foes: [], restZoom: 99, maxZoom: 99, aimY: CAM_AIM_HEIGHT });
+    expect(mid.zoomParty).toBeGreaterThan(feet.zoomParty);
+  });
+
+  it('turns the raised aim into a ground point further from the camera', () => {
+    const r = frameCamera({ party: [{ x: 0, z: 0 }], foes: [], focus: { x: 0, z: 0 },
+                           yaw: YAW, pitch: PITCH, aimY: CAM_AIM_HEIGHT });
+    // the camera sits toward +(sin yaw, cos yaw); the aim point moves away from it
+    expect(r.x * Math.sin(YAW) + r.z * Math.cos(YAW)).toBeLessThan(0);
+    // and the mid-body point lands in the centre of the screen
+    const o = screenOffset(0, CAM_AIM_HEIGHT, 0, r.x, r.z, YAW, PITCH);
+    expect(o.sx).toBeCloseTo(0, 6);
+    expect(o.sy).toBeCloseTo(0, 6);
+  });
+});
+
+describe('explicit focus is final', () => {
+  it('does not blend the clash in a second time', () => {
+    const party = [{ x: 0, z: 0 }], foes = [{ x: 6, z: 0 }];
+    const r = frameCamera({ party, foes, focus: { x: 1, z: 0 },
+                           action: { actor: party[0], target: foes[0], intensity: 1 } });
+    expect(r.x).toBe(1);
+    expect(r.z).toBe(0);
+  });
+});
+
+describe('look-ahead', () => {
+  it('is absent while the leader stands still', () => {
+    const st = {};
+    let lead;
+    for (let i = 0; i < 30; i++) lead = leadPoint(st, { x: 5, z: 5 }, 1 / 30);
+    expect(lead).toBeNull();
+  });
+
+  it('leads in the direction of travel, capped', () => {
+    const st = {};
+    let lead, x = 0;
+    for (let i = 0; i < 120; i++) { x += 6 / 30; lead = leadPoint(st, { x, z: 0 }, 1 / 30); }
+    expect(lead.x).toBeGreaterThan(x);
+    expect(lead.x - x).toBeLessThanOrEqual(CAM_LEAD_MAX + 1e-9);
+    expect(lead.z).toBeCloseTo(0, 6);
+  });
+
+  it('treats a teleport as a teleport, not a sprint', () => {
+    const st = {};
+    leadPoint(st, { x: 0, z: 0 }, 1 / 30);
+    expect(leadPoint(st, { x: 40, z: 0 }, 1 / 30)).toBeNull();
+  });
+});
+
+describe('picking the clash', () => {
+  const hero = { x: 0, z: 0, data: { hp: 10 } };
+  const goblin = { x: 3, z: 0, active: true, data: { hp: 5 } };
+  const orc = { x: -6, z: 0, active: true, data: { hp: 9 } };
+
+  it('prefers a swing in progress and holds it after the lunge ends', () => {
+    const st = {};
+    const striker = { ...hero, lungeT: 0.2, target: goblin };
+    const a = pickClash(st, { heroes: [striker], monsters: [goblin, orc], now: 0, curActor: orc });
+    expect(a.actor).toBe(striker);
+    expect(a.target).toBe(goblin);
+    expect(a.striking).toBe(true);
+    // lunge over, initiative has moved on to the orc — the hold keeps the shot
+    striker.lungeT = 0;
+    const b = pickClash(st, { heroes: [striker], monsters: [goblin, orc], now: CAM_SUBJECT_HOLD / 2, curActor: orc });
+    expect(b.target).toBe(goblin);
+    const c = pickClash(st, { heroes: [striker], monsters: [goblin, orc], now: CAM_SUBJECT_HOLD + 0.1, curActor: orc });
+    expect(c.target).toBe(orc);
+  });
+
+  it('takes only the hero from a targeting mode, never the pointer-driven target', () => {
+    const st = {};
+    const party = [hero], foes = [goblin, orc];
+    const r = pickClash(st, { heroes: [hero], monsters: foes, party, foes, targetingHero: hero });
+    expect(r.actor).toBe(hero);
+    expect(r.target).toBe(goblin);   // the closest, not whatever is under the cursor
+  });
+
+  it('resetDirector clears the subject, intensity and look-ahead too', () => {
+    const st = { subject: { actor: hero }, subjectUntil: 9, intensity: 0.8, leadPX: 1, leadVX: 3 };
+    resetDirector(st);
+    expect(st.subject).toBeNull();
+    expect(st.intensity).toBe(0);
+    expect(st.leadPX).toBeNull();
+    expect(st.leadVX).toBe(0);
+    expect(st.pitchGoal).toBeNull();
+  });
+});
+
+describe('low exploration angle', () => {
+  const LOW = 0.44;
+  const hero = { x: 10, z: 10 };
+  // yaw 0: the camera sits toward +Z, so a wall two tiles in front is at z 12
+  const wallInFront = (x, z) => (x === 10 && z === 12);
+
+  it('looks further for walls the lower the camera sits', () => {
+    expect(occlusionTiles(0.64)).toBe(CAM_OCCLUSION_TILES);
+    expect(occlusionTiles(LOW)).toBeGreaterThan(occlusionTiles(0.64));
+    expect(CAM_WALL_HEIGHT).toBeLessThan(2.5);
+  });
+
+  it('settles on the exploration tilt it is given', () => {
+    const st = fresh();
+    let pitch = CAM_DEFAULT_PITCH;
+    for (let i = 0; i < 240; i++) {
+      pitch = driveCamera(st, port({ party: [hero], restPitch: LOW, pitch, yaw: 0 }), 1 / 60).pitch;
+    }
+    expect(pitch).toBeCloseTo(LOW, 2);
+  });
+
+  it('holds the low angle behind a wall when the cutaway is on', () => {
+    const run = cutaway => {
+      const st = fresh();
+      let pitch = LOW;
+      for (let i = 0; i < 120; i++) {
+        pitch = driveCamera(st, port({ party: [hero], entities: [hero], restPitch: LOW, pitch,
+                                       yaw: 0, isBlocked: wallInFront, cutaway }), 1 / 60).pitch;
+      }
+      return pitch;
+    };
+    expect(run(true)).toBeCloseTo(LOW, 3);
+    expect(run(false)).toBeGreaterThan(LOW + 0.05);   // the fallback still lifts
+  });
+});
+
+describe('exploration orbit', () => {
+  const run = (st, frames, over = {}, dt = 1 / 60) => {
+    let p = port({ party: [{ x: 0, z: 0 }], orbit: true, ...over }), out = null;
+    const yaws = [];
+    for (let i = 0; i < frames; i++) {
+      out = driveCamera(st, p, dt);
+      p = { ...p, yaw: out.yaw, targetX: out.x, targetZ: out.z, zoom: out.zoom, pitch: out.pitch };
+      yaws.push(out.yaw);
+    }
+    return { out, p, yaws };
+  };
+
+  it('sways around the base yaw, never further than the amplitude', () => {
+    const { yaws } = run(fresh(), 60 * CAM_ORBIT_PERIOD * 2);
+    const offs = yaws.map(y => shortestTurn(YAW, y));
+    expect(Math.max(...offs)).toBeGreaterThan(CAM_ORBIT_AMPLITUDE * 0.95);
+    expect(Math.min(...offs)).toBeLessThan(-CAM_ORBIT_AMPLITUDE * 0.95);
+    for (const o of offs) expect(Math.abs(o)).toBeLessThanOrEqual(CAM_ORBIT_AMPLITUDE + 1e-9);
+  });
+
+  it('is gentle: no frame turns faster than a couple of degrees a second', () => {
+    const { yaws } = run(fresh(), 60 * CAM_ORBIT_PERIOD);
+    let peak = 0;
+    for (let i = 1; i < yaws.length; i++) peak = Math.max(peak, Math.abs(yaws[i] - yaws[i - 1]) * 60);
+    expect(peak).toBeLessThan(3 * Math.PI / 180);
+  });
+
+  it('does not sway in combat, and settles back to the base when combat starts', () => {
+    const st = fresh();
+    const a = run(st, 60 * 20);                       // well into a swing
+    expect(Math.abs(shortestTurn(YAW, a.out.yaw))).toBeGreaterThan(0.05);
+    const b = run(st, 60 * (CAM_ORBIT_EASE + 0.5), { yaw: a.out.yaw, orbit: false });
+    expect(shortestTurn(YAW, b.out.yaw)).toBeCloseTo(0, 6);
+    expect(st.orbitPhase).toBe(0);                    // the next sway starts from the base
+  });
+
+  it('holds still where it is while the player is pointing, then resumes', () => {
+    const st = fresh();
+    const a = run(st, 60 * 20);
+    const held = run(st, 60 * 3, { yaw: a.out.yaw, orbitHold: true });
+    const last = held.yaws.slice(-30);
+    expect(Math.abs(last[last.length - 1] - last[0])).toBeLessThan(1e-4);   // stopped…
+    expect(Math.abs(shortestTurn(YAW, held.out.yaw))).toBeGreaterThan(0.05); // …off-centre, not swung home
+    const resumed = run(st, 60 * 5, { yaw: held.out.yaw });
+    expect(Math.abs(resumed.out.yaw - held.out.yaw)).toBeGreaterThan(1e-3);
+  });
+
+  it('rides on top of a committed quarter turn without disturbing it', () => {
+    const wallAtNE = (x, z) => x > 1.5 && z > 1.5;
+    const st = fresh();
+    // cutaway on, so the tilt stays put and the wall really has to be turned around
+    const { out } = run(st, 60 * (CAM_YAW_DWELL + CAM_YAW_TURN + 1),
+                        { autoRotate: true, isBlocked: wallAtNE, cutaway: true });
+    expect(st.turnT).toBeNull();
+    // whatever the sway adds, the base under it is an exact quarter turn
+    const baseYaw = out.yaw - st.orbitOffset;
+    const quarters = Math.abs(shortestTurn(YAW, baseYaw)) / (Math.PI / 2);
+    expect(quarters).toBeCloseTo(Math.round(quarters), 3);
+    expect(Math.round(quarters)).toBe(1);
+  });
+
+  it('does not jump when the director resumes after the player orbits by hand', () => {
+    const st = fresh();
+    const a = run(st, 60 * 20);
+    const handYaw = a.out.yaw + 0.7;                  // the player dragged the camera
+    const next = run(st, 1, { yaw: handYaw }).out;
+    expect(Math.abs(next.yaw - handYaw)).toBeLessThan(1e-3);
+  });
+
+  it('resetDirector drops the sway', () => {
+    const st = fresh();
+    run(st, 60 * 20);
+    resetDirector(st);
+    expect(st.orbitOffset).toBe(0);
+    expect(st.orbitEnv).toBe(0);
+  });
+});
+
+describe('critically damped springs', () => {
+  it('never overshoots its target', () => {
+    let v = 0, x = 0, peak = 0;
+    for (let i = 0; i < 600; i++) { [x, v] = smoothDamp(x, 10, v, 0.5, 1 / 60); peak = Math.max(peak, x); }
+    expect(peak).toBeLessThanOrEqual(10);
+    expect(x).toBeCloseTo(10, 4);
+  });
+
+  it('eases out of rest instead of lurching off at full speed', () => {
+    // the old smoothing moved min(1, dt*k) of the way on the very first frame
+    const [x] = smoothDamp(0, 10, 0, CAM_FOCUS_SMOOTH, 1 / 60);
+    const oldLerp = 10 * (1 / 60) * 1.8;
+    expect(x).toBeGreaterThan(0);
+    expect(x).toBeLessThan(oldLerp / 2);
+  });
+
+  it('moves the same at 60 Hz and 144 Hz', () => {
+    const sim = hz => {
+      let x = 0, v = 0;
+      for (let i = 0; i < hz; i++) [x, v] = smoothDamp(x, 10, v, 0.5, 1 / hz);
+      return x;
+    };
+    expect(Math.abs(sim(60) - sim(144))).toBeLessThan(0.02);
+  });
+
+  it('drives the director the same at 60 Hz and 144 Hz', () => {
+    const at = hz => settle(fresh(), { party: [{ x: 0, z: 0 }], foes: [{ x: 30, z: 0 }] }, 0.8, 1 / hz).out;
+    const a = at(60), b = at(144);
+    expect(Math.abs(Math.log(a.zoom / b.zoom))).toBeLessThan(0.01);
+    expect(Math.abs(a.x - b.x)).toBeLessThan(0.05);
+  });
+
+  it('forgets its velocity when something else moves the camera', () => {
+    const st = fresh();
+    const p = port({ party: [{ x: 20, z: 20 }] });
+    let out = null, q = p;
+    for (let i = 0; i < 20; i++) { out = driveCamera(st, q, 1 / 60); q = { ...q, targetX: out.x, targetZ: out.z, zoom: out.zoom }; }
+    expect(Math.abs(st.focusVX)).toBeGreaterThan(0);
+    const dragged = q.targetX - 5;                                // the player dragged the view
+    driveCamera(st, { ...q, targetX: dragged }, 1 / 60);
+    // the spring restarted from rest at the dragged position
+    const [, fromRest] = smoothDamp(dragged, st.focusGoalX, 0, CAM_FOCUS_SMOOTH, 1 / 60);
+    expect(st.focusVX).toBeCloseTo(fromRest, 9);
+  });
+});
+
+describe('the exhale after a fight', () => {
+  const party = [{ x: 0, z: 0 }, { x: 1, z: 1 }];
+  const fight = { party, foes: [{ x: 18, z: 0 }], framing: 'focus', restZoom: DEFAULT_ZOOM };
+  const calm = { party, foes: [], framing: 'box', restZoom: MAX_ZOOM, restPitch: 0.44,
+                 margin: CAM_EXPLORE_MARGIN, marginFrac: CAM_EXPLORE_MARGIN_FRAC };
+  const drive = (st, over, seconds, start) => {
+    let p = start ? { ...start, ...over } : port(over), out = null;
+    const zooms = [], pitches = [];
+    for (let i = 0; i < Math.round(seconds * 60); i++) {
+      out = driveCamera(st, p, 1 / 60);
+      p = { ...p, targetX: out.x, targetZ: out.z, zoom: out.zoom, pitch: out.pitch, yaw: out.yaw };
+      zooms.push(out.zoom); pitches.push(out.pitch);
+    }
+    return { out, p, zooms, pitches };
+  };
+
+  it('holds the fight\'s zoom and tilt, then eases in to the close shot', () => {
+    const st = fresh();
+    const f = drive(st, fight, 6);
+    const held = drive(st, calm, CAM_EXHALE_HOLD - 0.1, f.p);
+    expect(Math.abs(Math.log(held.out.zoom / f.out.zoom))).toBeLessThan(0.02);
+    expect(held.out.pitch).toBeCloseTo(f.out.pitch, 2);
+    const eased = drive(st, calm, CAM_EXHALE_EASE + 3, held.p);
+    expect(eased.out.zoom).toBeGreaterThan(f.out.zoom * 1.2);
+    expect(eased.out.pitch).toBeCloseTo(0.44, 2);
+    expect(st.exhaleT).toBeNull();
+  });
+
+  it('never holds a zoom that would crop a hero', () => {
+    const st = fresh();
+    const f = drive(st, { ...fight, foes: [{ x: 1, z: 0 }], actionZoom: true,
+                          action: { actor: party[0], target: { x: 1, z: 0 }, intensity: 1 } }, 3);
+    // the party scatters just as the fight ends
+    const spread = [{ x: -9, z: -9 }, { x: 9, z: 9 }];
+    drive(st, { ...calm, party: spread }, 0.3, f.p);
+    const fit = frameCamera({ party: spread, foes: [], framing: 'box', margin: CAM_EXPLORE_MARGIN,
+                              marginFrac: CAM_EXPLORE_MARGIN_FRAC, maxZoom: MAX_ZOOM, restZoom: MAX_ZOOM,
+                              yaw: f.p.yaw, pitch: f.p.pitch });
+    expect(st.zoomGoal).toBeLessThanOrEqual(fit.zoomParty + 1e-9);
+  });
+
+  it('takes its time over a quarter turn while exploring', () => {
+    const wallAtNE = (x, z) => x > 1.5 && z > 1.5;
+    const st = fresh();
+    drive(st, { party: [{ x: 0, z: 0 }], framing: 'box', autoRotate: true,
+                isBlocked: wallAtNE, cutaway: true }, CAM_YAW_DWELL + 0.1);
+    expect(st.turnT).not.toBeNull();
+    expect(st.turnDur).toBe(CAM_YAW_TURN_EXPLORE);
+    expect(CAM_YAW_TURN_EXPLORE).toBeGreaterThan(CAM_YAW_TURN);
   });
 });

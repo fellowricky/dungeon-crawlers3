@@ -574,5 +574,461 @@
   "role": "boss",
   "slug": "cerement_guardian",
   "variants": 4
+ },
+ {
+  "folder": "vg5b_1_redcap",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "warrior",
+  "slug": "redcap",
+  "variants": 4
+ },
+ {
+  "folder": "vg5b_2_blight_fairy",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "ranged",
+  "slug": "blight_fairy",
+  "variants": 4
+ },
+ {
+  "folder": "vg5b_3_bog_daughter",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "caster",
+  "slug": "bog_daughter",
+  "variants": 4
+ },
+ {
+  "folder": "vg5b_4_bog_toad",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "tank",
+  "slug": "bog_toad",
+  "variants": 4
+ },
+ {
+  "folder": "vg5b_5_bog_hound",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "elite",
+  "slug": "bog_hound",
+  "variants": 4
+ },
+ {
+  "folder": "vg5rb_5_bog_hound_a",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "elite",
+  "slug": "bog_hound_a",
+  "variants": 4
+ },
+ {
+  "folder": "vg5rb_5_bog_hound_b",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "elite",
+  "slug": "bog_hound_b",
+  "variants": 4
+ },
+ {
+  "folder": "vg5sb_5_bog_hound_c",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "elite",
+  "slug": "bog_hound_c",
+  "variants": 4
+ },
+ {
+  "folder": "vg5sb_5_bog_hound_d",
+  "faction": "BlackbogCourt",
+  "level": 5,
+  "role": "elite",
+  "slug": "bog_hound_d",
+  "variants": 4
+ },
+ {
+  "folder": "ov0_01_axe_beak",
+  "faction": "Moor",
+  "level": 1,
+  "role": "warrior",
+  "slug": "axe_beak",
+  "variants": 4
+ },
+ {
+  "folder": "ov0_02_blood_hawk",
+  "faction": "Moor",
+  "level": 1,
+  "role": "warrior",
+  "slug": "blood_hawk",
+  "variants": 4
+ },
+ {
+  "folder": "ov0_03_leucrotta",
+  "faction": "Moor",
+  "level": 3,
+  "role": "elite",
+  "slug": "leucrotta",
+  "variants": 4
+ },
+ {
+  "folder": "ov0_04_peryton",
+  "faction": "Moor",
+  "level": 2,
+  "role": "elite",
+  "slug": "peryton",
+  "variants": 4
+ },
+ {
+  "folder": "ov1_01_quickling",
+  "faction": "Forest",
+  "level": 1,
+  "role": "elite",
+  "slug": "quickling",
+  "variants": 4
+ },
+ {
+  "folder": "ov1_02_leshy",
+  "faction": "Forest",
+  "level": 3,
+  "role": "caster",
+  "slug": "leshy",
+  "variants": 4
+ },
+ {
+  "folder": "ov1_03_phase_panther",
+  "faction": "Forest",
+  "level": 3,
+  "role": "elite",
+  "slug": "phase_panther",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_01_bullywug",
+  "faction": "Mire",
+  "level": 1,
+  "role": "warrior",
+  "slug": "bullywug",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_02_kelpie",
+  "faction": "Mire",
+  "level": 4,
+  "role": "elite",
+  "slug": "kelpie",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_03_catoblepas",
+  "faction": "Mire",
+  "level": 5,
+  "role": "tank",
+  "slug": "catoblepas",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_04_froghemoth",
+  "faction": "Mire",
+  "level": 10,
+  "role": "boss",
+  "slug": "froghemoth",
+  "variants": 4
+ },
+ {
+  "folder": "ov3_01_mastiff",
+  "faction": "Holdfast",
+  "level": 1,
+  "role": "warrior",
+  "slug": "mastiff",
+  "variants": 4
+ },
+ {
+  "folder": "ov3_02_berserker",
+  "faction": "Holdfast",
+  "level": 2,
+  "role": "warrior",
+  "slug": "berserker",
+  "variants": 4
+ },
+ {
+  "folder": "ov3_03_scarecrow",
+  "faction": "Holdfast",
+  "level": 1,
+  "role": "warrior",
+  "slug": "scarecrow",
+  "variants": 4
+ },
+ {
+  "folder": "ov4_01_crawling_claw",
+  "faction": "Boneyard",
+  "level": 1,
+  "role": "warrior",
+  "slug": "crawling_claw",
+  "variants": 4
+ },
+ {
+  "folder": "ov4_02_revenant",
+  "faction": "Boneyard",
+  "level": 5,
+  "role": "elite",
+  "slug": "revenant",
+  "variants": 4
+ },
+ {
+  "folder": "ov4_03_banshee",
+  "faction": "Boneyard",
+  "level": 4,
+  "role": "caster",
+  "slug": "banshee",
+  "variants": 4
+ },
+ {
+  "folder": "ov4_04_dullahan",
+  "faction": "Boneyard",
+  "level": 6,
+  "role": "boss",
+  "slug": "dullahan",
+  "variants": 4
+ },
+ {
+  "folder": "ov5_01_jackalwere",
+  "faction": "Ruinfield",
+  "level": 1,
+  "role": "warrior",
+  "slug": "jackalwere",
+  "variants": 4
+ },
+ {
+  "folder": "ov5_02_helmed_horror",
+  "faction": "Ruinfield",
+  "level": 4,
+  "role": "tank",
+  "slug": "helmed_horror",
+  "variants": 4
+ },
+ {
+  "folder": "ov5_03_galeb_duhr",
+  "faction": "Ruinfield",
+  "level": 6,
+  "role": "tank",
+  "slug": "galeb_duhr",
+  "variants": 4
+ },
+ {
+  "folder": "ov6_01_firenewt_warrior",
+  "faction": "Ashfield",
+  "level": 1,
+  "role": "warrior",
+  "slug": "firenewt_warrior",
+  "variants": 4
+ },
+ {
+  "folder": "ov6_02_fire_snake",
+  "faction": "Ashfield",
+  "level": 1,
+  "role": "warrior",
+  "slug": "fire_snake",
+  "variants": 4
+ },
+ {
+  "folder": "ov6_03_nightmare",
+  "faction": "Ashfield",
+  "level": 3,
+  "role": "elite",
+  "slug": "nightmare",
+  "variants": 4
+ },
+ {
+  "folder": "ov7_01_yeti",
+  "faction": "Snowfield",
+  "level": 3,
+  "role": "warrior",
+  "slug": "yeti",
+  "variants": 4
+ },
+ {
+  "folder": "ov7_02_abominable_yeti",
+  "faction": "Snowfield",
+  "level": 9,
+  "role": "boss",
+  "slug": "abominable_yeti",
+  "variants": 4
+ },
+ {
+  "folder": "ov8_01_gas_spore",
+  "faction": "Sporewood",
+  "level": 1,
+  "role": "warrior",
+  "slug": "gas_spore",
+  "variants": 4
+ },
+ {
+  "folder": "ov8_02_tri_flower_frond",
+  "faction": "Sporewood",
+  "level": 1,
+  "role": "caster",
+  "slug": "tri_flower_frond",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_01_bandit_cutthroat",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "warrior",
+  "slug": "bandit_cutthroat",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_02_bandit_archer",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "ranged",
+  "slug": "bandit_archer",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_03_bandit_cutpurse",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "warrior",
+  "slug": "bandit_cutpurse",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_04_bandit_crossbowman",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "ranged",
+  "slug": "bandit_crossbowman",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_05_bandit_shieldman",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "tank",
+  "slug": "bandit_shieldman",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_06_bandit_bruiser",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "warrior",
+  "slug": "bandit_bruiser",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_07_bandit_poacher",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "ranged",
+  "slug": "bandit_poacher",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_08_bandit_duelist",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "elite",
+  "slug": "bandit_duelist",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_09_bandit_hedge_mage",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "caster",
+  "slug": "bandit_hedge_mage",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_10_bandit_hexer",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "caster",
+  "slug": "bandit_hexer",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_11_bandit_hedge_priest",
+  "faction": "Bandits",
+  "level": 1,
+  "role": "caster",
+  "slug": "bandit_hedge_priest",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_12_bandit_sellsword",
+  "faction": "Bandits",
+  "level": 2,
+  "role": "elite",
+  "slug": "bandit_sellsword",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_13_bandit_captain",
+  "faction": "Bandits",
+  "level": 2,
+  "role": "boss",
+  "slug": "bandit_captain",
+  "variants": 4
+ },
+ {
+  "folder": "ov9_14_bandit_queen",
+  "faction": "Bandits",
+  "level": 4,
+  "role": "boss",
+  "slug": "bandit_queen",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_05_bullywug_croaker",
+  "faction": "Mire",
+  "level": 1,
+  "role": "caster",
+  "slug": "bullywug_croaker",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_06_bullywug_blowgunner",
+  "faction": "Mire",
+  "level": 1,
+  "role": "ranged",
+  "slug": "bullywug_blowgunner",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_07_bullywug_shellback",
+  "faction": "Mire",
+  "level": 1,
+  "role": "tank",
+  "slug": "bullywug_shellback",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_08_bullywug_frog_rider",
+  "faction": "Mire",
+  "level": 1,
+  "role": "elite",
+  "slug": "bullywug_frog_rider",
+  "variants": 4
+ },
+ {
+  "folder": "ov2_09_bullywug_bog_king",
+  "faction": "Mire",
+  "level": 3,
+  "role": "boss",
+  "slug": "bullywug_bog_king",
+  "variants": 4
+ },
+ {
+  "folder": "vd8_4_fen_shellback",
+  "faction": "HydraSworn",
+  "level": 8,
+  "role": "tank",
+  "slug": "fen_shellback",
+  "variants": 8
  }
 ]

@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LPC 128×128 Krea2 Production Orchestrator Studio</title>
+  <style>
+    :root {
+      --bg-0: #0d0c11;
+      --bg-1: #14121a;
+      --bg-2: #1c1926;
+      --bg-3: #262235;
+      --border: #332d46;
+      --text: #eae6f2;
+      --muted: #9a92ad;
+      --accent: #d9a441;
+      --accent-dim: rgba(217, 164, 65, 0.16);
+      --green: #4cd964;
+      --green-dim: rgba(76, 217, 100, 0.16);
+      --blue: #5aa0f0;
+      --blue-dim: rgba(90, 160, 240, 0.16);
+      --purple: #b06cf0;
+      --red: #e74c3c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-0);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Header */
+    header {
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      color: var(--accent);
+    }
+    .brand span.sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--bg-2);
+    }
+    .pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .pill.online .dot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .pill.offline .dot { background: var(--red); }
+    .pill.running { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .pill.running .dot { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    button {
+      background: var(--bg-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover:not(:disabled) {
+      background: var(--bg-3);
+      border-color: var(--accent);
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    button.btn-primary {
+      background: var(--accent);
+      color: #120e17;
+      border-color: var(--accent);
+    }
+    button.btn-primary:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+    button.btn-success {
+      background: rgba(76, 217, 100, 0.2);
+      color: var(--green);
+      border-color: var(--green);
+    }
+    button.btn-danger {
+      background: rgba(231, 76, 60, 0.18);
+      color: #ff7b6e;
+      border-color: var(--red);
+    }
+
+    /* Telemetry Strip */
+    .telemetry-bar {
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 18px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr) 1.3fr;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .stat-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-card .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .stat-card .val {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .stat-card .val small {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .progress-track {
+      height: 5px;
+      background: var(--bg-0);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+
+    /* Batch Bar */
+    .batch-bar {
+      background: var(--bg-2);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+      font-size: 12px;
+    }
+    .batch-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Main Layout */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 430px 1fr;
+      overflow: hidden;
+    }
+
+    /* Sidebar Catalog */
+    .catalog-pane {
+      background: var(--bg-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .filter-box {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: var(--bg-2);
+    }
+    .filter-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+    input[type="text"], input[type="number"], select, textarea {
+      background: var(--bg-0);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 6px 9px;
+      font-size: 12px;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .catalog-count {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .catalog-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cat-item {
+      background: var(--bg-2);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transition: background 0.12s;
+    }
+    .cat-item:hover {
+      background: var(--bg-3);
+    }
+    .cat-item.selected {
+      border-color: var(--accent);
+      background: rgba(217, 164, 65, 0.1);
+    }
+    .cat-row-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+    .cat-id {
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .cat-row-bot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .sheet-pills {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+    .sp {
+      font-size: 10px;
+      font-family: monospace;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: var(--bg-0);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .sp.done {
+      background: var(--green-dim);
+      color: var(--green);
+      border-color: rgba(76, 217, 100, 0.45);
+    }
+    .badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge.done { background: var(--green-dim); color: var(--green); }
+    .badge.partial { background: var(--blue-dim); color: var(--blue); }
+    .badge.queued { background: var(--accent-dim); color: var(--accent); }
+    .badge.running { background: var(--accent); color: #111; }
+    .badge.pending { background: rgba(255,255,255,0.06); color: var(--muted); }
+    .badge.error { background: rgba(231, 76, 60, 0.2); color: #ff7b6e; }
+
+    /* Right Inspector Pane */
+    .inspector-pane {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-0);
+    }
+    .tabs-bar {
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      padding: 0 18px;
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      padding: 11px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .tab-btn:hover {
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: none;
+    }
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Inspector Header Card */
+    .item-header-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .item-title-block h2 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      font-family: 'Consolas', monospace;
+      color: var(--accent);
+    }
+    .item-meta-tags {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Preview Grid */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .preview-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .preview-card h3 {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .canvas-stage {
+      background-color: #141218;
+      background-image:
+        linear-gradient(45deg, #1c1924 25%, transparent 25%),
+        linear-gradient(-45deg, #1c1924 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1c1924 75%),
+        linear-gradient(-45deg, transparent 75%, #1c1924 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+    canvas {
+      image-rendering: pixelated;
+    }
+    .anim-toolbar {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .sheet-compare-box {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sheet-scroll {
+      overflow: auto;
+      max-height: 360px;
+      background: #141218;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .sheet-scroll img {
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    /* Params Form */
+    .params-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .field label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .tiles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .tile-pair {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tile-pair .imgs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .tile-pair img {
+      width: 100%;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      image-rendering: pixelated;
+    }
+    .log-box {
+      background: #09080c;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      color: #b8b2c8;
+      height: 280px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>LPC 128×128 PRODUCTION ORCHESTRATOR</h1>
+      <span class="sub">Krea2 Modular Paper-Doll Pipeline · 0.75× Heroic Head · Scale2x Lossless Alpha</span>
+    </div>
+    <div class="header-controls">
+      <div id="comfyPill" class="pill"><span class="dot"></span> <span id="comfyText">ComfyUI Checking...</span></div>
+      <div id="workerPill" class="pill"><span class="dot"></span> <span id="workerText">Worker Idle</span></div>
+      <button id="btnStart" class="btn-success" onclick="startWorker()">▶ Start Queue</button>
+      <button id="btnPause" onclick="stopWorker(false)" disabled>⏸ Pause</button>
+      <button id="btnStop" class="btn-danger" onclick="stopWorker(true)" disabled>⏹ Stop & Interrupt</button>
+      <button onclick="rescanDisk()">↻ Refresh Disk</button>
+    </div>
+  </header>
+
+  <section class="telemetry-bar">
+    <div class="stat-card">
+      <div class="label"><span>Catalog Items</span> <span id="itemsPct">0%</span></div>
+      <div class="val"><span id="itemsDone">0</span> / <span id="itemsTotal">423</span> <small id="itemsPartial">0 partial</small></div>
+      <div class="progress-track"><div id="itemsBar" class="progress-fill"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Upgraded PNG Sheets</span> <span id="sheetsPct">0%</span></div>
+      <div class="val"><span id="sheetsDone">0</span> / <span id="sheetsTotal">2694</span> <small>in public/lpc_128/</small></div>
+      <div class="progress-track"><div id="sheetsBar" class="progress-fill"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Tier 1: Heads / Hair / Helms</span> <span id="t1Rem">0 passes left</span></div>
+      <div class="val"><span id="t1Done">0</span> / <span id="t1Total">210</span> <small id="t1Eta">~7m total</small></div>
+      <div class="progress-track"><div id="t1Bar" class="progress-fill"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Total ComfyUI Passes</span> <span id="avgSec">~1.9s / pass</span></div>
+      <div class="val"><span id="passesDone">0</span> / <span id="passesTotal">4287</span> <small id="etaAll">ETA ~2.2h</small></div>
+      <div class="progress-track"><div id="passesBar" class="progress-fill"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Active Job Queue</span> <span id="queuePasses">0 passes</span></div>
+      <div class="val"><span id="queueCount">0</span> queued <small id="queueEta">ETA 0m</small></div>
+      <div style="font-size:11px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="currentJobText">Idle — Ready to orchestrate</div>
+    </div>
+  </section>
+
+  <section class="batch-bar">
+    <div class="batch-group">
+      <strong style="color:var(--accent)">Quick Batch Queue:</strong>
+      <button onclick="queueTier('tier1_heads')">+ Tier 1: All Heads, Hair, Beards & Helms (210 items · ~7 min)</button>
+      <button onclick="queueTier('tier2_core_gear')">+ Tier 2: Active Game Bodies, Armor & Weapons</button>
+      <button onclick="queueTier('tier3_full_catalog')">+ Tier 3: Remaining Catalog</button>
+      <button onclick="queueFiltered()">+ Queue Currently Filtered List (<span id="filteredBtnCount">0</span>)</button>
+    </div>
+    <div class="batch-group">
+      <button onclick="clearQueue()">✕ Clear Queue</button>
+    </div>
+  </section>
+
+  <div class="workspace">
+    <!-- Left Sidebar: Catalog -->
+    <aside class="catalog-pane">
+      <div class="filter-box">
+        <input type="text" id="searchInput" placeholder="Search item path (e.g. plate, waraxe, messy1, beard)..." oninput="renderCatalog()" />
+        <div class="filter-row">
+          <select id="filterStatus" onchange="renderCatalog()">
+            <option value="all">All Statuses</option>
+            <option value="done">✓ Done (All Sheets)</option>
+            <option value="partial">◐ Partial (PoC Sheets)</option>
+            <option value="queued">⏳ Queued</option>
+            <option value="pending">○ Pending</option>
+            <option value="error">⚠ Error</option>
+          </select>
+          <select id="filterTier" onchange="renderCatalog()">
+            <option value="all">All Tiers</option>
+            <option value="tier1_heads">Tier 1: Heads/Hair/Hats</option>
+            <option value="tier2_core_gear">Tier 2: Core Game Gear</option>
+            <option value="tier3_full_catalog">Tier 3: Secondary</option>
+          </select>
+          <select id="filterCat" onchange="renderCatalog()">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+        <div class="catalog-count">
+          <span id="showingCount">Showing 0 items</span>
+          <span>Click any item to inspect & preview</span>
+        </div>
+      </div>
+      <div id="catalogList" class="catalog-list"></div>
+    </aside>
+
+    <!-- Right Workspace: Inspector -->
+    <main class="inspector-pane">
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="switchTab('preview', this)">1. Live 4-Dir Animation & Sheet Preview</button>
+        <button class="tab-btn" onclick="switchTab('recipe', this)">2. ComfyUI Paper-Doll Tiles & Recipe</button>
+        <button class="tab-btn" onclick="switchTab('queue', this)">3. Active Queue & Live Console (<span id="tabQueueBadge">0</span>)</button>
+      </div>
+
+      <!-- TAB 1: PREVIEW -->
+      <div id="tab-preview" class="tab-content active">
+        <div class="item-header-card">
+          <div class="item-title-block">
+            <h2 id="inspId">Select an item...</h2>
+            <div class="item-meta-tags">
+              <span id="inspBadge" class="badge pending">PENDING</span>
+              <span id="inspMode">Mode: —</span>
+              <span>·</span>
+              <span id="inspTier">Tier: —</span>
+              <span>·</span>
+              <span id="inspPasses">Est. Passes: —</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="btn-primary" onclick="queueCurrentItem(false, true)">+ Queue Item Next</button>
+            <button onclick="queueCurrentItem(true, true)">↻ Force Re-Generate Item</button>
+          </div>
+        </div>
+
+        <div class="anim-toolbar">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label style="font-size:12px; color:var(--muted);">Animation Sheet:</label>
+            <select id="animSelect" style="width:140px;" onchange="onAnimOrDirChange()"></select>
+
+            <label style="font-size:12px; color:var(--muted);">Facing Row:</label>
+            <select id="dirSelect" style="width:155px;" onchange="onAnimOrDirChange()">
+              <option value="auto">↻ Auto-Turn 4-Dir</option>
+              <option value="2" selected>↓ Row 2: DOWN (Front)</option>
+              <option value="1">← Row 1: LEFT</option>
+              <option value="3">→ Row 3: RIGHT</option>
+              <option value="0">↑ Row 0: UP (Back)</option>
+            </select>
+
+            <label style="font-size:12px; color:var(--muted); display:flex; align-items:center; gap:5px; cursor:pointer;">
+              <input type="checkbox" id="chkMannequin" checked onchange="loadSelectedSheetImages()" />
+              Composite on Hero Mannequin (Body + 0.75× Head)
+            </label>
+          </div>
+          <div id="sheetStatusChecklist" class="sheet-pills"></div>
+        </div>
+
+        <div class="preview-grid">
+          <div class="preview-card">
+            <h3>
+              <span>Original 64×64 LPC (`public/lpc/`)</span>
+              <span id="origDimText" style="font-family:monospace; font-size:11px;">—</span>
+            </h3>
+            <div class="canvas-stage">
+              <canvas id="cvOrig" width="256" height="256"></canvas>
+            </div>
+          </div>
+          <div class="preview-card">
+            <h3>
+              <span style="color:var(--accent);">Upgraded 128×128 Krea2 (`public/lpc_128/`)</span>
+              <span id="upDimText" style="font-family:monospace; font-size:11px;">—</span>
+            </h3>
+            <div class="canvas-stage">
+              <canvas id="cvUp" width="256" height="256"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet-compare-box">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="font-size:13px;">Full Transparent Sprite Sheet Inspection (<span id="rawSheetTitle">walk.png</span>)</strong>
+            <span style="font-size:11px; color:var(--muted);">Top: Upgraded 128×128 Sheet · Bottom: Original 64×64 Sheet</span>
+          </div>
+          <div class="sheet-scroll">
+            <div style="font-size:11px; color:var(--accent); margin-bottom:4px;">Upgraded `public/lpc_128/` Sheet:</div>
+            <img id="rawUpImg" alt="Not yet generated in public/lpc_128/" style="margin-bottom:14px;" />
+            <div style="font-size:11px; color:var(--muted); margin-bottom:4px;">Original `public/lpc/` Sheet:</div>
+            <img id="rawOrigImg" alt="Original LPC sheet" />
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: COMFYUI RECIPE & TILES -->
+      <div id="tab-recipe" class="tab-content">
+        <div class="sheet-compare-box">
+          <h3 style="margin:0; font-size:14px; color:var(--accent);">Per-Item / Per-Category ComfyUI Generation Parameters</h3>
+          <div class="params-grid">
+            <div class="field">
+              <label>Denoise Strength (0.25 – 0.55)</label>
+              <input type="number" id="paramDenoise" step="0.01" min="0.15" max="0.75" value="0.38" />
+            </div>
+            <div class="field">
+              <label>Seed</label>
+              <input type="number" id="paramSeed" step="1" value="778899" />
+            </div>
+            <div class="field">
+              <label>Sampler Steps (Krea2 Turbo)</label>
+              <input type="number" id="paramSteps" step="1" min="4" max="20" value="8" />
+            </div>
+            <div class="field">
+              <label>Head Proportion Scale (Head/Hair/Helm)</label>
+              <input type="number" id="paramHeadScale" step="0.05" min="0.60" max="1.00" value="0.75" />
+            </div>
+          </div>
+          <div class="field">
+            <label>Positive Prompt (`CLIPTextEncode` Node 5)</label>
+            <textarea id="paramPrompt" rows="2"></textarea>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-primary" onclick="saveParams(false, false)">Save for This Item</button>
+            <button onclick="saveParams(false, true)">Save & Force Re-Queue Item</button>
+            <button onclick="saveParams(true, false)">Apply Parameters to Entire Category (<span id="paramCatName">—</span>)</button>
+          </div>
+        </div>
+
+        <div class="sheet-compare-box">
+          <h3 style="margin:0; font-size:14px;">Cached Isolated `#141218` Paper-Doll ComfyUI Sheets for This Item</h3>
+          <div id="itemTilesGrid" class="tiles-grid"></div>
+        </div>
+      </div>
+
+      <!-- TAB 3: QUEUE & CONSOLE -->
+      <div id="tab-queue" class="tab-content">
+        <div class="preview-grid">
+          <div class="sheet-compare-box">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="font-size:13px;">Pending Generation Queue (<span id="qListCount">0</span> items)</strong>
+              <button onclick="clearQueue()">Clear All</button>
+            </div>
+            <div id="queueListBox" style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
+          </div>
+          <div class="sheet-compare-box">
+            <strong style="font-size:13px;">Worker & ComfyUI Activity Log</strong>
+            <div id="consoleLog" class="log-box"></div>
+          </div>
+        </div>
+
+        <div class="sheet-compare-box">
+          <strong style="font-size:13px;">Most Recent Isolated Paper-Doll ComfyUI Passes (`comfy_in` → `comfy_out`)</strong>
+          <div id="recentTilesGrid" class="tiles-grid"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.port === '8765' ? '' : 'http://127.0.0.1:8765';
+    let catalog = [];
+    let filteredCatalog = [];
+    let selectedId = null;
+    let selectedItem = null;
+    let statusData = null;
+
+    // Animation preview state
+    const ANIM_COLS = {
+      idle: 2, walk: 9, slash: 6, thrust: 8, shoot: 13, spellcast: 7, hurt: 6,
+      backslash: 13, climb: 6, combat_idle: 2, emote: 3, halfslash: 6, jump: 5, run: 8, sit: 3
+    };
+    let origSheetImg = null;
+    let upSheetImg = null;
+    let mannequinOrigBody = {};
+    let mannequinOrigHead = {};
+    let mannequinUpBody = {};
+    let mannequinUpHead = {};
+    let animTick = 0;
+
+    function fmtTime(sec) {
+      if (!sec || sec <= 0) return '0s';
+      if (sec < 60) return `${sec}s`;
+      const m = Math.floor(sec / 60);
+      if (m < 60) return `${m}m ${sec % 60}s`;
+      const h = (sec / 3600).toFixed(1);
+      return `${h}h`;
+    }
+
+    async function fetchCatalog() {
+      const res = await fetch(`${API_BASE}/api/catalog`);
+      const data = await res.json();
+      catalog = data.items || [];
+
+      const catSelect = document.getElementById('filterCat');
+      const curVal = catSelect.value;
+      const cats = [...new Set(catalog.map(i => i.category))].sort();
+      catSelect.innerHTML = '<option value="all">All Categories</option>' +
+        cats.map(c => `<option value="${c}">${c} (${catalog.filter(x => x.category === c).length})</option>`).join('');
+      catSelect.value = curVal || 'all';
+
+      renderCatalog();
+      if (!selectedId && catalog.length) {
+        const firstDone = catalog.find(i => i.status === 'done' || i.status === 'partial') || catalog[0];
+        selectItem(firstDone.id);
+      } else if (selectedId) {
+        selectItem(selectedId, true);
+      }
+    }
+
+    async function pollStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/api/status`);
+        statusData = await res.json();
+        updateTelemetryUI(statusData);
+      } catch (e) {
+        const cp = document.getElementById('comfyPill');
+        cp.className = 'pill offline';
+        document.getElementById('comfyText').textContent = 'Orchestrator Server Offline';
+      }
+    }
+
+    function updateTelemetryUI(st) {
+      const cp = document.getElementById('comfyPill');
+      cp.className = 'pill ' + (st.comfy_online ? 'online' : 'offline');
+      document.getElementById('comfyText').textContent = st.comfy_online ? 'ComfyUI :8188 Online' : 'ComfyUI :8188 Offline';
+
+      const wp = document.getElementById('workerPill');
+      wp.className = 'pill ' + (st.running ? 'running' : '');
+      document.getElementById('workerText').textContent = st.running
+        ? `Running (${st.current_pass}/${st.current_total_passes})`
+        : 'Worker Idle';
+
+      document.getElementById('btnStart').disabled = st.running || st.items_queued === 0;
+      document.getElementById('btnPause').disabled = !st.running;
+      document.getElementById('btnStop').disabled = !st.running;
+
+      const iPct = ((st.items_done / Math.max(1, st.items_total)) * 100).toFixed(1);
+      document.getElementById('itemsPct').textContent = `${iPct}%`;
+      document.getElementById('itemsDone').textContent = st.items_done;
+      document.getElementById('itemsTotal').textContent = st.items_total;
+      document.getElementById('itemsPartial').textContent = `${st.items_partial} partial`;
+      document.getElementById('itemsBar').style.width = `${iPct}%`;
+
+      const sPct = ((st.sheets_done / Math.max(1, st.sheets_total)) * 100).toFixed(1);
+      document.getElementById('sheetsPct').textContent = `${sPct}%`;
+      document.getElementById('sheetsDone').textContent = st.sheets_done;
+      document.getElementById('sheetsTotal').textContent = st.sheets_total;
+      document.getElementById('sheetsBar').style.width = `${sPct}%`;
+
+      const t1 = st.tiers.tier1_heads;
+      const t1Pct = ((t1.items_done / Math.max(1, t1.items_total)) * 100).toFixed(1);
+      document.getElementById('t1Done').textContent = t1.items_done;
+      document.getElementById('t1Total').textContent = t1.items_total;
+      document.getElementById('t1Rem').textContent = `${t1.passes_rem} passes left`;
+      document.getElementById('t1Eta').textContent = `~${fmtTime(Math.round(t1.passes_rem * st.avg_pass_sec))}`;
+      document.getElementById('t1Bar').style.width = `${t1Pct}%`;
+
+      const pPct = ((st.passes_done / Math.max(1, st.passes_total)) * 100).toFixed(1);
+      document.getElementById('passesDone').textContent = st.passes_done;
+      document.getElementById('passesTotal').textContent = st.passes_total;
+      document.getElementById('avgSec').textContent = `~${st.avg_pass_sec}s / pass`;
+      document.getElementById('etaAll').textContent = `ETA ${fmtTime(st.eta_all_sec)}`;
+      document.getElementById('passesBar').style.width = `${pPct}%`;
+
+      document.getElementById('queueCount').textContent = st.items_queued;
+      document.getElementById('tabQueueBadge').textContent = st.items_queued;
+      document.getElementById('queuePasses').textContent = `${st.queue_passes} passes`;
+      document.getElementById('queueEta').textContent = `ETA ${fmtTime(st.eta_queue_sec)}`;
+      document.getElementById('currentJobText').textContent = st.current_item
+        ? `▶ ${st.current_item} (pass ${st.current_pass}/${st.current_total_passes})`
+        : (st.items_queued > 0 ? `Paused — ${st.items_queued} item(s) ready in queue` : 'Idle — Ready to orchestrate');
+
+      // Console logs
+      const logEl = document.getElementById('consoleLog');
+      logEl.textContent = (st.logs || []).join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
+
+      // Queue list
+      document.getElementById('qListCount').textContent = (st.queue || []).length;
+      const qBox = document.getElementById('queueListBox');
+      qBox.innerHTML = (st.queue || []).slice(0, 80).map((q, idx) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-2); padding:5px 9px; border-radius:4px; font-size:12px;">
+          <span style="font-family:monospace;">${idx + 1}. ${q.id} ${q.force ? '<b style="color:var(--accent)">(force)</b>' : ''}</span>
+          <button style="padding:2px 7px; font-size:11px;" onclick="removeFromQueue('${q.id}')">✕</button>
+        </div>
+      `).join('') || '<div style="color:var(--muted); font-size:12px;">Queue is empty. Use the Quick Batch buttons or click + Queue on any item.</div>';
+
+      // Recent tiles
+      const rtGrid = document.getElementById('recentTilesGrid');
+      rtGrid.innerHTML = (st.recent_tiles || []).slice().reverse().map(t => `
+        <div class="tile-pair">
+          <div style="font-size:11px; font-family:monospace; color:var(--accent);">${t.cache_key}</div>
+          <div class="imgs">
+            <img src="${API_BASE}${t.in_url}" title="Isolated Paper-Doll Input" />
+            <img src="${API_BASE}${t.out_url}" title="ComfyUI Krea2 Output" />
+          </div>
+        </div>
+      `).join('') || '<div style="color:var(--muted); font-size:12px;">No ComfyUI passes run in this session yet.</div>';
+    }
+
+    function shortAnimCode(fn) {
+      const s = fn.replace('.png', '');
+      const map = { walk: 'W', slash: 'S', idle: 'I', thrust: 'T', shoot: 'Sh', spellcast: 'Sp', hurt: 'H' };
+      return map[s] || s.slice(0, 2);
+    }
+
+    function renderCatalog() {
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      const fStat = document.getElementById('filterStatus').value;
+      const fTier = document.getElementById('filterTier').value;
+      const fCat = document.getElementById('filterCat').value;
+
+      filteredCatalog = catalog.filter(it => {
+        if (q && !it.id.toLowerCase().includes(q)) return false;
+        if (fStat !== 'all' && it.status !== fStat) return false;
+        if (fTier !== 'all' && it.tier !== fTier) return false;
+        if (fCat !== 'all' && it.category !== fCat) return false;
+        return true;
+      });
+
+      document.getElementById('showingCount').textContent = `Showing ${filteredCatalog.length} / ${catalog.length} items`;
+      document.getElementById('filteredBtnCount').textContent = filteredCatalog.length;
+
+      const listEl = document.getElementById('catalogList');
+      listEl.innerHTML = filteredCatalog.map(it => {
+        const doneSet = new Set(it.done_list || []);
+        const pills = (it.sheets || []).map(fn =>
+          `<span class="sp ${doneSet.has(fn) ? 'done' : ''}" title="${fn}">${shortAnimCode(fn)}</span>`
+        ).join('');
+        const modeTag = it.pipeline_mode === 'head_static_4dir' ? '4-Dir 0.75×' : 'Packed';
+        return `
+          <div class="cat-item ${it.id === selectedId ? 'selected' : ''}" onclick="selectItem('${it.id}')">
+            <div class="cat-row-top">
+              <span class="cat-id">${it.id}</span>
+              <span class="badge ${it.status}">${it.status}</span>
+            </div>
+            <div class="cat-row-bot">
+              <div class="sheet-pills">${pills}</div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span>${modeTag} · ${it.est_passes}p</span>
+                <button style="padding:2px 6px; font-size:10px;" onclick="event.stopPropagation(); queueItemById('${it.id}')">+Q</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectItem(id, quiet = false) {
+      selectedId = id;
+      if (!quiet) renderCatalog();
+      const res = await fetch(`${API_BASE}/api/item?id=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (!data.item) return;
+      selectedItem = data.item;
+
+      document.getElementById('inspId').textContent = selectedItem.id;
+      const b = document.getElementById('inspBadge');
+      b.className = `badge ${selectedItem.status}`;
+      b.textContent = `${selectedItem.status} (${selectedItem.sheets_done}/${selectedItem.sheets_total})`;
+
+      document.getElementById('inspMode').textContent =
+        selectedItem.pipeline_mode === 'head_static_4dir' ? 'Static 4-Dir 0.75× Head Stamper' : 'Animated Deduplicated Paper-Doll Packer';
+      document.getElementById('inspTier').textContent = selectedItem.tier;
+      document.getElementById('inspPasses').textContent = `${selectedItem.est_passes} ComfyUI pass(es)`;
+
+      // Populate animation dropdown
+      const animSel = document.getElementById('animSelect');
+      const prevAnim = animSel.value;
+      animSel.innerHTML = selectedItem.sheets.map(fn => {
+        const done = (selectedItem.done_list || []).includes(fn);
+        return `<option value="${fn}">${fn} ${done ? '✓' : '○'}</option>`;
+      }).join('');
+      if (selectedItem.sheets.includes(prevAnim)) {
+        animSel.value = prevAnim;
+      } else if (selectedItem.sheets.includes('walk.png')) {
+        animSel.value = 'walk.png';
+      }
+
+      const doneSet = new Set(selectedItem.done_list || []);
+      document.getElementById('sheetStatusChecklist').innerHTML = selectedItem.sheets.map(fn =>
+        `<span class="sp ${doneSet.has(fn) ? 'done' : ''}" onclick="document.getElementById('animSelect').value='${fn}'; onAnimOrDirChange();" style="cursor:pointer;">${fn.replace('.png','')} ${doneSet.has(fn) ? '✓' : '○'}</span>`
+      ).join('');
+
+      // Params tab
+      const p = selectedItem.params || {};
+      document.getElementById('paramDenoise').value = p.denoise ?? 0.38;
+      document.getElementById('paramSeed').value = p.seed ?? 778899;
+      document.getElementById('paramSteps').value = p.steps ?? 8;
+      document.getElementById('paramHeadScale').value = p.head_scale ?? 0.75;
+      document.getElementById('paramPrompt').value = p.prompt ?? '';
+      document.getElementById('paramCatName').textContent = selectedItem.category;
+
+      const tGrid = document.getElementById('itemTilesGrid');
+      tGrid.innerHTML = (data.cached_tiles || []).map(t => `
+        <div class="tile-pair">
+          <div style="font-size:11px; font-family:monospace; color:var(--accent);">${t.cache_key}</div>
+          <div class="imgs">
+            <img src="${API_BASE}${t.in_url}?t=${Date.now()}" title="Input 1024×1024 Paper-Doll Sheet" />
+            <img src="${API_BASE}${t.out_url}?t=${Date.now()}" title="ComfyUI Krea2 Output Sheet" />
+          </div>
+        </div>
+      `).join('') || '<div style="color:var(--muted); font-size:12px;">No cached ComfyUI tiles for this item yet.</div>';
+
+      loadSelectedSheetImages();
+    }
+
+    function loadImg(url) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+    }
+
+    async function loadSelectedSheetImages() {
+      if (!selectedItem) return;
+      const fn = document.getElementById('animSelect').value || 'walk.png';
+      const anim = fn.replace('.png', '');
+      document.getElementById('rawSheetTitle').textContent = `${selectedItem.id}/${fn}`;
+
+      const origUrl = `${API_BASE}/lpc/${selectedItem.id}/${fn}?t=${Date.now()}`;
+      const upUrl = `${API_BASE}/lpc_128/${selectedItem.id}/${fn}?t=${Date.now()}`;
+
+      document.getElementById('rawOrigImg').src = origUrl;
+      document.getElementById('rawUpImg').src = upUrl;
+
+      origSheetImg = await loadImg(origUrl);
+      upSheetImg = await loadImg(upUrl);
+
+      document.getElementById('origDimText').textContent = origSheetImg ? `${origSheetImg.width}×${origSheetImg.height}px` : 'Missing';
+      document.getElementById('upDimText').textContent = upSheetImg ? `${upSheetImg.width}×${upSheetImg.height}px` : 'Pending Generation';
+
+      // Preload mannequin body + head for this animation if available
+      if (!mannequinOrigBody[anim]) {
+        mannequinOrigBody[anim] = await loadImg(`${API_BASE}/lpc/body/bodies/male/${fn}`);
+        mannequinOrigHead[anim] = await loadImg(`${API_BASE}/lpc/head/heads/human/male/${fn}`);
+        mannequinUpBody[anim] = await loadImg(`${API_BASE}/lpc_128/body/bodies/male/${fn}`);
+        mannequinUpHead[anim] = await loadImg(`${API_BASE}/lpc_128/head/heads/human/male/${fn}`);
+      }
+    }
+
+    function onAnimOrDirChange() {
+      loadSelectedSheetImages();
+    }
+
+    function drawFrameOnCanvas(canvas, sheetImg, bodyImg, headImg, anim, dirRow, col, isUpgraded) {
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const useMannequin = document.getElementById('chkMannequin').checked && selectedItem;
+      const cat = selectedItem ? selectedItem.category : '';
+      const baseCell = isUpgraded ? 128 : 64;
+      const rows = (anim === 'hurt' || anim === 'climb') ? 1 : 4;
+      const r = rows === 1 ? 0 : dirRow;
+
+      function blitCell(img) {
+        if (!img) return;
+        const fs = img.height / rows;
+        const cols = Math.max(1, Math.floor(img.width / fs));
+        const c = col % cols;
+        // Center fs inside canvas (256x256)
+        const scale = isUpgraded ? 2 : 4; // 64*4=256, 128*2=256 (or 1x if 384 oversize)
+        const effScale = (fs * scale > 256) ? (256 / fs) : scale;
+        const drawW = fs * effScale;
+        const drawH = fs * effScale;
+        const dx = (canvas.width - drawW) / 2;
+        const dy = (canvas.height - drawH) / 2;
+        ctx.drawImage(img, c * fs, r * fs, fs, fs, dx, dy, drawW, drawH);
+      }
+
+      if (!sheetImg) {
+        ctx.fillStyle = '#9a92ad';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(isUpgraded ? 'Not yet generated in public/lpc_128/' : 'No sheet', 128, 128);
+        return;
+      }
+
+      if (useMannequin) {
+        const behindBody = cat.endsWith('_behind') || (selectedItem.id.endsWith('/bg'));
+        if (behindBody) blitCell(sheetImg);
+        if (cat !== 'body') blitCell(bodyImg);
+        if (cat !== 'head' && !behindBody && ['torso', 'legs', 'feet', 'shoulders', 'arms', 'waist', 'neck'].includes(cat)) {
+          blitCell(sheetImg);
+          blitCell(headImg);
+        } else if (!behindBody) {
+          if (cat !== 'head') blitCell(headImg);
+          blitCell(sheetImg);
+        }
+      } else {
+        blitCell(sheetImg);
+      }
+    }
+
+    function stepAnimation() {
+      animTick++;
+      if (selectedItem) {
+        const fn = document.getElementById('animSelect').value || 'walk.png';
+        const anim = fn.replace('.png', '');
+        const cols = ANIM_COLS[anim] || 6;
+        const col = animTick % cols;
+        const dirVal = document.getElementById('dirSelect').value;
+        const dirOrder = [2, 1, 0, 3];
+        const dirRow = dirVal === 'auto' ? dirOrder[Math.floor(animTick / cols) % 4] : parseInt(dirVal, 10);
+
+        drawFrameOnCanvas(
+          document.getElementById('cvOrig'),
+          origSheetImg,
+          mannequinOrigBody[anim],
+          mannequinOrigHead[anim],
+          anim,
+          dirRow,
+          col,
+          false
+        );
+        drawFrameOnCanvas(
+          document.getElementById('cvUp'),
+          upSheetImg,
+          mannequinUpBody[anim],
+          mannequinUpHead[anim],
+          anim,
+          dirRow,
+          col,
+          true
+        );
+      }
+    }
+
+    // Queue & Worker API actions
+    async function queueTier(tier) {
+      await fetch(`${API_BASE}/api/queue/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier })
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function queueFiltered() {
+      const ids = filteredCatalog.map(i => i.id);
+      if (!ids.length) return;
+      await fetch(`${API_BASE}/api/queue/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function queueItemById(id) {
+      await fetch(`${API_BASE}/api/queue/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id], prioritize: true })
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function queueCurrentItem(force, prioritize) {
+      if (!selectedId) return;
+      await fetch(`${API_BASE}/api/queue/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [selectedId], force, prioritize })
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function removeFromQueue(id) {
+      await fetch(`${API_BASE}/api/queue/remove`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] })
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function clearQueue() {
+      await fetch(`${API_BASE}/api/queue/clear`, { method: 'POST' });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function startWorker() {
+      await fetch(`${API_BASE}/api/worker/start`, { method: 'POST' });
+      await pollStatus();
+    }
+
+    async function stopWorker(interrupt) {
+      await fetch(`${API_BASE}/api/worker/stop`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interrupt })
+      });
+      await pollStatus();
+    }
+
+    async function rescanDisk() {
+      await fetch(`${API_BASE}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full: false })
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    async function saveParams(applyCategory, requeue) {
+      if (!selectedItem) return;
+      const params = {
+        denoise: parseFloat(document.getElementById('paramDenoise').value),
+        seed: parseInt(document.getElementById('paramSeed').value, 10),
+        steps: parseInt(document.getElementById('paramSteps').value, 10),
+        head_scale: parseFloat(document.getElementById('paramHeadScale').value),
+        prompt: document.getElementById('paramPrompt').value.trim(),
+      };
+      const payload = applyCategory
+        ? { category: selectedItem.category, params, requeue }
+        : { ids: [selectedItem.id], params, requeue };
+      await fetch(`${API_BASE}/api/item/params`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      await fetchCatalog();
+      await pollStatus();
+    }
+
+    function switchTab(tabKey, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${tabKey}`).classList.add('active');
+    }
+
+    // Boot
+    fetchCatalog();
+    pollStatus();
+    setInterval(pollStatus, 2000);
+    setInterval(stepAnimation, 120);
+  </script>
+</body>
+</html>
+
