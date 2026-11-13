@@ -6,15 +6,31 @@
  * left to right. Reported percent often jumps (the floor forge is one long
  * turn, and the first paint used to land already near 70%), so the walk
  * eases toward the reported value at a fixed pace and the curtain stays up
- * until the party has caught up.
+ * until the party has caught up. It leaves through a pixelfx wipe, chosen
+ * at random: iris, burn away, or slash. Iris and slash shut, then open
+ * onto the floor. Burn away eats the plate once from the edges. The
+ * loading art stays in the middle until the fire reaches it, and the game
+ * shows through what has already burned.
  */
+
+import { playLoadingWipe, cancelLoadingWipe } from './loading_wipe.js';
+import { heroShape } from '../game/appearance.js';
+import { mountPlateWeather, stopPlateWeather, plateWeatherKind } from './loading_weather.js';
+import {
+  startOffthreadPlate, stopOffthreadPlate, isOffthreadCanvas, offthreadBroken, onOffthreadBroken, warmOffthread
+} from './loading_offthread.js';
 
 let overlayEl = null;
 let titleEl = null;
 let subtitleEl = null;
+let mapEl = null;
+let floorEl = null;
+let pipsEl = null;
 let partyEl = null;
 let hideTimer = null;
 let isVisible = false;
+/* Set once the curtain starts to go, so the game draws again under the wipe. */
+let leaving = false;
 let showStartTime = 0;
 let targetPct = 0;
 let shownPct = 0;
@@ -23,13 +39,384 @@ let marchRaf = 0;
 let lastMarchTs = 0;
 let partyToken = 0;
 let marchers = [];
+let plateVideo = null;
+let weatherEl = null;
+/* The plate loop drawn by the curtain worker. The <video> stays as the
+   fallback for browsers (or files) the worker cannot decode. */
+let plateCanvas = null;
+let lastWeather = '';
+let lastWeatherSeed = 1;
+/* A hand-authored floor name stays. A placeholder (theme, region, quest
+   title) is replaced once the forge actually names the map. */
+let mapLocked = false;
+/* The still and the walk strips. The forge waits on these so a blocked
+   thread cannot hold the curtain on its empty ground color. */
+let plateReady = Promise.resolve();
+let partyReady = Promise.resolve();
+let plateSerial = 0;
 
 export const MIN_LOADING_TIME_MS = 1400;
+
+/* The curtain worker loads its module now, during boot, rather than at the
+   first curtain, where that time came straight out of the plate's start. */
+if (typeof window !== 'undefined') warmOffthread();
+
+/* Still plates. Overland floors have day, dusk, and night. Dungeons have one.
+   A sibling mp4 plays over the still when that loop exists. An unknown key
+   returns '' so the curtain keeps the dark ground instead of requesting a
+   missing file. */
+const DUNGEON_PLATES = new Set(['ancient', 'verdant', 'frost', 'grim', 'molten']);
+const OVERLAND_PLATES = new Set([
+  'forest', 'moor', 'mire', 'holdfast', 'boneyard', 'ruinfield', 'ashfield', 'snowfield', 'sporewood'
+]);
+
+export function loadingPlateUrl(theme, timeOfDay) {
+  const key = String(theme || '').toLowerCase();
+  if (DUNGEON_PLATES.has(key)) return `./art/loading/${key}.webp`;
+  if (!OVERLAND_PLATES.has(key)) return '';
+  const tod = timeOfDay === 'dusk' || timeOfDay === 'night' ? timeOfDay : 'day';
+  return `./art/loading/${key}_${tod}.webp`;
+}
+
+function videoSrc(video) {
+  if (!video) return '';
+  const bag = video.attributes;
+  if (bag && typeof bag.src === 'string') return bag.src;
+  if (typeof video.getAttribute === 'function') return video.getAttribute('src') || '';
+  return '';
+}
+
+function clearPlateVideo(video) {
+  if (!video) return;
+  if (typeof video.pause === 'function') {
+    try { video.pause(); } catch (e) { /* already stopped */ }
+  }
+  if (typeof video.removeAttribute === 'function') video.removeAttribute('src');
+  else if (video.attributes) video.attributes.src = '';
+  if (video.style) video.style.display = 'none';
+}
+
+function playPlateVideo(video) {
+  if (!video || typeof video.play !== 'function') return;
+  try {
+    const pending = video.play();
+    if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+  } catch (e) { /* autoplay can throw before a gesture */ }
+}
+
+/* A bad file must not sit on top of the still. A video with no frames paints
+   black, and that black covers the picture, so the element stays hidden until
+   a frame has actually arrived. */
+function onPlateVideoError(video) {
+  clearPlateVideo(video);
+}
+
+function revealPlateVideo(video) {
+  if (!videoSrc(video)) return;
+  if (video.style) video.style.display = '';
+}
+
+function attachPlateVideo(el) {
+  if (typeof document === 'undefined' || !document.createElement) return null;
+  let video = typeof document.getElementById === 'function'
+    ? document.getElementById('dungeon-loading-plate')
+    : null;
+  if (!video) {
+    video = document.createElement('video');
+    video.id = 'dungeon-loading-plate';
+    video.className = 'dungeon-loading-plate';
+    video.muted = true;
+    video.loop = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    if (video.style) video.style.display = 'none';
+    if (typeof video.setAttribute === 'function') {
+      video.setAttribute('muted', '');
+      video.setAttribute('loop', '');
+      video.setAttribute('autoplay', '');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('preload', 'auto');
+    }
+    if (typeof video.addEventListener === 'function') {
+      video.addEventListener('error', () => onPlateVideoError(video));
+      video.addEventListener('loadeddata', () => revealPlateVideo(video));
+    }
+    const first = el.firstChild;
+    if (first && typeof el.insertBefore === 'function') el.insertBefore(video, first);
+    else el.appendChild(video);
+  }
+  plateVideo = video;
+  return video;
+}
+
+/* Decode the still before anything else asks for the wire. The loop is a
+   much larger file, and a forge that starts now would sit on the main thread
+   until the picture and the heroes had missed their chance to paint. */
+function warmPlate(url) {
+  if (!url || typeof Image !== 'function') return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    const timer = setTimeout(finish, 4000);
+    const img = new Image();
+    try { img.fetchPriority = 'high'; } catch (e) { /* older browsers */ }
+    if (typeof img.setAttribute === 'function') img.setAttribute('fetchpriority', 'high');
+    img.onload = () => {
+      const job = (typeof img.decode === 'function') ? img.decode() : null;
+      Promise.resolve(job).then(() => { clearTimeout(timer); finish(); }, () => { clearTimeout(timer); finish(); });
+    };
+    img.onerror = () => { clearTimeout(timer); finish(); };
+    img.src = url;
+  });
+}
+
+function beginPlateVideo(video, url) {
+  if (!video || !url) return;
+  const loop = url.replace(/\.webp(\?.*)?$/, '.mp4$1');
+  const same = videoSrc(video) === loop;
+  if (!same) {
+    if (video.style) video.style.display = 'none';
+    if (typeof video.setAttribute === 'function') video.setAttribute('src', loop);
+    else if (video.attributes) video.attributes.src = loop;
+  } else if ((video.readyState || 0) >= 2) {
+    revealPlateVideo(video);
+  }
+  playPlateVideo(video);
+}
+
+function attachPlateCanvas(el) {
+  if (plateCanvas && plateCanvas.parentNode === el) return plateCanvas;
+  if (typeof document === 'undefined' || !document.createElement) return null;
+  const canvas = document.createElement('canvas');
+  canvas.id = 'dungeon-loading-plate-canvas';
+  canvas.className = 'dungeon-loading-plate';
+  if (canvas.style) canvas.style.display = 'none';
+  /* Right after the video: over the still, under the weather. */
+  const after = plateVideo && plateVideo.parentNode === el ? plateVideo.nextSibling : el.firstChild;
+  if (after && typeof el.insertBefore === 'function') el.insertBefore(canvas, after);
+  else el.appendChild(canvas);
+  plateCanvas = canvas;
+  return canvas;
+}
+
+function hidePlateCanvas() {
+  if (plateCanvas && plateCanvas.style) plateCanvas.style.display = 'none';
+}
+
+function loopUrl(url) {
+  return url.replace(/\.webp(\?.*)?$/, '.mp4$1');
+}
+
+/* The loop the worker is playing now: { loop, shown, moving }. `moving`
+   settles on its first drawn frame (or its failure). */
+let plateLive = null;
+
+function stopPlateOffthread() {
+  plateLive = null;
+  stopOffthreadPlate();
+}
+
+/* The loop from the curtain worker. It keeps playing while a forge holds the
+   main thread, which a <video> cannot: its data loading and its loop both
+   run here. False when the worker is not available. A second show of the
+   same plate (embark, then the floor load) keeps the loop running. */
+function beginPlateOffthread(el, video, url, serial) {
+  if (typeof HTMLCanvasElement === 'undefined' || typeof Worker !== 'function' || offthreadBroken()) return false;
+  const loop = loopUrl(url);
+  if (plateLive && plateLive.loop === loop) {
+    if (plateLive.shown && plateCanvas && plateCanvas.style) plateCanvas.style.display = '';
+    return true;
+  }
+  const canvas = attachPlateCanvas(el);
+  if (!canvas) return false;
+  const live = { loop, shown: false, moving: null, settle: null };
+  live.moving = new Promise((resolve) => { live.settle = resolve; });
+  const ok = startOffthreadPlate(canvas, loop, serial, {
+    shown: () => {
+      live.settle();
+      if (plateLive !== live) return;
+      live.shown = true;
+      if (canvas.style) canvas.style.display = '';
+    },
+    failed: () => {
+      live.settle();
+      if (plateLive !== live) return;
+      plateLive = null;
+      hidePlateCanvas();
+      beginPlateVideo(video, url);
+    }
+  });
+  if (!ok) return false;
+  plateLive = live;
+  clearPlateVideo(video);
+  return true;
+}
+
+export const PLATE_MOTION_WAIT_MS = 2000;
+
+function plateMoving(capMs) {
+  const live = plateLive;
+  if (!live || live.shown) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, capMs);
+    live.moving.then(() => { clearTimeout(timer); resolve(); });
+  });
+}
+
+function applyPlate(el, theme, timeOfDay) {
+  const serial = ++plateSerial;
+  if (theme) el.setAttribute('data-theme', theme);
+  else el.setAttribute('data-theme', '');
+  if (timeOfDay) el.setAttribute('data-time', timeOfDay);
+  else if (typeof el.removeAttribute === 'function') el.removeAttribute('data-time');
+  else el.setAttribute('data-time', '');
+  const url = loadingPlateUrl(theme, timeOfDay);
+  const video = attachPlateVideo(el);
+  if (!url || !plateLive || plateLive.loop !== loopUrl(url)) hidePlateCanvas();
+  if (!url) {
+    if (el.style) el.style.backgroundImage = '';
+    stopPlateOffthread();
+    clearPlateVideo(video);
+    plateReady = Promise.resolve();
+    return;
+  }
+  /* Hide a previous loop immediately. A video with no frame paints black
+     and would cover the new still. The mp4 itself waits until the still
+     has decoded, so it cannot cut in front of the picture. */
+  if (video && video.style) video.style.display = 'none';
+  plateReady = warmPlate(url).then(() => {
+    if (serial !== plateSerial) return;
+    if (!beginPlateOffthread(el, video, url, serial)) {
+      beginPlateVideo(video, url);
+      return undefined;
+    }
+    /* The load holds until the loop is actually moving on screen, so the
+       first thing the player sees is the living picture, not a still that
+       starts to move later. Capped: a slow fetch must not hold the floor. */
+    return plateMoving(PLATE_MOTION_WAIT_MS);
+  });
+  if (el.style) el.style.backgroundImage = `url("${url}")`;
+}
+
+/* The canvas belongs to this overlay. A rebuilt curtain (tests swap document)
+   must not keep drawing on a canvas that was left on the previous one. */
+function weatherOn(el) {
+  if (!weatherEl || !el) return false;
+  if (typeof el.contains === 'function' && el.contains(weatherEl)) return true;
+  const kids = el.children;
+  if (!kids) return false;
+  for (let i = 0; i < kids.length; i++) if (kids[i] === weatherEl) return true;
+  return false;
+}
+
+/* Rain, fog, snow, or blizzard over the still. Anything else clears the layer. */
+function applyPlateWeather(el, weather, seed) {
+  const kind = plateWeatherKind(weather);
+  lastWeather = weather;
+  lastWeatherSeed = seed;
+  if (el && typeof el.setAttribute === 'function') el.setAttribute('data-weather', kind);
+  if (!kind) {
+    stopPlateWeather();
+    if (weatherEl && weatherEl.style) weatherEl.style.display = 'none';
+    return;
+  }
+  /* A canvas the worker owned is dead with it, so draw on a fresh one. */
+  const orphan = weatherEl && isOffthreadCanvas(weatherEl) && offthreadBroken();
+  if (orphan && typeof weatherEl.remove === 'function') weatherEl.remove();
+  if (el && typeof document !== 'undefined' && typeof document.createElement === 'function' && (orphan || !weatherOn(el))) {
+    weatherEl = document.createElement('canvas');
+    weatherEl.id = 'dungeon-loading-weather';
+    weatherEl.className = 'dungeon-loading-weather';
+    if (typeof el.appendChild === 'function') el.appendChild(weatherEl);
+  }
+  if (weatherEl && weatherEl.style) weatherEl.style.display = '';
+  mountPlateWeather(weatherEl, kind, seed);
+}
+
+/* The worker died mid-curtain: keep the weather going on this thread. */
+onOffthreadBroken(() => {
+  if (isVisible && overlayEl && lastWeather) applyPlateWeather(overlayEl, lastWeather, lastWeatherSeed);
+});
 /* Full left-to-right crossing. A reported jump (0 → 70) takes the same
    fraction of this, so the party never teleports to wherever the loader is. */
 export const MARCH_FULL_MS = 2200;
 const MARCH_DT_CAP_SEC = 0.05;
+/* Columns 1–8 of the LPC walk row. The clock is a CSS steps() transform,
+   not this rAF loop: a floor forge blocks the main thread and freezes
+   requestAnimationFrame, and the feet have to keep moving so the curtain
+   does not look stuck. 8 frames at this rate is the animation duration. */
 const WALK_FPS = 8;
+const WALK_FRAMES = 8;
+/* Matches .dungeon-loading-hero. A 64px LPC body frame draws at this size.
+   Larger cells (oversize weapon sheets) grow the canvas and shift down so
+   the body stays this tall and the feet stay on the same line. */
+export const HERO_BODY_PX = 112;
+
+/* Display box for one marcher. `drop` is how far the canvas hangs below the
+   party baseline: the body frame is centered in an oversize cell, and that
+   empty pad has to fall below the line or the hero renders half size. */
+export function marcherLayout(cell, scaleX = 1, scaleY = 1) {
+  const c = Number(cell) > 0 ? Number(cell) : 64;
+  const sx = Number(scaleX) > 0 ? Number(scaleX) : 1;
+  const sy = Number(scaleY) > 0 ? Number(scaleY) : 1;
+  const px = HERO_BODY_PX / 64;
+  return {
+    width: Math.round(c * px * sx),
+    height: Math.round(c * px * sy),
+    drop: Math.round(sy * px * (c - 64) / 2)
+  };
+}
+
+function fitMarcher(frame, cell, hero) {
+  const visual = (hero && (hero.visual || (hero.data && hero.data.visual))) || {};
+  const shape = heroShape(visual);   // a dwarf's build is already in the walk sheet
+  const box = marcherLayout(cell, shape.quadX, shape.quadY);
+  if (!frame || !frame.style) return box;
+  frame.style.width = box.width + 'px';
+  frame.style.height = box.height + 'px';
+  frame.style.transform = box.drop ? `translateY(${box.drop}px)` : '';
+  const strip = frame._strip;
+  if (strip && strip.style) {
+    strip.style.width = (box.width * WALK_FRAMES) + 'px';
+    strip.style.height = box.height + 'px';
+  }
+  const sheet = frame._bitmap;
+  if (sheet && sheet.style) {
+    sheet.style.width = (box.width * WALK_FRAMES) + 'px';
+    sheet.style.height = box.height + 'px';
+  }
+  return box;
+}
+
+/* One frame of the window shows one cell. The strip is eight walk frames
+   wide and slides by its own width, so each step lands on a cell. */
+function armWalk(strip, phaseSec) {
+  if (!strip || !strip.style) return;
+  const dur = WALK_FRAMES / WALK_FPS;
+  strip.style.animationName = 'dungeon-loading-walk';
+  strip.style.animationDuration = dur + 's';
+  strip.style.animationTimingFunction = `steps(${WALK_FRAMES}, end)`;
+  strip.style.animationIterationCount = 'infinite';
+  strip.style.animationDelay = (-(Number(phaseSec) || 0)) + 's';
+}
+
+function paintWalkStrip(canvas, sheet) {
+  if (!canvas || !sheet || !sheet.canvas) return;
+  const cell = sheet.cell || 64;
+  const row = Number.isFinite(sheet.rightRow) ? sheet.rightRow : 3;
+  canvas.width = cell * WALK_FRAMES;
+  canvas.height = cell;
+  const ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+  for (let i = 0; i < WALK_FRAMES; i++) {
+    ctx.drawImage(
+      sheet.canvas,
+      (i + 1) * cell, row * cell, cell, cell,
+      i * cell, 0, cell, cell
+    );
+  }
+}
 
 function clampPct(n) {
   return Math.min(100, Math.max(0, Math.round(Number(n) || 0)));
@@ -45,10 +432,12 @@ function ensureElements() {
   if (typeof document === 'undefined' || !document.body) return null;
   let el = document.getElementById('dungeon-loading-overlay');
   if (!el) {
+    warmOffthread();
     el = document.createElement('div');
     el.id = 'dungeon-loading-overlay';
     el.className = 'dungeon-loading-overlay hidden';
     el.setAttribute('aria-live', 'polite');
+    attachPlateVideo(el);
 
     const content = document.createElement('div');
     content.className = 'dungeon-loading-content';
@@ -86,9 +475,111 @@ function ensureElements() {
     titleEl = document.getElementById('dungeon-loading-title');
     subtitleEl = document.getElementById('dungeon-loading-subtitle');
     partyEl = document.getElementById('dungeon-loading-party');
+    attachPlateVideo(el);
   }
+  ensureCard(el);
   overlayEl = el;
   return overlayEl;
+}
+
+function clearChildren(el) {
+  if (!el) return;
+  if (typeof el.replaceChildren === 'function') {
+    el.replaceChildren();
+    return;
+  }
+  if (Array.isArray(el.children)) {
+    el.children.length = 0;
+    return;
+  }
+  if (typeof el.innerHTML === 'string') el.innerHTML = '';
+}
+
+function ensureCard(el) {
+  let card = typeof document.getElementById === 'function'
+    ? document.getElementById('dungeon-loading-card')
+    : null;
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'dungeon-loading-card';
+    card.className = 'dungeon-loading-card';
+    for (const corner of ['tl', 'tr', 'bl', 'br']) {
+      const tick = document.createElement('span');
+      tick.className = 'dungeon-loading-card-corner ' + corner;
+      card.appendChild(tick);
+    }
+    mapEl = document.createElement('div');
+    mapEl.id = 'dungeon-loading-map';
+    mapEl.className = 'dungeon-loading-map';
+    floorEl = document.createElement('div');
+    floorEl.id = 'dungeon-loading-floor';
+    floorEl.className = 'dungeon-loading-floor';
+    pipsEl = document.createElement('div');
+    pipsEl.id = 'dungeon-loading-pips';
+    pipsEl.className = 'dungeon-loading-pips';
+    card.appendChild(mapEl);
+    card.appendChild(floorEl);
+    card.appendChild(pipsEl);
+    el.appendChild(card);
+    return;
+  }
+  mapEl = document.getElementById('dungeon-loading-map');
+  floorEl = document.getElementById('dungeon-loading-floor');
+  pipsEl = document.getElementById('dungeon-loading-pips');
+}
+
+function floorLine(floor, floors) {
+  const n = floor | 0;
+  const m = floors | 0;
+  if (n > 0 && m > 0) return `Floor ${n} of ${m}`;
+  if (n > 0) return `Floor ${n}`;
+  return '';
+}
+
+function paintFloorProgress(floor, floors) {
+  const line = floorLine(floor, floors);
+  if (floorEl) floorEl.textContent = line;
+  if (!pipsEl) return;
+  clearChildren(pipsEl);
+  const n = floor | 0;
+  const m = floors | 0;
+  if (!(n > 0 && m > 0 && m <= 12) || typeof document === 'undefined') {
+    if (pipsEl.style) pipsEl.style.display = 'none';
+    return;
+  }
+  if (pipsEl.style) pipsEl.style.display = '';
+  for (let i = 1; i <= m; i++) {
+    const pip = document.createElement('span');
+    pip.className = 'dungeon-loading-pip' + (i < n ? ' is-done' : i === n ? ' is-now' : '');
+    pipsEl.appendChild(pip);
+  }
+}
+
+function applyCard(opts, title) {
+  const given = typeof opts.map === 'string' ? opts.map.trim() : '';
+  const mapText = given || title || '';
+  mapLocked = !!opts.mapLock;
+  if (mapEl) mapEl.textContent = mapText;
+  paintFloorProgress(opts.floor, opts.floors);
+  if (titleEl && titleEl.classList) {
+    if (mapText && title && mapText === title) titleEl.classList.add('is-echo');
+    else titleEl.classList.remove('is-echo');
+  }
+}
+
+/**
+ * Fill in the generated map name once the forge knows it. A show that passed
+ * `mapLock` keeps the name it was given (a story floor, the boot curtain).
+ */
+export function revealLoadingMap(name) {
+  if (mapLocked || !mapEl) return;
+  const text = String(name || '').trim();
+  if (!text || mapEl.textContent === text) return;
+  mapEl.textContent = text;
+  if (titleEl && titleEl.classList) {
+    if (titleEl.textContent === text) titleEl.classList.add('is-echo');
+    else titleEl.classList.remove('is-echo');
+  }
 }
 
 function orderParty(list) {
@@ -118,25 +609,6 @@ function clearParty() {
   if (typeof partyEl.replaceChildren === 'function') partyEl.replaceChildren();
 }
 
-function paintMarchers(nowSec) {
-  for (const fig of marchers) {
-    const sheet = fig._sheet;
-    if (!sheet || !fig._ctx) continue;
-    const frame = 1 + Math.floor((nowSec + fig._phase) * WALK_FPS) % 8;
-    if (frame === fig._frame) continue;
-    fig._frame = frame;
-    const cell = sheet.cell;
-    const ctx = fig._ctx;
-    ctx.clearRect(0, 0, fig.width, fig.height);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(
-      sheet.canvas,
-      frame * cell, sheet.rightRow * cell, cell, cell,
-      0, 0, fig.width, fig.height
-    );
-  }
-}
-
 function applyMarchPosition() {
   publishMarch();
   if (!partyEl || !partyEl.style) return;
@@ -156,15 +628,26 @@ function applyMarchPosition() {
 /**
  * Move the party toward the reported percent. `dtSec` is capped so a stall
  * on the main thread (the floor forge) cannot fling them across the screen
- * on the next frame.
+ * on the next frame. The walk cycle does not live here: it is a CSS steps
+ * animation, so the feet keep moving while this loop is stalled.
  */
-export function advanceLoadingMarch(dtSec, nowSec = 0) {
+export function advanceLoadingMarch(dtSec) {
   const dt = Math.min(MARCH_DT_CAP_SEC, Math.max(0, dtSec || 0));
   const rate = 100 / (MARCH_FULL_MS / 1000);
   if (shownPct < targetPct) shownPct = Math.min(targetPct, shownPct + rate * dt);
   applyMarchPosition();
-  if (nowSec) paintMarchers(nowSec);
   return shownPct;
+}
+
+/**
+ * True while the curtain hides the whole game: shown, and not yet leaving.
+ * The render loop skips the scene then. A frame drawn behind the curtain
+ * is never seen, and the first one after a forge compiles every new shader
+ * synchronously, which froze the curtain for many seconds. preloadFloorAssets
+ * compiles them asynchronously instead, before the curtain is allowed to go.
+ */
+export function loadingCurtainCovers() {
+  return isVisible && !leaving;
 }
 
 export function loadingMarch() {
@@ -180,7 +663,7 @@ function startMarch() {
     if (!marching) return;
     const dt = lastMarchTs ? (ts - lastMarchTs) / 1000 : 0;
     lastMarchTs = ts;
-    advanceLoadingMarch(dt, ts / 1000);
+    advanceLoadingMarch(dt);
     marchRaf = requestAnimationFrame(step);
   };
   marchRaf = requestAnimationFrame(step);
@@ -217,27 +700,35 @@ function mountParty(heroes) {
   if (!el || !partyEl) return;
   const members = orderParty(heroes);
   clearParty();
-  if (!members.length || typeof document === 'undefined' || !document.createElement) return;
+  if (!members.length || typeof document === 'undefined' || !document.createElement) {
+    partyReady = Promise.resolve();
+    return;
+  }
   const token = partyToken;
+  const jobs = [];
   members.forEach((hero, i) => {
+    const frame = document.createElement('div');
+    frame.className = 'dungeon-loading-hero';
+    const strip = document.createElement('div');
+    strip.className = 'dungeon-loading-strip';
     const canvas = document.createElement('canvas');
-    canvas.className = 'dungeon-loading-hero';
-    canvas.width = 64;
-    canvas.height = 64;
-    canvas._phase = i * 0.13;
-    canvas._frame = -1;
-    partyEl.appendChild(canvas);
-    marchers.push(canvas);
-    composeSheet(hero).then(sheet => {
+    canvas.className = 'dungeon-loading-sheet';
+    const phase = i * 0.13;
+    armWalk(strip, phase);
+    strip.appendChild(canvas);
+    frame.appendChild(strip);
+    frame._strip = strip;
+    frame._bitmap = canvas;
+    partyEl.appendChild(frame);
+    marchers.push(frame);
+    jobs.push(composeSheet(hero).then(sheet => {
       if (token !== partyToken || !sheet || !sheet.canvas) return;
       const cell = sheet.cell || 64;
-      canvas.width = cell;
-      canvas.height = cell;
-      canvas._sheet = sheet;
-      canvas._ctx = typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
-      canvas._frame = -1;
-    });
+      fitMarcher(frame, cell, hero);
+      paintWalkStrip(canvas, sheet);
+    }).catch(() => {}));
   });
+  partyReady = Promise.all(jobs).then(() => {}, () => {});
 }
 
 /**
@@ -267,6 +758,8 @@ export function showLoadingScreen(opts = {}) {
   }
 
   const opening = !isVisible;
+  /* A show during the wipe must not let its shut frame hide this curtain. */
+  cancelLoadingWipe();
   if (opening) {
     shownPct = 0;
     showStartTime = Date.now();
@@ -285,8 +778,10 @@ export function showLoadingScreen(opts = {}) {
 
   if (titleEl && title) titleEl.textContent = title;
   if (subtitleEl && subtitle) subtitleEl.textContent = subtitle;
-  if (opts.theme) el.setAttribute('data-theme', opts.theme);
-  else if (opening) el.setAttribute('data-theme', '');
+  applyCard(opts, title || '');
+  if (opts.theme) applyPlate(el, opts.theme, opts.timeOfDay || '');
+  else if (opening) applyPlate(el, '', '');
+  applyPlateWeather(el, opts.weather || '', opts.seed || 1);
   publishMarch();
 
   const party = opts.party || (opening ? liveParty() : null);
@@ -297,6 +792,7 @@ export function showLoadingScreen(opts = {}) {
   el.classList.remove('hidden', 'fade-out');
   el.classList.add('active');
   isVisible = true;
+  leaving = false;
   startMarch();
 }
 
@@ -327,21 +823,27 @@ export function nextPaint() {
   });
 }
 
-/** Run `fn` after the curtain has been painted. Sync forge work belongs here. */
+/* Title card first, then the still and the walk strips, then one more paint
+   so those are on screen. Only then is it safe to block the thread. */
+function settleCurtain() {
+  return nextPaint()
+    .then(() => Promise.all([plateReady, partyReady]))
+    .then(() => nextPaint());
+}
+
+/** Run `fn` after the curtain, the still, and the heroes have been painted. */
 export function scheduleAfterPaint(fn) {
-  nextPaint().then(fn);
+  settleCurtain().then(fn);
 }
 
 /**
- * Show the loading curtain and wait until it is genuinely on screen.
- *
- * Use this instead of `showLoadingScreen()` at any point where a click kicks off
- * blocking work — the curtain becomes immediate feedback that the input landed,
- * even if the thread then stalls behind it.
+ * Show the loading curtain and wait until the picture and the party are
+ * actually on screen. Blocking work (the floor forge, restoring a save)
+ * belongs after this, not beside it.
  */
 export async function showLoadingScreenPainted(opts = {}) {
   showLoadingScreen(opts);
-  await nextPaint();
+  await settleCurtain();
 }
 
 /**
@@ -351,7 +853,12 @@ export async function showLoadingScreenPainted(opts = {}) {
  * the screen while the party is still on the left.
  */
 export function hideLoadingScreen(readyPromiseOrDuration = MIN_LOADING_TIME_MS, minDurationMs = MIN_LOADING_TIME_MS) {
-  const el = ensureElements();
+  /* Do not build a curtain just to dismiss it. Boot never shows one, and
+     creating it here would hang an empty overlay over the title card. */
+  const el = overlayEl
+    || (typeof document !== 'undefined' && typeof document.getElementById === 'function'
+      ? document.getElementById('dungeon-loading-overlay')
+      : null);
   if (!el || !isVisible) return;
 
   if (hideTimer) clearTimeout(hideTimer);
@@ -368,20 +875,32 @@ export function hideLoadingScreen(readyPromiseOrDuration = MIN_LOADING_TIME_MS, 
   }
 
   const dismiss = () => {
+    leaving = true;
     try {
       if (typeof window !== 'undefined' && window.ENGINE && typeof window.ENGINE.finishAnim === 'function') {
         window.ENGINE.finishAnim();
       }
     } catch (e) {}
 
+    const dropCurtain = () => {
+      el.classList.remove('active', 'fade-out');
+      el.classList.add('hidden');
+      isVisible = false;
+      stopMarch();
+      stopPlateWeather();
+      stopPlateOffthread();
+      if (plateVideo && typeof plateVideo.pause === 'function') {
+        try { plateVideo.pause(); } catch (e) { /* already stopped */ }
+      }
+    };
+
+    /* A random wipe plays over the curtain. Iris and slash open onto the
+       floor. Burn away reveals the floor through the part it has eaten.
+       Without a canvas (or when motion is reduced) the old fade still dismisses it. */
     const finishHide = () => {
+      if (playLoadingWipe(dropCurtain)) return;
       el.classList.add('fade-out');
-      setTimeout(() => {
-        el.classList.remove('active', 'fade-out');
-        el.classList.add('hidden');
-        isVisible = false;
-        stopMarch();
-      }, 380);
+      setTimeout(dropCurtain, 380);
     };
 
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(finishHide);

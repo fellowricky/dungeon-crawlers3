@@ -613,6 +613,34 @@ export function closeTestDelveModal() {
 }
 
 /**
+ * Dev-only title button. Safe to call before the boot paint so the menu box
+ * is already the height showTitle() will reveal. A second call does nothing.
+ */
+export function mountTestDelveTitleButton() {
+  if (!ENABLE_DEV_TEST_DELVE) return;
+  if (typeof document === 'undefined') return;
+  const tsMenu = document.querySelector('#titlescreen .ts-menu');
+  if (!tsMenu || document.getElementById('ts-test-delve')) return;
+  const testBtn = document.createElement('button');
+  testBtn.id = 'ts-test-delve';
+  testBtn.className = 'ts-btn dev-test-btn';
+  testBtn.style.cssText = `
+    border-color: rgba(217, 164, 65, 0.5) !important;
+    color: #fcd34d !important;
+    background: linear-gradient(180deg, rgba(217, 164, 65, 0.15) 0%, rgba(14, 16, 26, 0.8) 100%) !important;
+  `;
+  testBtn.innerHTML = '🧪 TEST DELVE (DEV)';
+  testBtn.addEventListener('click', openTestDelveModal);
+
+  const newGameBtn = document.getElementById('ts-new');
+  if (newGameBtn && newGameBtn.nextSibling) {
+    tsMenu.insertBefore(testBtn, newGameBtn.nextSibling);
+  } else {
+    tsMenu.appendChild(testBtn);
+  }
+}
+
+/**
  * Injects Title Screen button & HUD button and sets up hotkeys.
  */
 export function initTestDungeon(game) {
@@ -620,31 +648,6 @@ export function initTestDungeon(game) {
   _gameInstance = game;
 
   if (typeof document === 'undefined') return;
-
-  // 1. Inject into Title Screen menu
-  const injectTitleButton = () => {
-    const tsMenu = document.querySelector('#titlescreen .ts-menu');
-    if (tsMenu && !document.getElementById('ts-test-delve')) {
-      const testBtn = document.createElement('button');
-      testBtn.id = 'ts-test-delve';
-      testBtn.className = 'ts-btn dev-test-btn';
-      testBtn.style.cssText = `
-        border-color: rgba(217, 164, 65, 0.5) !important;
-        color: #fcd34d !important;
-        background: linear-gradient(180deg, rgba(217, 164, 65, 0.15) 0%, rgba(14, 16, 26, 0.8) 100%) !important;
-      `;
-      testBtn.innerHTML = '🧪 TEST DELVE (DEV)';
-      testBtn.addEventListener('click', openTestDelveModal);
-
-      // Place right after "NEW GAME"
-      const newGameBtn = document.getElementById('ts-new');
-      if (newGameBtn && newGameBtn.nextSibling) {
-        tsMenu.insertBefore(testBtn, newGameBtn.nextSibling);
-      } else {
-        tsMenu.appendChild(testBtn);
-      }
-    }
-  };
 
   // 2. Inject top-right in-game HUD button
   const injectHudButton = () => {
@@ -681,10 +684,10 @@ export function initTestDungeon(game) {
     }
   };
 
-  injectTitleButton();
+  mountTestDelveTitleButton();
   injectHudButton();
 
-  setTimeout(injectTitleButton, 500);
+  setTimeout(mountTestDelveTitleButton, 500);
   setTimeout(injectHudButton, 500);
 
   // 3. Hotkey: F2 (or Ctrl+Shift+D)

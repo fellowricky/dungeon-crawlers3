@@ -21,49 +21,49 @@
     "acPct": 0,
     "hpPct": 52,
     "atkPct": 26,
-    "statPct": 13
+    "statPct": 40
   },
   "4": {
-    "acPct": 0,
+    "acPct": 25,
     "hpPct": 61,
     "atkPct": 30,
-    "statPct": 15
+    "statPct": 46
   },
   "5": {
     "acPct": 0,
     "hpPct": 70,
     "atkPct": 35,
-    "statPct": 17
+    "statPct": 51
   },
   "6": {
     "acPct": 0,
     "hpPct": 78,
     "atkPct": 39,
-    "statPct": 20
+    "statPct": 57
   },
   "7": {
     "acPct": 0,
     "hpPct": 87,
     "atkPct": 43,
-    "statPct": 22
+    "statPct": 63
   },
   "8": {
     "acPct": 0,
     "hpPct": 96,
     "atkPct": 48,
-    "statPct": 24
+    "statPct": 69
   },
   "9": {
     "acPct": 0,
     "hpPct": 104,
     "atkPct": 52,
-    "statPct": 26
+    "statPct": 74
   },
   "10": {
     "acPct": 0,
     "hpPct": 113,
     "atkPct": 57,
-    "statPct": 28
+    "statPct": 80
   },
   "11": {
     "acPct": 0,

@@ -1435,3 +1435,70 @@ export function groundY(d, x, z) {
   const b = h01 + (h11 - h01) * tx;
   return (a + (b - a) * tz) * STEP;
 }
+
+/* What surfaceY needs from the renderer's geometry: render/dungeon_scene.js builds a
+   ramp as STAIR_TREADS treads, and render/dungeon_geo.js's sepulcherDais as these two
+   round tiers (at scale 1; its Y is the tile's, less DAIS_SINK). */
+const STAIR_TREADS = 3, DAIS_SINK = 0.02;
+const DAIS_TIERS = [{ r: 1.8, top: 0.24 }, { r: 2.4, top: 0.12 }];
+
+const daisCache = new WeakMap();
+function daisesOf(d) {
+  let list = daisCache.get(d);
+  if (!list) {
+    list = (d.props || []).filter(p => p.kind === 'sepulcherDais').map((p) => {
+      const c = Math.round(p.y) * d.W + Math.round(p.x);
+      return {
+        x: p.x - d.W / 2 + 0.5, z: p.y - d.H / 2 + 0.5,
+        scale: p.scale || 1, base: (d.height[c] || 0) * STEP - DAIS_SINK,
+      };
+    });
+    daisCache.set(d, list);
+  }
+  return list;
+}
+
+/** The ramp cell c's slope as [dx, dz, sign]; the same choice the renderer makes. */
+function rampSlope(d, c, cx, cz) {
+  const { W, H, height, grid } = d;
+  let down = null;
+  for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const nx = cx + ox, nz = cz + oz;
+    if (nx < 0 || nz < 0 || nx >= W || nz >= H) continue;
+    const n = nz * W + nx;
+    if (grid[n] !== FLOOR) continue;
+    if (height[n] === height[c] + 1) return [ox, oz, 1];
+    if (height[n] === height[c] - 1 && !down) down = [ox, oz, -1];
+  }
+  return down;
+}
+
+/**
+ * The height of what is DRAWN at (x, z), for laying a sheet over the level: a stair's
+ * own treads and a boss dais's tiers, which groundY doesn't know about. Walking stays on
+ * groundY, whose smooth climb is what a body should follow; a stepped one would judder.
+ */
+export function surfaceY(d, x, z) {
+  if (!d || !d.height) return 0;
+  const { W, H, height, ramp } = d;
+  const gx = x + W / 2 - 0.5, gz = z + H / 2 - 0.5;
+  const cx = Math.round(gx), cz = Math.round(gz);
+  if (cx < 0 || cz < 0 || cx >= W || cz >= H) return 0;
+  const c = cz * W + cx;
+  let y = height[c] * STEP;
+  const slope = ramp[c] ? rampSlope(d, c, cx, cz) : null;
+  if (slope) {
+    /* how far along the run, 0..1, picks the tread */
+    const [ox, oz, sign] = slope;
+    const along = (gx - cx) * ox + (gz - cz) * oz + 0.5;
+    const i = Math.max(0, Math.min(STAIR_TREADS - 1, Math.floor(along * STAIR_TREADS)));
+    y += sign * STEP * ((i + 1) / (STAIR_TREADS + 1));
+  }
+  for (const dais of daisesOf(d)) {
+    const dist = Math.hypot(x - dais.x, z - dais.z);
+    for (const t of DAIS_TIERS) {
+      if (dist <= t.r * dais.scale) { y = Math.max(y, dais.base + t.top * dais.scale); break; }
+    }
+  }
+  return y;
+}

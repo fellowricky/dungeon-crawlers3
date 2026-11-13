@@ -523,6 +523,16 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ff8a3a",
+        "travel": 4.5,
+        "travelRange": 5.5,
+        "impact": 9,
+        "impactRange": 8,
+        "fade": 0.4,
+        "flicker": 0.2
       }
     },
     "chillTouch": {
@@ -577,6 +587,16 @@
           "opacity": 0.9,
           "blend": "additive"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#2fd0c8",
+        "travel": 3,
+        "travelRange": 5,
+        "impact": 5.5,
+        "impactRange": 6.5,
+        "fade": 0.4,
+        "flicker": 0.1
       }
     },
     "sacredFlame": {
@@ -635,6 +655,14 @@
           "opacity": 1,
           "blend": "additive"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ffe2a0",
+        "impact": 9,
+        "impactRange": 8,
+        "fade": 0.5,
+        "flicker": 0.15
       }
     },
     "produceFlame": {
@@ -690,6 +718,14 @@
           "opacity": 1,
           "blend": "additive"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ff9a45",
+        "impact": 8,
+        "impactRange": 7.5,
+        "fade": 0.5,
+        "flicker": 0.25
       }
     },
     "eldritchBlast": {
@@ -746,59 +782,80 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#a860ff",
+        "travel": 4,
+        "travelRange": 5.5,
+        "impact": 8,
+        "impactRange": 8,
+        "fade": 0.4,
+        "flicker": 0.12
       }
     },
     "acidArrow": {
       "name": "Acid Arrow",
       "travelSound": "spellAcid",
-      "impactSound": "spellImpact",
+      "impactSound": "",
       "travel": {
-        "duration": 0.5,
-        "arc": 0,
+        "duration": 0.6,
+        "arc": 0.15,
         "back": {
           "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#4cae4c",
-          "scale": 1.5,
-          "dur": 0.5,
-          "opacity": 0.45,
-          "blend": "additive"
+          "type": "live",
+          "fx": "magicRibbon",
+          "palette": "leaf",
+          "color": "#ffffff",
+          "scale": 0.7,
+          "dur": 0.6,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "gigapack:spell_poison_001_small_green",
+          "type": "live",
+          "fx": "arrow",
+          "palette": "leaf",
+          "orient": true,
+          "renderOrder": 41,
           "color": "#ffffff",
-          "scale": 1.3,
-          "dur": 0.5,
-          "opacity": 0.9,
-          "blend": "additive"
+          "scale": 1,
+          "dur": 0.6,
+          "opacity": 1,
+          "blend": "normal"
         }
       },
       "impact": {
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "gigapack:burst_splatter_003_large_green",
-          "fps": 20,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 1.6,
-          "dur": 0.45,
-          "opacity": 0.9,
-          "blend": "additive"
+          "scale": 1,
+          "dur": 0.5,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
-          "type": "sprite",
-          "path": "dcss/effect/acid_venom.png",
+          "enabled": false,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 1.4400000000000002,
-          "dur": 0.45,
-          "opacity": 0.95,
-          "blend": "additive"
+          "scale": 1,
+          "dur": 0.3,
+          "opacity": 1,
+          "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#5cc85c",
+        "travel": 3,
+        "travelRange": 5,
+        "impact": 5,
+        "impactRange": 6.5,
+        "fade": 0.4,
+        "flicker": 0.1
       }
     },
     "armsOfHadar": {
@@ -857,6 +914,16 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#7a3a98",
+        "travel": 2.5,
+        "travelRange": 5,
+        "impact": 5,
+        "impactRange": 7,
+        "fade": 0.5,
+        "flicker": 0.1
       }
     },
     "bane": {
@@ -912,6 +979,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#c01c28",
+        "impact": 3.5,
+        "impactRange": 5.5,
+        "fade": 0.6,
+        "flicker": 0.08
       }
     },
     "bless": {
@@ -964,6 +1039,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ffe08a",
+        "impact": 5,
+        "impactRange": 7,
+        "fade": 0.7,
+        "flicker": 0.05
       }
     },
     "chaosBolt": {
@@ -1018,6 +1101,16 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ff9ad0",
+        "travel": 4,
+        "travelRange": 5.5,
+        "impact": 8,
+        "impactRange": 8,
+        "fade": 0.4,
+        "flicker": 0.2
       }
     },
     "chromaticOrb": {
@@ -1025,55 +1118,65 @@
       "travelSound": "spellChromaticOrb",
       "impactSound": "",
       "travel": {
-        "duration": 0.45,
+        "duration": 0.9,
         "arc": 0.2,
         "back": {
           "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#ffc080",
-          "scale": 1.5,
-          "dur": 0.45,
-          "opacity": 0.5,
-          "blend": "additive"
+          "type": "live",
+          "fx": "magicRibbon",
+          "palette": "candy",
+          "color": "#ffffff",
+          "scale": 0.7,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
           "type": "sheet",
           "sheet": "spell_chromaticOrb",
           "color": "#ffffff",
-          "scale": 1,
-          "dur": 0.45,
-          "opacity": 0.9,
-          "blend": "additive",
-          "fps": 30
+          "scale": 2,
+          "dur": 1.15,
+          "opacity": 1,
+          "blend": "normal",
+          "fps": 30,
+          "span": false,
+          "orient": false,
+          "kind": "glow",
+          "renderOrder": 41
         }
       },
       "impact": {
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_chromaticOrb",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 1.8,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "burst",
-          "burstType": "magic",
-          "color": "#ffe080",
-          "count": 14,
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
           "scale": 1,
-          "dur": 0.4,
+          "dur": 0.3,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ff9aee",
+        "travel": 4,
+        "travelRange": 5.5,
+        "impact": 8,
+        "impactRange": 8,
+        "fade": 0.4,
+        "flicker": 0.2
       }
     },
     "cureWounds": {
@@ -1084,7 +1187,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#6ae06a",
@@ -1094,7 +1197,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_cureWounds",
           "color": "#ffffff",
@@ -1109,17 +1212,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_cureWounds",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 1.5,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "burst",
           "burstType": "heal",
@@ -1130,6 +1231,15 @@
           "opacity": 1,
           "blend": "additive"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#7ee07e",
+        "impact": 5,
+        "impactRange": 7,
+        "fade": 0.8,
+        "flicker": 0.05,
+        "delay": 0.74
       }
     },
     "entangle": {
@@ -1140,7 +1250,7 @@
         "duration": 0.45,
         "arc": 0.2,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#4cae4c",
@@ -1150,7 +1260,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_entangle",
           "color": "#ffffff",
@@ -1165,17 +1275,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_entangle",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.4,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.8,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "vines",
           "color": "#4cae4c",
@@ -1184,6 +1292,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#4caf50",
+        "impact": 3,
+        "impactRange": 6,
+        "fade": 0.6,
+        "flicker": 0.05
       }
     },
     "findFamiliar": {
@@ -1194,7 +1310,7 @@
         "duration": 0.45,
         "arc": 0.3,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#a0c080",
@@ -1204,7 +1320,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_findFamiliar",
           "color": "#ffffff",
@@ -1219,17 +1335,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_findFamiliar",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1.2,
+          "scale": 1,
+          "dur": 1,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#a0c080",
@@ -1238,6 +1352,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#88ccff",
+        "impact": 5,
+        "impactRange": 7,
+        "fade": 0.6,
+        "flicker": 0.1
       }
     },
     "grease": {
@@ -1248,7 +1370,7 @@
         "duration": 0.45,
         "arc": 0.15,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#bfa060",
@@ -1258,7 +1380,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_grease",
           "color": "#ffffff",
@@ -1273,17 +1395,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_grease",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.4,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.6,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#bfa060",
@@ -1299,28 +1419,31 @@
       "travelSound": "spellGuidingBolt",
       "impactSound": "",
       "travel": {
-        "duration": 0.5,
-        "arc": 0.1,
+        "duration": 0.85,
+        "arc": 1,
         "back": {
           "enabled": true,
           "type": "procedural",
           "kind": "glow",
           "color": "#ffe08a",
-          "scale": 1.5,
-          "dur": 0.5,
+          "scale": 1,
+          "dur": 0.85,
           "opacity": 0.5,
-          "blend": "additive"
+          "blend": "additive",
+          "fx": "magicRibbon"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
+          "type": "live",
           "sheet": "spell_guidingBolt",
           "color": "#ffffff",
           "scale": 1,
-          "dur": 0.5,
+          "dur": 0.85,
           "opacity": 0.9,
           "blend": "additive",
-          "fps": 30
+          "fps": 30,
+          "fx": "magicMissile",
+          "palette": "holy"
         }
       },
       "impact": {
@@ -1339,13 +1462,23 @@
         "front": {
           "enabled": true,
           "type": "procedural",
-          "kind": "ring",
+          "kind": "sparkles",
           "color": "#ffe08a",
           "scale": 1.2,
           "dur": 0.35,
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ffe08a",
+        "travel": 5,
+        "travelRange": 6,
+        "impact": 10,
+        "impactRange": 9,
+        "fade": 0.5,
+        "flicker": 0.1
       }
     },
     "healingWord": {
@@ -1353,55 +1486,59 @@
       "travelSound": "spellHealingWord",
       "impactSound": "",
       "travel": {
-        "duration": 0.4,
-        "arc": 0.2,
+        "duration": 0.8,
+        "arc": 0.35,
         "back": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#e8a8ff",
-          "scale": 1.5,
-          "dur": 0.4,
-          "opacity": 0.5,
-          "blend": "additive"
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.8,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_healingWord",
+          "type": "live",
+          "fx": "softMote",
+          "palette": "leaf",
           "color": "#ffffff",
           "scale": 1,
-          "dur": 0.4,
-          "opacity": 0.9,
-          "blend": "additive",
-          "fps": 30
+          "dur": 0.8,
+          "opacity": 1,
+          "blend": "normal"
         }
       },
       "impact": {
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_healingWord",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2,
-          "dur": 0.9,
+          "scale": 1,
+          "dur": 1,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "burst",
-          "burstType": "heal",
-          "color": "#f0c0ff",
-          "count": 12,
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
           "scale": 1,
-          "dur": 0.4,
+          "dur": 0.3,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#8fd058",
+        "travel": 2.5,
+        "travelRange": 5,
+        "impact": 4.5,
+        "impactRange": 6,
+        "fade": 0.6,
+        "flicker": 0.05
       }
     },
     "hex": {
@@ -1412,7 +1549,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#9b59b6",
@@ -1422,7 +1559,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_hex",
           "color": "#ffffff",
@@ -1437,17 +1574,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_hex",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.4,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#9b59b6",
@@ -1456,6 +1591,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#9b59b6",
+        "impact": 3.5,
+        "impactRange": 5.5,
+        "fade": 0.6,
+        "flicker": 0.08
       }
     },
     "hideousLaughter": {
@@ -1463,53 +1606,59 @@
       "travelSound": "spellHideousLaughter",
       "impactSound": "",
       "travel": {
-        "duration": 0.45,
+        "duration": 0.7,
         "arc": 0.3,
         "back": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#d0a0ff",
-          "scale": 1.5,
-          "dur": 0.45,
-          "opacity": 0.5,
-          "blend": "additive"
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.7,
+          "opacity": 1,
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_hideousLaughter",
+          "type": "live",
+          "fx": "softMote",
+          "palette": "arcane",
           "color": "#ffffff",
           "scale": 1,
-          "dur": 0.45,
-          "opacity": 0.9,
-          "blend": "additive",
-          "fps": 30
+          "dur": 0.7,
+          "opacity": 1,
+          "blend": "normal"
         }
       },
       "impact": {
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_hideousLaughter",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.4,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "ring",
-          "color": "#d0a0ff",
-          "scale": 1.2,
-          "dur": 0.35,
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#e8a8ff",
+        "travel": 2.5,
+        "travelRange": 4.5,
+        "impact": 3.5,
+        "impactRange": 5.5,
+        "fade": 0.5,
+        "flicker": 0.1
       }
     },
     "huntersMark": {
@@ -1520,7 +1669,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#1abc9c",
@@ -1530,7 +1679,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_huntersMark",
           "color": "#ffffff",
@@ -1545,17 +1694,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_huntersMark",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.2,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#1abc9c",
@@ -1564,17 +1711,25 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#c02424",
+        "impact": 3,
+        "impactRange": 5,
+        "fade": 0.5,
+        "flicker": 0.05
       }
     },
     "inflictWounds": {
       "name": "Inflict Wounds",
-      "travelSound": "spellInflictWounds",
-      "impactSound": "",
+      "travelSound": "",
+      "impactSound": "spellRayOfSickness",
       "travel": {
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#c04060",
@@ -1584,7 +1739,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_inflictWounds",
           "color": "#ffffff",
@@ -1599,17 +1754,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_inflictWounds",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 0.9,
+          "scale": 1,
+          "dur": 0.8,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#c04060",
@@ -1618,6 +1771,15 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#c04040",
+        "impact": 5,
+        "impactRange": 6.5,
+        "fade": 0.5,
+        "flicker": 0.1,
+        "delay": 0.56
       }
     },
     "magicMissile": {
@@ -1625,53 +1787,63 @@
       "travelSound": "spellMagicMissile",
       "impactSound": "",
       "travel": {
-        "duration": 0.45,
-        "arc": 0.15,
+        "duration": 0.75,
+        "arc": 0,
         "back": {
           "enabled": true,
           "type": "procedural",
           "kind": "glow",
           "color": "#8fd4e8",
-          "scale": 1.5,
-          "dur": 0.45,
+          "scale": 1,
+          "dur": 0.75,
           "opacity": 0.5,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
+          "type": "live",
           "sheet": "spell_magicMissile",
           "color": "#ffffff",
-          "scale": 1,
-          "dur": 0.45,
+          "scale": 0.4,
+          "dur": 0.75,
           "opacity": 0.9,
           "blend": "additive",
-          "fps": 30
+          "fps": 30,
+          "fx": "magicMissile"
         }
       },
       "impact": {
         "delay": 0,
         "back": {
-          "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_magicMissile",
-          "fps": 30,
+          "enabled": false,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 1.3,
-          "dur": 0.7,
+          "scale": 1,
+          "dur": 0.3,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": false,
-          "type": "procedural",
-          "kind": "ring",
-          "color": "#8fd4e8",
-          "scale": 1.2,
-          "dur": 0.35,
+          "enabled": true,
+          "type": "live",
+          "fx": "magicMissileHit",
+          "palette": "arcane",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.5,
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#8fd4e8",
+        "travel": 2.5,
+        "travelRange": 4.5,
+        "impact": 4,
+        "impactRange": 5.5,
+        "fade": 0.3,
+        "flicker": 0.1
       }
     },
     "protectionFromEvil": {
@@ -1682,7 +1854,7 @@
         "duration": 0.45,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#ffe08a",
@@ -1692,7 +1864,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_protectionFromEvil",
           "color": "#ffffff",
@@ -1707,17 +1879,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_protectionFromEvil",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 1.2,
+          "scale": 1,
+          "dur": 0.75,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#ffe08a",
@@ -1726,6 +1896,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ffe08a",
+        "impact": 4.5,
+        "impactRange": 6.5,
+        "fade": 0.7,
+        "flicker": 0.05
       }
     },
     "rayOfSickness": {
@@ -1733,56 +1911,62 @@
       "travelSound": "spellRayOfSickness",
       "impactSound": "",
       "travel": {
-        "duration": 0.45,
-        "arc": 0.1,
+        "duration": 0.2,
+        "arc": 0,
         "back": {
-          "enabled": true,
-          "type": "procedural",
-          "kind": "glow",
-          "color": "#4cae4c",
-          "scale": 1.5,
-          "dur": 0.45,
-          "opacity": 0.5,
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.2,
+          "opacity": 0.4,
           "blend": "additive"
         },
         "front": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_rayOfSickness",
-          "span": true,
+          "type": "live",
+          "fx": "beam",
+          "palette": "poison",
+          "width": 0.3,
           "color": "#ffffff",
           "scale": 1,
-          "dur": 1.2,
-          "opacity": 0.9,
-          "blend": "additive",
-          "fps": 30
+          "dur": 0.55,
+          "opacity": 1,
+          "blend": "normal"
         }
       },
       "impact": {
         "delay": 0,
         "back": {
           "enabled": false,
-          "type": "sheet",
-          "sheet": "spell_rayOfSickness",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 0.9,
+          "scale": 1,
+          "dur": 0.3,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
           "enabled": true,
-          "type": "procedural",
-          "kind": "burst",
-          "burstType": "acid",
-          "color": "#6ae06a",
-          "count": 14,
+          "type": "live",
+          "fx": "hitSpark",
+          "palette": "poison",
+          "color": "#ffffff",
           "scale": 1,
-          "dur": 0.4,
+          "dur": 0.5,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#50c850",
+        "travel": 3.5,
+        "travelRange": 5,
+        "impact": 5,
+        "impactRange": 6,
+        "fade": 0.35,
+        "flicker": 0.1
       }
     },
     "shield": {
@@ -1793,7 +1977,7 @@
         "duration": 0.35,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#88aaff",
@@ -1803,7 +1987,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_shield",
           "color": "#ffffff",
@@ -1818,17 +2002,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_shield",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.2,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#88aaff",
@@ -1837,6 +2019,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#88aaff",
+        "impact": 5,
+        "impactRange": 6.5,
+        "fade": 0.45,
+        "flicker": 0.05
       }
     },
     "shieldOfFaith": {
@@ -1847,7 +2037,7 @@
         "duration": 0.35,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#a0c0ff",
@@ -1857,7 +2047,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_shieldOfFaith",
           "color": "#ffffff",
@@ -1872,17 +2062,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_shieldOfFaith",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2,
-          "dur": 1,
+          "scale": 1,
+          "dur": 0.2,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#a0c0ff",
@@ -1891,6 +2079,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#f5c84c",
+        "impact": 5,
+        "impactRange": 6.5,
+        "fade": 0.6,
+        "flicker": 0.05
       }
     },
     "thunderousSmite": {
@@ -1901,7 +2097,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#7fd4ff",
@@ -1911,7 +2107,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_thunderousSmite",
           "color": "#ffffff",
@@ -1926,17 +2122,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_thunderousSmite",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.2,
-          "dur": 0.9,
+          "scale": 1,
+          "dur": 0.2,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#7fd4ff",
@@ -1945,6 +2139,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#7cc8ff",
+        "impact": 4.5,
+        "impactRange": 6,
+        "fade": 0.5,
+        "flicker": 0.1
       }
     },
     "thunderwave": {
@@ -1955,7 +2157,7 @@
         "duration": 0.4,
         "arc": 0,
         "back": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "glow",
           "color": "#dfe4ee",
@@ -1965,7 +2167,7 @@
           "blend": "additive"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "sheet",
           "sheet": "spell_thunderwave",
           "color": "#ffffff",
@@ -1980,17 +2182,15 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "spell_thunderwave",
-          "fps": 30,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 2.6,
-          "dur": 0.9,
+          "scale": 1,
+          "dur": 0.5,
           "opacity": 1,
-          "blend": "additive"
+          "blend": "normal"
         },
         "front": {
-          "enabled": true,
+          "enabled": false,
           "type": "procedural",
           "kind": "ring",
           "color": "#dfe4ee",
@@ -1999,6 +2199,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#b0dcff",
+        "impact": 10,
+        "impactRange": 9,
+        "fade": 0.35,
+        "flicker": 0.1
       }
     },
     "web": {
@@ -2340,12 +2548,10 @@
         "delay": 0,
         "back": {
           "enabled": true,
-          "type": "sheet",
-          "sheet": "pfx_sleep_rune",
-          "ground": true,
+          "type": "none",
           "color": "#ffffff",
-          "scale": 1.6,
-          "dur": 2.6,
+          "scale": 1,
+          "dur": 0.6,
           "opacity": 1,
           "blend": "normal"
         },
@@ -2358,6 +2564,14 @@
           "opacity": 0.9,
           "blend": "additive"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#6688aa",
+        "impact": 3,
+        "impactRange": 6,
+        "fade": 0.7,
+        "flicker": 0.05
       }
     },
     "rayOfFrost": {
@@ -2413,6 +2627,16 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#9fe0ff",
+        "travel": 4,
+        "travelRange": 5.5,
+        "impact": 7,
+        "impactRange": 7,
+        "fade": 0.35,
+        "flicker": 0.05
       }
     },
     "viciousMockery": {
@@ -2461,6 +2685,14 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#f040c0",
+        "impact": 3,
+        "impactRange": 4.5,
+        "fade": 0.3,
+        "flicker": 0.1
       }
     },
     "dragonBreathSpell": {
@@ -2512,6 +2744,689 @@
           "opacity": 1,
           "blend": "normal"
         }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ff6a20",
+        "travel": 6,
+        "travelRange": 7,
+        "impact": 8,
+        "impactRange": 8,
+        "fade": 0.45,
+        "flicker": 0.3
+      }
+    },
+    "faerieFire": {
+      "name": "Faerie Fire",
+      "travelSound": "spellNature",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 1.5,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#b08cff",
+        "impact": 5,
+        "impactRange": 7,
+        "fade": 0.6,
+        "flicker": 0.1,
+        "delay": 0.4
+      }
+    },
+    "barkskin": {
+      "name": "Barkskin",
+      "travelSound": "spellNature",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.8,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#6aaa4a",
+        "impact": 3,
+        "impactRange": 5.5,
+        "fade": 0.6,
+        "flicker": 0.05
+      }
+    },
+    "blindness": {
+      "name": "Blindness/Deafness",
+      "travelSound": "spellMind",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.7,
+        "arc": 0.3,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "live",
+          "fx": "softMote",
+          "palette": "shadow",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.7,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "darkness": {
+      "name": "Darkness",
+      "travelSound": "spellMind",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.7,
+        "arc": 0.3,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "live",
+          "fx": "softMote",
+          "palette": "shadow",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.7,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      }
+    },
+    "enlargeReduce": {
+      "name": "Enlarge",
+      "travelSound": "spellArcane",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ffb45a",
+        "impact": 3.5,
+        "impactRange": 5.5,
+        "fade": 0.8,
+        "flicker": 0.05
+      }
+    },
+    "flamingSphere": {
+      "name": "Flaming Sphere",
+      "travelSound": "spellFire",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.7,
+        "arc": 0.3,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "live",
+          "fx": "softMote",
+          "palette": "fire",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.7,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#ff8a30",
+        "travel": 2,
+        "travelRange": 5,
+        "impact": 5,
+        "impactRange": 6.5,
+        "fade": 0.6,
+        "flicker": 0.1
+      }
+    },
+    "holdPerson": {
+      "name": "Hold Person",
+      "travelSound": "spellEntangle",
+      "impactSound": "spellRockWall",
+      "travel": {
+        "duration": 0.6,
+        "arc": 0.2,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "live",
+          "fx": "softMote",
+          "palette": "arcane",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.6,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#a070f0",
+        "travel": 1.5,
+        "travelRange": 4,
+        "impact": 3.5,
+        "impactRange": 5,
+        "fade": 0.5,
+        "flicker": 0
+      }
+    },
+    "lesserRestoration": {
+      "name": "Lesser Restoration",
+      "travelSound": "spellHealingWord",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.7,
+        "arc": 0.3,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": true,
+          "type": "live",
+          "fx": "softMote",
+          "palette": "leaf",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.7,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 1,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.3,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#a8f0a0",
+        "travel": 2,
+        "travelRange": 4.5,
+        "impact": 3.5,
+        "impactRange": 5,
+        "fade": 1.3,
+        "flicker": 0
+      }
+    },
+    "magicWeapon": {
+      "name": "Magic Weapon",
+      "travelSound": "spellArcane",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#b08cff",
+        "impact": 3,
+        "impactRange": 4.5,
+        "fade": 0.7,
+        "flicker": 0.05
+      }
+    },
+    "mirrorImage": {
+      "name": "Mirror Image",
+      "travelSound": "spellArcane",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#88ccff",
+        "impact": 3,
+        "impactRange": 4.5,
+        "fade": 0.7,
+        "flicker": 0.05
+      }
+    },
+    "mistyStep": {
+      "name": "Misty Step",
+      "travelSound": "spellArcane",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.4,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#6a2fb0",
+        "impact": 3.5,
+        "impactRange": 5,
+        "fade": 0.7,
+        "flicker": 0.05
+      }
+    },
+    "moonbeam": {
+      "name": "Moonbeam",
+      "travelSound": "spellArcane",
+      "impactSound": "",
+      "travel": {
+        "duration": 0.05,
+        "arc": 0,
+        "back": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "impact": {
+        "delay": 0,
+        "back": {
+          "enabled": true,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.9,
+          "opacity": 1,
+          "blend": "normal"
+        },
+        "front": {
+          "enabled": false,
+          "type": "none",
+          "color": "#ffffff",
+          "scale": 1,
+          "dur": 0.4,
+          "opacity": 1,
+          "blend": "normal"
+        }
+      },
+      "light": {
+        "enabled": true,
+        "color": "#c0e8ff",
+        "impact": 4.5,
+        "impactRange": 6,
+        "fade": 0.7,
+        "flicker": 0
       }
     }
   }

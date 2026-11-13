@@ -52,6 +52,10 @@
   display:none;
 }
 .pframe .pf-hpbar{
+  margin-left:44px;
+}
+.pframe .pf-abils,
+.pframe .pf-effects{
   clear:both;
 }
 .pframe.down .pf-portrait{

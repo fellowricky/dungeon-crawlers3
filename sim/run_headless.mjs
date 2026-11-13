@@ -18,6 +18,7 @@ import { installSeededRandom, mulberry32, withStream } from './rng.mjs';
 import { makeParty, levelPartyTo } from './herogen.mjs';
 import { spawnMonster, crForDungeonLevel, CLASSES } from '../src/game/srd.js';
 import { createArenaRoom, HeadlessGame } from './headless_game.mjs';
+import { PLANNER } from '../src/game/turn_planner.js';
 import { attachAiMetrics, makeAiStats, mergeAiStats, formatAiMetrics } from './ai_metrics.mjs';
 
 /* Campaign-wide AI-quality totals, folded in per encounter. */
@@ -44,6 +45,12 @@ function parseArgs(argv) {
     else if (a === '--encounters') cfg.encountersPerLevel = +next();
     else if (a === '--seed') cfg.seed = +next();
     else if (a === '--quiet') cfg.quiet = true;
+    else if (a === '--noPlanner') PLANNER.on = false;   // A/B against the pre-planner AI
+    else if (a === '--noMonsterPlanner') PLANNER.monsters = false;
+    else if (a === '--noPhase2') PLANNER.phase2 = false;
+    else if (a === '--noMonsterMoves') PLANNER.monsterMoves = false;
+    else if (a === '--noThrift') PLANNER.thrift = false;   // A/B the cleanup rule
+    else if (a === '--off') for (const k of next().split(',')) PLANNER[k] = false;   // e.g. --off formation,safeSpots
     else if (a === '--help' || a === '-h') { printHelp(); process.exit(0); }
     else console.warn(`(ignoring unknown arg: ${a})`);
   }

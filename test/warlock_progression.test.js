@@ -116,7 +116,9 @@ describe('Eldritch Invocations are chosen, not handed out', () => {
     h.invocations = ['armorOfShadows', 'fiendishVigor'];
     const pb = featureBonuses(h);
     expect(pb.ac).toBe(1);
-    expect(pb.hp).toBe(5);
+    /* Fiendish Vigor is False Life: start-of-fight temp HP, not max HP */
+    expect(pb.fightTempHp).toBe(5);
+    expect(pb.hp).toBeUndefined();
   });
 });
 

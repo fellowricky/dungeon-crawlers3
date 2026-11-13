@@ -15,13 +15,38 @@ import { addVirtualLight, removeVirtualLight, hasVirtualLight, addDarkZone, DARK
 import { canSee } from './light_rules.js';
 import { hasFeature } from './features.js';
 import { isPointInLineSegment, isPointInCone } from './aoe_system.js';
+import { placeSphereBody, SPHERE_REACH } from './flaming_sphere.js';
 
 /* ── tiny dice helpers (avoid srd.js import → circular deps) ── */
 function roll(count, sides, bonus = 0) {
+  /* Empowered Spell (sorcerer talent, class_talents.js empowerSpell): during
+     the sorcerer's own turn, damage dice that land 1 or 2 are rerolled once. */
+  const emp = SPELL_ROLL.empower;
+  const live = !!(emp && emp.live());
+  if (emp && !live) SPELL_ROLL.empower = null;
+  const reroll = live && sides > 2 && sides < 20;
+  /* Spell Bombardment (wild_magic.js): the first die this turn that lands on
+     its top face is rolled again and added. */
+  const bomb = SPELL_ROLL.bombard;
+  const bombLive = !!(bomb && !bomb.used && bomb.live());
+  if (bomb && !bombLive) SPELL_ROLL.bombard = null;
   let t = bonus;
-  for (let i = 0; i < count; i++) t += Math.floor(Math.random() * sides) + 1;
+  for (let i = 0; i < count; i++) {
+    let r = Math.floor(Math.random() * sides) + 1;
+    if (reroll && r <= 2) r = Math.floor(Math.random() * sides) + 1;
+    if (bombLive && !bomb.used && sides > 2 && sides < 20 && r === sides) {
+      const extra = Math.floor(Math.random() * sides) + 1;
+      bomb.used = true;
+      t += extra;
+      if (bomb.onFire) bomb.onFire(extra);
+    }
+    t += r;
+  }
   return t;
 }
+/* Armed by class_talents.js empowerSpell / metamagic.js: { owner, live() };
+   bombard by wild_magic.js armSpellBombardment: { owner, used, live(), onFire } */
+export const SPELL_ROLL = { empower: null, bombard: null };
 function die(sides) { return Math.floor(Math.random() * sides) + 1; }
 
 /* Sequenced projectiles (darts, rays, hailstones, chain arcs) ride the COMBAT
@@ -33,6 +58,14 @@ function later(game, delayMs, fn, opts = null) {
   if (typeof game.fxSchedule === 'function') return game.fxSchedule(delayMs, fn);
   return fn();
 }
+/* Inflict Wounds' look: a blood scythe reaps round the target, and as it starts to
+   tear away a blood Mana Burst blows out of the wound. */
+function playReap(game, caster, foe) {
+  later(game, 0, () => { if (game.fxScytheReap) game.fxScytheReap(foe, caster, REAP_SIZE); });
+  later(game, REAP_BURST_MS, () => { if (game.fxManaBurst) game.fxManaBurst(foe, 'blood', REAP_SIZE); });
+}
+/* render/pfx/shock_ring.js: seconds after the clap for the ring (8 art px to 104 in 0.5 s, easing out) to reach `px`. */
+function shockArrives(px) { return 0.5 * (1 - Math.cbrt(1 - Math.max(0, Math.min(1, (px - 8) / 96)))); }
 function mod(score) { return Math.floor((score - 10) / 2); }
 
 /* Dancing Lights: where the three motes sit round their point. */
@@ -40,10 +73,17 @@ const DANCING_LIGHT_OFFSETS = [[0, 0], [1.6, 0.8], [-1.4, 1.0]];
 
 /* The PAL ramp each type Chaos Bolt can roll bursts in. */
 export const CHAOS_BOLT_PALETTES = { acid:'cyber', cold:'ice', fire:'fire', lightning:'volt', poison:'poison', thunder:'arcane' };
+/* Chromatic Orb's damage types, and how far into each landing effect
+   (render/pixelfx_live.js spawnElementImpact, and body_fx.js for poison) its flash comes. */
+export const CHROMATIC_ORB_HIT_MS = { fire:0, cold:170, lightning:70, acid:250, poison:480 };
 const CHAOS_BOLT_FLASH_MS = 220;      // arcane/mana-burst's GATHER
+const CURE_WOUNDS_HEAL_MS = 740;      // holy/heal's hoop reaches the top of the body
+const FAERIE_STARS_LAND_MS = 400;     // render/pfx/faerie_stars.js: the first stars reach the floor
+const GREASE_SPREAD_MS = 300;         // render/pfx/grease_slick.js has run most of the way out
 const BLESS_HALO_MS = 2500;           // holy/blessing starts fading out 0.5 s before its 3 s ends
 const BANE_FLARE_MS = 2600;           // shadow/hex-sigil's FLARE
 const ARMS_OF_HADAR_LASH_MS = 450;   // into shadow/shadow-tendrils (its OPEN is 0.34 s, then the rise)
+const ARMS_OF_HADAR_RADIUS = 2.2;    // who the tentacles reach, and the rim of the flat portal under them
 
 /** The caster's Dancing Lights still burning, or null (a floor change cleared
  *  the lights). */
@@ -139,6 +179,14 @@ const CALL_LIGHTNING_HIT_MS = 520;
 const STORM_GATHER_MS = 500;
 const STORM_GLIDE_MS = 600;
 const ICE_STORM_HIT_MS = 480;
+const MARK_LOCK_MS = 350;              // render/pfx/target_reticle.js: the brackets lock
+const HEX_STAMP_MS = 550;              // shadow/curse's skull lands
+const REAP_SIZE = 0.7;
+const REAP_BURST_MS = 560;             // melee/scythe-reap has swept and hung; it starts to tear away
+/* Thunderwave's timing, kept with its art so the blows and the ring can't drift apart. */
+const THUNDERCLAP_RING_DELAY = 0.12, THUNDERWAVE_PX_PER_UNIT = 38 / 1.1;
+const SLEEP_TAKES_MS = 600;            // render/pfx/ward_circle.js has opened and is turning
+const WARD_RISES_MS = 600;              // render/pfx/ward_circle.js has opened and is turning
 const BLIGHT_HIT_MS = 620;
 
 /* ── helpers ── */
@@ -147,10 +195,11 @@ function castAbility(h) {
   const clsAtk = d._classAtk || 'int';   // set by recalc() from the class's attack ability
   return d.effStats?.[clsAtk] ?? 10;
 }
-/* 5e spell save DC: 8 + proficiency bonus + casting-ability modifier */
+/* 5e spell save DC: 8 + proficiency bonus + casting-ability modifier, plus any
+   spell-DC bonus (srd.js recalc spellDCBonus: skill-tree potency nodes, passives) */
 export function spellDC(h) {
   const lvl = h.data.level || 1;
-  return 8 + (2 + Math.floor((lvl - 1) / 4)) + mod(castAbility(h));
+  return 8 + (2 + Math.floor((lvl - 1) / 4)) + mod(castAbility(h)) + (h.data.spellDCBonus || 0);
 }
 
 function clusterAround(game, center, r) {
@@ -376,6 +425,7 @@ export const SPELLS = {
     label:'Fire Breath', level:0, thrown:true, icon:'🐲',
     desc:'Exhale a 15-ft cone of fire: 4d6 (DEX save for half).',
     ai:{ when:'cluster', priority:7, minTargets:2, aoeRadius:3.0, aoeOrigin:'self' },
+    area:{ shape:'cone', range:3.2, halfAngle:0.55 },   // 15-ft cone at the target, as cast below
     dmgType:'fire', color:0xff7a30,
     cast(game, h, foe) {
       if (!foe || foe.dead) foe = pickProjectileTarget(game, h, foe);
@@ -455,7 +505,7 @@ export const SPELLS = {
           const from = chestOf(game, h);
           const t = game._v3(
             dartTarget.x + (Math.random() - 0.5) * 0.3,
-            0.4 * (dartTarget.data?.scale || 1.0) + 0.4,
+            onFloor(game, dartTarget, 0.4 * (dartTarget.data?.scale || 1.0) + 0.4).y,
             dartTarget.z + (Math.random() - 0.5) * 0.3
           );
 
@@ -483,8 +533,12 @@ export const SPELLS = {
     color:0x88aaff,
     cast(game, h) {
       game.markSpellUsed(h, this);
-      applyEffect(h, 'shielded', { duration:ROUND_SECONDS, elapsed: game.fxNow, source:h });
       game.playAbilityFx(h, 'shield', { at:h, spell:true });
+      /* All the spell shows is its status: the bubble grows when the charge ends. */
+      later(game, 0, () => {
+        if (!h.data || h.data.hp <= 0) return;
+        applyEffect(h, 'shielded', { duration:ROUND_SECONDS, elapsed: game.fxNow, source:h });
+      });
       game.fxLog(`🛡 ${h.data.name} casts Shield! (+5 AC)`, 'buff');
       return true;
     }
@@ -723,52 +777,44 @@ export const SPELLS = {
       if (castX == null || castZ == null) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'entangle', { at: targetPos || foe || h, spell:true, ring:2.0 });
+      game.playAbilityFx(h, 'entangle', { at: targetPos || foe || h, spell:true });
       game.fxLog(`🌿 ${h.data.name} casts Entangle!`, 'crit');
 
-      const zone = game.spawnAoEZone(h, 'entangle', castX, castZ, 2.0, {
-        color: 0x4caf50,
-        borderColor: 0x2e7d32,
-        dur: 60,
-        difficultTerrain: true,
-        procedural: 'vines',
-        vines: 16,
-        innerOpacity: 0.32,
-        borderOpacity: 0.95,
-        pointLight: true,
-        lightColor: 0x4caf50,
-        lightIntensity: 2.2,
-        lightRange: 6.0,
-        loopSheet: {
-          sheetKey: 'spell_entangle',
-          repeatCount: 7,
-          scale: 1.8,
-          opacity: 0.95,
-          grounded: true,
-          additive: false,
-          centerY: 0.0,
-          y: 0.03,
-          startFrame: 10,
-          endFrame: 18,
-          fps: 8
-        }
-      });
+      /* No flight: when the charge ends the weeds are simply there, and whoever
+         fails the save is seized in the same moment. */
+      later(game, 0, () => {
+        if (!h.data || h.data.hp <= 0) return;
+        const zone = game.spawnAoEZone(h, 'entangle', castX, castZ, 2.0, {
+          color: 0x4caf50,
+          borderColor: 0x2e7d32,
+          dur: 60,
+          difficultTerrain: true,
+          innerOpacity: 0.32,
+          borderOpacity: 0.95,
+          pointLight: true,
+          lightColor: 0x4caf50,
+          lightIntensity: 2.2,
+          lightRange: 6.0,
+        });
+        /* The weeds stand for as long as the zone does, and sink away when it ends. */
+        if (zone && game.fxEntangleWeeds) zone.liveFx = game.fxEntangleWeeds(castX, castZ, 2.0);
 
-      const foes = clusterAround(game, targetPos || foe || { x: castX, z: castZ }, 2.0);
-      const applied = [];
-      for (const m of foes) {
-        if (m.dead) continue;
-        if (game.spellSave(m, 'str', dc, { magic:true })) {
-          game.fxLog(`🌿 ${m.data?.name || 'Foe'} avoids grasping vines (STR save).`, 'miss');
-          continue;
+        const foes = clusterAround(game, targetPos || foe || { x: castX, z: castZ }, 2.0);
+        const applied = [];
+        for (const m of foes) {
+          if (m.dead) continue;
+          if (game.spellSave(m, 'str', dc, { magic:true })) {
+            game.fxLog(`🌿 ${m.data?.name || 'Foe'} avoids grasping vines (STR save).`, 'miss');
+            continue;
+          }
+          if (applyEffect(m, 'restrained', { duration:60, elapsed: game.fxNow, source:h, data:{ aura:'entangled' },
+              repeatSave:{ ability:'str', dc, every:ROUND_SECONDS } })) {
+            applied.push({ e:m, key:'restrained' });
+            game.fxLog(`🌿 ${m.data?.name || 'Foe'} is ensnared and RESTRAINED by Entangle!`, 'crit');
+          }
         }
-        if (applyEffect(m, 'restrained', { duration:60, elapsed: game.fxNow, source:h,
-            repeatSave:{ ability:'str', dc, every:ROUND_SECONDS } })) {
-          applied.push({ e:m, key:'restrained' });
-          game.fxLog(`🌿 ${m.data?.name || 'Foe'} is ensnared and RESTRAINED by Entangle!`, 'crit');
-        }
-      }
-      game.concentrate(h, 'entangle', applied, zone);
+        game.concentrate(h, 'entangle', applied, zone);
+      });
       return true;
     }
   },
@@ -784,46 +830,33 @@ export const SPELLS = {
       if (!foe || foe.dead) return false;
       const d = h.data;
       game.markSpellUsed(h, this);
-      game.playAbilityFx(h, 'moonbeam', { at:h, spell:true });
       game.fxLog(`✨ ${d.name} casts Moonbeam!`, 'crit');
-
-      const targetX = foe.x, targetZ = foe.z;
-      const zone = game.spawnAoEZone(h, 'moonbeam', targetX, targetZ, 1.8, {
-        color: this.color,
-        dur: 60,
-        slotLevel: slotLevel || 2,
-        cylinderBeam: true,
-        beamHeight: 8.0,
-        beamColor: 0xe0f4ff,
-        beamOpacity: 0.5,
-        lightIntensity: 0.7,
-        borderRing: false,
-        innerCircle: false
-      });
-
-      game.concentrate(h, 'moonbeam', [], zone);
-
-      const from = game._v3(targetX, 6.0, targetZ);
-      const to = game._v3(targetX, 0.4, targetZ);
-      game.fxBeam(from, to, {
-        type: 'pillar',
-        color: this.color,
-        coreColor: 0xffffff,
-        width: 1.6,
-        duration: 0.75,
-        opacity: 0.5,
-        targetBurst: 'round_light_burst_001_large_yellow'
-      });
-
-      const foes = (h._side === 'mon' ? game.heroes : game.monsters).filter(m =>
-        m.data && m.data.hp > 0 && m.active !== false && Math.hypot(m.x - targetX, m.z - targetZ) <= 1.8
-      );
-      for (const m of foes) {
-        if (!zone.savesThisTurn.has(m)) {
-          zone.savesThisTurn.add(m);
-          game.resolveMoonbeamDamage(zone, m);
-        }
-      }
+      /* After the charge the shaft drops onto the target (render/pfx/moonbeam_shaft.js); it burns as it lands. */
+      game.playAbilityFx(h, 'moonbeam', { at:foe, spell:true, onImpact: () => {
+        if (d.hp <= 0) return;
+        const targetX = foe.x, targetZ = foe.z;
+        const zone = game.spawnAoEZone(h, 'moonbeam', targetX, targetZ, 1.8, {
+          color: this.color,
+          dur: 60,
+          slotLevel: slotLevel || 2,
+          noGround: true,
+          lightIntensity: 0.7,
+        });
+        if (game.fxMoonbeam) zone.liveFx = game.fxMoonbeam(targetX, targetZ);
+        game.concentrate(h, 'moonbeam', [], zone);
+        later(game, 280, () => {
+          if (h.conc?.zone !== zone) return;
+          const foes = (h._side === 'mon' ? game.heroes : game.monsters).filter(m =>
+            m.data && m.data.hp > 0 && m.active !== false && Math.hypot(m.x - zone.x, m.z - zone.z) <= zone.radius
+          );
+          for (const m of foes) {
+            if (!zone.savesThisTurn.has(m)) {
+              zone.savesThisTurn.add(m);
+              game.resolveMoonbeamDamage(zone, m);
+            }
+          }
+        });
+      } });
       return true;
     }
   },
@@ -896,7 +929,7 @@ export const SPELLS = {
     desc:'Bonus heal on a wounded ally (1d4 + mod; +1d4 per slot above 1st).',
     recharge:'slot',
     ai:{ when:'hurtAlly', priority:8, hpFrac:0.55 },
-    color:0xe8a8ff,
+    color:0x7cc048,  /* PAL.leaf, the same green as its mote and landing */
     cast(game, h, targetAlly, alive, slotLevel = 1) {
       const d = h.data;
       const isManual = game && game.controlMode === 'manual';
@@ -911,8 +944,12 @@ export const SPELLS = {
       game.markSpellUsed(h, this);
       const diceCount = 1 + Math.max(0, (slotLevel || 1) - 1);
       const amt = roll(diceCount, 4, mod(castAbility(h)) + (d.healBonus || 0));
-      game.healHero(target, amt);
-      game.playAbilityFx(h, 'healingWord', { at:target, spell:true });
+      /* A soft mote of light drifts across and a hoop of light climbs the body; the
+         wound closes as it reaches the top, as with Cure Wounds. */
+      game.playAbilityFx(h, 'healingWord', { at:target, spell:true, onImpact: () => {
+        if (game.fxBodyEffect) game.fxBodyEffect('healingWord', target);
+        later(game, CURE_WOUNDS_HEAL_MS, () => game.healHero(target, amt, h));
+      } });
       game.fxLog(`💬 ${d.name} casts Healing Word on ${target.data.name} (+${amt}).`, 'heal');
       return true;
     }
@@ -1021,10 +1058,16 @@ export const SPELLS = {
     color:0x9b59b6,
     cast(game, h, foe) {
       game.markSpellUsed(h, this);
-      applyEffect(foe, 'hexMarked', { duration:120, elapsed: game.fxNow, source:h });
-      game.concentrate(h, 'hex', [{ e:foe, key:'hexMarked' }]);
+      /* No flight: wisps gather over the target and a skull stamps down, and the curse
+         takes hold with the stamp (pixelfx shadow/curse, on its own sprite). */
+      if (game.fxBodyEffect) game.fxBodyEffect('hexCurse', foe);
       game.playAbilityFx(h, 'hex', { at:foe, spell:true });
       game.fxLog(`🔮 ${h.data.name} casts Hex on ${foe.data.name}!`, 'crit');
+      later(game, HEX_STAMP_MS, () => {
+        if (!h.data || h.data.hp <= 0 || foe.dead) return;
+        applyEffect(foe, 'hexMarked', { duration:120, elapsed: game.fxNow, source:h });
+        game.concentrate(h, 'hex', [{ e:foe, key:'hexMarked' }]);
+      });
       return true;
     }
   },
@@ -1033,14 +1076,21 @@ export const SPELLS = {
     label:'Arms of Hadar', level:1,
     desc:'Dark tentacles: 2d6 to nearby foes.',
     recharge:'slot',
-    ai:{ when:'cluster', priority:6, minTargets:2 , aoeRadius:2.2},
+    ai:{ when:'cluster', priority:6, minTargets:2 , aoeRadius:ARMS_OF_HADAR_RADIUS},
     dmgType:'necrotic',
     color:0x6a3080,
     cast(game, h, foe) {
-      const d = h.data, foes = clusterAround(game, foe, 2.2);
+      const d = h.data, foes = clusterAround(game, foe, ARMS_OF_HADAR_RADIUS);
       if (!foes.length) return false;
       game.markSpellUsed(h, this);
-      game.playAbilityFx(h, 'armsOfHadar', { at:foe, alsoAt:foes, spell:true, ring:2.0, scale:2.0 });
+      /* One effect at the AoE's centre — the point clusterAround measured from
+         (the AI's chosen blast point when it set one, else `foe`); no `alsoAt`,
+         which replayed the whole sheet on every foe. Under the upright tentacles,
+         the flat void they rise from (pfx/hadar_portal.js), its rim on the
+         spell's radius so it reads from any camera angle. */
+      const center = game._aoeCenter || foe;
+      game.playAbilityFx(h, 'armsOfHadar', { at:center, spell:true, ring:2.0, scale:2.0, focus:foes,
+        onImpact: (pos) => { if (game.fxHadarPortal) game.fxHadarPortal(pos.x, pos.z, ARMS_OF_HADAR_RADIUS); } });
       game.fxLog(`🟣 ${d.name} casts Arms of Hadar!`, 'crit');
       /* The pool opens first; the hit comes with the tentacles lashing up. */
       later(game, ARMS_OF_HADAR_LASH_MS, () => {
@@ -1057,11 +1107,17 @@ export const SPELLS = {
     recharge:'slot',
     ai:{ when:'eliteOrBoss', priority:7 },
     dmgType:'thunder',
-    color:0xf1c40f,
+    color:0x7cc8ff,
     cast(game, h) {
       game.markSpellUsed(h, this);
       h.smiteNext = true;
       game.playAbilityFx(h, 'thunderousSmite', { at:h, spell:true });
+      /* The hero shows it's held ready; buildAttackOpts takes this off with the swing that spends it. */
+      later(game, 0, () => {
+        if (!game.fxBodyEffect || !h.smiteNext) return;
+        if (h._smiteFx) h._smiteFx.remove();
+        h._smiteFx = game.fxBodyEffect('smiteReady', h);
+      });
       game.fxLog(`⚡ ${h.data.name} readies Thunderous Smite!`, 'crit');
       return true;
     }
@@ -1072,13 +1128,18 @@ export const SPELLS = {
     desc:'Mark prey: +1d6 damage on your hits; when it falls, a bonus action moves the mark (concentration).',
     recharge:'slot',
     ai:{ when:'eliteOrBoss', priority:7 },
-    color:0x1abc9c,
+    color:0xc02424,
     cast(game, h, foe) {
       game.markSpellUsed(h, this);
-      applyEffect(foe, 'huntersMarked', { duration:120, elapsed: game.fxNow, source:h });
-      game.concentrate(h, 'huntersMark', [{ e:foe, key:'huntersMarked' }]);
+      /* No flight: brackets snap in round the prey, and the mark takes with the lock. */
+      if (game.fxBodyEffect) game.fxBodyEffect('huntersReticle', foe);
       game.playAbilityFx(h, 'huntersMark', { at:foe, spell:true });
       game.fxLog(`🎯 ${h.data.name} marks ${foe.data.name}!`, 'crit');
+      later(game, MARK_LOCK_MS, () => {
+        if (!h.data || h.data.hp <= 0 || foe.dead) return;
+        applyEffect(foe, 'huntersMarked', { duration:120, elapsed: game.fxNow, source:h });
+        game.concentrate(h, 'huntersMark', [{ e:foe, key:'huntersMarked' }]);
+      });
       return true;
     }
   },
@@ -1095,16 +1156,18 @@ export const SPELLS = {
       if (!foe || foe.dead) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'blindness', { at:h, spell:true });
-      if (game.spellSave(foe, 'con', dc, { magic:true })) {
-        game.fxText('saved', game._v3(foe.x, 1.2, foe.z), '#9aa');
-        game.fxLog(`🧿 ${foe.data.name} resists Blindness!`, 'miss', { cat: 'effect' });
-      } else {
-        applyEffect(foe, 'blinded', { duration:60, elapsed: game.fxNow, source:h,
-          repeatSave:{ ability:'con', dc, every:ROUND_SECONDS } });
-        game.playAbilityFx(h, 'blindness', { at:foe });
-        game.fxLog(`🧿 ${h.data.name} blinds ${foe.data.name}!`, 'crit', { cat: 'effect' });
-      }
+      /* A dark mote drifts across; the save is made when it lands. */
+      game.playAbilityFx(h, 'blindness', { at:foe, spell:true, onImpact: () => {
+        if (foe.dead) return;
+        if (game.spellSave(foe, 'con', dc, { magic:true })) {
+          game.fxText('saved', game._v3(foe.x, 1.2, foe.z), '#9aa');
+          game.fxLog(`🧿 ${foe.data.name} resists Blindness!`, 'miss', { cat: 'effect' });
+        } else {
+          applyEffect(foe, 'blinded', { duration:60, elapsed: game.fxNow, source:h,
+            repeatSave:{ ability:'con', dc, every:ROUND_SECONDS } });
+          game.fxLog(`🧿 ${h.data.name} blinds ${foe.data.name}!`, 'crit', { cat: 'effect' });
+        }
+      } });
       return true;
     }
   },
@@ -1119,17 +1182,22 @@ export const SPELLS = {
       if (!foe || foe.dead) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'holdPerson', { at:h, spell:true });
-      if (game.spellSave(foe, 'wis', dc, { magic:true })) {
-        game.fxText('saved', game._v3(foe.x, 1.2, foe.z), '#9aa');
-        game.fxLog(`🔗 ${foe.data.name} resists Hold Person!`, 'miss', { cat: 'effect' });
-      } else {
-        applyEffect(foe, 'paralyzed', { duration:60, elapsed: game.fxNow, source:h,
-          repeatSave:{ ability:'wis', dc, every:ROUND_SECONDS } });
-        game.concentrate(h, 'holdPerson', [{ e:foe, key:'paralyzed' }]);
-        game.playAbilityFx(h, 'holdPerson', { at:foe });
-        game.fxLog(`🔗 ${h.data.name} paralyzes ${foe.data.name}!`, 'crit', { cat: 'effect' });
-      }
+      /* A violet mote crosses; the save is made when it lands. Crystal jaws slam shut on the target as
+         the rime spreads, or stop short and shatter if it resists. */
+      game.playAbilityFx(h, 'holdPerson', { at:foe, spell:true, onImpact: () => {
+        if (foe.dead || h.data.hp <= 0) return;
+        const held = !game.spellSave(foe, 'wis', dc, { magic:true })
+          && applyEffect(foe, 'paralyzed', { duration:60, elapsed: game.fxNow, source:h,
+            repeatSave:{ ability:'wis', dc, every:ROUND_SECONDS } });
+        if (game.fxBodyEffect) game.fxBodyEffect(held ? 'holdClamp' : 'holdBreak', foe);
+        if (held) {
+          game.concentrate(h, 'holdPerson', [{ e:foe, key:'paralyzed' }]);
+          game.fxLog(`🔗 ${h.data.name} paralyzes ${foe.data.name}!`, 'crit', { cat: 'effect' });
+        } else {
+          game.fxText('saved', game._v3(foe.x, 1.2, foe.z), '#9aa');
+          game.fxLog(`🔗 ${foe.data.name} resists Hold Person!`, 'miss', { cat: 'effect' });
+        }
+      } });
       return true;
     }
   },
@@ -1156,16 +1224,23 @@ export const SPELLS = {
       for (const m of foes) {
         if (m.data.hp <= hpPool) {
           hpPool -= m.data.hp;
-          applyEffect(m, 'unconscious', { duration:60, elapsed: game.fxNow, source:h });
-          game.fxLog(`💤 ${m.data.name} falls asleep!`, 'crit', { cat: 'effect' });
           slept.push(m);
         }
       }
-      /* One cast: the caster's spellcast, and Zs drifting up over everyone it
-         put under (vfx_animations.json `sleep`) — never over the caster. */
-      game.playAbilityFx(h, 'sleep', { at: slept[0] || foe, alsoAt: slept, spell:true });
-      const sleptCount = slept.length;
-      if (sleptCount === 0) {
+      game.playAbilityFx(h, 'sleep', { at: slept[0] || foe, spell:true });
+      /* A night-blue rune circle opens under each one the pool covers (under the target
+         alone if it covers nobody), and they drop as it turns, the Zs rising out of it. */
+      later(game, 0, () => {
+        if (game.fxWardCircle) for (const m of (slept.length ? slept : [foe])) game.fxWardCircle(m, 'hush');
+      });
+      later(game, SLEEP_TAKES_MS, () => {
+        for (const m of slept) {
+          if (m.dead) continue;
+          applyEffect(m, 'unconscious', { duration:60, elapsed: game.fxNow, source:h });
+          game.fxLog(`💤 ${m.data.name} falls asleep!`, 'crit', { cat: 'effect' });
+        }
+      });
+      if (slept.length === 0) {
         game.fxLog(`💤 Sleep had no effect (target HP exceeds pool).`, 'miss');
       }
       return true;
@@ -1263,26 +1338,32 @@ export const SPELLS = {
       if (!foe) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      const foes = clusterAround(game, foe, 2.5);
-      game.playAbilityFx(h, 'faerieFire', { at:foe, alsoAt:foes, spell:true, ring:2.5, scale:2.2 });
+      const x = foe.x, z = foe.z;
+      game.playAbilityFx(h, 'faerieFire', { at:foe, spell:true });
       game.fxLog(`✨ ${h.data.name} casts Faerie Fire!`, 'crit');
-      
-      const zone = game.spawnAoEZone(h, 'faerieFire', foe.x, foe.z, 2.5, {
-        color: this.color, dur: 60,
-        procedural: 'sparkleCube',
-        lightColor: 0xb08cff,
-        lightIntensity: 1.2,
-        lightRange: 5.0
+      later(game, 0, () => { if (game.fxFaerieStars) game.fxFaerieStars(x, z); });
+
+      /* As the first stars land the area lights, and whoever fails the save is
+         outlined. The zone goes on marking foes that enter it (aoe_system.js). */
+      later(game, FAERIE_STARS_LAND_MS, () => {
+        if (!h.data || h.data.hp <= 0) return;
+        const zone = game.spawnAoEZone(h, 'faerieFire', x, z, 2.5, {
+          color: this.color, dur: 60,
+          lightColor: 0xb08cff,
+          lightIntensity: 1.2,
+          lightRange: 5.0
+        });
+        if (zone && game.fxFaerieSparkle) zone.liveFx = game.fxFaerieSparkle(x, z);
+
+        const applied = [];
+        for (const m of clusterAround(game, { x, z }, 2.5)) {
+          if (m.dead) continue;
+          if (!game.spellSave(m, 'dex', dc, { magic:true })
+              && applyEffect(m, 'faerieFire', { duration:60, elapsed: game.fxNow, source:h }))
+            applied.push({ e:m, key:'faerieFire' });
+        }
+        game.concentrate(h, 'faerieFire', applied, zone);
       });
-      
-      const applied = [];
-      for (const m of foes) {
-        if (m.dead) continue;
-        if (!game.spellSave(m, 'dex', dc, { magic:true })
-            && applyEffect(m, 'faerieFire', { duration:60, elapsed: game.fxNow, source:h }))
-          applied.push({ e:m, key:'faerieFire' });
-      }
-      game.concentrate(h, 'faerieFire', applied, zone);
       return true;
     }
   },
@@ -1377,19 +1458,21 @@ export const SPELLS = {
       if (!foe || foe.dead) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'hideousLaughter', { at:h, spell:true });
-      if (game.spellSave(foe, 'wis', dc, { magic:true })) {
-        game.fxText('saved', game._v3(foe.x, 1.2, foe.z), '#9aa');
-        game.fxLog(`😂 ${foe.data.name} resists Laughter!`, 'miss');
-      } else {
-        applyEffect(foe, 'prone', { duration:60, elapsed: game.fxNow, source:h,
-          repeatSave:{ ability:'wis', dc, every:ROUND_SECONDS } });
-        applyEffect(foe, 'incapacitated', { duration:60, elapsed: game.fxNow, source:h,
-          repeatSave:{ ability:'wis', dc, every:ROUND_SECONDS } });
-        game.concentrate(h, 'hideousLaughter', [{ e:foe, key:'prone' }, { e:foe, key:'incapacitated' }]);
-        game.playAbilityFx(h, 'hideousLaughter', { at:foe });
-        game.fxLog(`😂 ${h.data.name} incapacitates ${foe.data.name} with laughter!`, 'crit');
-      }
+      /* A soft mote drifts across; the save is made when it lands. */
+      game.playAbilityFx(h, 'hideousLaughter', { at:foe, spell:true, onImpact: () => {
+        if (foe.dead) return;
+        if (game.spellSave(foe, 'wis', dc, { magic:true })) {
+          game.fxText('saved', game._v3(foe.x, 1.2, foe.z), '#9aa');
+          game.fxLog(`😂 ${foe.data.name} resists Laughter!`, 'miss');
+        } else {
+          applyEffect(foe, 'prone', { duration:60, elapsed: game.fxNow, source:h,
+            repeatSave:{ ability:'wis', dc, every:ROUND_SECONDS } });
+          applyEffect(foe, 'incapacitated', { duration:60, elapsed: game.fxNow, source:h, data:{ aura:'laughing' },
+            repeatSave:{ ability:'wis', dc, every:ROUND_SECONDS } });
+          game.concentrate(h, 'hideousLaughter', [{ e:foe, key:'prone' }, { e:foe, key:'incapacitated' }]);
+          game.fxLog(`😂 ${h.data.name} incapacitates ${foe.data.name} with laughter!`, 'crit');
+        }
+      } });
       return true;
     }
   },
@@ -1409,9 +1492,13 @@ export const SPELLS = {
       }
       if (!target) return false;
       game.markSpellUsed(h, this);
-      for (const c of curable) clearEffect(target, c);
-      game.playAbilityFx(h, 'lesserRestoration', { at:target, spell:true });
       game.fxLog(`✨ ${h.data.name} casts Lesser Restoration on ${target.data.name}!`, 'buff');
+      /* A pale mote crosses; where it lands the affliction lifts off them. */
+      game.playAbilityFx(h, 'lesserRestoration', { at:target, spell:true, onImpact: () => {
+        if (h.data.hp <= 0 || target.data.hp <= 0) return;
+        for (const c of curable) clearEffect(target, c);
+        if (game.fxBodyEffect) game.fxBodyEffect('afflictionLift', target);
+      } });
       return true;
     }
   },
@@ -1445,12 +1532,17 @@ export const SPELLS = {
     color:0xffe08a,
     cast(game, h) {
       game.markSpellUsed(h, this);
-      clearEffect(h, 'charmed');
-      clearEffect(h, 'frightened');
-      /* the "immune" half of the spell — applyEffect refuses charm/fear while warded */
-      applyEffect(h, 'warded', { duration:ROUND_SECONDS * 10, elapsed: game.fxNow, source:h });
       game.playAbilityFx(h, 'protectionFromEvil', { at:h, spell:true });
       game.fxLog(`🛡 ${h.data.name} casts Protection from Evil — cleansed and warded for 10 rounds!`, 'buff');
+      /* A rune circle opens under the caster; as it turns, the ward rises out of it. */
+      later(game, 0, () => { if (game.fxWardCircle) game.fxWardCircle(h); });
+      later(game, WARD_RISES_MS, () => {
+        if (!h.data || h.data.hp <= 0) return;
+        clearEffect(h, 'charmed');
+        clearEffect(h, 'frightened');
+        /* the "immune" half of the spell — applyEffect refuses charm/fear while warded */
+        applyEffect(h, 'warded', { duration:ROUND_SECONDS * 10, elapsed: game.fxNow, source:h });
+      });
       return true;
     }
   },
@@ -1468,21 +1560,26 @@ export const SPELLS = {
       if (!foe) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'grease', { at:foe, spell:true, ring:2.5 });
+      const x = foe.x, z = foe.z;
+      game.playAbilityFx(h, 'grease', { at:foe, spell:true });
       game.fxLog(`🛢 ${h.data.name} casts Grease!`, 'crit');
-      
-      // Spawn persistent AoE zone (duration: 60s, non-concentration)
-      game.spawnAoEZone(h, 'grease', foe.x, foe.z, 2.5, {
-        color: this.color, dur: 60,
-        loopSheet: { sheetKey: 'symmetrical_smoke_burst_001_large_brown', opacity: 0.20 }
+
+      /* No flight: the slick spreads out from the middle when the charge ends. It
+         lasts 60 s without concentration, and fades with its zone. */
+      later(game, 0, () => {
+        const zone = game.spawnAoEZone(h, 'grease', x, z, 2.5, {
+          color: this.color, dur: 60, pointLight: false,
+        });
+        if (zone && game.fxGreaseSlick) zone.liveFx = game.fxGreaseSlick(x, z);
       });
-      
-      const foes = clusterAround(game, foe, 2.5);
-      for (const m of foes) {
-        if (m.dead) continue;
-        if (!game.spellSave(m, 'dex', dc, { magic:true }))
-          applyEffect(m, 'prone', { duration:ROUND_SECONDS, elapsed: game.fxNow, source:h });
-      }
+      /* Foes lose their footing as it runs under them. */
+      later(game, GREASE_SPREAD_MS, () => {
+        for (const m of clusterAround(game, { x, z }, 2.5)) {
+          if (m.dead) continue;
+          if (!game.spellSave(m, 'dex', dc, { magic:true }))
+            applyEffect(m, 'prone', { duration:ROUND_SECONDS, elapsed: game.fxNow, source:h });
+        }
+      });
       return true;
     }
   },
@@ -1501,7 +1598,11 @@ export const SPELLS = {
       const diceCount = 3 + Math.max(0, (slotLevel || 1) - 1);
       const amt = roll(diceCount, 10, d.dmgBonus);
       game.playAbilityFx(h, 'inflictWounds', { at:foe, spell:true });
-      game.spellDamage(foe, amt, h, false, { dmgType:this.dmgType, magical:true });
+      playReap(game, h, foe);
+      /* the blow lands on the burst's flash */
+      later(game, REAP_BURST_MS + CHAOS_BOLT_FLASH_MS, () => {
+        if (!foe.dead) game.spellDamage(foe, amt, h, false, { dmgType:this.dmgType, magical:true });
+      });
       game.fxLog(`💀 ${d.name} casts Inflict Wounds on ${foe.data.name}!`, 'crit');
       return true;
     }
@@ -1510,7 +1611,7 @@ export const SPELLS = {
   /* ── Level 2 ── */
   acidArrow: {
     label:'Acid Arrow', level:2,
-    desc:'Corrosive bolt: 4d4 acid (+1d4 per slot above 2nd) to a single foe.',
+    desc:'Corrosive bolt: 4d4 acid (+1d4 per slot above 2nd) to a single foe, and 2d4 more acid a round later.',
     recharge:'slot',
     ai:{ when:'eliteOrBoss', priority:6, minCombatRound:1 },
     dmgType:'acid',
@@ -1522,12 +1623,17 @@ export const SPELLS = {
       const diceCount = 4 + Math.max(0, (slotLevel || 2) - 2);
       const amt = roll(diceCount, 4, d.dmgBonus);
       game.markSpellUsed(h, this);
-      game.playAbilityFx(h, 'acidArrow', { at:h, spell:true });
-      game.fxProjectile(from, to, 'bolt', this.color, () => {
+      /* A green arrow over a twisting ribbon (vfx_animations.json `acidArrow`) that was never
+         solid: it bursts as liquid where it strikes. 5e: 2d4 more acid a round later. */
+      game.playAbilityFx(h, 'acidArrow', { at:foe, spell:true, fromPos:from, toPos:to, onImpact: () => {
+        if (game.fxAcidSplat) game.fxAcidSplat(to, h);
+        if (game.fxPlaySfx) game.fxPlaySfx('spellImpact', { volume: 0.75 });
         if (foe.dead) return;
         game.spellDamage(foe, amt, h, false, { dmgType:this.dmgType, magical:true });
-        game.fxSprite('dcss/effect/acid_venom.png', to, 1.1, 0.3);
-      }, { sheetKey: 'burst_splatter_003_large_green', scale: 1.3, dmgType: 'acid' });
+        if (foe.dead || (foe.data && foe.data.hp <= 0)) return;
+        foe.acid = { dmg: roll(2, 4), src: h, clock: game.fxNow };
+        applyEffect(foe, 'acidCoated', { duration:ROUND_SECONDS, elapsed: game.fxNow, source:h });
+      } });
       game.fxLog(`🧪 ${d.name} casts Acid Arrow!`, 'crit');
       return true;
     }
@@ -1546,10 +1652,21 @@ export const SPELLS = {
       const cell = game.escapeTeleportCell ? game.escapeTeleportCell(h, 6, true) : -1;
       if (cell < 0) return false;                       // nowhere better to go — keep the slot
       game.markSpellUsed(h, this);
-      game.playAbilityFx(h, 'mistyStep', { at:h, spell:true, scale:1.8 });
-      game.teleportEntity(h, cell);
-      game.playAbilityFx(h, 'mistyStep', { at:h, spell:true, scale:1.2 });
+      game.playAbilityFx(h, 'mistyStep', { at:h, spell:true });
       game.fxLog(`💨 ${h.data.name} vanishes in silver mist and reappears out of reach!`, 'buff');
+      /* Blinks out where they stand, and in at the far side: they cross as the line of light pops. */
+      later(game, 0, () => {
+        const cross = () => {
+          if (h.data.hp <= 0) return;
+          /* someone may have stepped onto the tile during the blink */
+          const taken = game.isCellOccupiedAny && game.isCellOccupiedAny(cell, h);
+          const to = taken ? game.escapeTeleportCell(h, 6, true) : cell;
+          if (to >= 0) game.teleportEntity(h, to);
+          game.playAbilityFx(h, 'mistyStep', { at:h });
+        };
+        if (h.data.hp > 0 && game.fxBlinkStep) game.fxBlinkStep(h, cross);
+        else cross();
+      });
       return true;
     }
   },
@@ -1610,6 +1727,9 @@ export const SPELLS = {
     desc:'100-ft line of lightning: 8d6 (+1d6 per slot above 3rd) lightning damage to all creatures in the line (Dex save for half).',
     recharge:'slot',
     ai:{ when:'cluster', priority:8, minTargets:2, aoeRadius:8.0 },
+    /* The footprint the AI aims with (turn_planner.spellArea) — the same
+       100-ft x 5-ft line the cast below resolves. */
+    area:{ shape:'line', length:20, width:1 },
     dmgType:'lightning',
     color:0x7090ff,
     cast(game, h, foe, alive, slotLevel = 3) {
@@ -1679,7 +1799,7 @@ export const SPELLS = {
       const diceCount = 1 + Math.max(0, (slotLevel || 3) - 3);
       for (const a of hurt) {
         const amt = roll(diceCount, 4, mod(castAbility(h)) + d.healBonus);
-        game.healHero(a, amt);
+        game.healHero(a, amt, h);
       }
       game.playAbilityFx(h, 'massHealingWord', { at:h, alsoAt:hurt, spell:true, ring:2.0 });
       game.fxLog(`✨ ${d.name} casts Mass Healing Word on ${hurt.length} allies!`, 'heal');
@@ -1716,7 +1836,7 @@ export const SPELLS = {
       const dmg = roll(diceCount, 6, d.dmgBonus);
       game.spellDamage(foe, dmg, h, false, { dmgType:this.dmgType, magical:true });
       const heal = Math.max(1, Math.round(dmg * 0.5));
-      game.healHero(h, heal);
+      game.healHero(h, heal, h);
       game.playAbilityFx(h, 'vampiricTouch', { at:foe, spell:true });
       game.fxLog(`🩸 ${d.name} drains ${foe.data.name}, healing ${heal}!`, 'crit');
       return true;
@@ -1825,6 +1945,7 @@ export const SPELLS = {
     desc:'Blazing wall (60-ft line): 5d8 fire damage to creatures in its area on cast or entering (Dex save for half; concentration).',
     recharge:'slot',
     ai:{ when:'cluster', priority:8, minTargets:2, minCombatRound:1, aoeRadius:6.0 },
+    area:{ shape:'line', length:12, width:1 },   // 60-ft line, as cast below
     color:0xff5010,
     dmgType:'fire',
     cast(game, h, foe) {
@@ -1984,7 +2105,7 @@ export const SPELLS = {
       const diceCount = 3 + Math.max(0, (slotLevel || 5) - 5);
       for (const a of targets) {
         const amt = roll(diceCount, 8, mod(castAbility(h)) + d.healBonus);
-        game.healHero(a, amt);
+        game.healHero(a, amt, h);
       }
       game.playAbilityFx(h, 'massCureWounds', { at:h, alsoAt:targets, spell:true, ring:2.5, scale:2.2 });
       game.fxLog(`✨ ${d.name} casts Mass Cure Wounds — party healed!`, 'heal');
@@ -2053,32 +2174,37 @@ export const SPELLS = {
     recharge:'slot',
     ai:{ when:'cluster', priority:6, minTargets:2 , aoeRadius:3, aoeOrigin:'self'},
     dmgType:'thunder',
-    color:0xdfe4ee,
+    color:0x7cc8ff,
     cast(game, h, foe, alive, slotLevel = 1) {
       const d = h.data, foes = clusterAround(game, h, 3.0);
       if (!foes.length) return false;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
       const diceCount = 2 + Math.max(0, (slotLevel || 1) - 1);
-      game.playAbilityFx(h, 'thunderwave', { at:h, alsoAt:foes, spell:true, ring:3.0, scale:2.0 });
+      game.playAbilityFx(h, 'thunderwave', { at:h, spell:true });
       game.fxLog(`💥 ${d.name} casts Thunderwave!`, 'crit');
+      later(game, 0, () => { if (game.fxThunderclap) game.fxThunderclap(h); });
+      /* The wave reaches each foe in turn, and that's when it hurts and throws them. */
       for (const m of foes) {
-        if (m.dead) continue;
-        const saved = game.spellSave(m, 'con', dc, { magic:true });
-        let dmg = roll(diceCount, 8, d.dmgBonus);
-        if (saved) {
-          dmg = Math.floor(dmg / 2);
-        } else {
-          // Push foe 2 cells (10 ft) away from caster, stopping at walls/bodies.
-          if (typeof game.pushEntity === 'function') {
-            game.pushEntity(m, h.x, h.z, 2, 1);
+        const dist = Math.hypot(m.x - h.x, m.z - h.z);
+        later(game, (THUNDERCLAP_RING_DELAY + shockArrives(dist * THUNDERWAVE_PX_PER_UNIT)) * 1000, () => {
+          if (m.dead) return;
+          const saved = game.spellSave(m, 'con', dc, { magic:true });
+          let dmg = roll(diceCount, 8, d.dmgBonus);
+          if (saved) {
+            dmg = Math.floor(dmg / 2);
           } else {
-            const dist = Math.hypot(m.x - h.x, m.z - h.z) || 1.0;
-            m.x += ((m.x - h.x) / dist) * 2.0;
-            m.z += ((m.z - h.z) / dist) * 2.0;
+            // Push foe 2 cells (10 ft) away from caster, stopping at walls/bodies.
+            if (typeof game.pushEntity === 'function') {
+              game.pushEntity(m, h.x, h.z, 2, 1);
+            } else {
+              const away = Math.hypot(m.x - h.x, m.z - h.z) || 1.0;
+              m.x += ((m.x - h.x) / away) * 2.0;
+              m.z += ((m.z - h.z) / away) * 2.0;
+            }
           }
-        }
-        game.spellDamage(m, dmg, h, false, { dmgType:this.dmgType, magical:true });
+          game.spellDamage(m, dmg, h, false, { dmgType:this.dmgType, magical:true });
+        });
       }
       return true;
     }
@@ -2104,8 +2230,10 @@ export const SPELLS = {
       game.markSpellUsed(h, this);
       const diceCount = 1 + Math.max(0, (slotLevel || 1) - 1);
       const amt = roll(diceCount, 8, mod(castAbility(h)) + (d.healBonus || 0));
-      game.healHero(target, amt);
+      /* The hoop of light climbs the body; the wound closes as it reaches the top. */
+      if (game.fxBodyEffect) game.fxBodyEffect('cureWounds', target);
       game.playAbilityFx(h, 'cureWounds', { at:target, spell:true });
+      later(game, CURE_WOUNDS_HEAL_MS, () => game.healHero(target, amt, h));
       game.fxLog(`💚 ${d.name} casts Cure Wounds on ${target.data.name} (+${amt}).`, 'heal');
       return true;
     }
@@ -2116,20 +2244,24 @@ export const SPELLS = {
     desc:'+2 AC on a hard-pressed ally (concentration).',
     recharge:'slot',
     ai:{ when:'hurtAlly', priority:6, hpFrac:0.6, buffEffect:'shieldOfFaith', buffTarget:'ally' },
-    color:0xa0c0ff,
+    color:0xf5c84c,
     cast(game, h, foe, alive) {
-      /* Ward the most-wounded ally that isn't already shielded. */
-      let worst = null, wf = 1;
-      for (const a of alive) {
+      /* Ward the ally it was aimed at, else the most-wounded one that isn't already shielded. */
+      let worst = (foe && foe._side === 'hero' && !hasEffect(foe, 'shieldOfFaith')) ? foe : null, wf = 1;
+      if (!worst) for (const a of alive) {
         if (hasEffect(a, 'shieldOfFaith')) continue;
         const f = a.data.hp / a.data.maxHp;
         if (f < wf) { wf = f; worst = a; }
       }
       if (!worst) return false;
       game.markSpellUsed(h, this);
-      applyEffect(worst, 'shieldOfFaith', { duration:60, elapsed: game.fxNow });
-      game.concentrate(h, 'shieldOfFaith', [{ e:worst, key:'shieldOfFaith' }]);
       game.playAbilityFx(h, 'shieldOfFaith', { at:worst, spell:true });
+      /* All the spell shows is its status: the bubble grows when the charge ends. */
+      later(game, 0, () => {
+        if (!h.data || h.data.hp <= 0 || !worst.data || worst.data.hp <= 0) return;
+        applyEffect(worst, 'shieldOfFaith', { duration:60, elapsed: game.fxNow });
+        game.concentrate(h, 'shieldOfFaith', [{ e:worst, key:'shieldOfFaith' }]);
+      });
       game.fxLog(`🛡 ${h.data.name} casts Shield of Faith on ${worst.data.name}! (+2 AC)`, 'buff');
       return true;
     }
@@ -2143,26 +2275,36 @@ export const SPELLS = {
     color:0xb08cff,
     cast(game, h) {
       game.markSpellUsed(h, this);
-      applyEffect(h, 'magicWeapon', { duration:60, elapsed: game.fxNow, source:h });
-      game.concentrate(h, 'magicWeapon', [{ e:h, key:'magicWeapon' }]);
       game.playAbilityFx(h, 'magicWeapon', { at:h, spell:true });
       game.fxLog(`✨ ${h.data.name}'s weapon glows with magic! (+1)`, 'buff');
+      /* Takes hold as the charge ends: the weapon flares violet and keeps glowing (sprite_animator.js). */
+      later(game, 0, () => {
+        if (h.data.hp <= 0) return;
+        applyEffect(h, 'magicWeapon', { duration:60, elapsed: game.fxNow, source:h });
+        game.concentrate(h, 'magicWeapon', [{ e:h, key:'magicWeapon' }]);
+      });
       return true;
     }
   },
 
   barkskin: {
     label:'Barkskin', level:2, concentration:true,
-    desc:'Tough bark: AC can\'t go below 16 for 1 min.',
+    desc:'Tough bark on yourself: AC can\'t go below 14 + your spellcasting modifier for 1 min.',
     recharge:'slot',
     ai:{ when:'selfHurt', priority:6, hpFrac:0.5, buffEffect:'barkskin', buffTarget:'self' },
     color:0x6aaa4a,
     cast(game, h) {
       game.markSpellUsed(h, this);
-      applyEffect(h, 'barkskin', { duration:60, elapsed: game.fxNow, source:h });
-      game.concentrate(h, 'barkskin', [{ e:h, key:'barkskin' }]);
+      const floor = 14 + mod(castAbility(h));
       game.playAbilityFx(h, 'barkskin', { at:h, spell:true });
-      game.fxLog(`🪵 ${h.data.name}'s skin hardens like bark! (AC ≥ 16)`, 'buff');
+      game.fxLog(`🪵 ${h.data.name}'s skin hardens like bark! (AC ≥ ${floor})`, 'buff');
+      /* When the charge ends bark climbs the body, leaving a faint outline for as long as it lasts. */
+      later(game, 0, () => {
+        if (!h.data || h.data.hp <= 0) return;
+        if (game.fxBodyEffect) game.fxBodyEffect('barkCreep', h);
+        applyEffect(h, 'barkskin', { duration:60, elapsed: game.fxNow, source:h, data:{ acFloor: floor } });
+        game.concentrate(h, 'barkskin', [{ e:h, key:'barkskin' }]);
+      });
       return true;
     }
   },
@@ -2184,10 +2326,15 @@ export const SPELLS = {
         }
       }
       game.markSpellUsed(h, this);
-      applyEffect(best, 'enlarged', { duration:60, elapsed: game.fxNow, source:h });
-      game.concentrate(h, 'enlargeReduce', [{ e:best, key:'enlarged' }]);
       game.playAbilityFx(h, 'enlargeReduce', { at:best, spell:true });
       game.fxLog(`💪 ${h.data.name} enlarges ${best.data.name}! (+50% size, +25% damage)`, 'buff');
+      /* When the charge ends they start to grow, in an aura that fades as they reach full size. The size is all that lasts. */
+      later(game, 0, () => {
+        if (!h.data || h.data.hp <= 0 || !best.data || best.data.hp <= 0) return;
+        if (game.fxBodyEffect) game.fxBodyEffect('growthAura', best);
+        applyEffect(best, 'enlarged', { duration:60, elapsed: game.fxNow, source:h });
+        game.concentrate(h, 'enlargeReduce', [{ e:best, key:'enlarged' }]);
+      });
       return true;
     }
   },
@@ -2288,7 +2435,7 @@ export const SPELLS = {
      manual action menus. */
   light: {
     label:'Light', level:0, cantrip:true, passive:true,
-    desc:'Always on: a steady white light shines from you for the whole floor, as far as a torch. No torch needed in your trinket slot.',
+    desc:'A steady white light shines from you, as far as a torch. No torch needed in your trinket slot. On until you put it out — turn it off on the character sheet to hide in the shadows.',
     recharge:'none',
     ai:{ when:'never', priority:0 },
     color:0xe6eeff,
@@ -2333,7 +2480,10 @@ export const SPELLS = {
     cast(game, h, foe) {
       if (!foe) return false;
       game.markSpellUsed(h, this);
-      addDarkZone({ x: foe.x, z: foe.z, r: 3, ttl: 60, spell: true });
+      /* A dark mote drifts across; the dome swells from where it lands. */
+      game.playAbilityFx(h, 'darkness', { at:foe, spell:true, onImpact: () => {
+        addDarkZone({ x: foe.x, z: foe.z, r: 3, ttl: 60, spell: true, dome: true });
+      } });
       game.fxLog(`🌑 ${h.data.name} casts Darkness — an inky void swallows the light!`, 'crit');
       return true;
     }
@@ -2433,26 +2583,29 @@ export const SPELLS = {
 
   chromaticOrb: {
     label:'Chromatic Orb', level:1,
-    desc:'Orb of elemental energy: 3d8 (+1d8 per slot above 1st) fire, cold, lightning, or acid.',
+    desc:'Orb of elemental energy: 3d8 (+1d8 per slot above 1st) fire, cold, lightning, acid, or poison.',
     recharge:'slot',
     ai:{ when:'eliteOrBoss', priority:7 },
     color:0xff88ee,
     cast(game, h, foe, alive, slotLevel = 1) {
       if (!foe || foe.dead) return false;
-      const elements = ['fire', 'cold', 'lightning', 'acid', 'poison'];
+      const elements = Object.keys(CHROMATIC_ORB_HIT_MS);
       const dmgType = elements[Math.floor(Math.random() * elements.length)];
       const d = h.data, from = chestOf(game, h);
       const to = onFloor(game, foe, 0.5 * (foe.data?.scale || 1.0) + 0.4);
       const diceCount = 3 + Math.max(0, (slotLevel || 1) - 1);
       const amt = roll(diceCount, 8, d.dmgBonus);
       game.markSpellUsed(h, this);
-      game.playAbilityFx(h, 'chromaticOrb', { at:h, spell:true });
-
-      game.fxProjectile(from, to, 'bolt', this.color, () => {
-        if (foe.dead) return;
-        game.spellDamage(foe, amt, h, false, { dmgType, magical:true });
-        game.fxSprite('dcss/effect/cloud_chaos_4.png', to, 1.4, 0.35);
-      }, { sheetKey: 'round_firework_burst_001_large_green', scale: 1.4 });
+      /* The orb sheet swells as it flies and comes apart on arrival
+         (vfx_animations.json `chromaticOrb`); what it leaves there shows the
+         type it rolled, and the blow lands on that effect's flash. */
+      game.playAbilityFx(h, 'chromaticOrb', { at:foe, spell:true, fromPos:from, toPos:to, follow:foe, onImpact: () => {
+        if (game.fxElementImpact) game.fxElementImpact(foe, dmgType);
+        later(game, CHROMATIC_ORB_HIT_MS[dmgType], () => {
+          if (game.fxPlaySfx) game.fxPlaySfx('spellImpact', { volume: 0.75 });
+          if (!foe.dead) game.spellDamage(foe, amt, h, false, { dmgType, magical:true });
+        });
+      } });
 
       game.fxLog(`🌈 ${d.name} casts Chromatic Orb (${dmgType})!`, 'crit');
       return true;
@@ -2474,25 +2627,15 @@ export const SPELLS = {
       const diceCount = 2 + Math.max(0, (slotLevel || 1) - 1);
       const amt = roll(diceCount, 8, d.dmgBonus);
       game.markSpellUsed(h, this);
-      /* The ray sheet is laid caster→target along the beam (a `span` layer in
-         vfx_animations.json), so both get the same endpoints. */
-      game.playAbilityFx(h, 'rayOfSickness', { at:foe, spell:true, fromPos:from, toPos:to });
-
-      game.fxBeam(from, to, {
-        type: 'laser',
-        color: this.color,
-        coreColor: 0xa0ffa0,
-        width: 0.38,
-        duration: 0.5,
-        onHit: () => {
-          if (foe.dead) return;
-          game.spellDamage(foe, amt, h, false, { dmgType:this.dmgType, magical:true });
-          if (!game.spellSave(foe, 'con', dc, { magic:true })) {
-            applyEffect(foe, 'poisoned', { duration:60, elapsed: game.fxNow, source:h });
-            game.fxLog(`🤢 ${foe.data.name} is poisoned by Ray of Sickness!`, 'crit');
-          }
+      /* The live-drawn beam and its hit are vfx_animations.json `rayOfSickness`. */
+      game.playAbilityFx(h, 'rayOfSickness', { at:foe, spell:true, fromPos:from, toPos:to, onImpact: () => {
+        if (foe.dead) return;
+        game.spellDamage(foe, amt, h, false, { dmgType:this.dmgType, magical:true });
+        if (!game.spellSave(foe, 'con', dc, { magic:true })) {
+          applyEffect(foe, 'poisoned', { duration:60, elapsed: game.fxNow, source:h });
+          game.fxLog(`🤢 ${foe.data.name} is poisoned by Ray of Sickness!`, 'crit');
         }
-      });
+      } });
       game.fxLog(`🤢 ${d.name} casts Ray of Sickness!`, 'crit');
       return true;
     }
@@ -2500,34 +2643,29 @@ export const SPELLS = {
 
   flamingSphere: {
     label:'Flaming Sphere', level:2, concentration:true,
-    desc:'Summon a 5-ft fire sphere: 2d6 fire (+1d6 per slot above 2nd, DEX save half) to nearby foes.',
+    desc:'Summon a ball of fire that fills a tile. Anyone, friend or foe, who ends a turn beside it takes 2d6 fire (+1d6 per slot above 2nd, DEX save half). Bonus action: roll it up to 30 ft; ramming a creature burns them and stops it.',
     recharge:'slot',
-    ai:{ when:'cluster', priority:7, minTargets:2 , aoeRadius:2.2},
+    ai:{ when:'cluster', priority:7, minTargets:2 , aoeRadius:1.5},
     color:0xff6600,
     dmgType:'fire',
     cast(game, h, foe, alive, slotLevel = 2) {
       if (!foe) return false;
       const d = h.data;
       game.markSpellUsed(h, this);
-      const dc = spellDC(h);
-      game.playAbilityFx(h, 'flamingSphere', { at:foe, spell:true, ring:2.2 });
       game.fxLog(`🔥 ${d.name} summons a Flaming Sphere!`, 'crit');
-
-      const zone = game.spawnAoEZone(h, 'flamingSphere', foe.x, foe.z, 2.2, {
-        color: this.color, dur: 60,
-        loopSheet: { sheetKey: 'epic_explosion_001_large_orange', opacity: 0.36, scale: 2.0 }
-      });
-      const foes = clusterAround(game, foe, 2.2);
-      const diceCount = 2 + Math.max(0, (slotLevel || 2) - 2);
-
-      for (const m of foes) {
-        if (m.dead) continue;
-        let dmg = roll(diceCount, 6, d.dmgBonus);
-        if (game.spellSave(m, 'dex', dc, { magic:true })) dmg = Math.floor(dmg / 2);
-        game.spellDamage(m, dmg, h, false, { dmgType:this.dmgType, magical:true });
-      }
-
-      game.concentrate(h, 'flamingSphere', [], zone);
+      /* A mote of fire flies over and the sphere takes up a tile beside the target. It deals no damage
+         on arrival: as in 5e it burns at the end of a turn beside it, or when rammed (flaming_sphere.js). */
+      const body = placeSphereBody(game, h, foe);
+      game.playAbilityFx(h, 'flamingSphere', { at:body, spell:true, onImpact:() => {
+        if (!d || d.hp <= 0) { if (game.releaseReservation) game.releaseReservation(body); return; }
+        const zone = game.spawnAoEZone(h, 'flamingSphere', body.x, body.z, SPHERE_REACH, { color: this.color, dur: 60 });
+        if (zone) {
+          zone.body = body;
+          zone.slotLevel = slotLevel || 2;
+          if (game.fxFlamingSphere) zone.liveFx = game.fxFlamingSphere(body.x, body.z);
+        }
+        game.concentrate(h, 'flamingSphere', [], zone);
+      } });
       return true;
     }
   },
@@ -2540,18 +2678,24 @@ export const SPELLS = {
     color:0x88ccff,
     cast(game, h) {
       game.markSpellUsed(h, this);
-      applyEffect(h, 'mirrorImages', { duration:ROUND_SECONDS * 10, elapsed: game.fxNow, source:h, data: { images: 3 } });
-      game.playAbilityFx(h, 'mirrorImage', { at:h, spell:true, scale:2.2 });
+      game.playAbilityFx(h, 'mirrorImage', { at:h, spell:true });
       game.fxLog(`🪞 ${h.data.name} creates 3 Mirror Images!`, 'buff');
+      /* As the charge ends the duplicates split out of the body (render/mirror_images.js). */
+      later(game, 0, () => {
+        if (h.data.hp <= 0) return;
+        applyEffect(h, 'mirrorImages', { duration:ROUND_SECONDS * 10, elapsed: game.fxNow, source:h, data: { images: 3 } });
+      });
       return true;
     }
   },
 
   counterspell: {
     label:'Counterspell', level:3, reaction:true,
-    desc:'Interrupt and nullify an enemy spell cast.',
+    desc:'Reaction: when a foe within 12 tiles casts a spell worth stopping, spend a 3rd-level slot to nullify it. Spells above 3rd level need a casting check (d20 + casting modifier vs 10 + spell level). Used automatically.',
     recharge:'slot',
-    ai:{ when:'eliteOrBoss', priority:10 },
+    /* never cast as an action: abjuration.js heroCounterspell fires it as a
+       reaction to a monster's spell. As an action it did nothing but burn the slot. */
+    ai:{ when:'never', priority:0 },
     color:0x4080ff,
     cast(game, h, foe) {
       if (!foe || foe.dead) return false;
@@ -2772,15 +2916,18 @@ export const SPELLS = {
       const rawKind = choice || h.data?.familiarChoice || 'owlFamiliar';
       const kindMap = { owl: 'owlFamiliar', imp: 'impFamiliar', viper: 'viperFamiliar' };
       const chosenKind = kindMap[rawKind] || rawKind || 'owlFamiliar';
-      game.playAbilityFx(h, 'findFamiliar', { at:h, spell:true, scale:2.0 });
+      game.playAbilityFx(h, 'findFamiliar', { at:h, spell:true });
 
-      if (game.summons) {
+      /* It arrives when the charge ends, unseen until the light opens into its shape. */
+      later(game, 0, () => {
+        if (!game.summons) return;
         const spawned = game.summons.spawn(h, chosenKind);
         if (spawned) {
+          if (game.fxSummonArrival) game.fxSummonArrival(spawned);
           const names = { owlFamiliar: 'Owl 🦉', impFamiliar: 'Imp 👿', viperFamiliar: 'Viper 🐍' };
           game.fxLog(`✨ ${h.data.name} summons an arcane ${names[chosenKind] || 'Familiar'}!`, 'buff');
         }
-      }
+      });
       return true;
     }
   },
@@ -3010,7 +3157,9 @@ export const SPELLS = {
       const target = injured[0] || h;
       game.markSpellUsed(h, this);
       const healAmt = 70;
+      const hBefore = target.data.hp;
       target.data.hp = Math.min(target.data.maxHp, target.data.hp + healAmt);
+      if (game.creditHeal) game.creditHeal(h, target.data.hp - hBefore);
       clearEffect(target, 'poisoned');
       clearEffect(target, 'blinded');
       game.playAbilityFx(h, 'heal', { at: target, spell: true, scale: 2.4 });
@@ -3025,6 +3174,7 @@ export const SPELLS = {
     desc:'60-ft line of brilliant sunlight: 6d8 radiant damage and blinds creatures in the line (CON save for half and no blind; undead/oozes have disadvantage).',
     recharge:'slot',
     ai:{ when:'cluster', priority:9, minTargets:2, aoeRadius:6.0 },
+    area:{ shape:'line', length:12, width:1 },   // 60-ft line, as cast below
     dmgType:'radiant',
     color:0xfffa65,
     cast(game, h, foe) {
@@ -3095,7 +3245,8 @@ export const SPELLS = {
       const d = h.data;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'inflictWounds', { at: foe, spell: true, scale: 2.2 });
+      game.playAbilityFx(h, 'inflictWounds', { at: foe, spell: true });
+      playReap(game, h, foe);
       game.fxLog(`☣️ ${d.name} casts Harm on ${foe.data.name}!`, 'crit');
 
       let dmg = roll(14, 6, d.dmgBonus);
@@ -3129,7 +3280,8 @@ export const SPELLS = {
       const d = h.data;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'inflictWounds', { at: foe, spell: true, scale: 2.5 });
+      game.playAbilityFx(h, 'inflictWounds', { at: foe, spell: true });
+      playReap(game, h, foe);
       game.fxLog(`💀 ${d.name} points the Finger of Death at ${foe.data.name}!`, 'crit');
 
       let dmg = roll(7, 8, 30 + (d.dmgBonus || 0));
@@ -3182,8 +3334,11 @@ export const SPELLS = {
       const target = injured[0] || h;
       game.markSpellUsed(h, this);
       const burst = roll(4, 8, 15);
+      const hBefore = target.data.hp;
       target.data.hp = Math.min(target.data.maxHp, target.data.hp + burst);
+      if (game.creditHeal) game.creditHeal(h, target.data.hp - hBefore);
       applyEffect(target, 'regenerating', { duration: 600, elapsed: game.fxNow, source: h });
+      if (game.fxBodyEffect) game.fxBodyEffect('cureWounds', target);
       game.playAbilityFx(h, 'cureWounds', { at: target, spell: true, scale: 2.5 });
       game.fxText(target, `+${burst} HP (Regen)`, '#10b981');
       game.fxLog(`🌿 ${h.data.name} casts Regenerate on ${target.data.name}! (+${burst} HP, rapid regen)`, 'heal');
@@ -3315,7 +3470,8 @@ export const SPELLS = {
       const d = h.data;
       game.markSpellUsed(h, this);
       const dc = spellDC(h);
-      game.playAbilityFx(h, 'hex', { at: foe, spell: true, scale: 2.5 });
+      if (game.fxBodyEffect) game.fxBodyEffect('hexCurse', foe);
+      game.playAbilityFx(h, 'hex', { at: foe, spell: true });
 
       if (game.spellSave(foe, 'wis', dc, { magic: true })) {
         game.fxLog(`👁️ ${foe.data.name} resists Dominate Monster!`, 'miss');
@@ -3404,7 +3560,8 @@ export const SPELLS = {
       if (!foe) return false;
       const d = h.data;
       game.markSpellUsed(h, this);
-      game.playAbilityFx(h, 'inflictWounds', { at: foe, spell: true, scale: 3.0 });
+      game.playAbilityFx(h, 'inflictWounds', { at: foe, spell: true });
+      playReap(game, h, foe);
 
       if (foe.data.hp <= 100) {
         game.fxLog(`☠️ ${d.name} speaks the POWER WORD: KILL! ${foe.data.name} perishes instantly.`, 'crit');
@@ -3427,10 +3584,13 @@ export const SPELLS = {
       const livingAllies = (game.heroes || []).filter(a => a.data && a.data.hp > 0);
       const healPerHero = Math.floor(700 / Math.max(1, livingAllies.length));
       for (const a of livingAllies) {
+        const hBefore = a.data.hp;
         a.data.hp = Math.min(a.data.maxHp, a.data.hp + healPerHero);
+        if (game.creditHeal) game.creditHeal(h, a.data.hp - hBefore);
         clearEffect(a, 'poisoned');
         clearEffect(a, 'blinded');
         clearEffect(a, 'frightened');
+        if (game.fxBodyEffect) game.fxBodyEffect('cureWounds', a);
         game.playAbilityFx(h, 'cureWounds', { at: a, spell: true, scale: 2.5 });
         game.fxText(a, `+${healPerHero} HP`, '#10b981');
       }

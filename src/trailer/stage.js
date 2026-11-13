@@ -41,7 +41,7 @@ const CENTREPIECE_TYPES = new Set([TYPE.ENTRANCE, TYPE.BOSS, TYPE.TREASURE, TYPE
    hero waist-deep in a coffin on camera. */
 const NON_BLOCKING = new Set([
   /* flat on the floor */
-  'moss', 'crack', 'debris', 'rug', 'magicCircle',
+  'crack', 'debris', 'rug', 'magicCircle',
   /* ground litter, ankle height */
   'bones', 'bonePile', 'skull', 'skeleton',
   /* mounted on a wall, never on a walkable cell */

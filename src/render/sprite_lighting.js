@@ -34,6 +34,7 @@
    use) is handed to the sprite shader, which fades the body into it from the
    feet up over `fogTop`. */
 import * as THREE from 'three';
+import { SIM } from '../game/sim_flags.js';
 import { scene, cam, hemi, dirL, sunOffset, D, fx, steadyLightSources } from './dungeon_scene.js';
 import { fogPlaneMat, fogClearance, setPropCueState } from './dungeon_materials.js';
 import { WALL, FLOOR, POOL } from '../dungeon/dungeon_generator.js';
@@ -78,10 +79,6 @@ const _ref = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vecto
    list is rebuilt on a slow timer rather than walking the scene every frame. */
 let _lights = [];
 let _lightsAge = Infinity;
-let _activePointLights = [];
-let _steadyKeyLights = [];
-let _radiiLights = [];
-
 function refreshLights(dt) {
   _lightsAge += dt;
   if (_lightsAge < 0.5 && _lights.length) return;
@@ -93,44 +90,6 @@ function refreshLights(dt) {
 function isVisibleInScene(o) {
   for (let p = o; p; p = p.parent) if (!p.visible) return false;
   return true;
-}
-
-/* Snapshot active point lights, steady key lights, and carried radius lights
-   once per frame (or before a standalone query) so per-cell and per-unit loops
-   never walk parent chains or recompute matrixWorld hundreds of thousands of times. */
-function syncActiveLights() {
-  if (!_lights.length) refreshLights(Infinity);
-  _activePointLights.length = 0;
-  _steadyKeyLights.length = 0;
-  _radiiLights.length = 0;
-  for (let i = 0; i < _lights.length; i++) {
-    const L = _lights[i];
-    if (!isVisibleInScene(L)) continue;
-    const ud = L.userData;
-    const st = ud && ud.steady;
-    const R = ud && ud.radii;
-    const hasInt = L.intensity > 0;
-    const hasSt = st > 0 && !R;
-    if (!hasInt && !hasSt) continue;
-    L.getWorldPosition(_lp);
-    if (hasInt) {
-      _activePointLights.push({
-        x: _lp.x, y: _lp.y, z: _lp.z,
-        r: L.color.r, g: L.color.g, b: L.color.b,
-        intensity: L.intensity, distance: L.distance, decay: L.decay
-      });
-      if (R) {
-        _radiiLights.push({ x: _lp.x, z: _lp.z, bright: R.bright || 0, dim: R.dim || 0 });
-      }
-    }
-    if (hasSt) {
-      const lum = 0.2126 * L.color.r + 0.7152 * L.color.g + 0.0722 * L.color.b;
-      _steadyKeyLights.push({
-        x: _lp.x, y: _lp.y, z: _lp.z,
-        lumI: lum * st, distance: L.distance, decay: L.decay
-      });
-    }
-  }
 }
 
 /* Hemisphere + sun on a surface with normal n, unshadowed sun scaled by sunVis.
@@ -165,12 +124,12 @@ function keepBrighter(into, other) {
 
 /* Every live point light at P on normal n, added into out. */
 function addPointLights(P, n, out, wrap = SPRITE_LIGHT.wrap) {
-  for (let i = 0; i < _activePointLights.length; i++) {
-    const L = _activePointLights[i];
-    const dx = L.x - P.x, dy = L.y - P.y, dz = L.z - P.z;
-    const dSq = dx * dx + dy * dy + dz * dz;
-    if (L.distance > 0 && dSq >= L.distance * L.distance) continue;
-    const d = Math.sqrt(dSq);
+  for (const L of _lights) {
+    if (!(L.intensity > 0) || !isVisibleInScene(L)) continue;
+    L.getWorldPosition(_lp);
+    const dx = _lp.x - P.x, dy = _lp.y - P.y, dz = _lp.z - P.z;
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (L.distance > 0 && d >= L.distance) continue;
     /* three's getDistanceAttenuation */
     let att = 1 / Math.max(Math.pow(d, L.decay), 0.01);
     if (L.distance > 0) {
@@ -180,7 +139,7 @@ function addPointLights(P, n, out, wrap = SPRITE_LIGHT.wrap) {
     const inv = d > 1e-4 ? 1 / d : 0;
     const ndl = Math.max(0, ((dx * n.x + dy * n.y + dz * n.z) * inv + wrap) / (1 + wrap));
     const k = L.intensity * att * ndl * INV_PI;
-    out.x += L.r * k; out.y += L.g * k; out.z += L.b * k;
+    out.x += L.color.r * k; out.y += L.color.g * k; out.z += L.color.b * k;
   }
   return out;
 }
@@ -307,9 +266,8 @@ const _up = new THREE.Vector3(0, 1, 0), _gp = new THREE.Vector3(), _gl = new THR
 
 function pointLum(P, lx, ly, lz, lumI, distance, decay) {
   const dx = lx - P.x, dy = ly - P.y, dz = lz - P.z;
-  const dSq = dx * dx + dy * dy + dz * dz;
-  if (distance > 0 && dSq >= distance * distance) return 0;
-  const d = Math.sqrt(dSq);
+  const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (distance > 0 && d >= distance) return 0;
   let att = 1 / Math.max(Math.pow(d, decay), 0.01);
   if (distance > 0) {
     const r = d / distance, w = Math.min(1, Math.max(0, 1 - r * r * r * r));
@@ -330,9 +288,12 @@ function emitterLum(P) {
    campfires (ramped, doused). Carried lights are not here — they go by radii. */
 function keyLightsLum(P) {
   let e = 0;
-  for (let i = 0; i < _steadyKeyLights.length; i++) {
-    const L = _steadyKeyLights[i];
-    e += pointLum(P, L.x, L.y, L.z, L.lumI, L.distance, L.decay);
+  for (const L of _lights) {
+    const st = L.userData && L.userData.steady;
+    if (!(st > 0) || (L.userData && L.userData.radii) || !isVisibleInScene(L)) continue;
+    L.getWorldPosition(_lp);
+    const lum = 0.2126 * L.color.r + 0.7152 * L.color.g + 0.0722 * L.color.b;
+    e += pointLum(P, _lp.x, _lp.y, _lp.z, lum * st, L.distance, L.decay);
   }
   return e;
 }
@@ -367,34 +328,70 @@ function applyRadii(v, x, z) {
   if (DARK_ZONES.size && inDarkZone(x, z)) return 0;
   const EPS = 1e-4;
   const step = (px, pz, R) => {
-    const dx = px - x, dz = pz - z;
-    const rSq = dx * dx + dz * dz;
-    const b = R.bright || 0, dm = R.dim || 0;
-    if (b > 0 && rSq <= b * b) v = Math.max(v, LIGHT_LEVELS.bright + EPS);
-    else if (dm > 0 && rSq <= dm * dm) v = Math.max(v, LIGHT_LEVELS.dim + EPS);
+    const r = Math.hypot(px - x, pz - z);
+    if (r <= (R.bright || 0)) v = Math.max(v, LIGHT_LEVELS.bright + EPS);
+    else if (r <= (R.dim || 0)) v = Math.max(v, LIGHT_LEVELS.dim + EPS);
   };
   for (const L of VIRTUAL_LIGHTS) { const p = zonePos(L); step(p.x, p.z, L); }
-  for (let i = 0; i < _unitGlows.length; i++) { const g = _unitGlows[i]; step(g.x, g.z, g); }
-  for (let i = 0; i < _radiiLights.length; i++) { const L = _radiiLights[i]; step(L.x, L.z, L); }
+  for (const g of _unitGlows) step(g.x, g.z, g);
+  for (const L of _lights) {
+    const R = L.userData && L.userData.radii;
+    if (!R || !(L.intensity > 0) || !isVisibleInScene(L)) continue;
+    L.getWorldPosition(_lp);
+    const r = Math.hypot(_lp.x - x, _lp.z - z);
+    if (r <= R.bright) v = Math.max(v, LIGHT_LEVELS.bright + EPS);
+    else if (r <= R.dim) v = Math.max(v, LIGHT_LEVELS.dim + EPS);
+  }
   return v;
 }
 
-function lightLevelAtSynced(x, y, z, statOverride) {
+export function lightLevelAt(x, y, z) {
   if (DARK_ZONES.size && inDarkZone(x, z)) return 0;
-  let stat;
-  if (statOverride !== undefined) {
-    _gp.set(x, y + 0.1, z);
-    stat = statOverride;
-  } else {
-    stat = staticLevelAt(x, y, z);
-  }
-  const v = stat + keyLightsLum(_gp) / SPRITE_LIGHT.ref;
+  const v = staticLevelAt(x, y, z) + keyLightsLum(_gp) / SPRITE_LIGHT.ref;
   return applyRadii(v, x, z);
 }
-
-export function lightLevelAt(x, y, z) {
-  syncActiveLights();
-  return lightLevelAtSynced(x, y, z);
+/* lightLevelAt for a creature, for balance runs (SIM.fast), where this is the
+   hot path: every creature on the floor, every step. The sun-and-fires part
+   depends only on where the creature stands and on the level's lighting, so it
+   is kept per creature and recomputed when either changes — the same split,
+   and the same staleness test, the level light map below uses. Carried lights
+   and key lights are still read fresh, so the value is identical. */
+let _fastSig = '', _fastSrc = null;
+function creatureLightLevel(u, x, y, z) {
+  if (DARK_ZONES.size && inDarkZone(x, z)) return 0;
+  const c = u._lightStatic || (u._lightStatic = {});
+  if (c.x !== x || c.y !== y || c.z !== z || c.sig !== _fastSig || c.src !== _fastSrc || c.D !== D) {
+    c.stat = staticLevelAt(x, y, z);
+    c.x = x; c.y = y; c.z = z; c.sig = _fastSig; c.src = _fastSrc; c.D = D;
+  }
+  _gp.set(x, y + 0.1, z);
+  let key = 0;
+  for (const k of _fastKey) key += pointLum(_gp, k.x, k.y, k.z, k.lum, k.distance, k.decay);
+  let v = c.stat + key / SPRITE_LIGHT.ref;
+  const EPS = 1e-4;
+  for (const R of _fastRadii) {
+    const r = Math.hypot(R.x - x, R.z - z);
+    if (r <= R.bright) v = Math.max(v, LIGHT_LEVELS.bright + EPS);
+    else if (r <= R.dim) v = Math.max(v, LIGHT_LEVELS.dim + EPS);
+  }
+  return v;
+}
+/* Where every light is this step, read once instead of once per creature: the
+   same lights, in the same order, that keyLightsLum and applyRadii walk. */
+let _fastKey = [], _fastRadii = [];
+function snapshotLights() {
+  _fastKey = []; _fastRadii = [];
+  for (const L of VIRTUAL_LIGHTS) { const p = zonePos(L); _fastRadii.push({ x: p.x, z: p.z, bright: L.bright || 0, dim: L.dim || 0 }); }
+  for (const g of _unitGlows) _fastRadii.push({ x: g.x, z: g.z, bright: g.bright || 0, dim: g.dim || 0 });
+  for (const L of _lights) {
+    const ud = L.userData, R = ud && ud.radii, st = ud && ud.steady;
+    if (!R && !(st > 0)) continue;
+    if (R && !(L.intensity > 0)) continue;
+    if (!isVisibleInScene(L)) continue;
+    L.getWorldPosition(_lp);
+    if (R) _fastRadii.push({ x: _lp.x, z: _lp.z, bright: R.bright, dim: R.dim });
+    else _fastKey.push({ x: _lp.x, y: _lp.y, z: _lp.z, lum: (0.2126 * L.color.r + 0.7152 * L.color.g + 0.0722 * L.color.b) * st, distance: L.distance, decay: L.decay });
+  }
 }
 /* game rules ask tiles through light_sources.lightStateAt */
 setLightProbe((x, z) => (D ? classifyLight(lightLevelAt(x, groundY(D, x, z), z)) : 'bright'));
@@ -405,11 +402,11 @@ setLightProbe((x, z) => (D ? classifyLight(lightLevelAt(x, groundY(D, x, z), z))
    at skyWeight, the level's fires) is cached and rebuilt only when the level
    or the lighting settings change; key lights and carried lights are layered
    on top a few times a second. */
-const _lm = { D: null, cells: null, stat: null, level: null, sig: '', dynSig: '', src: null, t: 0 };
+const _lm = { D: null, cells: null, stat: null, level: null, sig: '', src: null, t: 0 };
 
 function ensureLightMap() {
   if (_lm.D === D && _lm.cells) return !!_lm.cells.length;
-  _lm.D = D; _lm.sig = ''; _lm.dynSig = ''; _lm.src = null; _lm.t = 0;
+  _lm.D = D; _lm.sig = ''; _lm.src = null; _lm.t = 0;
   clearLightRegistry();          // spells, thrown torches, oil: they end with the floor
   _lm.cells = [];
   if (!D || !D.grid) return false;
@@ -433,31 +430,6 @@ function staticSig() {
   SPRITE_LIGHT.ref].join('|');
 }
 
-function dynamicSig() {
-  let s = `${LIGHT_LEVELS.bright}|${LIGHT_LEVELS.dim}|${DARK_CUE.enabled ? DARK_CUE.strength : -1}|${DARK_CUE.dim.join(',')}|${DARK_CUE.dark.join(',')}|${_dbg.on ? 1 : 0}`;
-  for (let i = 0; i < _steadyKeyLights.length; i++) {
-    const L = _steadyKeyLights[i];
-    s += `;k:${L.x.toFixed(2)},${L.y.toFixed(2)},${L.z.toFixed(2)},${L.lumI.toFixed(3)},${L.distance},${L.decay}`;
-  }
-  for (let i = 0; i < _radiiLights.length; i++) {
-    const L = _radiiLights[i];
-    s += `;r:${L.x.toFixed(2)},${L.z.toFixed(2)},${L.bright},${L.dim}`;
-  }
-  for (const L of VIRTUAL_LIGHTS) {
-    const p = zonePos(L);
-    s += `;v:${p.x.toFixed(2)},${p.z.toFixed(2)},${L.bright || 0},${L.dim || 0}`;
-  }
-  for (let i = 0; i < _unitGlows.length; i++) {
-    const g = _unitGlows[i];
-    s += `;g:${g.x.toFixed(2)},${g.z.toFixed(2)},${g.bright || 0},${g.dim || 0}`;
-  }
-  for (const z of DARK_ZONES) {
-    const p = zonePos(z);
-    s += `;d:${p.x.toFixed(2)},${p.z.toFixed(2)},${z.r || 0}`;
-  }
-  return s;
-}
-
 /* Recompute the map (throttled unless `force`). Returns true when it changed. */
 function refreshLightMap(dt, force = false) {
   if (!ensureLightMap()) return false;
@@ -466,14 +438,10 @@ function refreshLightMap(dt, force = false) {
   _lm.t = 0.2;
   const cells = _lm.cells, stat = _lm.stat, level = _lm.level;
   const sig = staticSig(), src = steadyLightSources();
-  const statChanged = sig !== _lm.sig || src !== _lm.src;
-  if (statChanged) {
+  if (sig !== _lm.sig || src !== _lm.src) {
     for (let i = 0; i < cells.length; i++) stat[i] = staticLevelAt(cells[i].x, cells[i].y, cells[i].z);
     _lm.sig = sig; _lm.src = src;
   }
-  const dSig = dynamicSig();
-  if (!force && !statChanged && dSig === _lm.dynSig) return false;
-  _lm.dynSig = dSig;
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i];
     _gp.set(c.x, c.y + 0.1, c.z);
@@ -511,7 +479,7 @@ export function applyThemeLightLevels(TH) {
   DARK_CUE.strength = t.darkCue ?? DARK_CUE_DEFAULT;
 }
 
-const _cue = { D: null, mesh: null, tex: null, data: null, amt: null };
+const _cue = { D: null, mesh: null, tex: null, data: null };
 
 /* Light level -> cue amount: 0 bright; 0.25-0.5 across dim; 0.7-1 in the dark.
    The small steps at each threshold are what make the boundary readable. */
@@ -608,9 +576,7 @@ function updateCue() {
   const { W, H } = D;
   const data = _cue.data, cells = _lm.cells, level = _lm.level;
   data.fill(0);
-  if (!_cue.amt || _cue.amt.length !== W * H) _cue.amt = new Float32Array(W * H);
-  const amt = _cue.amt;
-  amt.fill(-1);
+  const amt = new Float32Array(W * H).fill(-1);
   let any = false;
   for (let i = 0; i < cells.length; i++) {
     const a = cueAmount(level[i]);
@@ -624,10 +590,12 @@ function updateCue() {
       /* off the floor: borrow the neighbours, so the bilinear edge doesn't
          pull a floor tile's shade toward an arbitrary value */
       let sum = 0, n = 0;
-      if (x + 1 < W) { const v = amt[c + 1]; if (v >= 0) { sum += v; n++; } }
-      if (x > 0) { const v = amt[c - 1]; if (v >= 0) { sum += v; n++; } }
-      if (y + 1 < H) { const v = amt[c + W]; if (v >= 0) { sum += v; n++; } }
-      if (y > 0) { const v = amt[c - W]; if (v >= 0) { sum += v; n++; } }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const v = amt[ny * W + nx];
+        if (v >= 0) { sum += v; n++; }
+      }
       a = n ? sum / n : 0;
     }
     data[c * 4] = Math.round(Math.min(1, Math.max(0, a)) * 255);
@@ -787,8 +755,8 @@ function vnoise(x, y) {
   return (a + (b - a) * fx_) + ((c + (d - c) * fx_) - (a + (b - a) * fx_)) * fy;
 }
 function fbm(x, y) {
-  let v = 0, a = 0.5;
-  for (let i = 0; i < 4; i++) { v += a * vnoise(x, y); x = f32(x * 2.03 + 11.7); y = f32(y * 2.03 + 11.7); a *= 0.5; }
+  let v = 0, a = 0.625;
+  for (let i = 0; i < 2; i++) { v += a * vnoise(x, y); x = f32(x * 2.03 + 11.7); y = f32(y * 2.03 + 11.7); a *= 0.5; }
   return v;
 }
 const smooth = (e0, e1, x) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
@@ -799,14 +767,12 @@ function groundFogAlpha(x, z) {
   const wx = f32(x * sc), wz = f32(z * sc);
   const d1x = t * sp * 1.6, d1y = t * sp * 0.95;
   const d2x = -t * sp * 0.6 + 17.3, d2y = t * sp * 1.3 + 42.1;
-  const d3x = t * sp * 0.35 + 83.7, d3y = -t * sp * 0.45 + 29.4;
   const q1 = fbm(wx * 0.85 + d1x, wz * 0.85 + d1y);
   const q2 = fbm(wx * 0.85 + d2x, wz * 0.85 + d2y);
   const ux = wx + q1 * 1.8, uz = wz + q2 * 1.8;
   const n1 = fbm(ux + d1x * 0.5, uz + d1y * 0.5);
   const n2 = fbm(ux * 1.6 - d2x * 0.7, uz * 1.6 - d2y * 0.7);
-  const n3 = fbm(ux * 2.8 + d3x, uz * 2.8 + d3y);
-  const raw = n1 * 0.55 + n2 * 0.32 + n3 * 0.13;
+  const raw = n1 * 0.63 + n2 * 0.37;
   const wisps = 0.85 + 0.15 * Math.sin(t * 0.4 + n2 * 8.0);
   return smooth(0.48, 0.72, raw) * U.uDensity.value * wisps;
 }
@@ -848,11 +814,7 @@ function fogAt(P) {
   const mists = fx && fx.mists;
   if (mists) for (const m of mists) {
     const mm = m && m.userData && m.userData.mat;
-    if (!mm || !mm.uniforms) continue;
-    const dx = P.x - m.position.x, dz = P.z - m.position.z;
-    const maxS = Math.max(Math.abs(m.scale.x), Math.abs(m.scale.y), Math.abs(m.scale.z)) * 0.6;
-    if (dx * dx + dz * dz >= maxS * maxS) continue;
-    if (!isVisibleInScene(m)) continue;
+    if (!mm || !mm.uniforms || !isVisibleInScene(m)) continue;
     _fogLocal.copy(P); m.worldToLocal(_fogLocal);
     const dist = 2 * Math.hypot(_fogLocal.x, _fogLocal.z);
     if (dist >= 1) continue;
@@ -893,8 +855,8 @@ function glowTexture() {
 }
 function updateGlowDiscs() {
   const items = [];
-  for (const L of VIRTUAL_LIGHTS) if (L.glow !== false) { const p = zonePos(L); items.push({ x: p.x, z: p.z, dim: L.dim, color: L.color || 0xffc070, k: L.bright > 0 ? 0.55 : 0.32 }); }
-  for (const g of _unitGlows) items.push({ x: g.x, z: g.z, dim: g.dim, color: g.color, k: g.bright > 0 ? 0.5 : 0.28 });
+  for (const L of VIRTUAL_LIGHTS) if (L.glow !== false) { const p = zonePos(L); if (DARK_ZONES.size && inDarkZone(p.x, p.z)) continue; items.push({ x: p.x, z: p.z, dim: L.dim, color: L.color || 0xffc070, k: L.bright > 0 ? 0.55 : 0.32 }); }
+  for (const g of _unitGlows) if (!(DARK_ZONES.size && inDarkZone(g.x, g.z))) items.push({ x: g.x, z: g.z, dim: g.dim, color: g.color, k: g.bright > 0 ? 0.16 : 0.28 });
   const tex = glowTexture();
   if (!tex && items.length) return;
   while (_glowPool.length < items.length && _glowPool.length < 32) {
@@ -922,7 +884,6 @@ function updateGlowDiscs() {
    light list, camera right, the standing-body normals, sun and sky direction. */
 function prepareFrame(dt) {
   refreshLights(dt);
-  syncActiveLights();
 
   /* Frame-wide basis: camera right, a mostly-horizontal "facing the camera"
      normal (a standing body, not the tilted quad), and the two side normals. */
@@ -936,6 +897,64 @@ function prepareFrame(dt) {
   _sun.copy(sunOffset).normalize();
   _hemiDir.copy(hemi.position).normalize();
   if (_hemiDir.lengthSq() < 0.5) _hemiDir.set(0, 1, 0);
+
+  /* How lit the open floor is. It only scales the readability floor, so a
+     night keeps a faint lift. Critters sample this same frame. */
+  ambientAndSun(_up, 1, _ref);
+  const sceneK = litLum(_ref) / SPRITE_LIGHT.ref;
+  _floor = SPRITE_LIGHT.floor * Math.min(1, Math.max(SPRITE_LIGHT.floorMin, sceneK));
+}
+
+/* Ambient critters are the same unlit sprite cards as heroes. The game
+   registers a walker; this pass tints whatever it hands back. */
+let _shadeList = null;
+export function setSpriteShadeList(fn) { _shadeList = fn; }
+
+/**
+ * Write the hero light onto one billboard. `sprLit` stays white until
+ * something calls this, which is why a critter used to read as a full-bright
+ * PNG in a dark scene. Left and right match the body pass. No fog: these
+ * cards sit in the crowns, and the ground mist would paint the whole sprite.
+ */
+export function shadeBillboard(mesh, x, y, z, dt) {
+  const lit = mesh && mesh.material && mesh.material.userData && mesh.material.userData.sprLit;
+  if (!lit || !hemi || !dirL) return;
+  if (!SPRITE_LIGHT.enabled) {
+    lit.L.value.set(1, 1, 1);
+    lit.R.value.set(1, 1, 1);
+    return;
+  }
+  const scaleX = Math.abs(mesh.scale && mesh.scale.x) || 0.2;
+  const off = 0.18 * scaleX;
+  _p.set(x, y, z);
+  _q.copy(_p).addScaledVector(_right, -off);
+  const visL = sunVisibility(_q);
+  ambientAndSun(_up, visL, _a);
+  ambientAndSun(_nL, visL, _ref);
+  keepBrighter(_a, _ref);
+  addPointLights(_p, _nL, _a);
+  _q.copy(_p).addScaledVector(_right, off);
+  const visR = sunVisibility(_q);
+  ambientAndSun(_up, visR, _b);
+  ambientAndSun(_nR, visR, _ref);
+  keepBrighter(_b, _ref);
+  addPointLights(_p, _nR, _b);
+  finish(_a);
+  finish(_b);
+  if (DARK_ZONES.size && inDarkZone(x, z)) { _a.setScalar(0.12); _b.setScalar(0.12); }
+  const k = 1 - Math.exp(-SPRITE_LIGHT.rate * (dt > 0 ? dt : 0.016));
+  if (!mesh.userData._shadeSeen) {
+    mesh.userData._shadeSeen = true;
+    lit.L.value.copy(_a);
+    lit.R.value.copy(_b);
+  } else {
+    lit.L.value.lerp(_a, k);
+    lit.R.value.lerp(_b, k);
+  }
+}
+
+function shadeListed(dt) {
+  if (_shadeList) _shadeList(shadeBillboard, dt);
 }
 
 /** Run the darkness cue and the F4 overlay on their own — for pages with no
@@ -945,15 +964,22 @@ export function tickLightOverlays(dt = 0.016) {
   if (!cam || !hemi || !dirL) return;
   prepareFrame(dt);
   updateLightOverlays(dt);
+  shadeListed(dt);
 }
 export const tickLightDebug = tickLightOverlays;
 
 export function updateSpriteLighting(units, dt = 0.016) {
-  if (!units || !cam || !hemi || !dirL) return;
+  if (!cam || !hemi || !dirL) return;
   prepareFrame(dt);
+  /* Balance runs (SIM.fast) skip the floor tint and debug overlay. They still
+     need the per-floor reset ensureLightMap does (it clears spell lights left
+     over from the last floor), and everything below that the rules read. */
+  if (SIM.fast) { ensureLightMap(); _fastSig = staticSig(); _fastSrc = steadyLightSources(); }
+  else updateLightOverlays(dt);
+  if (!units) { shadeListed(dt); return; }
 
-  /* glowing creatures (monster_light.js) and who stands in magical Darkness —
-     computed before updateLightOverlays so the light map sees current creature glows. */
+  const k = 1 - Math.exp(-SPRITE_LIGHT.rate * dt);
+  /* glowing creatures (monster_light.js) and who stands in magical Darkness */
   _unitGlows = [];
   for (const u of units) {
     if (!u || !u.data || u.data.hp <= 0) continue;
@@ -967,16 +993,7 @@ export function updateSpriteLighting(units, dt = 0.016) {
   }
   for (const u of units) if (u) u._inMagicalDarkness = DARK_ZONES.size ? inDarkZone(u.x || 0, u.z || 0) : false;
   updateGlowDiscs();
-  updateLightOverlays(dt);
-
-  /* How lit the open floor is, on the same up normal the ground uses. It
-     only scales the readability floor, so a night keeps a faint lift. */
-  ambientAndSun(_up, 1, _ref);
-  const sceneK = litLum(_ref) / SPRITE_LIGHT.ref;
-  _floor = SPRITE_LIGHT.floor * Math.min(1, Math.max(SPRITE_LIGHT.floorMin, sceneK));
-
-  const k = 1 - Math.exp(-SPRITE_LIGHT.rate * dt);
-  const sig = staticSig(), src = steadyLightSources();
+  if (SIM.fast) snapshotLights();
 
   for (const u of units) {
     const v = u && (u.ent || u);
@@ -986,11 +1003,12 @@ export function updateSpriteLighting(units, dt = 0.016) {
        not: a goblin lurking in an unrevealed room is still in the dark. */
     /* steady light, so no easing: it follows a carried torch frame by frame */
     v.grp.getWorldPosition(_p);
-    if (v._statX !== _p.x || v._statY !== _p.y || v._statZ !== _p.z || v._statSig !== sig || v._statSrc !== src || v._statD !== D) {
-      v._statVal = staticLevelAt(_p.x, _p.y, _p.z);
-      v._statX = _p.x; v._statY = _p.y; v._statZ = _p.z; v._statSig = sig; v._statSrc = src; v._statD = D;
+    u.lightLevel = SIM.fast ? creatureLightLevel(u, _p.x, _p.y, _p.z) : lightLevelAt(_p.x, _p.y, _p.z);
+    /* self-check for the fast path: SIM.verify compares it with the plain one */
+    if (SIM.fast && SIM.verify) {
+      SIM.checked = (SIM.checked || 0) + 1;
+      if (lightLevelAt(_p.x, _p.y, _p.z) !== u.lightLevel) SIM.mismatch = (SIM.mismatch || 0) + 1;
     }
-    u.lightLevel = lightLevelAtSynced(_p.x, _p.y, _p.z, v._statVal);
     /* No previous state. The hold in classifyLight keeps bright down to
        bright*hyst, and a night theme can put its whole dim band above that
        (moor night is 0.55 / 0.45, so the hold floor is 0.44). A creature that
@@ -1001,6 +1019,7 @@ export function updateSpriteLighting(units, dt = 0.016) {
     /* mirrored onto the hero record for the party frames, which are drawn
        from h.data (inventory.js heroSaveRecord keeps it out of saves) */
     if (u.data && typeof u.data === 'object') u.data._lightState = u.lightState;
+    if (SIM.fast) continue;   // the rest of the loop only shades the sprite
 
     const mesh = v.anim && v.anim.mesh;
     const lit = mesh && mesh.material && mesh.material.userData && mesh.material.userData.sprLit;
@@ -1013,6 +1032,7 @@ export function updateSpriteLighting(units, dt = 0.016) {
     }
     if (!v.grp.visible) continue;
 
+    v.grp.getWorldPosition(_p);
     if (lit.fog) {
       fogAt(_p);
       lit.fogTop.value = SPRITE_LIGHT.fogTop;
@@ -1023,19 +1043,14 @@ export function updateSpriteLighting(units, dt = 0.016) {
     _p.y += 0.35 * bodyH;
     const off = 0.18 * Math.abs(mesh.scale.x);
 
-    if (v._visX !== _p.x || v._visY !== _p.y || v._visZ !== _p.z || v._visOff !== off || v._visRx !== _right.x || v._visRz !== _right.z || v._visSig !== sig || v._visD !== D) {
-      _q.copy(_p).addScaledVector(_right, -off);
-      v._visL = sunVisibility(_q);
-      _q.copy(_p).addScaledVector(_right, off);
-      v._visR = sunVisibility(_q);
-      v._visX = _p.x; v._visY = _p.y; v._visZ = _p.z; v._visOff = off;
-      v._visRx = _right.x; v._visRz = _right.z; v._visSig = sig; v._visD = D;
-    }
-    const visL = v._visL, visR = v._visR;
+    _q.copy(_p).addScaledVector(_right, -off);
+    const visL = sunVisibility(_q);
     ambientAndSun(_up, visL, _a);
     ambientAndSun(_nL, visL, _ref);
     keepBrighter(_a, _ref);
     addPointLights(_p, _nL, _a);
+    _q.copy(_p).addScaledVector(_right, off);
+    const visR = sunVisibility(_q);
     ambientAndSun(_up, visR, _b);
     ambientAndSun(_nR, visR, _ref);
     keepBrighter(_b, _ref);
@@ -1056,4 +1071,5 @@ export function updateSpriteLighting(units, dt = 0.016) {
     if (!v._litSeen) { v._litSeen = true; lit.L.value.copy(_a); lit.R.value.copy(_b); }
     else { lit.L.value.lerp(_a, k); lit.R.value.lerp(_b, k); }
   }
+  shadeListed(dt);
 }

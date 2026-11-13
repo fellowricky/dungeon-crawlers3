@@ -233,8 +233,11 @@ select:focus-visible, [tabindex]:focus-visible{
 .pf-xpfill{ height:100%; background:linear-gradient(180deg,#a195ec,#7265c5); transition:width .25s; }
 
 .pf-effects{
-  display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; min-height:24px; max-width:100%; align-items:center;
+  display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; max-width:100%; align-items:center;
 }
+/* no reserved row when nothing is active (the XP bar under it is gone too) */
+.pf-effects:empty{ display:none; }
+.pf-ac{ font-size:14px; color:#8e98a4; white-space:nowrap; cursor:help; }
 .pf-effect{
   position:relative; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center;
   pointer-events:auto; cursor:help; border-radius:50%; background:rgba(10,12,14,0.6);
@@ -1473,21 +1476,23 @@ select:focus-visible, [tabindex]:focus-visible{
   box-shadow:0 10px 30px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(0,0,0,0.6);
   font-size:20px; color:#b1b8bf;
 }
-#cs-tooltip .tt-compare{ display:flex; align-items:stretch; }
-#cs-tooltip .tt-compare .tt-card{ flex:1 1 0; min-width:0; }
-#cs-tooltip .tt-compare .tt-card + .tt-card{
+/* .item-card: the same card outside the hover tooltip (the loot reveal, item_reveal.js) */
+.item-card{ font-size:20px; color:#b1b8bf; text-align:left; }
+:is(#cs-tooltip, .item-card) .tt-compare{ display:flex; align-items:stretch; }
+:is(#cs-tooltip, .item-card) .tt-compare .tt-card{ flex:1 1 0; min-width:0; }
+:is(#cs-tooltip, .item-card) .tt-compare .tt-card + .tt-card{
   border-left:1px solid rgba(205,186,144,0.14);
 }
-#cs-tooltip .tt-card{ padding:11px 14px 12px; }
-#cs-tooltip .tt-card.empty{ opacity:0.5; }
-#cs-tooltip .tt-none{ font-style:italic; color:#44505f; font-size:19px; margin-top:10px; }
+:is(#cs-tooltip, .item-card) .tt-card{ padding:11px 14px 12px; }
+:is(#cs-tooltip, .item-card) .tt-card.empty{ opacity:0.5; }
+:is(#cs-tooltip, .item-card) .tt-none{ font-style:italic; color:#44505f; font-size:19px; margin-top:10px; }
 
 /* header block: which side this is, what it is, what it demands */
-#cs-tooltip .tt-head{
+:is(#cs-tooltip, .item-card) .tt-head{
   font-family:var(--dc-display); font-size:16px; letter-spacing:.18em;
   text-transform:uppercase; color:#616e7f; margin-bottom:4px;
 }
-#cs-tooltip .tt-head:empty{ display:none; }
+:is(#cs-tooltip, .item-card) .tt-head:empty{ display:none; }
 #cs-tooltip.compact{
   font-size:16px;
   max-width:min(340px, 92vw);
@@ -1507,57 +1512,65 @@ select:focus-visible, [tabindex]:focus-visible{
 #cs-tooltip.compact .tt-foot{
   margin-top:5px; padding-top:4px; font-size:15px;
 }
-#cs-tooltip .tt-yield{
+:is(#cs-tooltip, .item-card) .tt-yield{
   padding:5px 10px 6px;
   font-size:14px;
   color:#bb86fc;
   border-top:1px solid rgba(187,134,252,0.25);
   line-height:1.25;
 }
-#cs-tooltip .tt-name{ font-size:25px; font-weight:700; line-height:1.15; }
-#cs-tooltip .tt-sub{
+:is(#cs-tooltip, .item-card) .tt-name{ font-size:25px; font-weight:700; line-height:1.15; }
+:is(#cs-tooltip, .item-card) .tt-sub{
   font-size:18px; color:#616e7f; margin:2px 0 0;
 }
 
 /* the headline stat, on its own line and weighted like it matters */
-#cs-tooltip .tt-primary{
+:is(#cs-tooltip, .item-card) .tt-primary{
   margin:9px 0 0; font-size:24px; font-weight:700; color:#d4d8dc;
   padding:5px 0 6px;
   border-top:1px solid rgba(205,186,144,0.10);
   border-bottom:1px solid rgba(205,186,144,0.10);
 }
-#cs-tooltip .tt-tags{
+:is(#cs-tooltip, .item-card) .tt-tags{
   font-size:17px; color:#6d7a8a; font-style:italic; margin-top:4px;
 }
 
-/* affix rows: label left, value right, delta after it */
-#cs-tooltip .tt-rows{ margin-top:8px; }
-#cs-tooltip .tt-row{
-  display:grid; grid-template-columns:1fr auto auto;
+/* affix rows: value first, then the stat it belongs to, then the change on
+   equip. The value used to sit at the far right, a long eye-trip from its
+   label. Its column has a fixed minimum and is right-aligned, so +2 / +10 /
+   1d4 still line up down the card. */
+:is(#cs-tooltip, .item-card) .tt-rows{ margin-top:8px; }
+:is(#cs-tooltip, .item-card) .tt-row{
+  display:grid; grid-template-columns:minmax(3.4em, max-content) max-content 1fr;
   align-items:baseline; column-gap:8px;
   font-size:19px; padding:2px 0; color:#86909c;
 }
-#cs-tooltip .tt-row b{ color:#d4d8dc; font-weight:700; }
-#cs-tooltip .tt-row.none{ color:#3c4653; }
-#cs-tooltip .tt-row.none b{ color:#3c4653; font-weight:400; }
-#cs-tooltip .tt-d{
+:is(#cs-tooltip, .item-card) .tt-row > b{ text-align:right; }
+:is(#cs-tooltip, .item-card) .tt-row > .tt-d{ text-align:left; min-width:0; }
+/* rune rows keep name-then-description: the description is a phrase */
+:is(#cs-tooltip, .item-card) .tt-row.tt-rune{ grid-template-columns:1fr auto; }
+:is(#cs-tooltip, .item-card) .tt-row.tt-rune > b{ text-align:left; }
+:is(#cs-tooltip, .item-card) .tt-row b{ color:#d4d8dc; font-weight:700; }
+:is(#cs-tooltip, .item-card) .tt-row.none{ color:#3c4653; }
+:is(#cs-tooltip, .item-card) .tt-row.none b{ color:#3c4653; font-weight:400; }
+:is(#cs-tooltip, .item-card) .tt-d{
   font-style:normal; font-size:17px; font-weight:700; min-width:3.2em; text-align:right;
 }
-#cs-tooltip .tt-d.pos{ color:#6ac98f; }
-#cs-tooltip .tt-d.neg{ color:#d0705a; }
+:is(#cs-tooltip, .item-card) .tt-d.pos{ color:#6ac98f; }
+:is(#cs-tooltip, .item-card) .tt-d.neg{ color:#d0705a; }
 
-#cs-tooltip .tt-perk{
+:is(#cs-tooltip, .item-card) .tt-perk{
   font-size:18px; color:#b99d63; margin-top:8px; line-height:1.35;
   padding-top:6px; border-top:1px solid rgba(185,157,99,0.2);
 }
-#cs-tooltip .tt-foot{
+:is(#cs-tooltip, .item-card) .tt-foot{
   display:grid; grid-template-columns:1fr auto auto; column-gap:8px;
   align-items:baseline; margin-top:9px; padding-top:6px;
   border-top:1px solid rgba(205,186,144,0.12);
   font-size:18px; color:#616e7f;
 }
-#cs-tooltip .tt-foot b{ color:#c1a974; font-weight:700; font-size:20px; }
-#cs-tooltip .tt-warn{
+:is(#cs-tooltip, .item-card) .tt-foot b{ color:#c1a974; font-weight:700; font-size:20px; }
+:is(#cs-tooltip, .item-card) .tt-warn{
   padding:7px 14px; font-size:19px; color:#e0cda0;
   background:rgba(190,165,111,0.12);
   border-top:1px solid rgba(190,165,111,0.35);
@@ -1889,6 +1902,10 @@ select:focus-visible, [tabindex]:focus-visible{
   padding:5px 12px; font-size:22px; color:var(--dc-text-mute); letter-spacing:.04em; }
 .pt-pill.hot{ background:rgba(172,142,77,0.20); border-color:var(--dc-accent); color:#e4d9bd;
   font-weight:600; box-shadow:0 0 10px rgba(185,157,99,0.18); }
+/* a pill that is also a toggle (Dancing Lights on/off) */
+button.pt-pill{ font-family:inherit; cursor:var(--cur-hand, pointer); }
+button.pt-pill:hover:not(:disabled){ border-color:var(--dc-accent); }
+button.pt-pill:disabled{ opacity:.5; cursor:default; }
 /* XP strip: one line — label, track, counts. */
 /* The purple bar was the only thing on the screen not in the bronze/bone
    palette, and the only rounded one — both read as imported from elsewhere. */
@@ -2008,6 +2025,9 @@ select:focus-visible, [tabindex]:focus-visible{
   border:1px solid rgba(185,157,99,0.28); border-left:3px solid var(--dc-accent);
   border-radius:0; padding:12px 14px; }
 @media (max-width:1000px){ .sc-cards{ grid-template-columns:1fr; } }
+/* The level-3 chooser spans the panel: one column per subclass, side by side. */
+.sk-subclass-pick{ margin:12px 0 18px; }
+.sk-subclass-pick .sc-cards{ grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); }
 
 /* ---- feature choices (ASI / feat / style / spell) ---- */
 .sk-choice{ margin-bottom:18px; background:rgba(124,100,190,0.08);
@@ -2060,7 +2080,23 @@ select:focus-visible, [tabindex]:focus-visible{
   align-items: center; justify-content: center; padding: 24px;
 }
 #shopscreen.show { display: flex; }
-.shop-frame { width: 500px; height: auto; min-height: 400px; }
+.shop-frame { width: min(820px, 94vw); height: auto; min-height: 400px; }
+/* the shops' item detail: the game's one item card (menus.js itemCardHTML /
+   partyCompareHTML), with a row of party chips to compare against anyone's gear */
+.shop-card { font-size: 18px; }
+.shop-card .tt-compare { display: flex; flex-wrap: wrap; border: 1px solid rgba(205,186,144,0.14); }
+.shop-card .tt-compare .tt-card { flex: 1 1 240px; min-width: 0; }
+.shop-card > .tt-card { border: 1px solid rgba(205,186,144,0.14); }
+.pc-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.pc-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 9px; font: inherit; font-size: 16px;
+  color: #b1b8bf; background: rgba(0,0,0,0.35); border: 1px solid rgba(205,186,144,0.22); cursor: var(--cur-hand, pointer); }
+.pc-chip:hover { border-color: rgba(232,194,90,0.6); }
+.pc-chip.on { color: #f0e2b8; border-color: #e8c25a; background: rgba(232,194,90,0.12); box-shadow: inset 0 0 0 1px rgba(232,194,90,0.35); }
+.pc-chip.cant { opacity: 0.6; }
+.pc-chip i { font-style: normal; font-weight: 700; font-size: 15px; }
+.pc-up { color: #6ac98f; } .pc-down { color: #d0705a; } .pc-same { color: #8a93a0; } .pc-no { color: #8a7a5a; font-weight: 400 !important; }
+.shop-buy-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.shop-empty { text-align: center; color: #6a6558; padding: 20px 0; font-size: 17px; }
 .shop-body { display: flex; flex-direction: column; padding: 18px; gap: 14px; }
 .shop-grid {
   display: grid;
@@ -2261,7 +2297,7 @@ select:focus-visible, [tabindex]:focus-visible{
 /* ===== 5e Skills UI ===== */
 .srd-skills-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
   padding: 10px 0;
 }
@@ -2307,11 +2343,15 @@ select:focus-visible, [tabindex]:focus-visible{
   flex-direction: column;
   gap: 4px;
 }
+/* name | pips | value | + — the name takes the slack and wraps rather than being
+   cut off ("Sleight of Hand", "Animal Handling" were clipped at 240px cards) */
 .srd-skill-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
-  justify-content: space-between;
-  font-size: 24px;
+  column-gap: 2px;
+  font-size: 21px;
+  line-height: 1.15;
   padding: 4px 6px;
   color: #637080;
   border-radius: 3px;
@@ -2329,9 +2369,22 @@ select:focus-visible, [tabindex]:focus-visible{
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
   min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
+/* gear proficiencies: what this hero can wear and wield (menus.js srdSkillsHTML) */
+.gp-panel { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 14px;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(205,186,144,0.16); }
+.gp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.gp-head { min-width: 96px; font-size: 18px; letter-spacing: 0.12em; text-transform: uppercase; color: #c1a974; }
+.gp-tag { display: inline-flex; align-items: baseline; gap: 5px; padding: 3px 9px; font-size: 19px;
+  border: 1px solid currentColor; }
+.gp-tag b { font-size: 16px; }
+.gp-tag.on { color: #8fd6a4; background: rgba(106,201,143,0.08); }
+.gp-tag.off { color: #5a6270; }
+.gp-tag i { font-style: normal; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #e8c25a; }
+.gp-also { font-size: 18px; color: #b1b8bf; }
 /* spendable skill ranks — flat +1 each, pips mirror the class-talent tree */
 .srd-rank-pips {
   display: flex;
@@ -4714,7 +4767,29 @@ body.title-open #panel{ display:none !important; }
   image-rendering:pixelated;
   filter:drop-shadow(0 0 34px rgba(185,157,99,.28)) drop-shadow(0 6px 0 rgba(0,0,0,.55));
 }
-.ts-menu{ display:flex; flex-direction:column; gap:12px; width:min(340px, 78vw); }
+.ts-menu{ display:flex; flex-direction:column; gap:12px; width:min(340px, 78vw); position:relative; }
+/* Boot holds the menu's box so the logo does not jump when the buttons appear.
+   The status line sits in that box. It keeps pulsing so the wait does not look frozen. */
+.ts-loading{
+  display:none; position:absolute; inset:0; margin:0;
+  align-items:center; justify-content:center; text-align:center;
+  pointer-events:none;
+  font-family:var(--px-disp), 'VT323', ui-monospace, monospace;
+  font-size:11px; line-height:1.7; letter-spacing:0.08em;
+  color:var(--px-gold, #c1a974); text-shadow:2px 2px 0 #000;
+}
+#titlescreen.is-loading .ts-loading{
+  display:flex;
+  align-items:flex-start;
+  padding-top:18px;
+  animation:ts-loading-pulse 1.6s ease-in-out infinite;
+}
+#titlescreen.is-loading .ts-btn,
+#titlescreen.is-loading .ts-note{ visibility:hidden; }
+@keyframes ts-loading-pulse{
+  0%, 100%{ opacity:0.4; }
+  50%{ opacity:1; }
+}
 .ts-btn{
   font-family:var(--px-disp), 'VT323', ui-monospace, monospace;
   font-size:13px; letter-spacing:0; line-height:1.6;
@@ -4791,6 +4866,7 @@ body.title-open #panel{ display:none !important; }
   background-image: radial-gradient(circle at center, #080a0c 0%, #030404 70%, #010202 100%);
   background-size: cover;
   background-position: center;
+  background-repeat: no-repeat;
   opacity: 1;
   visibility: visible;
   /* No fade-in. A fade plus a blocked main thread meant the first frame the
@@ -4807,10 +4883,149 @@ body.title-open #panel{ display:none !important; }
   pointer-events: none !important;
 }
 
+/* Pixelfx wipe, above the curtain. The bitmap is 320×180; the element is
+   scaled uniformly so a circle stays round and the corners stay covered.
+   The hole is transparent, so the curtain shows through it. Burn away
+   clips the curtain to the unburned middle, and the game shows outside it. */
+.dungeon-loading-wipe {
+  position: fixed;
+  z-index: 100000;
+  pointer-events: auto;
+  image-rendering: pixelated;
+  background: transparent;
+  display: block;
+}
+
 .dungeon-loading-overlay.fade-out {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.38s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0.38s ease;
+}
+
+/* Loop sits on the still. The still is the background-image, so a missing
+   or failed mp4 leaves the plate in place. Hi-bit art, so this stays smooth. */
+.dungeon-loading-plate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  pointer-events: none;
+  image-rendering: auto;
+  background: transparent;
+}
+
+/* Pixel weather over the still and under the ground shade. The plate and the
+   video stay smooth; only this layer is pixelated. */
+.dungeon-loading-weather {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+  background: transparent;
+}
+
+/* Soft ground shade so the title reads on a bright plate. It fades out — a
+   hard-edged bar here sliced the picture and looked like a second copy of
+   the ground pasted under the party. Sits under the title and the march. */
+.dungeon-loading-overlay::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 420px;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(to top,
+    rgba(3, 4, 4, 0.50) 0%,
+    rgba(3, 4, 4, 0.62) 18%,
+    rgba(3, 4, 4, 0.40) 40%,
+    transparent 100%);
+}
+
+/* Place card. Sits on the sky, not in the ground shade, so it does not cut
+   the plate the way a full-width bar did. */
+.dungeon-loading-card {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  width: max-content;
+  max-width: min(920px, 92vw);
+  box-sizing: border-box;
+  padding: 16px 48px 14px;
+  text-align: center;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(7, 8, 10, 0.9), rgba(7, 8, 10, 0.74));
+  border: 1px solid rgba(193, 169, 116, 0.55);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.85),
+    inset 0 0 0 5px rgba(8, 9, 10, 0.55),
+    0 18px 36px rgba(0, 0, 0, 0.45);
+}
+
+.dungeon-loading-card-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #d4bc86;
+  pointer-events: none;
+}
+.dungeon-loading-card-corner.tl { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
+.dungeon-loading-card-corner.tr { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
+.dungeon-loading-card-corner.bl { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
+.dungeon-loading-card-corner.br { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
+
+.dungeon-loading-map {
+  font-family: 'Cinzel', 'Press Start 2P', serif, monospace;
+  font-size: clamp(18px, 2.3vw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: #e8d7b0;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.85), 0 0 16px rgba(0, 0, 0, 0.8);
+}
+
+.dungeon-loading-floor {
+  margin-top: 8px;
+  padding-top: 8px;
+  background: linear-gradient(90deg, transparent, rgba(193, 169, 116, 0.75), transparent) top center / 58% 1px no-repeat;
+  font-family: 'Cinzel', 'Press Start 2P', serif, monospace;
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #c1a974;
+}
+.dungeon-loading-floor:empty { display: none; }
+
+.dungeon-loading-pips {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dungeon-loading-pip {
+  width: 7px;
+  height: 7px;
+  background: rgba(193, 169, 116, 0.2);
+  box-shadow: 0 0 0 1px rgba(193, 169, 116, 0.5);
+  transform: rotate(45deg);
+}
+.dungeon-loading-pip.is-done { background: rgba(193, 169, 116, 0.75); }
+.dungeon-loading-pip.is-now {
+  background: #e8d7b0;
+  box-shadow: 0 0 0 1px #e8d7b0, 0 0 8px rgba(232, 215, 176, 0.85);
 }
 
 .dungeon-loading-content {
@@ -4818,14 +5033,17 @@ body.title-open #panel{ display:none !important; }
   left: 0;
   right: 0;
   bottom: 158px;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 8px;
   padding: 18px 24px 12px;
-  background: linear-gradient(to top, rgba(3,4,4,0.72), rgba(3,4,4,0.28) 70%, transparent);
 }
+
+/* The card already says this line. */
+.dungeon-loading-title.is-echo { display: none; }
 
 .dungeon-loading-title {
   font-family: 'Cinzel', 'Press Start 2P', serif, monospace;
@@ -4853,19 +5071,15 @@ body.title-open #panel{ display:none !important; }
   left: 0;
   right: 0;
   bottom: 0;
+  z-index: 2;
   height: 150px;
   overflow: hidden;
   pointer-events: none;
 }
 
+/* Kept for the march markup. No bar: a line across the plate read as a seam. */
 .dungeon-loading-road {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 28px;
-  background: linear-gradient(to top, rgba(0,0,0,0.72), rgba(0,0,0,0.18) 65%, transparent);
-  box-shadow: inset 0 1px 0 rgba(185,157,99,0.18);
+  display: none;
 }
 
 .dungeon-loading-party {
@@ -4879,11 +5093,41 @@ body.title-open #panel{ display:none !important; }
   will-change: transform;
 }
 
+/* One walk frame, clipped. The strip behind it is eight frames wide and
+   steps on the compositor, so the cycle keeps playing when the slide's
+   animation frame is stuck behind a forge. */
 .dungeon-loading-hero {
   width: 112px;
   height: 112px;
-  image-rendering: pixelated;
+  min-width: 0;
+  flex: none;
+  overflow: hidden;
   display: block;
+  position: relative;
+}
+
+.dungeon-loading-strip {
+  width: 896px;
+  height: 112px;
+  display: block;
+  will-change: transform;
+  animation: dungeon-loading-walk 1s steps(8, end) infinite;
+}
+
+.dungeon-loading-sheet {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+}
+
+@keyframes dungeon-loading-walk {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-100%, 0, 0); }
+}
+
+.dungeon-loading-overlay.hidden .dungeon-loading-strip {
+  animation-play-state: paused;
 }
 
 /* ===== Save Slots Modal & Management ===== */

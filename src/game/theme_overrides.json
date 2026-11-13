@@ -60,7 +60,6 @@
       "sconces": 0,
       "bones": 0.35,
       "webs": 0.2,
-      "moss": 0,
       "icicles": 0
     },
     "tile": {
@@ -182,7 +181,6 @@
       "sconces": 0,
       "pillars": 0.65,
       "webs": 0.6,
-      "moss": 1.05,
       "icicles": 0
     },
     "tile": {
@@ -386,7 +384,6 @@
       "growth": 0.68
     },
     "decor": {
-      "moss": 0,
       "furniture": 0,
       "debris": 2,
       "sconces": 0,
@@ -438,9 +435,7 @@
         "signpost": 0.046
       }
     },
-    "decor": {
-      "moss": 0
-    },
+    "decor": {},
     "tiles": {
       "floor": {
         "family": "",
@@ -567,9 +562,21 @@
           "darkCue": 1.5
         }
       }
+    },
+    "critters": {
+      "bird": {
+        "enabled": true,
+        "max": 24,
+        "min": 16
+      },
+      "squirrel": {
+        "min": 24,
+        "max": 24
+      }
     }
   },
   "molten": {
+    "roomTint": false,
     "tiles": {
       "floor": {
         "family": "",
@@ -626,7 +633,6 @@
     "decor": {
       "furniture": 1.65,
       "icicles": 0,
-      "moss": 0,
       "bones": 1.4,
       "webs": 0,
       "debris": 2
@@ -828,6 +834,25 @@
     "pools": {
       "glow": 0,
       "colB": 1390662
+    },
+    "critters": {
+      "bird": {
+        "min": 12,
+        "max": 24
+      },
+      "snake": {
+        "enabled": true,
+        "max": 5
+      },
+      "dragonfly": {
+        "enabled": true,
+        "max": 10,
+        "min": 3
+      },
+      "butterfly": {
+        "min": 10,
+        "max": 24
+      }
     }
   },
   "moor": {
@@ -896,7 +921,6 @@
     ],
     "decor": {
       "debris": 2,
-      "moss": 0,
       "bones": 0,
       "icicles": 0
     },
@@ -910,7 +934,6 @@
         "swamptree": 0.042,
         "tree": 0.026,
         "debris": 0.072,
-        "moss": 0.026,
         "signpost": 0.03,
         "brokenSignpost": 0.038,
         "wheel": 0.016
@@ -942,7 +965,8 @@
           "dim": 0.45,
           "skyWeight": 0,
           "darkCue": 0.8
-        }
+        },
+        "fogD": 0.0009
       },
       "dusk": {
         "hemi": [
@@ -973,6 +997,12 @@
         ],
         "fog": 2370082,
         "fogD": 0.0038
+      }
+    },
+    "critters": {
+      "dragonfly": {
+        "min": 24,
+        "max": 24
       }
     }
   },
@@ -1110,6 +1140,30 @@
           "skyWeight": 0,
           "darkCue": 0.8
         }
+      }
+    },
+    "critters": {
+      "snake": {
+        "enabled": true,
+        "max": 24,
+        "min": 15
+      },
+      "dragonfly": {
+        "enabled": true,
+        "min": 24,
+        "max": 24
+      },
+      "bird": {
+        "enabled": true,
+        "min": 10,
+        "max": 20
+      },
+      "bat": {
+        "enabled": true
+      },
+      "frog": {
+        "enabled": true,
+        "chance": 0.5
       }
     }
   },
@@ -1349,6 +1403,20 @@
         "fogD": 0.0033,
         "fog": 1582874
       }
+    },
+    "critters": {
+      "bat": {
+        "max": 24,
+        "min": 24
+      },
+      "bird": {
+        "enabled": true,
+        "min": 5,
+        "max": 7
+      },
+      "snake": {
+        "enabled": true
+      }
     }
   },
   "ruinfield": {
@@ -1474,6 +1542,21 @@
     },
     "pools": {
       "glow": 0
+    },
+    "critters": {
+      "snake": {
+        "enabled": true
+      },
+      "dragonfly": {
+        "enabled": true
+      },
+      "bird": {
+        "enabled": true
+      },
+      "skink": {
+        "min": 24,
+        "max": 24
+      }
     }
   },
   "ashfield": {
@@ -1737,6 +1820,37 @@
           "darkCue": 0.8
         },
         "fogD": 0.0035
+      }
+    },
+    "critters": {
+      "frog": {
+        "enabled": true,
+        "chance": 0.4
+      },
+      "snake": {
+        "enabled": true,
+        "max": 24,
+        "min": 16
+      },
+      "dragonfly": {
+        "enabled": true,
+        "min": 24,
+        "max": 24
+      },
+      "butterfly": {
+        "enabled": true,
+        "min": 24,
+        "max": 24
+      },
+      "bird": {
+        "enabled": true,
+        "min": 24,
+        "max": 24
+      },
+      "bat": {
+        "enabled": true,
+        "min": 10,
+        "max": 10
       }
     }
   }

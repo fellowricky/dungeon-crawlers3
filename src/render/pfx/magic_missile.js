@@ -14,7 +14,7 @@ export const meta = {
   duration: 3600,
   loop: true,
   fps: 30,
-  options: { palette: PAL.arcane, seed: 6, trail: [] },
+  options: { palette: PAL.arcane, seed: 6, trail: [], noOrb: false },
 };
 
 const RIBBON_POINTS = 11;   // about the third of a second upstream keeps
@@ -51,5 +51,5 @@ function orb(p, t, C) {
 export function draw(p, t, o) {
   const C = fit(o.palette, 8);
   ribbon(p, t, o, C);
-  orb(p, t, C);
+  if (!o.noOrb) orb(p, t, C);   // noOrb: the ribbon alone, behind a head drawn by another layer
 }

@@ -350,6 +350,7 @@ export const THEMES = {
   },
   molten: {
     label: 'MOLTEN', accent: '#ff8642',
+    roomTint: false,
     bg: 0x161010, fog: 0x1c1414, fogD: 0.0022,
     hemi: [0x5c3826, 0x1a0e0c, 0.50], dir: [0xffc898, 0.60],
     /* walls/caps are cool basalt grey, not warm brown: every light in this
@@ -454,13 +455,19 @@ export const THEMES = {
     cloth: 0x3d331d,
     tile: {},
     blocker: { trunkH: 0.34, trunkR: 2.1, canopyS: 1.45, canopyY: 0.10 },
+    /* gloomy rolling hills, not a forest: mostly bare ground, trees in separate
+       copses and the odd lone one. size = noise cell in tiles, above = the noise
+       level a copse needs (higher is fewer), lone = keep chance outside one. */
+    treeDensity: 0.7, treeCopses: { size: 9, above: 0.72, lone: 0.05 },
     oc: {
       liquid: { amount: 0.024, body: [5, 12] },   /* peat bog pools */
       roadBand: [3, 3],
       edgeMin: 1, edgeRand: 2, belt: 0.16, beltLinked: 0.05, lone: 0.034,
       copseDiv: 820, copseChance: 0.55,
+      /* dresses the bare ground its thinned belt leaves (see Edge dressing) */
+      edgeScatter: { grass: 0.8, bush: 0.03, debris: 0.05 },
       camp: { palisade: false, tents: 0, bones: true },
-      ground: { pine: 0.004, spruce: 0.004, swamptree: 0.008, debris: 0.05, moss: 0.018, bush: 0.05, signpost: 0.008, brokenSignpost: 0.008, wheel: 0.005 }
+      ground: { pine: 0.004, spruce: 0.004, swamptree: 0.008, debris: 0.05, bush: 0.05, signpost: 0.008, brokenSignpost: 0.008, wheel: 0.005 }
     },
     pools: { mode: 3, colA: 0x141a0e, colB: 0x4a5a2c, glow: 0.30, amount: 0 },
     nameA: ['Windbare', 'Greyfell', 'Cairnmoor', 'Highfold', 'Stonecrop', 'Coldrise', 'Hetherwold', 'Longbarrow'],
@@ -483,7 +490,7 @@ export const THEMES = {
       copseDiv: 250, copseChance: 0.8,
       camp: { palisade: false, tents: 0, bones: true },
       ground: {
-        swamptree: 0.008, deadtree: 0.008, debris: 0.012, moss: 0.11,
+        swamptree: 0.008, deadtree: 0.008, debris: 0.012,
         standingStoneA: 0.004, standingStoneB: 0.004
       },
       shore: { cattails: 0.09, cattailsMax: 36, boats: [1, 3] }
@@ -530,7 +537,7 @@ export const THEMES = {
       /* settled, worked ground — weapon racks, cart wreckage. Stakes are
          not scattered here: they come as fences (ruins, fences, camp) */
       ground: {
-        debris: 0.035, moss: 0.030, rack: 0.020,
+        debris: 0.035, rack: 0.020,
         /* no cairn here: the stacked-stone model reads as snow country */
         wheel: 0.004, signpost: 0.012, bush: 0.025,
         /* settled-country models (3d/Holdfast): a lone broken wall
@@ -575,7 +582,7 @@ export const THEMES = {
        'cobble', guild_ground.js) and the turf is graded duller and darker */
     groundTiles: { road: 0, wear: 0.5, sat: 0.45, bright: 0.72, sepia: 0.6, surface: 'cobble' },
     /* dead, brown-grey turf: `sepia` above browns the baked ground, and
-       deadGrass swaps the 3D grass tufts and wall moss to dry straw tones
+       deadGrass swaps the 3D grass tufts and the wall-fringe roots to dry straw tones
        (Zenu: too green and alive, 2026-11-01) */
     deadGrass: true,
     oc: {
@@ -589,7 +596,7 @@ export const THEMES = {
          gone, and the gallows tree is a lone landmark out in the open */
       ground: {
         tombstone: 0.020, cairn: 0.020, bush: 0.030,
-        rocks: 0.018, debris: 0.022, moss: 0.020, gallowsTree: 0.008,
+        rocks: 0.018, debris: 0.022, gallowsTree: 0.008,
         /* the Grim crypts' bone models, out in the open */
         skull: 0.014, bonePile: 0.012, skeleton: 0.010, bones: 0.012
       },
@@ -710,9 +717,9 @@ export const THEMES = {
       copseDiv: 300, copseChance: 0.72,
       camp: { palisade: false, tents: 0, bones: true },
       ground: {
-        swamptree: 0.012, mushroomA: 0.048, mushroomB: 0.048, rootsA: 0.028, rootsB: 0.028,
+        sporewillow: 0.012, mushroomA: 0.048, mushroomB: 0.048, rootsA: 0.028, rootsB: 0.028,
         fren1: 0.012, fren2: 0.012, fren3: 0.012, fren4: 0.012,
-        vinemound: 0.028, moss: 0.090
+        vinemound: 0.028
       }
     },
     pools: { mode: 3, colA: 0x0a1a12, colB: 0x3fa06a, glow: 0.55, amount: 0 },
@@ -2322,7 +2329,6 @@ function tryGenerate(seed, params) {
         }
       } else if (arch === 'SPORE_NURSERY') {
         if (freeInterior.length > 0) { const fit = freeInterior[Math.floor(freeInterior.length / 2)]; putF('sporePod', fit.x, fit.y, 0, 1.2, r.id); }
-        if (cornerTiles.length > 0) { const ct = cornerTiles[0]; putF('moss', ct.x, ct.y, rng.f(0, 6.28), 1.2, r.id); }
       } else if (arch === 'MEGALITH_RIDGE' || arch === 'DRUIDIC_GROVE') {
         if (freeInterior.length > 0) { const fit = freeInterior[Math.floor(freeInterior.length / 2)]; putF('megalith', fit.x, fit.y, 0, 1.2, r.id); }
       } else if (arch === 'WITCH_HOVEL') {
@@ -2495,7 +2501,9 @@ function tryGenerate(seed, params) {
         };
         sprinkle(cornerTiles, ['barrel', 'crate', 'urn'], false, 0.10);
         // Wall furniture sits against walls facing the room (including benches and chairs):
-        sprinkle(wallTiles, ['bookshelf', 'weaponRack', 'bench', 'chair'], true, 0.08);
+        /* Ancient has its own shelf model (the archives use it too); the
+           procedural wooden bookshelf reads wrong against its masonry. */
+        sprinkle(wallTiles, [thKey === 'ancient' ? 'scrollshelf' : 'bookshelf', 'weaponRack', 'bench', 'chair'], true, 0.08);
         // Free interior never gets random lone chairs scattered in open space
       }
     }
@@ -2859,7 +2867,6 @@ function tryGenerate(seed, params) {
       }
     }
   }
-  const mossMask = new Uint8Array(W * H);
   if (TH.roots) {
     const sites = [];
     for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
@@ -2877,28 +2884,6 @@ function tryGenerate(seed, params) {
     }
     for (const b of breaches) {
       props.push({ kind: 'roots', x: b.x, y: b.y, dx: b.dx, dy: b.dy, rot: 0, scale: rng.f(0.9, 1.2) });
-      for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
-        const nx = b.x + ox, ny = b.y + oy;
-        if (!inB(nx, ny)) continue;
-        const c = idx(nx, ny);
-        if (grid[c] === FLOOR && !mossMask[c] && rng.chance(0.75)) {
-          mossMask[c] = 1; props.push({ kind: 'moss', x: nx, y: ny, rot: rng.f(0, 6.28), scale: rng.f(0.7, 1.4) });
-        }
-      }
-    }
-  }
-  /* Wall-fringe moss: its own sweep, so raising the slider grows moss on any
-     theme rather than only the root-breached ones. */
-  if (TH.roots || DEC.moss) {
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const c = idx(x, y);
-      if (grid[c] !== FLOOR || mossMask[c] || lakeMask[c]) continue;
-      let nw = 0;
-      if (x < W - 1 && grid[c + 1] === WALL) nw++; if (x > 0 && grid[c - 1] === WALL) nw++;
-      if (y < H - 1 && grid[c + W] === WALL) nw++; if (y > 0 && grid[c - W] === WALL) nw++;
-      if (nw > 0 && rng.chance(0.12 * params.decorDensity * dmul('moss'))) {
-        mossMask[c] = 1; props.push({ kind: 'moss', x, y, rot: rng.f(0, 6.28), scale: rng.f(0.6, 1.3) });
-      }
     }
   }
   if (TH.bones || thKey === 'grim' || thKey === 'ancient') {
@@ -3279,10 +3264,10 @@ export function generateOverland(params) {
     /* [minimum verge, ragged extra] in tiles either side of the road */
     roadBand: [2, 2],
     camp: { palisade: true, tents: [4, 6], bones: true },
-    ground: { debris: 0.018, moss: 0.05 }
+    ground: { debris: 0.018 }
   }, TH.oc || {});
   OC.camp = Object.assign({ palisade: true, tents: [4, 6], bones: true }, (TH.oc && TH.oc.camp) || {});
-  OC.ground = Object.assign({ debris: 0.018, moss: 0.05 }, (TH.oc && TH.oc.ground) || {});
+  OC.ground = Object.assign({ debris: 0.018 }, (TH.oc && TH.oc.ground) || {});
 
   /* layout 'ribbon' (prototype, 2026-10-27): a long narrow map with one road
      running its length in gentle bends, instead of the portrait map's
@@ -5257,7 +5242,7 @@ export function generateOverland(params) {
        the threshold-overland props (tombstone, pillars, icebone, caps…) are here. */
     const scatterKinds = ['mushroomLog', 'rocks', 'stump', 'vinemound', 'cairn', 'stakes', 'rack', 'goblinfire', 'skulltotem', 'bush', 'signpost', 'brokenSignpost', 'wheel',
       'tombstone', 'pillarA', 'pillarB', 'vase', 'icebone', 'anvil', 'coffin',
-      'mushroomA', 'mushroomB', 'rootsA', 'rootsB', 'fren1', 'fren2', 'fren3', 'fren4', 'moss',
+      'mushroomA', 'mushroomB', 'rootsA', 'rootsB', 'fren1', 'fren2', 'fren3', 'fren4',
       'standingStoneA', 'standingStoneB', 'coolingRocks', 'lavaSpikeA', 'lavaSpikeB', 'snowcartA', 'snowcartB',
       'stoneWallA', 'stoneWallB', 'oldCart', 'oldWell', 'firewood',
       'oak', 'elm', 'birch', 'hawthorn', 'pollarded', 'spruce', 'fir', 'pine', 'snowspruce', 'snowfir', 'snowpine',
@@ -5278,7 +5263,7 @@ export function generateOverland(params) {
       for (let si = 0; si < scatterKinds.length; si++) {
         const k = scatterKinds[si], dens = OC.ground[k];
         if (!dens) continue;
-        const km = k === 'moss' ? dmul('moss') : (BONE_KINDS.has(k) ? dmul('bones') : 1);
+        const km = BONE_KINDS.has(k) ? dmul('bones') : 1;
         if (hn(x, y, 6 + si) < dens * gain * km) {
           props.push({ kind: k, x, y, rot: rng.i(0, 3) * (Math.PI / 2), scale: rng.f(0.85, 1.2), roomId: roomId[c] });
           break;
@@ -5570,6 +5555,53 @@ export function generateOverland(params) {
     /* No Shrine of Light on overland maps (Zenu, 2026-10-27): it is a dungeon
        feature. Overland shrines stay campfires (lightShrine:false), so
        chooseLightShrine is deliberately not called here. */
+
+    /* Edge dressing (oc.edgeScatter): themes that thin their tree belt leave the
+       blocked ground round the map bare, so it gets the map's own grass and scrub.
+       WALL cells only, so nothing here can affect movement or a fight, and last,
+       on its own RNG, so everything else on the map generates as before. Grass is
+       the row-1 chance per cell, fading a little with each row out; rows match the
+       five the renderer draws. */
+    if (OC.edgeScatter) {
+      const es = OC.edgeScatter;
+      const esRng = makeRng((seed ^ 0x6d6f6f72) >>> 0);
+      const edgeDist = new Int16Array(total).fill(-1);
+      const edgeQ = [];
+      for (let c = 0; c < total; c++) if (grid[c] !== WALL) { edgeDist[c] = 0; edgeQ.push(c); }
+      for (let qi = 0; qi < edgeQ.length; qi++) {
+        const c = edgeQ[qi], x = c % W, y = (c / W) | 0;
+        if (edgeDist[c] >= 5) continue;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          const n = idx(nx, ny);
+          if (edgeDist[n] >= 0) continue;
+          edgeDist[n] = edgeDist[c] + 1;
+          edgeQ.push(n);
+        }
+      }
+      const edgeGrass = ['swampgrass', 'swampgrass2', 'swampgrass3'];
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const c = idx(x, y), row = edgeDist[c];
+        if (row < 1 || grid[c] !== WALL) continue;
+        if (thicketMask[c] || (palisadeMask && palisadeMask[c]) || mesaCells.has(c) || ruinCells.has(c) || furniture.has(c) || plotMask[c]) continue;
+        const roll = esRng.raw();
+        if (roll < es.bush) {
+          props.push({ kind: 'bush', x: x + esRng.f(-0.25, 0.25), y: y + esRng.f(-0.25, 0.25), rot: esRng.f(0, 6.28), scale: esRng.f(0.85, 1.2) });
+        } else if (roll < es.bush + es.debris) {
+          props.push({ kind: 'debris', x, y, rot: esRng.f(0, 6.28), scale: esRng.f(0.7, 1.3), v: esRng.i(0, 2) });
+        }
+        if (esRng.chance(es.grass * (1 - 0.13 * (row - 1)))) {
+          const clumps = esRng.i(1, 3);
+          for (let k = 0; k < clumps; k++) {
+            props.push({
+              kind: edgeGrass[esRng.i(0, 2)], x: x + esRng.f(-0.42, 0.42), y: y + esRng.f(-0.42, 0.42),
+              rot: esRng.f(0, 6.28), scale: esRng.f(0.85, 1.35)
+            });
+          }
+        }
+      }
+    }
 
     const weatherEnv = resolveOverlandEnvironment(params.themeKey, seed, params);
     const effectiveTheme = buildEffectiveOverlandTheme(TH, weatherEnv);

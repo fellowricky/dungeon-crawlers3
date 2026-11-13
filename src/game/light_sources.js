@@ -111,7 +111,8 @@ export function heroLightSource(d) {
     if (it.lightSource === 'torch' && it.charges !== undefined && it.charges <= 0) continue;
     opts.push(it.lightSource === 'lantern' && d._lanternHooded ? 'lanternHooded' : it.lightSource);
   }
-  if (Array.isArray(d.knownSpells) && d.knownSpells.includes('light')) opts.push('light');
+  /* d.lightOff: the hero put the cantrip out to hide in the dark (menus.js toggle) */
+  if (Array.isArray(d.knownSpells) && d.knownSpells.includes('light') && !d.lightOff) opts.push('light');
   if (!opts.length) return null;
   opts.sort((a, b) => (RANK[b] || 0) - (RANK[a] || 0));
   return opts[0];

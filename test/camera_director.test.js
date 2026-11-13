@@ -23,7 +23,8 @@ import {
   groundShift, framingBox, leadPoint, pickClash,
   CAM_AIM_HEIGHT, CAM_EXPLORE_MARGIN, CAM_EXPLORE_MARGIN_FRAC, CAM_LEAD_MAX, CAM_SUBJECT_HOLD,
   occlusionTiles, CAM_WALL_HEIGHT, CAM_ORBIT_AMPLITUDE, CAM_ORBIT_PERIOD, CAM_ORBIT_EASE,
-  smoothDamp, CAM_FOCUS_SMOOTH, CAM_EXHALE_HOLD, CAM_EXHALE_EASE, CAM_YAW_TURN_EXPLORE
+  smoothDamp, CAM_FOCUS_SMOOTH, CAM_EXHALE_HOLD, CAM_EXHALE_EASE, CAM_YAW_TURN_EXPLORE,
+  alignedExploreYaw, spaceSpans, spacePitchNudge, CAM_SPACE_PITCH_LOW, CAM_SPACE_PITCH_HIGH, fightPitchNudge,
 } from '../src/game/camera_director.js';
 
 /* The live camera's numbers, so the fit maths is checked at the shape of
@@ -765,6 +766,29 @@ describe('screen-box framing', () => {
     expect(walking.x).toBeGreaterThan(still.x);
   });
 
+  it('slides toward the look-ahead without zooming out, and never past the party', () => {
+    const party = [{ x: 0, z: 0 }];
+    const still = explore(party);
+    const walking = explore(party, { lead: { x: 3.5, z: 0, h: 0 } });
+    expect(walking.zoom).toBe(still.zoom);                          // the lead no longer widens the shot
+    /* the centre moves further than the old half-way box centring did */
+    const moved = Math.hypot(walking.x - still.x, walking.z - still.z);
+    expect(moved).toBeGreaterThan(0.5);
+    /* the hero is still fully in frame, head and feet */
+    for (const y of [0, 2.4]) {
+      const o = screenOffset(0, y, 0, walking.x, walking.z, YAW, LOW);
+      expect(Math.abs(o.sx)).toBeLessThanOrEqual(BASE_HALF * ASPECT / walking.zoom);
+      expect(Math.abs(o.sy)).toBeLessThanOrEqual(BASE_HALF / walking.zoom);
+    }
+  });
+
+  it('a lead far off screen is clamped to the free space round the party', () => {
+    const party = [{ x: 0, z: 0 }];
+    const far = explore(party, { lead: { x: 400, z: 0, h: 0 } });
+    const o = screenOffset(0, 0, 0, far.x, far.z, YAW, LOW);
+    expect(Math.abs(o.sx)).toBeLessThan(BASE_HALF * ASPECT / far.zoom);
+  });
+
   it('frames a hero on raised ground by their actual head', () => {
     const flat = framingExtent([{ x: 0, z: 0 }], 0, 0, YAW, PITCH);
     const dais = framingExtent([{ x: 0, z: 0, y: 2 }], 0, 0, YAW, PITCH);
@@ -1074,5 +1098,88 @@ describe('the exhale after a fight', () => {
     expect(st.turnT).not.toBeNull();
     expect(st.turnDur).toBe(CAM_YAW_TURN_EXPLORE);
     expect(CAM_YAW_TURN_EXPLORE).toBeGreaterThan(CAM_YAW_TURN);
+  });
+});
+
+
+describe('exploring: looking along corridors and rooms', () => {
+  const corridorX = (x, z) => Math.abs(z) >= 1;               // a 1-wide corridor along X
+  const room = (x, z) => Math.abs(x) > 3 || Math.abs(z) > 3;    // a 7x7 room: no long axis
+  const view = (yaw) => ({ x: -Math.sin(yaw), z: -Math.cos(yaw) });   // where the camera looks
+
+  it('measures the open span along each axis', () => {
+    expect(spaceSpans(0, 0, corridorX)).toEqual({ ex: 19, ez: 1 });
+    expect(spaceSpans(0, 0, room)).toEqual({ ex: 7, ez: 7 });
+  });
+
+  it('looks down a corridor in the direction the party walks', () => {
+    const st = { leadPX: 0, leadPZ: 0, leadVX: 2, leadVZ: 0 };
+    const v = view(alignedExploreYaw(st, corridorX, Math.PI / 4));
+    expect(v.x).toBeCloseTo(1, 6);
+    expect(v.z).toBeCloseTo(0, 6);
+    st.leadVX = -2;
+    expect(view(alignedExploreYaw(st, corridorX, Math.PI / 4)).x).toBeCloseTo(-1, 6);
+  });
+
+  it('keeps the diagonal quarter-turns in open rooms with no long axis', () => {
+    expect(alignedExploreYaw({ leadPX: 0, leadPZ: 0, leadVX: 2, leadVZ: 0 }, room, Math.PI / 4)).toBeNull();
+  });
+
+  it('standing still faces the end the camera already faces, so stopping never spins it', () => {
+    const st = { leadPX: 0, leadPZ: 0, leadVX: 0, leadVZ: 0 };
+    const facingPlusX = -Math.PI / 2 + 0.3;                     // looking roughly along +X
+    expect(view(alignedExploreYaw(st, corridorX, facingPlusX)).x).toBeCloseTo(1, 6);
+  });
+});
+
+describe('exploring: the angle follows the space', () => {
+  it('drops lower in a tight passage and rises a little in a wide hall', () => {
+    const st = { leadPX: 0, leadPZ: 0 };
+    expect(spacePitchNudge(st, (x, z) => Math.abs(z) >= 1)).toBe(CAM_SPACE_PITCH_LOW);          // 1-wide corridor
+    expect(spacePitchNudge(st, () => false)).toBe(CAM_SPACE_PITCH_HIGH);                          // wide open
+    const mid = spacePitchNudge(st, (x, z) => Math.abs(x) > 3 || Math.abs(z) > 3);                 // 7x7 room
+    expect(mid).toBeGreaterThan(CAM_SPACE_PITCH_LOW);
+    expect(mid).toBeLessThan(CAM_SPACE_PITCH_HIGH);
+    expect(spacePitchNudge({ leadPX: null }, () => false)).toBe(0);
+  });
+});
+
+describe('combat: the angle follows the size of the fight', () => {
+  it('sits lower for a duel and higher for a brawl', () => {
+    expect(fightPitchNudge(2)).toBeLessThan(0);
+    expect(fightPitchNudge(12)).toBeGreaterThan(0);
+    expect(fightPitchNudge(6)).toBeGreaterThan(fightPitchNudge(2));
+    expect(fightPitchNudge(6)).toBeLessThan(fightPitchNudge(12));
+  });
+
+  it('settles a brawl higher than a duel', () => {
+    const run = (foes) => {
+      const st = fresh();
+      let pitch = CAM_DEFAULT_PITCH, out;
+      for (let i = 0; i < 300; i++) {
+        out = driveCamera(st, port({ party: [{ x: 0, z: 0 }, { x: 1, z: 0 }], foes, pitch, restPitch: CAM_DEFAULT_PITCH }), 1 / 60);
+        pitch = out.pitch;
+      }
+      return pitch;
+    };
+    const duel = run([{ x: 3, z: 0 }]);
+    const brawl = run(Array.from({ length: 8 }, (_, i) => ({ x: 3 + i, z: i % 3 })));
+    expect(brawl).toBeGreaterThan(duel + 0.05);
+  });
+});
+
+describe('combat: both sides of a clash stay in frame', () => {
+  it('pulls back for a distant attacker rather than cropping it out of its own shot', () => {
+    const hero = { x: 0, z: 0 }, archer = { x: 22, z: 6 };
+    const r = frameCamera({
+      party: [hero], foes: [archer], aspect: 16 / 9, baseHalf: 55, yaw: Math.PI / 4, pitch: 0.64,
+      minZoom: 1, maxZoom: 14, restZoom: 10, actionZoom: true,
+      action: { actor: archer, target: hero, intensity: 1 },
+    });
+    for (const p of [hero, archer]) {
+      const o = screenOffset(p.x, 0, p.z, r.x, r.z, Math.PI / 4, 0.64);
+      expect(Math.abs(o.sx)).toBeLessThanOrEqual(55 * (16 / 9) / r.zoom);
+      expect(Math.abs(o.sy)).toBeLessThanOrEqual(55 / r.zoom);
+    }
   });
 });

@@ -11,7 +11,8 @@ import { CLASSES, RACES, ABILITIES, ABILITY_LABEL, mod, fmtMod,
          canEquip, pendingPoints, classSkill, cantripDice,
          SUBCLASSES, SUBCLASS_UNLOCK, RECHARGE_LABEL, subclassOf, needsSubclass, SKILLS, SKILL_RANK_MAX, XP_TABLE,
          CLASS_SAVES, profBonus, WILD_SHAPE_FORMS,
-         MONSTER_THEMES, MONSTERS_ALL, monsterSpawnsIn, crBandIndex } from './srd.js';
+         MONSTER_THEMES, MONSTERS_ALL, monsterSpawnsIn, crBandIndex, gearProficiencies
+} from './srd.js';
 import { listUnlockedFeatureLabels, totalSlots, slotBreakdown,
   chargeDef, chargesLeft } from './features.js';
 import { isIdentityColorBalance, loadBalancedCanvas } from './color_balance.js';
@@ -20,7 +21,7 @@ import {
   SLOTS, SLOT_LABEL, slotsFor, bonusText, perkText, ilvlText,
   RARITIES, getBaseStatsText, migrateItem, previewBonuses, effectiveIlvl, itemCategory,
   itemPoints, compareItemStats, weaponTags, itemReqText, bonusLabel, qtyOf,
-  isRune, runeFitsItem
+  isRune, runeFitsItem, itemRunes, runeSlotsFor, canInscribeRune
 } from './items.js';
 import { drawHeroPortrait } from './sprite_animator.js';
 import { refreshWorldMapPanel } from './worldmap.js';
@@ -30,6 +31,7 @@ import { SPELLS, activeDancingLights, clearDancingLights } from './spells.js';
 import { BESTIARY_UNLOCK } from './constants.js';
 import { openOptions } from './options_ui.js';
 import { openHelp } from './help_ui.js';
+import { heroRole } from './turn_planner.js';
 
 const CLASS_ICON = { 
   fighter:'⚔️', rogue:'🏹', cleric:'✨', wizard:'🔮',
@@ -48,7 +50,7 @@ const BAG_CATS = [
   { key:'other',     label:'Other',       icon:'🧰' }
 ];
 const BAG_CAT_LABEL = Object.fromEntries(BAG_CATS.map(c=>[c.key,c.label]));
-const BAG_CAT_EMPTY = { all:'', weapon:'weapons', armor:'armor', accessory:'accessories', consumable:'scrolls or potions', other:'other items' };
+const BAG_CAT_EMPTY = { all:'', weapon:'weapons', armor:'armor', accessory:'accessories', consumable:'scrolls, potions or torches', other:'other items' };
 
 let G = null;              // game controller
 let selHero = 0;           // selected hero index
@@ -352,14 +354,9 @@ function equipHTML(){
     if(it){
       migrateItem(it);
       const leg = it.rarity === 'legendary' ? ' legendary-slot' : '';
-      const tipPerk = perkText(it);
-      const tLine = trinketLine(it);
       const chargeBadge = (it.charges != null) ? `<span class="eq-charges" title="${it.charges} charge${it.charges === 1 ? '' : 's'} remaining">×${it.charges}</span>` : '';
-      const tTip = (it.scroll || it.potion)
-        ? `${it.name}\n${ilvlText(it, d.level)}\n${tLine || ''}\n${it.charges} charge${it.charges === 1 ? '' : 's'} remaining`
-        : `${it.name}\n${ilvlText(it, d.level)}\n${bonusText(it, d.level)}${tipPerk ? '\n' + tipPerk : ''}`;
-      return `<div class="eq-slot filled${leg}" data-slot="${s.key}" draggable="true" style="border-color:${it.color}"
-        title="${tTip}">
+      /* hover shows the full item card (wired with the slot events), not a native title */
+      return `<div class="eq-slot filled${leg}" data-slot="${s.key}" draggable="true" style="border-color:${it.color}">
         <span class="eq-ico">${itemIconHTML(it.icon)}</span>
         ${chargeBadge}
         <span class="eq-slotlabel" style="color:${it.color}">${SLOT_LABEL[s.key]}</span></div>`;
@@ -783,8 +780,21 @@ function wireEquip(){
   /* equipped slots: click to unequip; draggable for rearrange / drag-off.
      dragend is global-scope cleanup so a canceled drag can't leave dragCtx set. */
   main.querySelectorAll('.eq-slot.filled').forEach(el=>{
-    el.addEventListener('click', ()=>{ G.unequipItem(G.heroes[selHero].data, el.dataset.slot); render(); });
+    el.addEventListener('click', ()=>{ hideTooltip(); G.unequipItem(G.heroes[selHero].data, el.dataset.slot); render(); });
+    /* hover: the same item card the bag shows (stats, perk, runes, Power Score) */
+    el.addEventListener('mouseenter', ()=>{
+      const hd = G.heroes[selHero].data;
+      const it = hd.equipment[el.dataset.slot];
+      if(!it) return;
+      const tip = $('cs-tooltip');
+      tip.classList.add('compact');
+      tip.innerHTML = itemTipBlock(it, `Equipped · ${SLOT_LABEL[el.dataset.slot] || ''}`, it.color || '#cfd8dc', hd.level);
+      tip.style.display = 'block';
+    });
+    el.addEventListener('mousemove', e=>positionTooltip(e));
+    el.addEventListener('mouseleave', hideTooltip);
     el.addEventListener('dragstart', e=>{
+      hideTooltip();
       dragCtx = { kind:'slot', slot:el.dataset.slot };
       e.dataTransfer.effectAllowed = 'move';
       try { e.dataTransfer.setData('text/plain', el.dataset.slot); } catch(_) {}
@@ -819,17 +829,20 @@ function wireEquip(){
       const it = G.inventory[+el.dataset.i];
       if(!it) return;
       const tip = $('cs-tooltip');
+      tip.classList.remove('compact');   // an equipped-slot hover may have left the single-card width on
       tip.innerHTML = compareTooltipHTML(it, G.heroes[selHero].data);
       tip.style.display = 'block';
     });
-    el.addEventListener('mousemove', e=>positionTooltip(e));
+    /* the bag sits on the right of the screen: always open toward the left, so
+       the card doesn't flip sides as the cursor crosses the bag */
+    el.addEventListener('mousemove', e=>positionTooltip(e, 'left'));
     el.addEventListener('mouseleave', hideTooltip);
     el.addEventListener('dragover', e=>{
       if(!dragCtx || dragCtx.kind!=='bag') return;
       const rune = G.inventory[dragCtx.index];
       const target = G.inventory[+el.dataset.i];
       if(!isRune(rune) || !target || target === rune) return;
-      if(runeFitsItem(rune, target)){
+      if(runeFitsItem(rune, target) && canInscribeRune(target)){
         e.preventDefault(); e.dataTransfer.dropEffect='move';
         el.classList.add('drop-valid');
       }
@@ -980,7 +993,7 @@ function wireSlotDrop(el){
       } else if(item && isRune(item)){
         const worn = hero.equipment[slotKey];
         candidate = !!worn && runeFitsItem(item, worn);
-        valid = candidate;
+        valid = candidate && canInscribeRune(worn);   // a full or Fabled piece shows red
       } else if(item){
         candidate = slotsFor(item.slot).includes(slotKey) || (item.slot==='weapon' && item.light && slotKey==='offhand');
         valid = candidate && slotAcceptsItem(slotKey, item, hero);
@@ -1118,9 +1131,12 @@ function trinketLine(it){
 const TT_STAT_ORDER = ['ac','atk','dmg','hp','crit','heal',
   'str','dex','con','int','wis','cha','move','speed'];
 
+const TT_PCT_KEYS = ['magicFind', 'goldFind', 'potionHeal'];   // budget.js PCT_KEYS
 function ttStatText(k, v){
   const sign = v > 0 ? '+' : '';
   if (k === 'speed') return sign + Math.round(v * 100) + '%';
+  if (TT_PCT_KEYS.includes(k)) return sign + v + '%';
+  if (k === 'range') return sign + v + (Math.abs(v) === 1 ? ' tile' : ' tiles');
   if (k === 'move')  return sign + v + ' ft';
   return sign + v;
 }
@@ -1183,7 +1199,7 @@ function ttCard(it, heading, headColor, heroLevel, keys, cmpMap){
       <div class="tt-name" style="color:${it.color}">${itemIconHTML(it.icon)} ${it.name}</div>
       <div class="tt-sub">${sub}</div>
       <div class="tt-primary">${trinketLine(it) || 'Consumable'}</div>
-      <div class="tt-rows"><div class="tt-row"><span>Charges</span><b>${it.charges}</b></div></div>
+      <div class="tt-rows"><div class="tt-row"><b>${it.charges}</b><span>Charges</span></div></div>
     </div>`;
   }
 
@@ -1201,12 +1217,14 @@ function ttCard(it, heading, headColor, heroLevel, keys, cmpMap){
       if (diff) d = `<i class="tt-d ${diff > 0 ? 'pos' : 'neg'}">${ttStatText(k, diff)}</i>`;
     }
     if (!has){
-      return `<div class="tt-row none"><span>${ttLabel(k)}</span><b>\u2014</b>${d}</div>`;
+      return `<div class="tt-row none"><b>\u2014</b><span>${ttLabel(k)}</span>${d}</div>`;
     }
-    return `<div class="tt-row"><span>${ttLabel(k)}</span><b>${ttStatText(k, v)}</b>${d}</div>`;
+    /* value first: it sits right against its label instead of across the card */
+    return `<div class="tt-row"><b>${ttStatText(k, v)}</b><span>${ttLabel(k)}</span>${d}</div>`;
   }).join('');
 
   const perk = perkText(it);
+  const runes = runeRowsHTML(it);
   const ps = itemPoints(it);
   let psD = '';
   if (cmpMap){
@@ -1220,8 +1238,23 @@ function ttCard(it, heading, headColor, heroLevel, keys, cmpMap){
     ${ttPrimaryHTML(it)}
     ${rows ? `<div class="tt-rows">${rows}</div>` : ''}
     ${perk ? `<div class="tt-perk">${perk}</div>` : ''}
+    ${runes}
     <div class="tt-foot"><span>Power Score</span><b>${ps}</b>${psD}</div>
   </div>`;
+}
+
+/* Inscribed runes and the slots left. Their bonuses (AC, HP, on-hit dice) are
+   applied by recalc / the attack code, not folded into the stat rows above,
+   so without this an inscribed rune was invisible on the item. */
+function runeRowsHTML(it){
+  const slots = runeSlotsFor(it);
+  const runes = itemRunes(it);
+  if (!slots && !runes.length) return '';
+  /* tt-rune: name then description, since the description is a phrase */
+  const lines = runes.map(r => `<div class="tt-row tt-rune"><span>${itemIconHTML(r.icon || '')} ${r.name || 'Rune'}</span><b>${r.desc || ''}</b></div>`);
+  for (let i = runes.length; i < slots; i++) lines.push('<div class="tt-row tt-rune none"><span>Empty rune slot</span><b>—</b></div>');
+  const head = slots ? `Runes ${runes.length}/${slots}` : 'Runes';
+  return `<div class="tt-rows"><div class="tt-row tt-rune"><span><b>${head}</b></span></div>${lines.join('')}</div>`;
 }
 
 /* Single-card hover (an equipped slot, with nothing to compare against). */
@@ -1233,12 +1266,13 @@ export function itemTipBlock(it, heading, headColor, heroLevel=null, compareWith
   return ttCard(it, heading, headColor, heroLevel, keys, cmp);
 }
 
-export function compareTooltipHTML(item, hero){
-  migrateItem(item);
-  /* dyes: no gear comparison - name, swatch, and how to use */
+/* Dyes and runes aren't gear: no stat rows to compare, just what they are and how to use them.
+   `heading` (optional) is the small caps line over the name. */
+function nonGearCardHTML(item, heading = '', headColor = ''){
+  const head = heading ? `<div class="tt-head" style="color:${headColor}">${heading}</div>` : '';
   if(item.slot==='dye'){
     return `
-      <div class="tt-card">
+      <div class="tt-card">${head}
         <div class="tt-name" style="color:${item.color}">${itemIconHTML(item.icon)} ${item.name}
           <span style="display:inline-block;width:12px;height:12px;vertical-align:middle;margin-left:5px;background:${item.dyeColor};border:1px solid rgba(255,255,255,0.35)"></span></div>
         <div class="tt-sub">Dye \u00b7 ${cap(item.rarity)}</div>
@@ -1248,12 +1282,71 @@ export function compareTooltipHTML(item, hero){
   if(isRune(item)){
     const onto = item.runeSlotType === 'weapon' ? 'weapons' : 'armor, helm, gloves, boots, or a shield';
     return `
-      <div class="tt-card">
+      <div class="tt-card">${head}
         <div class="tt-name" style="color:${item.color}">${itemIconHTML(item.icon)} ${item.name}</div>
         <div class="tt-sub">Rune \u00b7 ${onto}</div>
         <div class="tt-primary">${item.desc || 'Drag onto matching gear to inscribe it.'}</div>
       </div>`;
   }
+  return null;
+}
+
+/** The inventory's item card for any item, on its own (no comparison): what the
+ *  loot reveal shows on a card's face, so a find reads exactly as it will in the bag.
+ *  Wrap it in an element with class `item-card` for the tooltip's styling. */
+export function itemCardHTML(item, heading = '', headColor = ''){
+  if(!item) return '';
+  migrateItem(item);
+  return nonGearCardHTML(item, heading, headColor) || itemTipBlock(item, heading, headColor);
+}
+
+/* ── Shop / reveal: an item against any party member's gear ──────────────────
+   A row of party chips, each with what the item would do to that hero's Power
+   Score in the slot it fills (or "can't use"), and under it the inventory's own
+   side-by-side comparison against the chosen hero. `pick` is the chosen index;
+   null picks whoever gains the most. Returns { html, pick } (the index used).
+   Wrap the html in an element with class `item-card` for the card styling;
+   chips carry data-cmp-hero for the caller to wire. */
+export function partyCompareHTML(item, heroes, pick = null){
+  if(!item) return { html: '', pick: null };
+  migrateItem(item);
+  const party = (heroes || []).map(h => h && (h.data || h)).filter(d => d && d.equipment && !d.temp);
+  const comparable = party.length && item.slot && item.slot !== 'dye' && !isRune(item) && slotsFor(item.slot).length;
+  if(!comparable) return { html: itemCardHTML(item), pick: null };
+  const rows = party.map((d, i) => {
+    const ok = canEquip(d, item);
+    const eqList = slotsFor(item.slot).map(s => d.equipment[s]).filter(Boolean);
+    const worst = eqList.length ? eqList.reduce((a, b) => itemPoints(b) < itemPoints(a) ? b : a) : null;
+    const gain = itemPoints(item) - (worst ? itemPoints(worst) : 0);
+    return { d, i, ok, gain };
+  });
+  if(pick == null || !rows[pick]){
+    const usable = rows.filter(r => r.ok);
+    pick = (usable.length ? usable.reduce((a, b) => b.gain > a.gain ? b : a) : rows[0]).i;
+  }
+  const chips = rows.map(r => {
+    const tag = !r.ok ? `<i class="pc-no">can't use</i>`
+      : `<i class="${r.gain > 0 ? 'pc-up' : r.gain < 0 ? 'pc-down' : 'pc-same'}">${r.gain > 0 ? '+' : ''}${r.gain} PS</i>`;
+    return `<button class="pc-chip${r.i === pick ? ' on' : ''}${r.ok ? '' : ' cant'}" data-cmp-hero="${r.i}" title="Compare with ${r.d.name}'s gear">
+      <span class="pc-name">${r.d.name}</span>${tag}</button>`;
+  }).join('');
+  return {
+    html: `<div class="pc-row">${chips}</div>${compareTooltipHTML(item, rows[pick].d)}`,
+    pick,
+  };
+}
+
+/** A shop's own consumable (a potion stack, not an item): the same card look. */
+export function consumableCardHTML(icon, name, desc){
+  return `<div class="tt-card"><div class="tt-head" style="color:#9cc4f0">Consumable</div>
+    <div class="tt-name" style="color:#d4d8dc">${itemIconHTML(icon)} ${name}</div>
+    <div class="tt-primary">${desc}</div></div>`;
+}
+
+export function compareTooltipHTML(item, hero){
+  migrateItem(item);
+  const special = nonGearCardHTML(item);
+  if(special) return special;
   const opts = slotsFor(item.slot);
   const equippedList = opts.map(s=>hero.equipment?.[s]).filter(Boolean);
   let equipped = null;
@@ -1275,18 +1368,23 @@ export function compareTooltipHTML(item, hero){
 
   return `
     <div class="tt-compare">
-      ${ttCard(item, 'In bag', '#8fb0d8', hero.level, keys, cmp)}
+      ${/* equipped on the left, bag on the right: the same sides the gear and
+           the bag sit on in the character screen */ ''}
       ${ttCard(equipped, 'Equipped', '#c8b06a', hero.level, keys, null)}
+      ${ttCard(item, 'In bag', '#8fb0d8', hero.level, keys, cmp)}
     </div>
     ${eqOk?'':`<div class="tt-warn">${item.casterOnly ? 'Only spellcasters can use this.' : `${CLASSES[hero.classKey].label} can't use this.`}</div>`}`;
 }
 
-function positionTooltip(e){
+/* side 'left' pins the card to the cursor's left (clamped to the screen edge)
+   instead of flipping whenever it would run off the right edge. */
+function positionTooltip(e, side){
   const tip = $('cs-tooltip');
   if(!tip || tip.style.display==='none') return;
   const pad = 16, r = tip.getBoundingClientRect();
   let x = e.clientX + pad, y = e.clientY + pad;
-  if(x + r.width > innerWidth - 8) x = e.clientX - r.width - pad;
+  if(side === 'left') x = Math.max(8, e.clientX - r.width - pad);
+  else if(x + r.width > innerWidth - 8) x = e.clientX - r.width - pad;
   if(y + r.height > innerHeight - 8) y = Math.max(8, innerHeight - r.height - 8);
   tip.style.left = x + 'px'; tip.style.top = y + 'px';
 }
@@ -1370,6 +1468,9 @@ function skillsHTML(){
 
   /* subclass: chooser at level 3, status card once chosen */
   let subclassHTML = '';
+  /* The chooser is drawn full width under the XP bar, not in the narrow Path
+     column, so each subclass's text fits without scrolling. */
+  let subclassPickHTML = '';
   if(needsSubclass(d)){
     const cards = Object.entries(SUBCLASSES[d.classKey]).map(([key,sc])=>`
       <div class="sc-card">
@@ -1378,7 +1479,7 @@ function skillsHTML(){
         <div class="sc-active"><b>${sc.active.name}</b> <span class="sc-tier">${RECHARGE_LABEL[sc.active.recharge]}</span><br>${sc.active.desc}</div>
         <button class="sc-pick" data-sc="${key}">Choose ${sc.label}</button>
       </div>`).join('');
-    subclassHTML = `<div class="sk-subclass">
+    subclassPickHTML = `<div class="sk-subclass sk-subclass-pick">
       <h3>🌟 Choose a Subclass <i>permanent — pick wisely</i></h3>
       <div class="sc-cards">${cards}</div>
     </div>`;
@@ -1386,6 +1487,7 @@ function skillsHTML(){
     const sc = subclassOf(d);
     let status;
     if(sc.active.recharge==='slot') status = `${slotBreakdown(d.slots, d.slotsMax)} slots`;
+    else if(sc.active.recharge==='ward') status = `${Math.max(0, d.wardHp ?? d.wardMax ?? 0)}/${d.wardMax || 0} ward`;
     else {
       const long = sc.active.recharge==='long' || sc.active.recharge==='day';
       const left = chargesLeft(d, sc.active.key), max = chargeDef(sc.active.key).max;
@@ -1397,7 +1499,7 @@ function skillsHTML(){
       <div class="sc-name">${sc.label}</div>
       <div class="sc-passive">${sc.passive}</div>
       <div class="sc-active"><b>${sc.active.name}</b> <span class="sc-tier">${RECHARGE_LABEL[sc.active.recharge]}</span>
-        <span class="sc-status ${status==='ready'||sc.active.recharge==='slot'?'ok':''}">${status}</span>
+        <span class="sc-status ${status==='ready'||sc.active.recharge==='slot'||sc.active.recharge==='ward'?'ok':''}">${status}</span>
         <br>${sc.active.desc}</div>
     </div>`;
   } else if(d.level < SUBCLASS_UNLOCK){
@@ -1455,27 +1557,22 @@ function skillsHTML(){
     </div>`;
   }
 
-  let familiarChoiceHTML = '';
-  const knowsFindFamiliar = (d.classKey === 'wizard' || d.classKey === 'warlock' || (d.knownSpells && d.knownSpells.includes('findFamiliar')));
-  if (knowsFindFamiliar) {
-    const curFam = d.familiarChoice || 'owlFamiliar';
-    const famCards = [
-      { key: 'owlFamiliar', icon: '🦉', label: 'Owl Familiar', desc: 'Dexterous flyer with keen senses and slashing talons' },
-      { key: 'impFamiliar', icon: '👿', label: 'Imp Familiar', desc: 'Fiendish familiar with fire sting and high magic acumen' },
-      { key: 'viperFamiliar', icon: '🐍', label: 'Viper Familiar', desc: 'Swift serpent with venomous bite attacks' }
-    ].map(f => `
-      <button class="fam-form-card ${curFam === f.key ? 'chosen' : ''}" data-famchoice="${f.key}" style="flex:1; padding:8px; border:1px solid ${curFam === f.key ? '#88ccff' : '#4a4238'}; background:${curFam === f.key ? 'rgba(136,204,255,0.15)' : 'rgba(20,20,25,0.6)'}; color:#fff; cursor:pointer; border-radius:4px; text-align:left;">
-        <div style="font-weight:bold; color:#88ccff;">${f.icon} ${f.label}</div>
-        <div style="font-size:16px; opacity:0.85; margin-top:4px;">${f.desc}</div>
-      </button>`).join('');
-    familiarChoiceHTML = `<div class="sk-subclass chosen" style="margin-top:10px;">
-      <h3>🦉 Find Familiar Form <i>click to choose active familiar</i></h3>
-      <div class="fam-form-cards" style="display:flex; gap:8px; margin-top:8px;">${famCards}</div>
-    </div>`;
-  }
+  /* The familiar is no longer picked here: it is a one-time level-up choice
+     queued when the hero learns Find Familiar (features.js syncFamiliarChoice),
+     so it shows up with the other pending choices and is fixed once made. */
+  const familiarChoiceHTML = '';
 
   /* Dancing Lights is cast from here, out of combat: the spell menu only
      exists during a fight. Only a hero who took the cantrip sees the card. */
+  /* The Light cantrip is on by default; a hero can put it out to stay hidden
+     in the dark (light_sources.js heroLightSource reads d.lightOff). */
+  let lightToggleHTML = '';
+  if ((d.knownSpells || []).includes('light')) {
+    const on = !d.lightOff;
+    lightToggleHTML = `<button class="pt-pill light-toggle-btn ${on ? 'hot' : ''}"
+      title="${on ? 'On — a torch-strength light. Click to put it out and hide in the shadows.' : 'Off — you are unlit. Click to light it again.'}">💡 Light: ${on ? 'On' : 'Off'}</button>`;
+  }
+
   let dancingLightsHTML = '';
   if ((d.knownSpells || []).includes('dancingLights')) {
     const hero = (G.heroes || []).find(h => h.data === d);
@@ -1485,10 +1582,10 @@ function skillsHTML(){
       : G.isCombatActive() ? 'Not during a fight.'
       : canCast ? 'Three gold wisps of dim light follow you until the floor ends.'
       : 'Only on a dungeon floor.';
-    dancingLightsHTML = `<div class="sk-subclass chosen" style="margin-top:10px;">
-      <h3>✨ Dancing Lights <i>${note}</i></h3>
-      <button class="dancing-lights-btn" data-dancinglights="${up ? 'dismiss' : 'cast'}" ${up || canCast ? '' : 'disabled'} style="margin-top:8px; padding:8px 14px; border:1px solid #ffd23c; cursor:${up || canCast ? 'pointer' : 'not-allowed'}; opacity:${up || canCast ? 1 : 0.5};">${up ? 'Dismiss' : 'Cast'}</button>
-    </div>`;
+    /* A small on/off pill in the header row, not a full-width card. */
+    const tip = (up ? 'On — click to dismiss. ' : canCast ? 'Off — click to cast. ' : '') + note;
+    dancingLightsHTML = `<button class="pt-pill dancing-lights-btn ${up ? 'hot' : ''}" data-dancinglights="${up ? 'dismiss' : 'cast'}"
+      ${up || canCast ? '' : 'disabled'} title="${tip}">✨ Dancing Lights: ${up ? 'On' : 'Off'}</button>`;
   }
 
 
@@ -1504,13 +1601,15 @@ function skillsHTML(){
         <span class="pt-pill ${d.pendingSkill>0?'hot':''}">${d.pendingSkill} talent</span>
         <span class="pt-pill ${(d.pendingSkillRank||0)>0?'hot':''}" title="Spend these on the Skills tab">${d.pendingSkillRank||0} skill</span>
         ${slotsHTML}
+        ${lightToggleHTML}
+        ${dancingLightsHTML}
       </div>
     </div>
     ${xpBarHTML}
+    ${subclassPickHTML}
     ${choicesHTML}
     ${wildShapeFormHTML}
     ${familiarChoiceHTML}
-    ${dancingLightsHTML}
     <div class="sk-cols">
       <div class="sk-build">
         <h3>${cls.label} Path</h3>
@@ -1557,8 +1656,13 @@ function wireSkills(){
   main.querySelectorAll('[data-wsonlyslots]').forEach(cb=>{
     cb.addEventListener('change', ()=>{ d.wildShapeOnlyOutOfSlots = cb.checked; render(); });
   });
-  main.querySelectorAll('.fam-form-card').forEach(b=>{
-    b.addEventListener('click', ()=>{ d.familiarChoice = b.dataset.famchoice; render(); });
+  main.querySelectorAll('.light-toggle-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      d.lightOff = !d.lightOff;
+      const hero = (G.heroes || []).find(h => h.data === d);
+      if (hero) G.fxLog(`💡 ${d.name} ${d.lightOff ? 'puts out their light' : 'lights their way again'}.`, 'sys');
+      render();
+    });
   });
   main.querySelectorAll('.dancing-lights-btn').forEach(b=>{
     b.addEventListener('click', ()=>{
@@ -1641,24 +1745,21 @@ function srdSkillsHTML(){
     `;
   }).join('');
 
-  const cls = CLASSES[d.classKey] || {};
-  let armorProfList = [];
-  const effectiveArmorProf = d.armorProf || cls.armorProf || 'none';
-  if (effectiveArmorProf === 'heavy') armorProfList.push('Light', 'Medium', 'Heavy Armor');
-  else if (effectiveArmorProf === 'medium') armorProfList.push('Light', 'Medium Armor');
-  else if (effectiveArmorProf === 'light') armorProfList.push('Light Armor');
-  else armorProfList.push('None (Unarmored)');
-  if (cls.shieldProf || d.shieldProf) armorProfList.push('Shields');
-
-  let weaponProfList = [];
-  const effectiveWeaponProf = d.weaponProf || cls.weaponProf || 'simple';
-  if (effectiveWeaponProf === 'martial' || d._baseWeaponMartial) weaponProfList.push('Simple', 'Martial Weapons');
-  else {
-    weaponProfList.push('Simple Weapons');
-    if (cls.weaponSpecific && cls.weaponSpecific.length > 0) {
-      weaponProfList.push(...cls.weaponSpecific);
-    }
-  }
+  /* What this hero can wear and wield: the same rule equipping uses (class baseline,
+     raised by feats; srd.js gearProficiencies), each a clear yes / no. */
+  const gp = gearProficiencies(d);
+  const mark = (on, label, feat) => `<span class="gp-tag ${on ? 'on' : 'off'}" title="${on ? (feat ? 'Proficient (from a feat)' : 'Proficient') : 'Not proficient'}">`
+    + `<b>${on ? '✓' : '✕'}</b>${label}${on && feat ? '<i>feat</i>' : ''}</span>`;
+  const profPanel = `
+    <div class="gp-panel">
+      <div class="gp-row"><span class="gp-head">Armor</span>
+        ${mark(gp.armor.light, 'Light', gp.fromFeat.light)}${mark(gp.armor.medium, 'Medium', gp.fromFeat.medium)}${mark(gp.armor.heavy, 'Heavy', gp.fromFeat.heavy)}${mark(gp.shields, 'Shields', gp.fromFeat.shields)}
+      </div>
+      <div class="gp-row"><span class="gp-head">Weapons</span>
+        ${mark(gp.weapons.simple, 'Simple', false)}${mark(gp.weapons.martial, 'Martial', gp.fromFeat.martial)}
+        ${gp.specific.length ? `<span class="gp-also">also ${gp.specific.join(', ')}</span>` : ''}
+      </div>
+    </div>`;
 
   return `
     <div class="sk-head">
@@ -1670,10 +1771,7 @@ function srdSkillsHTML(){
         <span class="pt-pill ${banked > 0 ? 'hot' : ''}">${banked} skill point${banked === 1 ? '' : 's'}</span>
       </div>
     </div>
-    <div class="srd-prof-header-bar" style="margin-bottom:12px; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); display:flex; gap:24px; flex-wrap:wrap; font-size:20px; align-items:center;">
-      <div>🛡️ <b>Armor:</b> <span style="color:#a8e6cf; margin-left:4px;">${armorProfList.join(', ')}</span></div>
-      <div>⚔️ <b>Weapons:</b> <span style="color:#ffd3b6; margin-left:4px;">${weaponProfList.join(', ')}</span></div>
-    </div>
+    ${profPanel}
     <div class="srd-skills-grid">
       ${cardsHTML}
     </div>
@@ -1695,6 +1793,19 @@ function wireSrdSkills(){
 
 /* The per-hero Tactical Directives configuration. */
 const TACTICAL_DIRECTIVES = {
+  role: {
+    key: 'role',
+    icon: '🎭',
+    label: 'Combat Role',
+    desc: 'The job this hero does for the party. Auto reads it from class, gear and spells.',
+    options: [
+      { key: 'auto', label: '🔄 Auto', desc: 'Read the role from this hero’s build.' },
+      { key: 'tank', label: '🛡️ Tank', desc: 'Hold the line: intercept whatever is heading for the casters, and stay near them.' },
+      { key: 'striker', label: '⚔️ Striker', desc: 'Get stuck in and deal damage up close.' },
+      { key: 'artillery', label: '🏹 Artillery', desc: 'Fight from range, from the safest firing spot. The tank guards this hero.' },
+      { key: 'healer', label: '💚 Healer', desc: 'Keep allies up: heal sooner. The tank guards this hero.' },
+    ]
+  },
   targeting: {
     key: 'targeting',
     icon: '🎯',
@@ -1725,9 +1836,9 @@ const TACTICAL_DIRECTIVES = {
     label: 'Ability & Spell Budget',
     desc: 'Dictates how liberally spell slots and abilities are spent.',
     options: [
-      { key: 'conservative', label: '🛑 Conservative', desc: 'Basic attacks only. Save spells for emergencies.' },
-      { key: 'balanced', label: '⚖️ Balanced', desc: 'Use abilities on Elites, Bosses, or clusters of enemies.' },
-      { key: 'unleash', label: '🔥 Unleash Power', desc: 'Cast spells and use special abilities freely.' },
+      { key: 'conservative', label: '🛑 Conservative', desc: 'Basic attacks only, until the fight turns dangerous (someone about to drop, a strong boss, a fight the party could lose). Then spend like Balanced.' },
+      { key: 'balanced', label: '⚖️ Balanced', desc: 'Use abilities on Elites, Bosses, or clusters of enemies. Once a fight is won on paper, finish it with plain attacks.' },
+      { key: 'unleash', label: '🔥 Unleash Power', desc: 'Cast spells and use special abilities freely, until the last foe is about to fall.' },
     ]
   },
   potionTrigger: {
@@ -1773,6 +1884,7 @@ function aiPresetMatches(prefs, p) {
 }
 
 function getDirectiveDefault(categoryKey) {
+  if (categoryKey === 'role') return 'auto';
   if (categoryKey === 'targeting') return 'nearest';
   if (categoryKey === 'movementStyle') return 'standard';
   if (categoryKey === 'abilityUsage') return 'balanced';
@@ -1790,6 +1902,13 @@ function aiPrioritiesHTML(){
   const directiveCards = Object.values(TACTICAL_DIRECTIVES).map(cat => {
     const activeVal = prefs[cat.key] || getDirectiveDefault(cat.key);
     const activeOpt = cat.options.find(o => o.key === activeVal) || cat.options[0];
+    /* Auto role: say what the build reads as right now */
+    let activeDesc = activeOpt.desc;
+    if (cat.key === 'role' && activeVal === 'auto') {
+      const auto = heroRole({ data: { ...d, aiPrefs: { ...prefs, role: 'auto' } } });
+      const opt = cat.options.find(o => o.key === auto);
+      activeDesc = `Reads as <b>${opt ? opt.label : auto}</b> from this build. ${opt ? opt.desc : ''}`;
+    }
     
     const chips = cat.options.map(opt => {
       const isOn = opt.key === activeVal;
@@ -1804,7 +1923,7 @@ function aiPrioritiesHTML(){
         <div class="ai-card-sub">${cat.desc}</div>
       </div>
       <div class="ai-chip-row">${chips}</div>
-      <div class="ai-card-active-desc"><b>Selected:</b> ${activeOpt.desc}</div>
+      <div class="ai-card-active-desc"><b>Selected:</b> ${activeDesc}</div>
     </div>`;
   }).join('');
 

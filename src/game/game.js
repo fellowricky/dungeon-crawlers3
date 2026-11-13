@@ -10,6 +10,7 @@
  * See README.md in this folder for the module map.
  */
 import * as THREE from 'three';
+import { SIM } from './sim_flags.js';
 import {
   makeHero, normalizeHero, pendingPoints, spawnMonster, crForDungeonLevel, maxCrForDungeonLevel, crBandIndex, MONSTER_THEMES, MONSTERS_BY_ID, monsterSpawnsIn, dungeonMonsterIds, grantXp, getCuratedBossEncounter, getCuratedTacticalRoom, getThemeForMonster, pickRoomSpecies,
   storyPoolIds, storyLaneWeight, planStoryFloorCast, MONSTERS_ALL } from './srd.js';
@@ -24,6 +25,7 @@ import { generateRivalParty } from './rivals.js';
 import { addToInventory, takeFromInventory, makeLightSourceItem } from './items.js';
 import { configureSpriteMaterial, FACING_BAND_MOVE, FACING_BAND_REST } from './sprite_animator.js';
 import { updateCompositeFX } from './vfx_animations.js';
+import { spawnAmbientCritters, shadeAmbientCritters } from '../render/ambient_critters.js';
 import { tickDancingLights, tickLightMotes } from './spells.js';
 import { playNixieEffect, stopNixieEffect } from '../render/nixie_vfx.js';
 import { log, buildPartyFrames, updatePartyFrames, updatePartyLightBadges, updateResources, showBanner, showTitle, showSetup, initGameLog, updateLogPauseBtn, bindPartyLeaderUI, bindCompanionUI, layoutHud, clearLootFeed } from './ui.js';
@@ -42,7 +44,9 @@ import { checkBossReveal } from './boss_card.js';
 import { checkBossCutscene, updateBossCutscene, beginBossCutscene } from './boss_cutscene.js';
 import { showFloorBeat } from './floor_beat.js';
 import { initChestLoot, cancelPendingChestLoot } from './chest_loot.js';
-import { initItemReveal } from './item_reveal.js';
+import { initItemReveal, revealFightSpoils, isRevealBusy } from './item_reveal.js';
+import { beginFightSpoils, finishFightSpoils, cancelFightSpoils } from './spoils.js';
+import { initUnitCard, clearUnitCard, setTurnUnit } from './unit_card.js';
 import { initOptionsMenu } from './options_ui.js';
 import { getSetting, setSetting } from './settings.js';
 import { tickFxClock, fxClockState } from './fx_clock.js';
@@ -66,14 +70,15 @@ import { THEME_ORDER, REVEAL_RADIUS, SIGHT_RADIUS, FLOOR, WALL } from './constan
 import { writeInstances, extinguishCampfire, openChest, cam, userZoom, exploreZoom, userPitch, explorePitch,
          setCamZoom, setCamMode, setYawPitch, BASE_HALF, MIN_CAM_ZOOM, MAX_CAM_ZOOM, yaw as camYaw, pitch as camPitch }
   from '../render/dungeon_scene.js';
-import { updateSpriteLighting, toggleLightDebug, hideLightOverlays } from '../render/sprite_lighting.js';
+import { updateSpriteLighting, toggleLightDebug, hideLightOverlays, setSpriteShadeList } from '../render/sprite_lighting.js';
 import { updateCutaway, CUTAWAY_MAX } from '../render/wall_cutaway.js';
+import { updateDarkness } from '../render/darkness.js';
 import { tickLightRegistry, heroLightSource as heroLightSourceOf } from './light_sources.js';
 import { driveCamera, resetDirector, weightedFocus, actionEpicenter, blendFocus, clampPull, centroid,
          pickClash, leadPoint, CAM_FREE_SECONDS, CAM_ACTION_MARGIN, CAM_FIT_FLOOR_ZOOM, CAM_AIM_HEIGHT,
          CAM_EXPLORE_MARGIN, CAM_EXPLORE_MARGIN_FRAC, CAM_ORBIT_POINTER_HOLD }
   from './camera_director.js';
-import { autoProloguePlan, overlandSpawnLevel, depthFloor } from './overland_prologue.js';
+import { overlandSpawnLevel, depthFloor, loadingSurface } from './overland_prologue.js';
 import { questSize } from './quests.js';
 import { initTutorial, showTutorialOffer, startTutorial, tutorialForcesCampChallenge, tutorialIsAiCamp, whenCardsIdle, isTutorialCardShowing } from './tutorial.js';
 import { buildWallAdj, buildChokepoints, buildSolidProps, buildSightBlockers, pathfindingMethods, canFly, isGroundFor } from './pathfinding.js';
@@ -90,6 +95,10 @@ import { Motion, installMotionConsole } from './motion_debug.js';
 import { turnEngineMethods } from './turn_engine.js';
 import { reservationMethods } from './reservation.js';
 import { createSummonManager } from './summons.js';
+
+/* Critter cards carry the same sprLit uniforms as heroes. One registration
+   covers the game loop and the editor, which loads this module through the scene. */
+setSpriteShadeList(shadeAmbientCritters);
 
 /* Min real speed (world units/sec) that counts as "moving" for the walk cycle.
    Catches separation/wall-repel shove during scrums while ignoring settled jitter. */
@@ -186,6 +195,21 @@ function setBodyFlag(name, on) {
 }
 
 class Game {
+  /* Party gold is guarded: ~30 call sites add to it, and one `+= undefined`
+     anywhere turns the whole purse into NaN for good (reported on party wipe,
+     where the 25% toll and the save expose it). A non-number is refused — the
+     purse keeps its last good value — and the first offender's stack is logged
+     so the source can be found. */
+  get gold() { return this._gold; }
+  set gold(v) {
+    if (typeof v === 'number' && Number.isFinite(v)) { this._gold = Math.max(0, Math.round(v)); return; }
+    if (!this._goldWarned) {
+      this._goldWarned = true;
+      console.error(`[gold] refused a non-number gold value (${v}); keeping ${this._gold}.`, new Error().stack);
+    }
+    if (!(typeof this._gold === 'number' && Number.isFinite(this._gold))) this._gold = 0;
+  }
+
   constructor() {
     this.state = 'boot';
     this.engine = null;
@@ -269,6 +293,7 @@ class Game {
     this.engine = engine;
     initChestLoot(this);
     initItemReveal(this);
+    initUnitCard(this);
     /* Options overlay: bind its three openers and push the stored combat-log
        verbosity onto #gamelog before anything gets logged. */
     initOptionsMenu();
@@ -360,7 +385,8 @@ class Game {
       this.storedHeroes = (save.storedHeroes || []).map(h => normalizeHero(h));
       this.townShopInventory = save.townShopInventory || [];
       this.townTavernHirePool = save.townTavernHirePool || [];
-      this.gold = save.gold; this.potions = { heal: 0, greater: 0, superior: 0, ...save.potions };
+      this.gold = Number.isFinite(save.gold) ? save.gold : 0;   // a save already holding NaN reads as 0
+      this.potions = { heal: 0, greater: 0, superior: 0, ...save.potions };
       this.bestiary = save.bestiary || {};
       this.inventory = save.inventory || [];
       /* Heroes saved before torches whose trinket slot was taken: their torch
@@ -590,22 +616,30 @@ class Game {
        Deriving instead of baking keeps saved in-flight quests working.
        Resolved before the curtain so it is keyed to this floor, not the
        quest's destination dungeon. */
-    const plan = (q && Array.isArray(q.floorPlan))
-      ? q.floorPlan[this.questFloor - 1]
-      : ((q && !q.skipPrologue) ? autoProloguePlan(q, this.questFloor) : null);
-    const fKind = (plan && plan.mapKind) || (q && q.mapKind);
-    const fTheme = (plan && plan.theme) || (q && q.theme) || themeKey;
+    const surface = loadingSurface(q, this.questFloor, seed, themeKey);
+    const plan = surface.plan;
+    const fKind = surface.mapKind;
+    const fTheme = surface.theme || themeKey;
 
+    const mapName = (plan && plan.name) || (q && (q.place || q.siteName)) || '';
     showLoadingScreen({
       title: q ? q.name : `DUNGEON DEPTH ${lvl}`,
-      subtitle: q ? `Floor ${this.questFloor} of ${q.floors} · Preparing encounters...` : `Descending into depth ${lvl}...`,
-      floor: this.questFloor,
+      subtitle: q ? 'Preparing encounters...' : `Descending into depth ${lvl}...`,
+      map: mapName,
+      /* A story or prologue floor already has its name. A generated hall
+         name arrives later, from the forge, and may replace a region label. */
+      mapLock: !!(plan && plan.name),
+      floor: q ? this.questFloor : 0,
+      floors: q ? (q.floors || 0) : 0,
       theme: fTheme,
+      timeOfDay: surface.timeOfDay,
+      weather: surface.weather,
+      seed,
       party: this.realHeroes()
     });
-    /* The forge is synchronous and used to run in this same turn, so the
-       curtain's first paint landed only after preload had already reported
-       ~70%. Yield once so the party is on screen at the left edge first. */
+    /* The forge is synchronous. Wait until the still and the heroes have
+       painted, or the player stares at the empty ground color for the whole
+       build. */
     scheduleAfterPaint(() => {
       /* Long rest is applied when a floor is cleared (finishDungeon).
          Here we only top up HP to at least half and clear combat-only state. */
@@ -661,6 +695,8 @@ class Game {
   onDungeon(d) {
     if (this.state === 'boot') return;
     cancelPendingChestLoot();   // a lid still swinging on the old floor has no chest to pay out
+    cancelFightSpoils(this);    // a fight left behind on the old floor: its drops are already in the bag
+    clearUnitCard();            // a card pinned on a creature from the old floor
     if (this._pendingFloorName) { d.name = this._pendingFloorName; this._pendingFloorName = null; }
     d.overland = !!this._pendingOverland;
     this.D = d;
@@ -707,6 +743,7 @@ class Game {
        SIGHT_BLOCKING_KINDS — hasLOS and the fog's field of view both read
        this, so the two questions stay independent. */
     d.sightBlockers = buildSightBlockers(d, d.solidProps);
+    spawnAmbientCritters(eng.scene, d);
 
     /* The renderer hands over the cell → floor-instance map it actually built;
        see buildFogMaps for why this is not re-derived from the grid. */
@@ -1735,15 +1772,15 @@ class Game {
        the game dwells on a result exactly as it scales the animation itself. */
     tickFxClock(dt);
     updateFloatTexts(this.engine.scene, dt);
-    updateProjectiles(this.engine.scene, dt);
+    updateProjectiles(this.engine.scene, dt, this.engine.cam);   // camera: thrown weapons orient on screen
     /* Deferred melee impacts — same scaled dt as the projectiles above, so a
        delayed blow lands in step with the animation that earned it. */
     this.tickPendingImpacts(dt);
     updateWorldFx(this.engine.scene, dt);
-    updateCompositeFX(this.engine.scene, dt);
+    updateCompositeFX(this.engine.scene, dt, this.engine && this.engine.cam, this);
     tickDancingLights(this, this.rawDt);
     tickLightMotes(this, this.rawDt);
-    updateEntityStatusAuras([...(this.heroes || []), ...(this.monsters || [])], dt);
+    if (!SIM.fast) updateEntityStatusAuras([...(this.heroes || []), ...(this.monsters || [])], dt);   // picture only
     /* Sprites are unlit billboards; shade them by the light where they stand
        (raw dt — the easing is presentation, not combat pacing). */
     if (this.state === 'crawl') {
@@ -1764,6 +1801,7 @@ class Game {
         for (const h of this.heroes) if (h.data && h.data.hp > 0 && this.canKindle(h)) this.kindleTorch(h);
       }
       updateSpriteLighting([...(this.heroes || []), ...(this.monsters || [])], this.rawDt);
+      updateDarkness(this.engine.scene, this.rawDt, (x, z) => groundYAt(this.D, x, z));
       updatePartyLightBadges(this.heroes.map(x => x.data));
     } else {
       hideLightOverlays();   // nothing ticks them off a floor; don't let the last one linger
@@ -1774,7 +1812,8 @@ class Game {
       this.finishDungeon();
       return;
     }
-    if (this._floorClearTimer > 0) {
+    /* The floor clear waits for the fight's VICTORY! and report to finish. */
+    if (this._floorClearTimer > 0 && !isRevealBusy()) {
       this._floorClearTimer -= dt;
       if (this._floorClearTimer <= 0) {
         this._floorClearTimer = 0;
@@ -1814,7 +1853,12 @@ class Game {
          edge: it teleported the body back to dry land and cleared its path, so
          the familiar re-planned the same crossing and got yanked out again —
          a flyer visibly bouncing off water it was entitled to cross. */
-      if (c < 0 || !isGroundFor(this.D.grid, c, canFly(h))) {
+      /* A solid prop (a generated pillar, a table…) stands on a FLOOR cell, so
+         the grid test alone passed a hero standing inside one. Pathfinding
+         treats that cell as blocked, so every route out of it failed and the
+         hero passed turn after turn: a soft lock. Rescue them the same way. */
+      const inProp = c >= 0 && this.D.solidProps && this.D.solidProps[c] === 1;
+      if (c < 0 || inProp || !isGroundFor(this.D.grid, c, canFly(h))) {
         /* Out-of-bounds watchdog: immediately rescue hero back onto walkable floor */
         const safeCell = this.nearFloorCell(c >= 0 ? c : 0, 50);
         if (safeCell >= 0) {
@@ -1824,7 +1868,9 @@ class Game {
           if (h.ent && h.ent.grp) h.ent.grp.position.set(sx, groundYAt(this.D, sx, sz), sz);
           if (typeof this.clearEntityPath === 'function') this.clearEntityPath(h);
           c = safeCell;
-          log(`⚠️ Relocated ${h.data.name} back inside the dungeon.`, 'sys');
+          log(inProp
+            ? `⚠️ ${h.data.name} was wedged inside an obstacle and has been moved clear.`
+            : `⚠️ Relocated ${h.data.name} back inside the dungeon.`, 'sys');
         }
       }
       if (c >= 0) {
@@ -1898,12 +1944,21 @@ class Game {
        the frame a new fight first engages (before wasCombat latches true). */
     if (this.combat && !this.wasCombat) {
       setBodyFlag('dc-in-combat', true);    // sword cursor up (ui_kit.css)
-      for (const h of alive) this.subclassCombatStart(h, alive);
+      beginFightSpoils(this);               // drops from here on are held for the end-of-fight reveal
+      for (const h of alive) {
+        const before = h.data.tempHp || 0;
+        this.subclassCombatStart(h, alive);
+        this.applyFightWard(h, before);   // levelling extras' temp HP, on top of the subclass shield
+      }
       this.applyInspiringLeader(alive);   // feat: party-wide temp HP
+      this.talentCombatStart(alive);      // class talents: per-fight uses, Rousing Overture, save hooks
       const lc = this.cellOf(leader.x, leader.z);
       this.combatRoomId = (lc >= 0 && this.D.roomId) ? this.D.roomId[lc] : -1;
       logRoomSpawnDebug(this, this.combatRoomId);   // console roster + budget readout
       layoutHud();   // swap the quest box out for the initiative tracker
+      /* The passives above grant temp HP but don't redraw the frames; without
+         this the shield only appeared at the next refresh (round two). */
+      updatePartyFrames(this.heroes.map(x => x.data));
     }
     for (const h of alive) {
       /* Charmed heroes switch teams — they stalk and attack their own allies
@@ -1924,6 +1979,10 @@ class Game {
     else if (this.wasCombat) {
       this.wasCombat = false;
       setBodyFlag('dc-in-combat', false);   // sword cursor down
+      /* The spoils: a short report, and the held drops dealt out as cards. A
+         wipe has its own screen (the death choice), so it gets neither. */
+      const spoils = finishFightSpoils(this);
+      if (spoils && !spoils.wiped) revealFightSpoils(spoils);
       this.combatRoomId = null;
       this._combatEngagedAt = null;  // reset combat pacing timer
       this.recalculateFog(this);     // re-snuff frontier rooms
@@ -1974,14 +2033,18 @@ class Game {
         this.updateSearch(dt, alive, leader);
         /* Warlocks recover a spell slot once a room's monsters are all dead */
         this.refreshSlotsOnRoomClear();
-        /* Puzzle-floor ward rounds fire before random post-clear challenges */
-        checkPuzzleGate(this);
-        /* Post-clear skill challenges (paused overlay when one fires) */
-        checkForChallenge(this);
-        /* Post-search & pre-boss skill challenges */
-        checkRoomEntryChallenge(this);
-        /* Cosmetic boss reveal card (story missions with bossArt only) */
-        checkBossReveal(this);
+        /* Screens that follow a fight wait for its VICTORY! and report to close,
+           so they open one after another instead of all at once. */
+        if (!isRevealBusy()) {
+          /* Puzzle-floor ward rounds fire before random post-clear challenges */
+          checkPuzzleGate(this);
+          /* Post-clear skill challenges (paused overlay when one fires) */
+          checkForChallenge(this);
+          /* Post-search & pre-boss skill challenges */
+          checkRoomEntryChallenge(this);
+          /* Cosmetic boss reveal card (story missions with bossArt only) */
+          checkBossReveal(this);
+        }
       }
     }
 
@@ -2399,34 +2462,17 @@ class Game {
     updateCutaway(pts, on, dt);
   }
 
+  /* Whoever's turn it is gets a green 1-px outline (unit_card.js setTurnUnit), the
+     same pixel edge as the hover and selection ones. It replaced the pulsing glow
+     sprite behind them (entities.js makeTurnHighlight), which stays hidden. */
   updateTurnHighlights(dt) {
     const inCombat = this.initiative && this.initiative.active;
-    const curActor = inCombat ? this._currentActor() : null;
-
-    /* Update Hero Turn Highlights */
-    for (const h of (this.heroes || [])) {
-      if (!h.ent || !h.ent.turnHighlight) continue;
-      const th = h.ent.turnHighlight;
-      const isTurn = inCombat && curActor === h && h.data && h.data.hp > 0;
-      th.group.visible = isTurn;
-      if (isTurn && th.mat && th.spr) {
-        th.mat.opacity = 0.50 + Math.sin((this.elapsed || 0) * 3.5) * 0.20;
-        const scaleBoost = 1.24 + Math.sin((this.elapsed || 0) * 2.5) * 0.06;
-        th.spr.scale.set(scaleBoost, scaleBoost * 1.12, 1.0);
-      }
-    }
-
-    /* Update Monster Turn Highlights */
-    for (const m of (this.monsters || [])) {
-      if (!m.ent || !m.ent.turnHighlight) continue;
-      const th = m.ent.turnHighlight;
-      const isTurn = inCombat && curActor === m && m.active && m.data && m.data.hp > 0;
-      th.group.visible = isTurn;
-      if (isTurn && th.mat && th.spr) {
-        th.mat.opacity = 0.50 + Math.sin((this.elapsed || 0) * 3.5) * 0.20;
-        const scaleBoost = 1.24 + Math.sin((this.elapsed || 0) * 2.5) * 0.06;
-        th.spr.scale.set(scaleBoost, scaleBoost * 1.12, 1.0);
-      }
+    const cur = inCombat ? this._currentActor() : null;
+    const live = cur && cur.data && cur.data.hp > 0 && (cur.active !== false) ? cur : null;
+    setTurnUnit(live);
+    for (const e of [...(this.heroes || []), ...(this.monsters || [])]) {
+      const th = e.ent && e.ent.turnHighlight;
+      if (th && th.group && th.group.visible) th.group.visible = false;
     }
   }
 
@@ -2730,6 +2776,12 @@ class Game {
     const { W } = this.D;
     const ea = this.roomAnchor[this.D.entrance];
 
+    /* The fight is lost, not won. The sim froze at the wipe, so the end-of-fight
+       pass only runs on the frame after this revive, and the spoils tally
+       would then see a living party and pop VICTORY! and the report. Drop the
+       tally first; the rest of that cleanup (combat flags, fog) still runs. */
+    cancelFightSpoils(this);
+
     /* Loot toll: 25% of inventory items (random subset) + 25% of gold.
        Equipped gear is never touched. */
     const loseN = Math.round(this.inventory.length * 0.25);
@@ -2796,6 +2848,7 @@ class Game {
   /** Abandon the active quest and return to the world map. Loot stays intact. */
   _fleeDungeon() {
     log('\u{1F3C3} The survivors flee the dungeon, the quest abandoned\u2026', 'down');
+    cancelFightSpoils(this);   // a wipe is not a victory
     this.runStats = null;
     this.activeQuest = null;
     this.questFloor = 0;
@@ -2836,7 +2889,10 @@ class Game {
       for (const h of real) {
         grantXp(h.data, xpEach, log);
       }
-      if (real.some((h, i) => h.data.level > before[i])) this.announceLevelUp();
+      if (real.some((h, i) => h.data.level > before[i])) {
+        this.celebrateLevelUps(real, before);
+        this.announceLevelUp();
+      }
       this.summons.syncScales();   // companions follow their summoner's new level
       log(`✨ Quest reward: +${xpEach} XP each.`, 'level');
     }

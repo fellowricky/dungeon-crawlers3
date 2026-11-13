@@ -348,13 +348,20 @@ export function buildEffectiveOverlandTheme(baseTheme, env) {
     res.particles = { kind: 0, color: 0xd0d4cc, n: 60 };
   } else if (weather === 'snow' || weather === 'blizzard') {
     const isBlizzard = weather === 'blizzard';
-    res.particles = {
-      kind: 2,
-      color: 0xffffff,
-      n: isBlizzard ? 550 : 320
-    };
+    /* Blizzard has its own flake kind (7: fast sideways streaming, normal
+       blend) and scales with the map: ~6 flakes per walkable cell. */
+    res.particles = isBlizzard
+      ? { kind: 7, color: 0xffffff, perCell: 6, cap: 24000 }
+      : { kind: 2, color: 0xffffff, n: 320 };
     if (isBlizzard) {
-      res.fogD = Math.max(res.fogD, 0.0035);
+      /* A whiteout, not a colour wash. The camera sits ~220 units out, so
+         FogExp2 at 0.0035 buried the party under ~45% of the theme's fog
+         colour, and snowfield's tuned fog is a cyan (#9ffffb) that is only
+         invisible at its tuned 0.0001 density. 0.0021 is ~20% at the party,
+         and the colour is pulled to a neutral snow-grey for the time of day. */
+      res.fogD = Math.max(res.fogD, 0.0021);
+      const whiteout = timeOfDay === 'night' ? 0x1c222a : timeOfDay === 'dusk' ? 0x6a5c5a : 0xc4ccd4;
+      res.fog = lerpColor(res.fog, whiteout, 0.8);
       res.weatherDirScale = 0.60;
       res.dir[1] *= res.weatherDirScale;
     }

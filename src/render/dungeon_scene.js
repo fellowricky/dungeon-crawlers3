@@ -2,11 +2,13 @@
  * DUNGEON FORGE — WebGL Scene, Camera, Instanced Rendering & Render Loop.
  */
 import * as THREE from 'three';
+import { SIM } from '../game/sim_flags.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { game } from '../game/game.js';
 import { LIGHT_SOURCES, heroLightSource, classifyLight, dancingLightCarriers } from '../game/light_sources.js';
 import { lightLevelAt, applyThemeLightLevels } from './sprite_lighting.js';
+import { branchGrips, limbWorld } from './ambient_flyers.js';
 
 /* Hover tooltip light hint, kept deliberately quiet: nothing at all in bright
    light, a small ⛅ or 🌙 after the text otherwise. Creatures report their
@@ -18,19 +20,20 @@ function lightHintAt(x, z) {
 }
 function lightHintFor(u) { return u ? lightHint(u.lightState) : ''; }
 import { getSetting, onSettingsChange } from '../game/settings.js';
+import { fxVisualBusy } from '../game/fx_clock.js';
 import { tickPerfOverlay, setPerfOverlay, perfOverlayOn, applyUiScale } from '../ui/perf_overlay.js';
 import { THEMES, SPAWN_THEMES, DOORWAY_THEMES, THEME_KEYS, VOID, FLOOR, WALL, POOL, TYPE, TINT, makeRng } from '../dungeon/dungeon_generator.js';
 import { STEP as ELEV_STEP, groundY } from '../dungeon/elevation.js';
 import { resolveOverlandEnvironment, buildEffectiveOverlandTheme } from '../dungeon/overland_weather.js';
 import { SPELLS } from '../game/spells.js';
 import { attackPreview, attackPreviewText, movePreview, threatZone } from '../game/tactical_preview.js';
-import { GEO, boxUV, bgFromTris, chamferBox, spireGeo, xg, mergeGeos, OSSUARY_SKULL_SLOTS } from './dungeon_geo.js';
+import { GEO, boxUV, bgFromTris, chamferBox, spireGeo, xg, mergeGeos, OSSUARY_SKULL_SLOTS, BOOKSHELF_BACK } from './dungeon_geo.js';
 import CUSTOM_PROPS from '../game/custom_props.json' with { type: 'json' };
 import {
   TEX, matStone, matWood, matMetal, matCeramic, matRug, matMagicCircle,
   matTapestry, matSconce, matGoldInlay, matGoldBullion, matSwampGrass, matDeadGrass, matNecroCircle, matSporeCircle,
   matCampRing, matRegimentalBanner, matBoneStone, matBiolum, matGlacialIce,
-  matFloor, matWall, matWallCap, matTrim, matGlow, matCloth, matIce, matMoss, matBark,
+  matFloor, matWall, matWallCap, matTrim, matGlow, matCloth, matIce, matBark,
   matGrass, matLeaf, matIvy, matCrackD, matRune, matPortal, matShaft, matSkirt,
   matRuneSeal, matEmber, matBlot, matBlotAdd, matWeb, liquidMat, partMat, fogPlaneMat, POST,
   matMist, createMistMaterial, createGodRayMaterial, applyTileTheme, setFogHeightField,
@@ -39,10 +42,45 @@ import {
 } from './dungeon_materials.js';
 import PROP_NORMAL_INDEX from './prop_normal_index.json' with { type: 'json' };
 import { bakeOverlandGround } from './guild_ground.js';
-import { FOLIAGE, TREE_SCALE, foliageGeometry, foliageMaterial } from './tree_foliage.js';
+import { FOLIAGE, TREE_SCALE, copseNoise, foliageGeometry, foliageMaterial, foliageWind } from './tree_foliage.js';
 import { initNixieVfx, updateNixieVfx, clearPersistentNixieEffects, registerPersistentNixieEffect, stopPersistentNixieEffectsNear } from './nixie_vfx.js';
 import { initAmbientFX, updateAmbientFX, clearAmbientFX, triggerLiquidSplashFX } from './ambient_fx.js';
 import { cutawayPatch } from './wall_cutaway.js';
+import { darkMaskPatch } from './darkness.js';
+import { SIGHT_BLOCKING_KINDS } from '../game/pathfinding.js';
+
+/* Pillars, statues, door posts and gates dissolve round a body standing behind
+   them, like the walls do (wall_cutaway.js). Their materials are shared with low
+   props (chests, debris, door thresholds) that must NOT be cut, so the tall pieces
+   get a cut-enabled copy: one per source material, with the same patches
+   (darkness, prop blend) re-run on it, and its textures and colour re-synced from
+   the source every level build, since themes swap them. */
+const _cutCopies = new Map();
+function cutCopy(mat) {
+  if (!mat || (mat.userData && mat.userData.cutaway)) return mat;   // already cut (bark): use it as is
+  let c = _cutCopies.get(mat);
+  if (!c) {
+    c = mat.clone();                              // clone() drops onBeforeCompile: re-patch below
+    const ud = { ...(mat.userData || {}) };
+    delete ud.darkMask; delete ud.propBlend; delete ud.cutaway;
+    c.userData = ud;
+    darkMaskPatch(c);
+    if (mat.userData && mat.userData.propBlend) propBlendPatch(c);
+    cutawayPatch(c);
+    _cutCopies.set(mat, c);
+  }
+  for (const k of ['map', 'bumpMap', 'normalMap', 'roughnessMap', 'emissiveMap', 'aoMap']) {
+    if (k in mat && c[k] !== mat[k]) { c[k] = mat[k]; c.needsUpdate = true; }
+  }
+  for (const k of ['bumpScale', 'roughness', 'metalness', 'emissiveIntensity', 'opacity']) if (k in mat) c[k] = mat[k];
+  if (mat.color) c.color.copy(mat.color);
+  if (mat.emissive) c.emissive.copy(mat.emissive);
+  if (mat.normalScale) c.normalScale.copy(mat.normalScale);
+  return c;
+}
+import { hoverUnitCard, setCursorUnit } from '../game/unit_card.js';
+import { pickUnit } from './sprite_pick.js';
+import { loadingCurtainCovers } from '../ui/loading_screen.js';
 
 const canvasBg = 0x050609;
 const clamp01 = x => Math.max(0, Math.min(1, x));
@@ -104,7 +142,9 @@ const BIOME_PROP_FILES = {
     mushroomA: 'mushroom.opt.glb', mushroomB: 'mushroom2.opt.glb', rootsA: 'roots1.opt.glb', rootsB: 'roots2.opt.glb'
   },
   Moor: {
-    swamptree: 'swamptree.opt.glb',
+    /* the weeping willow (the old swamptree model only remains for the guild
+       hall and trailer scenes). The sporewood has its own key for its own leaf tint. */
+    swamptree: 'willow_clean.opt.glb', sporewillow: 'willow_clean.opt.glb',
     bush: 'bush.opt.glb', signpost: 'signpost.opt.glb',
     brokenSignpost: '389570cd4af64ded8622428ce71e2991.opt.glb', wheel: 'wheel.opt.glb'
   },
@@ -163,7 +203,7 @@ const PROP_SCALE_MULTIPLIER = {
   tree: 1.8,
   tree_winter: 1.8,
   snowtree: 1.8,
-  swamptree: 1.8,
+  swamptree: 2.07, sporewillow: 2.07,   // the 1.8 of the others times TREE_SCALE
   deadtree: 1.8,
   /* broadleaf (3d/Holdfast) as scattered props: the pine's 1.8 times each
      species' relative size (TREE_SCALE in tree_foliage.js) */
@@ -237,12 +277,20 @@ let groundBakeSeq = 0;
    of the bare-generated conifers with needle cards. */
 const HOLDFAST_TREES = ['elm', 'oak', 'birch', 'hawthorn', 'pollarded', 'pine'];
 const FOREST_TREES = ['spruce', 'fir', 'pine', 'spruce', 'oak', 'elm', 'birch', 'hawthorn'];   // conifers first: still mostly evergreen
-const MOOR_TREES = ['pine', 'spruce', 'swamptree'];
+/* every living species, the willow counted twice: it is the moor's signature tree */
+const MOOR_TREES = ['swamptree', 'pine', 'spruce', 'fir', 'oak', 'elm', 'swamptree', 'birch', 'hawthorn', 'pollarded'];
 const WINTER_TREES = ['snowspruce', 'snowfir', 'snowspruce', 'snowpine'];   // spruce and fir carry snow best
 /* oak and hawthorn carry the belt, the snag and the mire's dead tree break the
    height. The gallows tree is not here: it stands alone out in the open as
    ground scatter (oc.ground.gallowsTree). */
 const BONEYARD_TREES = ['deadOak', 'deadHawthorn', 'deadOak', 'deadHawthorn', 'deadSnag', 'deadtree'];
+/* Kinds a bird or a bat can sit in. Dead trees have no FOLIAGE entry, so they are listed here too. */
+const PERCH_TREE_KINDS = new Set([
+  'oak', 'elm', 'birch', 'hawthorn', 'pollarded', 'spruce', 'fir', 'pine',
+  'snowspruce', 'snowfir', 'snowpine', 'swamptree', 'sporewillow',
+  'deadOak', 'deadHawthorn', 'deadSnag', 'deadtree', 'gallowsTree',
+  'tree', 'snowtree', 'tree_winter',
+]);
 
 /* A tree prop's mesh geometry in the model's upright space. Tree walls draw
    the first mesh's geometry raw, so a node transform would be lost: Blender's
@@ -291,6 +339,73 @@ export function setLatePropsHook(fn) { onLateProps = fn; }
 /* One model prop instance (the default case of buildScene's prop switch).
    Batched into `into` (an instanced set map) when provided so each GLB model
    takes one InstancedMesh draw call per mesh part instead of hundreds of clones. */
+/* Mid-crown on a leafy tree. Bare wood uses a lower grip when no limb was sampled. */
+function gripFrac(kind) {
+  const fol = FOLIAGE[kind];
+  return fol ? (fol.minH + 0.9) / 2 : 0.55;
+}
+
+function recordPerch(cx, cy, x, z, y, room, hang) {
+  if (!D) return;
+  const rec = { cx, cy, x, z, y, room: room == null ? -1 : room };
+  if (hang) {
+    rec.limb = 1;
+    rec.hx = hang.x;
+    rec.hy = hang.y;
+    rec.hz = hang.z;
+  }
+  (D.perches ||= []).push(rec);
+}
+
+/* One scan per model. A belt of hundreds of oaks shares a geometry. */
+function gripsOf(geo) {
+  if (!geo) return null;
+  const ud = geo.userData || (geo.userData = {});
+  if (ud.branchGrips !== undefined) return ud.branchGrips;
+  const pos = geo.getAttribute && geo.getAttribute('position');
+  const g = pos ? branchGrips(pos) : null;
+  ud.branchGrips = g;
+  return g;
+}
+
+function propTreeGeo(kind) {
+  const root = propAssets[kind];
+  if (!root) return null;
+  let mesh = null;
+  root.traverse(o => { if (!mesh && o.isMesh) mesh = o; });
+  return mesh ? treeGeometry(root, mesh) : null;
+}
+
+/* Bird on the top of a sampled limb, bat on its underside. fallbackY is the
+   trunk height used when the mesh has no limb. Transform matches writeInstances. */
+function recordTreePerch(geo, cx, cy, px, py, pz, sx, sy, sz, rx, ry, rz, room, fallbackY) {
+  const g = gripsOf(geo);
+  if (!g) {
+    recordPerch(cx, cy, px, pz, fallbackY, room);
+    return;
+  }
+  const stand = limbWorld(g.stand, px, py, pz, sx, sy, sz, rx, ry, rz);
+  const hang = limbWorld(g.hang, px, py, pz, sx, sy, sz, rx, ry, rz);
+  recordPerch(cx, cy, stand.x, stand.z, stand.y, room, hang);
+}
+
+function notePropPerch(p, x, z, baseY, sy, room, xf) {
+  if (!PERCH_TREE_KINDS.has(p.kind)) return;
+  const cx = Math.round(p.x);
+  const cy = Math.round(p.y);
+  const rid = room != null ? room : -1;
+  const fallbackY = baseY + sy * gripFrac(p.kind);
+  if (!xf) {
+    recordPerch(cx, cy, x, z, fallbackY, rid);
+    return;
+  }
+  recordTreePerch(
+    propTreeGeo(p.kind), cx, cy,
+    xf.px, xf.py, xf.pz, xf.sx, xf.sy, xf.sz, xf.rx, xf.ry, xf.rz,
+    rid, fallbackY,
+  );
+}
+
 function placeModelProp(p, X, PY, Z, propRoom, rng, dl = 0, into = null) {
   const s = (p.scale || 1) * (PROP_SCALE_MULTIPLIER[p.kind] || 1);
   const isTreeProp = p.kind === 'tree' || p.kind === 'snowtree' || p.kind === 'tree_winter' || p.kind === 'swamptree' || p.kind === 'deadtree'
@@ -308,6 +423,7 @@ function placeModelProp(p, X, PY, Z, propRoom, rng, dl = 0, into = null) {
       const rz = Math.cos(tiltDir) * tiltMag;
       const py = PY + ((propBaseOffset[p.kind] || 0) * sy + (p.oy || 0));
       set.addT(X, py, Z, sx, sy, sz, rx, ry, rz, 0xffffff, dl, propRoom);
+      notePropPerch(p, X, Z, py, sy, propRoom, { px: X, py, pz: Z, sx, sy, sz, rx, ry, rz });
     } else {
       const sy = s * (PROP_STRETCH_Y[p.kind] || 1);
       const ry = p.rot || 0;
@@ -316,6 +432,7 @@ function placeModelProp(p, X, PY, Z, propRoom, rng, dl = 0, into = null) {
       const py = PY + ((propBaseOffset[p.kind] || 0) * sy + (p.oy || 0));
       const pz = Z - Math.cos(ry) * back;
       set.add(px, py, pz, s, sy, s, ry, 0xffffff, dl, propRoom);
+      notePropPerch(p, px, pz, py, sy, propRoom, { px, py, pz, sx: s, sy, sz: s, rx: 0, ry, rz: 0 });
     }
     return;
   }
@@ -338,14 +455,25 @@ function placeModelProp(p, X, PY, Z, propRoom, rng, dl = 0, into = null) {
     const tiltMag = rng.f(0.0, 0.087);
     const tiltDir = rng.f(0, 6.28);
     inst.rotation.set(Math.sin(tiltDir) * tiltMag, p.rot || rng.f(0, 6.28), Math.cos(tiltDir) * tiltMag);
-    inst.position.set(X, PY + ((propBaseOffset[p.kind] || 0) * sy + (p.oy || 0)), Z);
+    const py = PY + ((propBaseOffset[p.kind] || 0) * sy + (p.oy || 0));
+    inst.position.set(X, py, Z);
+    notePropPerch(p, X, Z, py, sy, propRoom, {
+      px: X, py, pz: Z, sx, sy, sz,
+      rx: inst.rotation.x, ry: inst.rotation.y, rz: inst.rotation.z,
+    });
   } else {
     const sy = s * (PROP_STRETCH_Y[p.kind] || 1);
     inst.scale.set(s, sy, s);
     inst.rotation.y = p.rot || 0;
     /* local -Z turns to world -(sin rot, cos rot): the wall side */
     const back = WALL_BACKED_PROPS.has(p.kind) ? Math.max(0, 0.49 - (propBackDepth[p.kind] || 0) * s) : 0;
-    inst.position.set(X - Math.sin(p.rot || 0) * back, PY + ((propBaseOffset[p.kind] || 0) * sy + (p.oy || 0)), Z - Math.cos(p.rot || 0) * back);
+    const py = PY + ((propBaseOffset[p.kind] || 0) * sy + (p.oy || 0));
+    const px = X - Math.sin(p.rot || 0) * back;
+    const pz = Z - Math.cos(p.rot || 0) * back;
+    inst.position.set(px, py, pz);
+    notePropPerch(p, px, pz, py, sy, propRoom, {
+      px, py, pz, sx: s, sy, sz: s, rx: 0, ry: inst.rotation.y, rz: 0,
+    });
   }
   inst.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   group.add(inst);
@@ -384,6 +512,8 @@ export function registerProp(key, url, scaleMult, retries = 2) {
             if (mat.specularIntensity !== undefined) {
               mat.specularIntensity = 0.08;
             }
+            /* a tree can darken its own bark so the limbs sit back in its leaves */
+            if (FOLIAGE[key]?.bark && mat.color) mat.color.setHex(FOLIAGE[key].bark);
             if (mat.emissive) {
               mat.emissive.setRGB(0, 0, 0);
             }
@@ -454,7 +584,7 @@ export function preloadBiomeProps(biomeKey) {
     || ({ boneyard: 'Grim', ashfield: 'Molten', snowfield: 'frost' })[biomeKey.toLowerCase()] || null;
   /* Biomes that also borrow another folder's models: holdfast mixes in Forest's
      pine; forest takes Holdfast's broadleaf trees and woodpiles. */
-  const extra = ({ holdfast: ['Forest'], forest: ['Holdfast'], moor: ['Forest'], sporewood: ['Forest'], boneyard: ['Mire'] })[biomeKey.toLowerCase()] || [];
+  const extra = ({ holdfast: ['Forest'], forest: ['Holdfast'], moor: ['Forest', 'Holdfast'], mire: ['Moor'], sporewood: ['Forest', 'Moor'], boneyard: ['Mire'] })[biomeKey.toLowerCase()] || [];
   const promises = [];
   for (const f of [folder, ...extra]) {
     if (!f || loadedBiomes.has(f)) continue;
@@ -474,8 +604,17 @@ export function preloadBiomeProps(biomeKey) {
         promises.push(registerProp(key, `./3d/generic/${file}`).catch(() => { }));
       }
     }
+  }
+  /* The bone models have their own flag. They used to ride inside the
+     'generic' branch above, but the idle background preload walks every
+     BIOME_PROP_FILES folder, 'generic' included, through the folder loop —
+     which marked generic loaded without ever reaching this list. A level
+     started after the menu sat idle then never got the skull/skeleton GLBs
+     and every bone and ossuary niche fell back to the procedural pieces. */
+  if (!loadedBiomes.has('bones')) {
+    loadedBiomes.add('bones');
     for (const [key, file] of Object.entries(BONE_PROP_FILES)) {
-      if (!propAssets[key]) {
+      if (!propAssets[key] && !propLoading[key]) {
         promises.push(registerProp(key, `./3d/${BONE_PROP_FOLDER}/${file}`).catch(() => { }));
       }
     }
@@ -641,7 +780,14 @@ export let userPitch = 0.64;
  * tilt up past them, and does when the cutaway setting is off.
  */
 export const DEFAULT_EXPLORE_ZOOM = MAX_CAM_ZOOM;
-export const DEFAULT_EXPLORE_PITCH = 0.44;   // ~25 deg, vs 0.64 (~37 deg) in combat
+export const DEFAULT_EXPLORE_PITCH = 0.37;   // ~21 deg, vs 0.64 (~37 deg) in combat: low reads best exploring
+/* Exploring, an orbit drag is a look around, not a new setting: it may only tilt
+   within this low range, and EXPLORE_PITCH_RETURN seconds after the last drag the
+   director eases back to its low angle. (A stray right-drag used to leave the whole
+   rest of the run at a high angle.) Combat keeps the player's drag, as before. */
+export const EXPLORE_PITCH_MIN = 0.32, EXPLORE_PITCH_MAX = 0.62;
+export const EXPLORE_PITCH_RETURN = 6.0;
+let _exploreOrbitAt = -Infinity;
 export let exploreZoom = DEFAULT_EXPLORE_ZOOM;
 export let explorePitch = DEFAULT_EXPLORE_PITCH;
 export let camMode = 'explore';
@@ -735,10 +881,15 @@ function applyQuality() {
   POST.fin.uniforms.uBloom.value = q.bloom;
   applyComfort();
 }
+const DOF_STRENGTH = { off: 0.0, subtle: 0.6, strong: 1.0 };
+let dofStrength = 1.0;      // the setting; renderFrame scales it (manual combat eases it to nothing)
+let manualSharp = 0.0;      // 1 while a manual fight is on: the whole battlefield stays sharp to plan on
 function applyComfort() {
   const grain = getSetting('filmGrain') !== false;
   POST.fin.uniforms.uGrain.value = grain ? 1.0 : 0.0;
-  POST.fin.uniforms.uTilt.value = grain ? 1.0 : 0.0;
+  /* depth of field has its own setting now (it used to ride on film grain) */
+  const dof = getSetting('depthOfField');
+  dofStrength = DOF_STRENGTH[dof] != null ? DOF_STRENGTH[dof] : 1.0;
 }
 if (typeof window !== 'undefined') {
   applyQuality();
@@ -746,7 +897,7 @@ if (typeof window !== 'undefined') {
   applyUiScale(getSetting('uiScale'));
   onSettingsChange((key) => {
     if (key === null || key === 'graphicsQuality') applyQuality();
-    if (key === null || key === 'filmGrain') applyComfort();
+    if (key === null || key === 'filmGrain' || key === 'depthOfField') applyComfort();
     if (key === null || key === 'perfOverlay') setPerfOverlay(!!getSetting('perfOverlay'));
     if (key === null || key === 'uiScale') applyUiScale(getSetting('uiScale'));
   });
@@ -923,6 +1074,11 @@ if (renderer && renderer.domElement) {
     const r = cnv.getBoundingClientRect();
     _clickNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     _clickRay.setFromCamera(_clickNdc, cam);
+    /* The creature drawn under the cursor, to the pixel (sprite_pick.js). Every
+       preview here uses it, matching what a click there will do (explore.js commandMove). */
+    const pickedU = pickUnit(game, _clickRay);
+    const pickedMonster = pickedU && (game.monsters || []).includes(pickedU) ? pickedU : null;
+    const pickedHero = pickedU && !pickedMonster ? pickedU : null;
 
     if (game.updateSpellTargeting && game.targetingState && game.targetingState.active) {
       const ts = game.targetingState;
@@ -992,11 +1148,8 @@ if (renderer && renderer.domElement) {
 
       /* Single-target spell targeting (hero ally or enemy monster) */
       _aoeInstancedMesh.visible = false;
-      const tCell = (game.cellOf && game.D) ? game.cellOf(tgx, tgz) : -1;
-      const tgtMonster = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
-        && ((tCell >= 0 && game.cellOf(m.x, m.z) === tCell) || Math.hypot(m.x - tgx, m.z - tgz) < 0.6));
-      const tgtHero = ts.isAlly ? (game.heroes || []).find(h => h.data && h.data.hp > 0
-        && ((tCell >= 0 && game.cellOf(h.x, h.z) === tCell) || Math.hypot(h.x - tgx, h.z - tgz) < 0.6)) : null;
+      const tgtMonster = pickedMonster;
+      const tgtHero = ts.isAlly && pickedHero && pickedHero.data.hp > 0 ? pickedHero : null;
       const targetUnit = tgtHero || tgtMonster;
 
       if (targetUnit) {
@@ -1038,10 +1191,7 @@ if (renderer && renderer.domElement) {
       const reachTiles = ranged ? Math.max(1, Math.round(prof.range || 6)) : 1;
       const tooltip = document.getElementById('hover-cursor-tooltip');
       if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
-        const tgx = _clickPt.x, tgz = _clickPt.z;
-        const tCell = (game.cellOf && game.D) ? game.cellOf(tgx, tgz) : -1;
-        const tgt = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
-          && ((tCell >= 0 && game.cellOf(m.x, m.z) === tCell) || Math.hypot(m.x - tgx, m.z - tgz) < 0.6));
+        const tgt = pickedMonster;
         if (tgt) {
           game.hoveredMonster = tgt;
           game.hoveredUnit = tgt;
@@ -1080,28 +1230,17 @@ if (renderer && renderer.domElement) {
       _hoverMarkerGroup.visible = false;
       hideThreatZone();
       if (tooltip) tooltip.style.display = 'none';
-      if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
-        const gx = _clickPt.x, gz = _clickPt.z;
-        const rawCell = (game.cellOf && game.D) ? game.cellOf(gx, gz) : -1;
-        const hoveredM = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
-          && ((rawCell >= 0 && game.cellOf(m.x, m.z) === rawCell) || Math.hypot(m.x - gx, m.z - gz) < 0.6));
-        game.hoveredMonster = hoveredM || null;
-      } else {
-        game.hoveredMonster = null;
-      }
+      game.hoveredMonster = pickedMonster;
       return;
     }
     refreshThreatZone(cur);
 
     if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
       const gx = _clickPt.x, gz = _clickPt.z;
-      /* Grid-based monster hit-test: only show the attack reticle when the
-         cursor is actually on the monster's tile (or very close to its
-         centre), so adjacent floor tiles remain usable for movement. Must
-         match the click resolver in explore.js commandMove. */
-      const rawCell = (game.cellOf && game.D) ? game.cellOf(gx, gz) : -1;
-      const clickedMonster = (game.monsters || []).find(m => m.active && m.data && m.data.hp > 0
-        && ((rawCell >= 0 && game.cellOf(m.x, m.z) === rawCell) || Math.hypot(m.x - gx, m.z - gz) < 0.6));
+      /* The attack reticle shows when the cursor is on the monster's drawn pixels
+         (sprite_pick.js), the same test the click uses in explore.js commandMove;
+         floor round it stays free for movement. */
+      const clickedMonster = pickedMonster;
 
       if (clickedMonster && !cur.actUsed) {
         game.hoveredMonster = clickedMonster;
@@ -1185,6 +1324,8 @@ if (renderer && renderer.domElement) {
   };
 
   const onPointerLeave = () => {
+    hoverUnitCard(null);
+    setCursorUnit(null);
     if (game) {
       game.hoveredMonster = null;
       game.hoveredUnit = null;
@@ -1193,8 +1334,28 @@ if (renderer && renderer.domElement) {
   window.addEventListener('pointerleave', onPointerLeave);
   cnv.addEventListener('pointerleave', onPointerLeave);
 
+  /* The creature under the cursor gets a white outline in any mode, so it reads
+     as clickable (unit_card.js). In manual combat, resting on it a beat also pops
+     its card up beside it; elsewhere cards are pinned by clicking instead. */
+  const _hoverProj = new THREE.Vector3();
+  const updateUnitHover = (e) => {
+    if (!game || !game.unitAtPoint || game.state !== 'crawl') { setCursorUnit(null); hoverUnitCard(null); return; }
+    const r = cnv.getBoundingClientRect();
+    _clickNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    _clickRay.setFromCamera(_clickNdc, cam);
+    /* what is drawn under the cursor, to the pixel (sprite_pick.js), not the floor tile */
+    const unit = pickUnit(game, _clickRay);
+    setCursorUnit(unit);
+    if (!unit || !(game.controlMode === 'manual' && game.initiative && game.initiative.active)) { hoverUnitCard(null); return; }
+    /* its chest on screen: the card sits off to its side */
+    const chest = (unit.data && unit.data.scale != null ? 0.4 * unit.data.scale + 0.4 : 0.6) + groundY(game.D, unit.x, unit.z);
+    _hoverProj.set(unit.x, chest, unit.z).project(cam);
+    hoverUnitCard(unit, r.left + (_hoverProj.x + 1) / 2 * r.width, r.top + (1 - _hoverProj.y) / 2 * r.height);
+  };
+
   cnv.addEventListener('pointermove', e => {
     updatePointerTargeting(e);
+    updateUnitHover(e);
     /* The exploration orbit holds still while the player is aiming a click. */
     if (game) game._pointerMovedAt = game.elapsed;
     if (!dragging && !orbiting) return;
@@ -1202,9 +1363,14 @@ if (renderer && renderer.domElement) {
     lastX = e.clientX; lastY = e.clientY;
     if (orbiting) {
       yaw -= dx * 0.005;
-      pitch = Math.min(1.15, Math.max(0.32, pitch + dy * 0.005));
-      if (camMode === 'combat') userPitch = pitch;
-      else explorePitch = pitch;
+      if (camMode === 'combat') {
+        pitch = Math.min(1.15, Math.max(0.32, pitch + dy * 0.005));
+        userPitch = pitch;
+      } else {
+        pitch = Math.min(EXPLORE_PITCH_MAX, Math.max(EXPLORE_PITCH_MIN, pitch + dy * 0.005));
+        explorePitch = pitch;
+        _exploreOrbitAt = elapsed;
+      }
     } else {
       const wpp = (2 * BASE_HALF / cam.zoom) / cnv.clientHeight;
       const fx = Math.sin(yaw), fz = Math.cos(yaw);
@@ -1223,8 +1389,12 @@ if (renderer && renderer.domElement) {
     const r = cnv.getBoundingClientRect();
     _clickNdc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     _clickRay.setFromCamera(_clickNdc, cam);
+    /* the creature actually clicked on, to the pixel: what inspection pins */
+    const clicked = game ? pickUnit(game, _clickRay) : null;
     if (_clickRay.ray.intersectPlane(_clickPlane, _clickPt)) {
-      if (game && game.commandMove) game.commandMove(_clickPt.x, _clickPt.z);
+      if (game && game.commandMove) game.commandMove(_clickPt.x, _clickPt.z, clicked);
+    } else if (clicked && game && game.commandMove) {
+      game.commandMove(clicked.x, clicked.z, clicked);
     }
   });
   cnv.addEventListener('pointercancel', endDrag);
@@ -1289,6 +1459,8 @@ export function setAtlasAttr(geo, arr, n) {
 
 const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
 const easeOutBack = t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+let _overlandCullDirty = false;
+let _lastCullX = 1e9, _lastCullZ = 1e9, _lastCullZoom = -1;
 
 export function writeInstances(mesh, t) {
   const u = mesh.userData, s = u.set;
@@ -1311,7 +1483,10 @@ export function writeInstances(mesh, t) {
   }
   mesh.instanceMatrix.needsUpdate = true;
   u._visState = null;
+  u._fullMatrices = null;
+  u._fullColors = null;
   u.settled = allDone;
+  if (allDone) _overlandCullDirty = true;
 }
 
 /* -------- scene state -------- */
@@ -1406,6 +1581,7 @@ export function buildLiquidMesh(cells, wx, wz, y) {
 export function buildScene(d) {
   disposeLevel();
   D = d;
+  d.perches = [];
   /* A new floor resets the player's resting zooms too, otherwise a zoom set
      three floors ago silently caps the director forever. A floor opens out of
      combat, so the camera starts on the exploration zoom. */
@@ -1599,8 +1775,6 @@ export function buildScene(d) {
     return -1;
   };
 
-  const mossMask = new Uint8Array(W * H);
-  for (const p of d.props) if (p.kind === 'moss') mossMask[idx(p.x, p.y)] = 1;
   const poolAdj = (x, y) => {
     const c = idx(x, y);
     return (x < W - 1 && grid[c + 1] === POOL) || (x > 0 && grid[c - 1] === POOL) ||
@@ -1699,9 +1873,9 @@ export function buildScene(d) {
       pushVar(fUv, cellRng);
     } else {
       base.set(GT ? 0xf2f2f2 : (corridor[c] ? TH.corridor : TH.floor));
-      if (rid >= 0 && rooms[rid].type !== TYPE.COMBAT) base.lerp(tint.set(TINT[rooms[rid].type]), 0.17);
+      const applyRoomTint = TH.roomTint !== false && TH.label !== 'MOLTEN' && d.params?.themeKey !== 'molten' && d.themeKey !== 'molten';
+      if (applyRoomTint && rid >= 0 && rooms[rid].type !== TYPE.COMBAT) base.lerp(tint.set(TINT[rooms[rid].type]), 0.17);
       if (doorway[c]) base.multiplyScalar(1.14);
-      if (mossMask[c]) base.lerp(tint.set(0x4c7a42), 0.32);
       if (TH.pools && TH.pools.mode === 0 && poolAdj(x, y)) base.lerp(tint.set(0xff7a33), 0.3);
       base.multiplyScalar(1 - 0.11 * Math.min(walls8, 4));
       base.multiplyScalar(((x + y) & 1) ? 0.965 : 1.0);
@@ -1807,7 +1981,7 @@ export function buildScene(d) {
     chest: instSet(), chestTrim: instSet(), chestGlow: instSet(),
     grave: instSet(), sarco: instSet(), candle: instSet(), bone: instSet(),
     skull: instSet(), skeleton: instSet(), bonePile: instSet(), spiderWeb: instSet(),
-    icicle: instSet(), shardIce: instSet(), roots: instSet(), moss: instSet(),
+    icicle: instSet(), shardIce: instSet(), roots: instSet(),
     crackD: instSet(), skirt: instSet(), bannerRod: instSet(), bannerCloth: instSet(), emblem: instSet(),
     spawn1: instSet(), spawn2: instSet(), spawn3: instSet(), band2: instSet(), band3: instSet(),
     crystal: instSet(), ring: instSet(), plinth: instSet(), platform: instSet(),
@@ -1816,7 +1990,7 @@ export function buildScene(d) {
     bossGlow: instSet(), bossRock: instSet(),
     runeSeal: instSet(), ember: instSet(), rime: instSet(), stain: instSet(), growth: instSet(),
     barrel: instSet(), crate: instSet(), table: instSet(), bench: instSet(), chair: instSet(),
-    bookshelf: instSet(), weaponRack: instSet(), statue: instSet(), urn: instSet(),
+    bookshelf: instSet(), bookshelfBooks: instSet(), weaponRack: instSet(), statue: instSet(), urn: instSet(),
     rug: instSet(), magicCircle: instSet(), tapestry: instSet(), sconce: instSet(),
     forge: instSet(), cauldron: instSet(), ossuaryFrame: instSet(), ossuaryBones: instSet(), ossuaryBeds: instSet(), sporePod: instSet(),
     megalith: instSet(), wagon: instSet(), altarTable: instSet(), iceThrone: instSet(), globe: instSet(),
@@ -1875,10 +2049,10 @@ export function buildScene(d) {
       for (const k of MOOR_TREES) if (propAssets[k]) { treeOptions.push(propAssets[k]); treeKeys.push(k); }
     } else if (isMire) {
       // Mire: mix of swamp trees and dead trees
-      if (propAssets.swamptree) treeOptions.push(propAssets.swamptree);
-      if (propAssets.deadtree) treeOptions.push(propAssets.deadtree);
+      if (propAssets.swamptree) { treeOptions.push(propAssets.swamptree); treeKeys.push('swamptree'); }
+      if (propAssets.deadtree) { treeOptions.push(propAssets.deadtree); treeKeys.push(null); }
     } else if (isSporewood) {
-      if (propAssets.swamptree) treeOptions.push(propAssets.swamptree);
+      if (propAssets.sporewillow) { treeOptions.push(propAssets.sporewillow); treeKeys.push('sporewillow'); }
       else if (propAssets.spruce) { treeOptions.push(propAssets.spruce); treeKeys.push('spruce'); }
     } else if (isForest) {
       /* Pine, with broadleaf mixed in (leaf cards from tree_foliage.js). */
@@ -1946,7 +2120,12 @@ export function buildScene(d) {
         /* 3D Model Trees (Forest, Frost, Moor, Mire, Sporewood) */
         // Density tiered by distance: front row 0.85, row 2 0.72, row 3 0.60, row 4 0.48, row 5 0.38
         /* TH.treeDensity thins the whole belt for open country (holdfast) */
-        const keepProb = (thicket && thicket[c]) ? 1 : (TH.treeDensity ?? 1) *
+        /* TH.treeCopses gathers what is left into stands with bare ground between
+           them, and only the odd lone tree out in the open (the moor's hills) */
+        const copses = TH.treeCopses;
+        const copseKeep = !copses ? 1
+          : copseNoise(x, y, d.params?.seed ?? d.seed ?? 0, copses.size) >= copses.above ? 1 : copses.lone;
+        const keepProb = (thicket && thicket[c]) ? 1 : (TH.treeDensity ?? 1) * copseKeep *
           (wallDist[c] === 1 ? 0.85 : (wallDist[c] === 2 ? 0.72 : (wallDist[c] === 3 ? 0.60 : (wallDist[c] === 4 ? 0.48 : 0.38))));
         if (cellRng.f(0, 1) <= keepProb) {
           const chosen = treeMeshes[cellRng.i(0, treeMeshes.length - 1)];
@@ -1963,6 +2142,12 @@ export function buildScene(d) {
           const ry = cellRng.f(0, 6.28);
           const jx = cellRng.f(-0.22, 0.22), jz = cellRng.f(-0.22, 0.22);
           chosen.set.addT(wx(x) + jx, treeY, wz(y) + jz, sx, sy, sz, rx, ry, rz, 0xffffff, dl);
+          recordTreePerch(
+            chosen.geo, x, y,
+            wx(x) + jx, treeY, wz(y) + jz,
+            sx, sy, sz, rx, ry, rz,
+            -1, treeY + sy * gripFrac(chosen.key),
+          );
         }
       } else {
         /* Procedural conifer trees (Snowfield, Sporewood, Mire, Moor) */
@@ -1977,6 +2162,7 @@ export function buildScene(d) {
         cs.add(wx(x) + jx, treeY + hh * (bl.canopyY ?? 0.42), wz(y) + jz,
           cellRng.f(0.95, 1.35) * cS, cellRng.f(0.95, 1.3) * cS, cellRng.f(0.95, 1.35) * cS,
           cellRng.f(0, 6.28), wcol.getHex(), dl + 0.12);
+        recordPerch(x, y, wx(x) + jx, wz(y) + jz, treeY + hh * (bl.canopyY ?? 0.42), -1);
       }
     }
     if (blockGeo) {
@@ -1989,6 +2175,8 @@ export function buildScene(d) {
       treeMeshes.forEach(tm => {
         if (tm.set.n > 0) {
           const m = buildMesh(tm.set, tm.geo, tm.mesh.material, 'rise', 0.42, 1);
+          m.userData.isOverlandTree = true;
+          m.userData.overlandCullable = true;
           if (meshIdx === 0) meshes.wall = m;
           else meshes[`wall_tree_${meshIdx}`] = m;
           /* Bare models get their leaf cards here: same instance transforms as
@@ -2001,7 +2189,10 @@ export function buildScene(d) {
                 return _c.setRGB(1, 1, 1).multiplyScalar(0.74 + 0.22 * (h - Math.floor(h))).getHex();
               })
             });
-            meshes[`leaves_${meshIdx}`] = buildMesh(leafSet, foliageGeometryFor(tm), foliageMaterial(fol), 'rise', 0.42, 1);
+            const lm = buildMesh(leafSet, foliageGeometryFor(tm), foliageMaterial(fol), 'rise', 0.42, 1);
+            lm.userData.isOverlandTree = true;
+            lm.userData.overlandCullable = true;
+            meshes[`leaves_${meshIdx}`] = lm;
           }
           meshIdx++;
         }
@@ -2292,10 +2483,6 @@ export function buildScene(d) {
         S.roots.add(wx(p.x), PY + (0), wz(p.y), p.scale, p.scale, p.scale, Math.atan2(p.dx, p.dy),
           0x5a4632, nearFloorBfs(p.x, p.y) * dStep + 0.6, propRoom);
         break;
-      case 'moss':
-        S.moss.add(X, PY, Z, p.scale, p.scale, p.scale, p.rot,
-          TH.deadGrass ? lerpC(0x4a4636, 0x5e5844, cellRng.raw()) : lerpC(0x3f6b3a, 0x5a8a4a, cellRng.raw()), dl, propRoom);
-        break;
       case 'crack': {
         const cx = X - (p.dx || 0) * 0.5, cz = Z - (p.dy || 0) * 0.5;
         const vc = p.ice ? 0x9fd8ff : (TH.pools && TH.pools.mode === 3 ? 0x86c05a : 0xff6a28);
@@ -2359,9 +2546,17 @@ export function buildScene(d) {
       case 'chair':
         S.chair.add(X, PY, Z, p.scale || 1, p.scale || 1, p.scale || 1, p.rot || 0, 0x6b4220, dl, propRoom);
         break;
-      case 'bookshelf':
-        S.bookshelf.add(X, PY, Z, p.scale || 1, p.scale || 1, p.scale || 1, p.rot || 0, 0x5a3214, dl, propRoom);
+      case 'bookshelf': {
+        /* stood on a wall tile facing the room (wall behind local -Z): slide
+           it back until its back panel meets the wall face, or it stands a
+           third of a tile out and reads as floating */
+        const s = p.scale || 1, ry = p.rot || 0;
+        const back = Math.max(0, 0.49 - BOOKSHELF_BACK * s);
+        const bx = X - Math.sin(ry) * back, bz = Z - Math.cos(ry) * back;
+        S.bookshelf.add(bx, PY, bz, s, s, s, ry, 0x5a3214, dl, propRoom);
+        S.bookshelfBooks.add(bx, PY, bz, s, s, s, ry, lerpC(0x5a2018, 0x2e3a24, cellRng.raw()), dl + 0.04, propRoom);
         break;
+      }
       case 'weaponRack': {
         if (propAssets['weaponRack']) {
           placeModelProp({ kind: 'weaponRack', scale: p.scale || 1, rot: p.rot || 0, oy: p.oy || 0 }, X, PY, Z, propRoom, cellRng, dl, modelPropSets);
@@ -2728,10 +2923,10 @@ export function buildScene(d) {
 
   const grassMat = TH.deadGrass ? matDeadGrass : matSwampGrass;
   const setDefs = [
-    ['pillar', GEO.pillar, matStone, 'rise', 0.4, 1],
-    ['arch', doorPostGeo, doorMat, 'rise', 0.45, 1],
-    ['archL', doorLintelGeo, doorMat, 'pop', 0.35, 1],
-    ['gate', GEO.gate, doorMat, 'rise', 0.4, 1],
+    ['pillar', GEO.pillar, cutCopy(matStone), 'rise', 0.4, 1],
+    ['arch', doorPostGeo, cutCopy(doorMat), 'rise', 0.45, 1],
+    ['archL', doorLintelGeo, cutCopy(doorMat), 'pop', 0.35, 1],
+    ['gate', GEO.gate, cutCopy(doorMat), 'rise', 0.4, 1],
     ['torchArm', GEO.torch, matTrim, 'pop', 0.3, 0],
     ['flame', GEO.flame, matGlow, 'pop', 0.3, 0],
     ['flameCore', GEO.flameCore, matGlow, 'pop', 0.3, 0],
@@ -2752,7 +2947,6 @@ export function buildScene(d) {
     ['icicle', GEO.icicle, matIce, 'pop', 0.35, 0],
     ['shardIce', GEO.shard, matIce, 'pop', 0.35, 0],
     ['roots', GEO.roots, matBark, 'rise', 0.5, 1],
-    ['moss', GEO.moss, matMoss, 'pop', 0.4, 0],
     ['wallIvy', GEO.wallIvy, matIvy, 'pop', 0.35, 0],
     ['threshold', GEO.threshold, matStone, 'pop', 0.35, 1],
     ['crackD', GEO.crack, matCrackD, 'pop', 0.4, 0],
@@ -2792,8 +2986,9 @@ export function buildScene(d) {
     ['bench', GEO.bench, matWood, 'pop', 0.35, 1],
     ['chair', GEO.chair, matWood, 'pop', 0.3, 1],
     ['bookshelf', GEO.bookshelf, matWood, 'rise', 0.45, 1],
+    ['bookshelfBooks', GEO.bookshelfBooks, matWood, 'rise', 0.45, 1],
     ['weaponRack', GEO.weaponRack, matWood, 'rise', 0.4, 1],
-    ['statue', GEO.statue, matStone, 'rise', 0.5, 1],
+    ['statue', GEO.statue, cutCopy(matStone), 'rise', 0.5, 1],
     ['urn', GEO.urn, matCeramic, 'pop', 0.35, 1],
     ['rug', GEO.rug, matRug, 'pop', 0.4, 0],
     ['magicCircle', GEO.magicCircle, matMagicCircle, 'pop', 0.45, 0],
@@ -2839,15 +3034,27 @@ export function buildScene(d) {
     ['swampgrass2', GEO.swampgrass2, grassMat, 'pop', 0.35, 2],
     ['swampgrass3', GEO.swampgrass3, grassMat, 'pop', 0.35, 2]
   ];
-  for (const [k, geo, mat, mode, dur, sh] of setDefs) meshes[k] = buildMesh(S[k], geo, mat, mode, dur, sh);
+  for (const [k, geo, mat, mode, dur, sh] of setDefs) {
+    meshes[k] = buildMesh(S[k], geo, mat, mode, dur, sh);
+    if (TH.overland && (k.startsWith('swampgrass') || k.startsWith('debris') || k === 'boulderPile' || k === 'roots')) {
+      meshes[k].userData.overlandCullable = true;
+    }
+  }
   /* bone models: seated skeletons stand high enough to cast a shadow; the
      ones lying flat only receive */
   for (const [k, set] of Object.entries(boneSets))
-    bakedParts(k).forEach((part, j) =>
-      meshes[`${k}_${j}`] = buildMesh(set, part.geo, part.mat, 'pop', 0.35, k.startsWith('skeletonSit') ? 1 : 2));
+    bakedParts(k).forEach((part, j) => {
+      const m = buildMesh(set, part.geo, part.mat, 'pop', 0.35, k.startsWith('skeletonSit') ? 1 : 2);
+      if (TH.overland) m.userData.overlandCullable = true;
+      meshes[`${k}_${j}`] = m;
+    });
   for (const [k, set] of Object.entries(modelPropSets))
-    bakedParts(k).forEach((part, j) =>
-      meshes[`model_${k}_${j}`] = buildMesh(set, part.geo, part.mat, 'pop', 0.35, k.startsWith('swampgrass') ? 2 : 1));
+    bakedParts(k).forEach((part, j) => {
+      if (SIGHT_BLOCKING_KINDS.has(k)) cutawayPatch(part.mat);   // pillars, statues, obelisks: cut like walls
+      const m = buildMesh(set, part.geo, part.mat, 'pop', 0.35, k.startsWith('swampgrass') ? 2 : 1);
+      if (TH.overland) m.userData.overlandCullable = true;
+      meshes[`model_${k}_${j}`] = m;
+    });
   /* Late pass. buildScene starts a biome's models loading but doesn't wait
      for them, and model-only props (scroll shelves, cages, lecterns...) have
      no stand-in, so a level built before they arrived simply lacked them —
@@ -2865,11 +3072,14 @@ export function buildScene(d) {
       for (const [k, set] of Object.entries(lateModelSets)) {
         if (!set.n || !propAssets[k]) continue;
         bakedParts(k).forEach((part, j) => {
+          if (SIGHT_BLOCKING_KINDS.has(k)) cutawayPatch(part.mat);
           const mesh = buildMesh(set, part.geo, part.mat, 'pop', 0.35, k.startsWith('swampgrass') ? 2 : 1);
+          if (TH.overland) mesh.userData.overlandCullable = true;
           meshes[`model_${k}_late_${j}`] = mesh;
           group.add(mesh);
         });
       }
+      if (placed) _overlandCullDirty = true;
       if (placed && onLateProps) onLateProps();
     });
   }
@@ -3057,16 +3267,26 @@ export function buildScene(d) {
 
 
 
-  // Soft waterline mist along pools / rivers
+  // Soft waterline mist along pools / rivers (shared material & spaced clusters to avoid draw-call explosion on 300-tile ribbon maps)
   if (d.pools && d.pools.length) {
+    const poolMistMat = createMistMaterial(0xbcd9e8, 0.22);
+    const placedMistXZ = [];
+    const minMistDistSq = TH.overland ? 3.2 * 3.2 : 1.8 * 1.8;
+    const mistScale = TH.overland ? 4.0 : 2.8;
     for (const p of d.pools) {
       if (cellRng.chance(0.65)) {
         const pX = wx(p.x), pZ = wz(p.y);
+        let tooClose = false;
+        for (let k = 0; k < placedMistXZ.length; k += 2) {
+          const dx = pX - placedMistXZ[k], dz = pZ - placedMistXZ[k + 1];
+          if (dx * dx + dz * dz < minMistDistSq) { tooClose = true; break; }
+        }
+        if (tooClose) continue;
+        placedMistXZ.push(pX, pZ);
         const pFY = surfYW(pX, pZ);
-        const poolMistMat = createMistMaterial(0xbcd9e8, 0.22);
         const pm = new THREE.Mesh(GEO.mistSheet, poolMistMat);
         pm.position.set(pX, pFY + 0.06, pZ);
-        pm.scale.set(2.8, 1, 2.8);
+        pm.scale.set(mistScale, 1, mistScale);
         pm.renderOrder = 7;
         pm.userData = {
           mat: poolMistMat,
@@ -3107,7 +3327,7 @@ export function buildScene(d) {
       for (const p of d.pools) pp(wx(p.x), wz(p.y), 0);
     } else if (spec.kind === 4) {
       for (const p of d.props) {
-        if (p.kind === 'moss' || p.kind === 'mushroomA' || p.kind === 'mushroomB') pp(wx(p.x) + cellRng.f(-0.25, 0.25), wz(p.y) + cellRng.f(-0.25, 0.25), 0.05);
+        if (p.kind === 'mushroomA' || p.kind === 'mushroomB') pp(wx(p.x) + cellRng.f(-0.25, 0.25), wz(p.y) + cellRng.f(-0.25, 0.25), 0.05);
         else if (p.kind === 'roots' || p.kind === 'rootsA' || p.kind === 'rootsB') pp(wx(p.x) + p.dx * 0.8, wz(p.y) + p.dy * 0.8, cellRng.f(0.2, 1.4));
       }
       for (const p of d.pools) pp(wx(p.x), wz(p.y), 0);
@@ -3117,7 +3337,7 @@ export function buildScene(d) {
       for (const t of d.torches) pp(wx(t.x) + t.dx * 0.7, wz(t.y) + t.dy * 0.7, cellRng.f(1.2, 1.9));
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
         if (grid[idx(x, y)] === FLOOR && cellRng.chance(0.12)) pp(wx(x) + cellRng.f(-0.3, 0.3), wz(y) + cellRng.f(-0.3, 0.3), cellRng.f(0.2, 1.8));
-    } else if (spec.kind === 2 || spec.kind === 5 || spec.kind === 6) {
+    } else if (spec.kind === 2 || spec.kind === 5 || spec.kind === 6 || spec.kind === 7) {
       for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
         if (grid[idx(x, y)] === FLOOR) {
           for (let k = 0; k < 3; k++) {
@@ -3134,7 +3354,12 @@ export function buildScene(d) {
         if (grid[idx(x, y)] === FLOOR && cellRng.chance(0.15)) pp(wx(x), wz(y), 0);
     if (pts.length) {
       const maxPts = spec.n ? spec.n : Math.min(240, pts.length * 6);
-      const n = Math.min(maxPts, Math.max(40, pts.length));
+      /* perCell: density per floor cell (these kinds lay 3 anchors per cell),
+         so a blizzard is thick on every map size instead of a fixed 550
+         spread across a whole overland. */
+      const n = spec.perCell
+        ? Math.min(spec.cap || 24000, Math.max(40, Math.round(pts.length / 3 * spec.perCell)))
+        : Math.min(maxPts, Math.max(40, pts.length));
       const pos = new Float32Array(n * 3), seed = new Float32Array(n);
       const fogCells = new Int32Array(n), origY = new Float32Array(n);
       for (let i = 0; i < n; i++) {
@@ -3149,7 +3374,17 @@ export function buildScene(d) {
       levelGeos.push(g);
       partMat.uniforms.uKind.value = spec.kind;
       partMat.uniforms.uColor.value.set(spec.color);
-      const pm = new THREE.Points(g, partMat);
+      let pMat = partMat;
+      if (spec.kind === 7) {
+        /* Additive white vanishes on white snow; the blizzard draws with
+           normal blending. Shares partMat's uniforms so time/zoom still tick.
+           Disposed with the level (only partMat itself is kept). */
+        pMat = partMat.clone();
+        pMat.uniforms = partMat.uniforms;
+        pMat.blending = THREE.NormalBlending;
+        pMat.toneMapped = false;
+      }
+      const pm = new THREE.Points(g, pMat);
       pm.frustumCulled = false;
       pm.renderOrder = 20;
       pm.userData.fogCells = fogCells; pm.userData.origY = origY;
@@ -3158,13 +3393,15 @@ export function buildScene(d) {
   }
 
   if (TH.groundFog) {
-    const fg = new THREE.PlaneGeometry(W + 20, H + 20).rotateX(-Math.PI / 2);
+    const followCam = (W > 96 || H > 96);
+    const fg = new THREE.PlaneGeometry(followCam ? Math.min(W + 20, 96) : (W + 20), followCam ? Math.min(H + 20, 96) : (H + 20)).rotateX(-Math.PI / 2);
     fogPlaneMat.uniforms.uColor.value.set(TH.groundFog.color !== undefined ? TH.groundFog.color : 0xd4dad0);
     fogPlaneMat.uniforms.uDensity.value = TH.groundFog.density !== undefined ? TH.groundFog.density : 0.28;
     fogPlaneMat.uniforms.uSpeed.value = TH.groundFog.speed !== undefined ? TH.groundFog.speed : 0.035;
     fogPlaneMat.uniforms.uScale.value = TH.groundFog.scale !== undefined ? TH.groundFog.scale : 0.10;
     const fogMesh = new THREE.Mesh(fg, fogPlaneMat);
     fogMesh.position.set(0, TH.groundFog.height !== undefined ? TH.groundFog.height : 0.24, 0);
+    fogMesh.userData.followCam = followCam;
     /* Before the sprites (10): a flat sheet drawn after them painted over the
        whole body, head included. Units now carry the fog on their own legs
        (sprite_lighting.js), so the sheet only has to sit on the ground. */
@@ -3174,7 +3411,7 @@ export function buildScene(d) {
     fx.fogPlane = fogMesh;
   }
 
-  const shHalf = Math.max(34, Math.min(68, Math.max(W, H) * 0.55));
+  const shHalf = TH.overland ? 38 : Math.max(34, Math.min(68, Math.max(W, H) * 0.55));
   dirL.shadow.camera.left = -shHalf; dirL.shadow.camera.right = shHalf;
   dirL.shadow.camera.top = shHalf; dirL.shadow.camera.bottom = -shHalf;
   dirL.shadow.camera.updateProjectionMatrix();
@@ -3214,6 +3451,7 @@ export function buildScene(d) {
   }
 
   animT = 0; animEnd = 1.8; animating = true;
+  _lastCullX = 1e9; _lastCullZ = 1e9; _lastCullZoom = -1; _overlandCullDirty = true;
   writeInstancesAll(0);
   applyTorchStates();
 }
@@ -3471,9 +3709,66 @@ export function liveUpdate(time, tt, dt = 0.016) {
   liquidMat.uniforms.uTime.value = time;
   partMat.uniforms.uTime.value = time;
   fogPlaneMat.uniforms.uTime.value = time;
+  foliageWind.value = time;
+  if (fx.fogPlane && fx.fogPlane.userData && fx.fogPlane.userData.followCam && camTarget) {
+    fx.fogPlane.position.x = camTarget.x;
+    fx.fogPlane.position.z = camTarget.z;
+  }
   matEmber.opacity = 0.72 + 0.24 * Math.sin(time * 2.3) * Math.sin(time * 1.13);
   updateNixieVfx(dt);
   updateSunFollow();
+  if (renderer && D && D.overland && !animating && camTarget) {
+    const cx = camTarget.x || 0, cz = camTarget.z || 0;
+    const zf = Math.max(MIN_CAM_ZOOM, cam ? cam.zoom : DEFAULT_CAM_ZOOM);
+    if (_overlandCullDirty || Math.abs(cx - _lastCullX) > 2.0 || Math.abs(cz - _lastCullZ) > 2.0 || Math.abs(zf - _lastCullZoom) > 0.05) {
+      _overlandCullDirty = false;
+      _lastCullX = cx; _lastCullZ = cz; _lastCullZoom = zf;
+      const winX = (BASE_HALF * (aspect || 1.78)) / zf + 22;
+      const winZ = (BASE_HALF / zf) * 2.2 + 26;
+      for (const k in meshes) {
+        const mesh = meshes[k];
+        if (!mesh || !mesh.isInstancedMesh) continue;
+        const u = mesh.userData;
+        if (!u || !u.overlandCullable || !u.settled) continue;
+        const s = u.set;
+        if (!s || !s.n) continue;
+        if (!u._fullMatrices) {
+          u._fullMatrices = new Float32Array(mesh.instanceMatrix.array);
+          u._fullColors = mesh.instanceColor ? new Float32Array(mesh.instanceColor.array) : null;
+        }
+        const fullMat = u._fullMatrices;
+        const outMat = mesh.instanceMatrix.array;
+        const fullCol = u._fullColors;
+        const outCol = mesh.instanceColor ? mesh.instanceColor.array : null;
+        let outIdx = 0;
+        for (let i = 0; i < s.n; i++) {
+          if (s.py[i] <= -500) continue;
+          const dx = s.px[i] - cx, dz = s.pz[i] - cz;
+          if (dx < -winX || dx > winX || dz < -winZ || dz > winZ) continue;
+          const srcOff = i * 16, dstOff = outIdx * 16;
+          for (let mIdx = 0; mIdx < 16; mIdx++) outMat[dstOff + mIdx] = fullMat[srcOff + mIdx];
+          if (outCol && fullCol) {
+            const sc3 = i * 3, dc3 = outIdx * 3;
+            outCol[dc3] = fullCol[sc3];
+            outCol[dc3 + 1] = fullCol[sc3 + 1];
+            outCol[dc3 + 2] = fullCol[sc3 + 2];
+          }
+          outIdx++;
+        }
+        mesh.count = outIdx;
+        mesh.instanceMatrix.needsUpdate = true;
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      }
+      if (fx.mists) {
+        for (const mi of fx.mists) {
+          if (!mi || !mi.userData) continue;
+          const baseVis = mi.userData.layerVisible !== false && mi.userData.fogVisible !== false;
+          const inWin = Math.abs(mi.position.x - cx) <= winX + 6 && Math.abs(mi.position.z - cz) <= winZ + 6;
+          mi.visible = baseVis && inWin;
+        }
+      }
+    }
+  }
   if (renderer) {
     const ch = (renderer.domElement && renderer.domElement.height) || (window.innerHeight * (window.devicePixelRatio || 1)) || 1080;
     partMat.uniforms.uZoom.value = ch * cam.zoom / (2 * BASE_HALF);
@@ -3481,7 +3776,7 @@ export function liveUpdate(time, tt, dt = 0.016) {
   for (const sp of fx.spinners) sp.m.rotation.y = time * sp.spd;
   if (fx.mists) {
     for (const mi of fx.mists) {
-      if (mi && mi.userData && mi.userData.mat) {
+      if (mi && mi.visible && mi.userData && mi.userData.mat) {
         const mm = mi.userData.mat;
         if (mm.uniforms && mm.uniforms.uTime) {
           mm.uniforms.uTime.value = time;
@@ -3766,21 +4061,34 @@ export function setupRTs() {
   renderer.getDrawingBufferSize(size);
   if (POST.w === size.x && POST.h === size.y && POST.rtScene) return;
   POST.w = size.x; POST.h = size.y;
-  if (POST.rtScene) { POST.rtScene.dispose(); POST.rtA.dispose(); POST.rtB.dispose(); }
+  if (POST.rtScene) { POST.rtScene.dispose(); POST.rtA.dispose(); POST.rtB.dispose(); POST.rtFocus.dispose(); POST.rtFocusB.dispose(); }
   const ps = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: true, stencilBuffer: false };
   POST.rtScene = new THREE.WebGLRenderTarget(size.x, size.y, { ...ps, samples: 4 });
   const pb = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false };
   POST.rtA = new THREE.WebGLRenderTarget(size.x >> 2, size.y >> 2, pb);
   POST.rtB = new THREE.WebGLRenderTarget(size.x >> 2, size.y >> 2, pb);
+  /* the depth-of-field focus mask (renderFocusMask), at the bloom chain's quarter size */
+  POST.rtFocus = new THREE.WebGLRenderTarget(size.x >> 2, size.y >> 2, pb);
+  POST.rtFocusB = new THREE.WebGLRenderTarget(size.x >> 2, size.y >> 2, pb);
 }
 
-/* ---------------- Dynamic Combat Action Depth of Field ---------------- */
-let combatFocusTarget = 0.0;
-let combatFocusCur = 0.0;
-let combatFocusTimer = 0.0;
-let combatFocusRadius = 0.24;
-let actionActor = null;
-let actionTarget = null;
+/* ---------------- Depth of field: what's in play stays sharp ----------------
+   Outside combat a soft band follows the party up and down the screen and fades
+   as the camera pulls out. In combat the sharp area is a FOCUS SET, driven by
+   events rather than guessed: the creature whose turn it is, plus whatever an
+   action declares (setCombatActionFocus: the actor and every target, all of an
+   area spell's victims), held until the action's hold runs out AND the
+   presentation clock says its visuals have finished (fx_clock fxVisualBusy).
+   The set's bodies are drawn as silhouettes into a small FOCUS MASK each frame
+   (renderFocusMask), softened by the bloom blur, so exactly those creatures stay
+   sharp at any zoom and size; a thin world-sized capsule from the actor to its
+   first target keeps a projectile sharp in flight. The cursor never moves the
+   focus: hover has its outline and card instead. */
+let combatFocusCur = 0.0;                 // 0 = explore band, 1 = combat focus
+let focusPresence = 0.0;                  // eases to 1 while the focus mask has a body in it
+const focusHeld = new Map();              // entity -> seconds its action hold has left
+let capsuleFrom = null, capsuleTo = null, capsuleUntil = 0;
+const FOCUS_CAPSULE_WORLD = 0.55;         // world units either side of the actor->target line
 const focusWorldA = new THREE.Vector3();
 const focusWorldB = new THREE.Vector3();
 const _focusPosA = new THREE.Vector3();
@@ -3789,104 +4097,62 @@ const focusScreenA = new THREE.Vector2(0.5, 0.48);
 const focusScreenB = new THREE.Vector2(0.5, 0.48);
 const _projA = new THREE.Vector3();
 const _projB = new THREE.Vector3();
+const _camRight = new THREE.Vector3();
+let focusCapsuleRadius = 0.0;             // screen units (height = 1), from FOCUS_CAPSULE_WORLD at this zoom
+let exploreBandY = 0.48;                  // screen height of the party
+let exploreFade = 1.0;                    // the band fades as the camera pulls out
+let _focusClock = 0;
 
+const isEntity = (o) => !!(o && o.data && (o.ent || (o.anim && o.anim.mesh)));
+
+/** The creature acting now: in focus for as long as its turn lasts. */
+function currentActor(g) {
+  return g && g.initiative && g.initiative.active && typeof g._currentActor === 'function' ? g._currentActor() : null;
+}
+
+/** The target an actor has declared (no guessing: nearest-enemy fallbacks pulled focus onto the wrong creature). */
 export function resolveCombatTarget(g, act) {
   if (!g || !act) return null;
-
-  // 1. Mouse hover over a monster has top priority
-  if (g.hoveredMonster && g.hoveredMonster.active && g.hoveredMonster.data?.hp > 0) {
-    return g.hoveredMonster;
-  }
-  if (g.hoveredUnit && (g.hoveredUnit.active || g.hoveredUnit._side === 'hero') && g.hoveredUnit.data?.hp > 0) {
-    return g.hoveredUnit;
-  }
-
-  // 2. Active targeting states
-  if (g.attackTargetingState && g.attackTargetingState.active && g.attackTargetingState.target) {
-    return g.attackTargetingState.target;
-  }
-  if (g.spellTargetingState && g.spellTargetingState.active && g.spellTargetingState.target) {
-    return g.spellTargetingState.target;
-  }
-
-  // 3. Side-specific target resolution
-  const isHero = act._side === 'hero' || (g.heroes && g.heroes.includes(act));
-  if (isHero) {
-    if (act.aiFoe && act.aiFoe.active && act.aiFoe.data?.hp > 0) {
-      return act.aiFoe;
-    }
-    if (act.target && act.target.active && act.target.data?.hp > 0) {
-      return act.target;
-    }
-    if (act._pendingAttackTarget && act._pendingAttackTarget.active && act._pendingAttackTarget.data?.hp > 0) {
-      return act._pendingAttackTarget;
-    }
-    if (act._lastTarget && act._lastTarget.active && act._lastTarget.data?.hp > 0) {
-      return act._lastTarget;
-    }
-    let closest = null, minD = Infinity;
-    for (const m of (g.monsters || [])) {
-      if (m.active && m.data && m.data.hp > 0) {
-        const d = Math.hypot(m.x - act.x, m.z - act.z);
-        if (d < minD) { minD = d; closest = m; }
-      }
-    }
-    return closest || (g.monsters || []).find(m => m.active && m.data?.hp > 0) || act;
-  } else {
-    // Monster's turn: target hero
-    if (act.target && act.target.data?.hp > 0) {
-      return act.target;
-    }
-    if (act._tgtIdx != null && g.heroes && g.heroes[act._tgtIdx] && g.heroes[act._tgtIdx].data?.hp > 0) {
-      return g.heroes[act._tgtIdx];
-    }
-    if (act._lastTarget && act._lastTarget.data?.hp > 0) {
-      return act._lastTarget;
-    }
-    let closest = null, minD = Infinity;
-    for (const h of (g.heroes || [])) {
-      if (h.data && h.data.hp > 0) {
-        const d = Math.hypot(h.x - act.x, h.z - act.z);
-        if (d < minD) { minD = d; closest = h; }
-      }
-    }
-    return closest || (g.heroes || []).find(h => h.data?.hp > 0) || act;
-  }
+  const live = (e) => e && e.data && e.data.hp > 0 && e.active !== false ? e : null;
+  /* a target the player is aiming at (manual attack / spell targeting) is declared too */
+  const aimed = (st) => st && st.active ? live(st.target) : null;
+  return aimed(g.attackTargetingState) || aimed(g.spellTargetingState)
+    || live(act.aiFoe) || live(act.target) || live(act._pendingAttackTarget) || null;
 }
 
 function getPosVector(obj, outVec) {
   if (!obj || !outVec) return null;
-  if (obj.isVector3) {
-    outVec.copy(obj);
-    return outVec;
-  }
+  if (obj.isVector3) { outVec.copy(obj); return outVec; }
   if (obj.x != null) {
     const zVal = obj.z != null ? obj.z : (obj.y ?? 0);
     const gy = (typeof groundY === 'function' && D) ? groundY(D, obj.x, zVal) : 0;
-    const yVal = (obj.y != null && obj.z != null) ? obj.y : (gy + 1.0);
+    const yVal = (obj.y != null && obj.z != null && !isEntity(obj)) ? obj.y : (gy + 0.6);
     outVec.set(obj.x, yVal, zVal);
     return outVec;
   }
   return null;
 }
 
-export function setCombatActionFocus(actor, target, duration = 0.95, radius = 0.24) {
+/**
+ * An action has been declared: keep `actor` and `target` (one, or a list — every
+ * creature an area spell catches) sharp for `duration` seconds, and after that for
+ * as long as the action's visuals are still playing. Positions (an area's centre)
+ * steer the actor->target capsule only. `radius` is kept for old callers.
+ */
+export function setCombatActionFocus(actor, target, duration = 0.95, radius = 0) {
+  void radius;
   if (!actor) return;
-  actionActor = actor;
-  actionTarget = target || actor;
-  combatFocusRadius = radius;
-  combatFocusTimer = duration;
-  combatFocusTarget = 1.0;
-  const pA = getPosVector(actionActor, _focusPosA);
-  const pB = getPosVector(actionTarget, _focusPosB) || pA;
-  if (pA && focusWorldA.lengthSq() < 0.001) focusWorldA.copy(pA);
-  if (pB && focusWorldB.lengthSq() < 0.001) focusWorldB.copy(pB);
+  const hold = Math.max(0.2, duration);
+  const list = Array.isArray(target) ? target : [target];
+  for (const e of [actor, ...list]) if (isEntity(e)) focusHeld.set(e, Math.max(focusHeld.get(e) || 0, hold));
+  const first = list.find(Boolean) || actor;
+  capsuleFrom = actor; capsuleTo = first; capsuleUntil = _focusClock + hold;
 }
 
 export function clearCombatActionFocus() {
-  combatFocusTimer = 0;
-  actionActor = null;
-  actionTarget = null;
+  focusHeld.clear();
+  if (typeof focusLastWanted !== 'undefined') focusLastWanted.clear();
+  capsuleFrom = capsuleTo = null;
 }
 
 if (typeof window !== 'undefined') {
@@ -3900,62 +4166,250 @@ if (typeof globalThis !== 'undefined') {
   globalThis.resolveCombatTarget = resolveCombatTarget;
 }
 
+/** The creatures to keep sharp this frame. */
+function focusSet() {
+  const out = new Set();
+  const cur = currentActor(game);
+  if (cur && cur.data && cur.data.hp > 0) {
+    out.add(cur);
+    const t = resolveCombatTarget(game, cur);
+    if (t) out.add(t);
+  }
+  const monsters = (game && game.monsters) || [];
+  /* a downed hero is still in play; a dead monster is not */
+  for (const e of focusHeld.keys()) if (e && e.data && (e.data.hp > 0 || !monsters.includes(e))) out.add(e);
+  return out;
+}
+
+/* screen units (height = 1) that `worldR` spans across the view at `p` */
+function screenSpanOf(p, worldR) {
+  _camRight.set(1, 0, 0).applyQuaternion(cam.quaternion).multiplyScalar(worldR).add(p);
+  _projA.copy(p).project(cam);
+  _projB.copy(_camRight).project(cam);
+  return Math.abs(_projB.x - _projA.x) * 0.5 * (cam.right - cam.left) / Math.max(0.0001, cam.top - cam.bottom);
+}
+
 function updateCombatFocus(dt) {
-  const inCombat = !!(game && (game.combat || (typeof game.isCombatActive === 'function' && game.isCombatActive()) || (game.initiative && game.initiative.active)));
+  _focusClock += dt;
+  const inCombat = !!(game && game.initiative && game.initiative.active);
 
-  if (combatFocusTimer > 0) {
-    combatFocusTimer -= dt;
-    combatFocusTarget = 1.0;
-  } else if (inCombat) {
-    combatFocusTarget = 1.0;
-    combatFocusRadius = 0.24;
-    actionActor = null;
-    actionTarget = null;
-  } else {
-    combatFocusTarget = 0.0;
-    actionActor = null;
-    actionTarget = null;
+  /* an action's hold counts down; the visuals it started keep it until they end */
+  const busy = fxVisualBusy();
+  for (const [e, t] of focusHeld) {
+    const left = t - dt;
+    if (left > 0 || busy) focusHeld.set(e, Math.max(0, left));
+    else focusHeld.delete(e);
   }
+  if (!inCombat) clearCombatActionFocus();
 
-  if (game && inCombat) {
-    const cur = typeof game._currentActor === 'function' ? game._currentActor() : (game.curActor || null);
-    const act = cur || (game.heroes && game.heroes.find(h => h.data?.hp > 0)) || (game.heroes && game.heroes[0]);
-    const target = resolveCombatTarget(game, act) || act;
+  /* snap in fast as a fight starts, ease out slowly after it */
+  const want = inCombat ? 1 : 0;
+  const rate = want > combatFocusCur ? 10.0 : 2.5;
+  combatFocusCur += (want - combatFocusCur) * Math.min(1.0, dt * rate);
 
-    const sourceA = (combatFocusTimer > 0 && actionActor) ? actionActor : act;
-    const sourceB = (combatFocusTimer > 0 && actionTarget) ? actionTarget : target;
-
-    const pA = getPosVector(sourceA, _focusPosA);
-    const pB = getPosVector(sourceB, _focusPosB) || pA;
-
-    if (pA) {
-      if (focusWorldA.lengthSq() < 0.001) {
-        focusWorldA.copy(pA);
-      } else {
-        focusWorldA.lerp(pA, Math.min(1.0, dt * 18.0));
-      }
-    }
-    if (pB) {
-      if (focusWorldB.lengthSq() < 0.001) {
-        focusWorldB.copy(pB);
-      } else {
-        focusWorldB.lerp(pB, Math.min(1.0, dt * 18.0));
-      }
-    }
-  }
-
-  const rate = combatFocusTarget > combatFocusCur ? 14.0 : 4.0;
-  combatFocusCur += (combatFocusTarget - combatFocusCur) * Math.min(1.0, dt * rate);
+  /* the capsule: actor -> first target of the last action, or the acting creature on its own */
+  const cur = inCombat ? currentActor(game) : null;
+  const holdCapsule = capsuleFrom && (_focusClock < capsuleUntil || busy);
+  const from = holdCapsule ? capsuleFrom : cur;
+  const to = holdCapsule ? capsuleTo : (cur ? resolveCombatTarget(game, cur) || cur : null);
+  const pA = getPosVector(from, _focusPosA);
+  const pB = getPosVector(to, _focusPosB) || pA;
+  if (pA) focusWorldA.lerp(pA, focusWorldA.lengthSq() < 0.001 ? 1 : Math.min(1.0, dt * 16.0));
+  if (pB) focusWorldB.lerp(pB, focusWorldB.lengthSq() < 0.001 ? 1 : Math.min(1.0, dt * 16.0));
 
   if (cam) {
     _projA.copy(focusWorldA).project(cam);
     focusScreenA.set(_projA.x * 0.5 + 0.5, _projA.y * 0.5 + 0.5);
-
     _projB.copy(focusWorldB).project(cam);
     focusScreenB.set(_projB.x * 0.5 + 0.5, _projB.y * 0.5 + 0.5);
+    focusCapsuleRadius = pA ? screenSpanOf(focusWorldA, FOCUS_CAPSULE_WORLD) : 0;
+
+    /* the explore band follows the party on screen, and fades as the camera pulls out */
+    const alive = (game && game.heroes || []).filter((h) => h && h.data && h.data.hp > 0);
+    if (alive.length) {
+      let sy = 0;
+      for (const h of alive) {
+        getPosVector(h, _focusPosA);
+        sy += _focusPosA.project(cam).y;
+      }
+      const y = (sy / alive.length) * 0.5 + 0.5;
+      exploreBandY += (y - exploreBandY) * Math.min(1, dt * 4);
+    }
+    exploreFade = Math.min(1, Math.max(0, (cam.zoom - 0.45) / 0.55));
   }
 }
 
+/* ── the focus mask: the focus set's bodies, drawn white on black ── */
+/* A creature joining the focus is sharp at once; one leaving LINGERS, then fades
+   out of focus. The hand-off is never a jump: whatever takes the focus is already
+   sharp before the old one softens (a turn passing used to swap them in a frame). */
+export const FOCUS_LINGER = 0.6;          // seconds still fully sharp after leaving the focus set
+export const FOCUS_FADE = 0.5;            // then softens over this long
+const focusLastWanted = new Map();        // entity -> _focusClock when it was last in the focus set
+
+/** Each body's focus weight this frame (1 = sharp): in the set now, or lingering / fading after. */
+export function focusWeights(wanted, now, last = focusLastWanted) {
+  for (const e of wanted) last.set(e, now);
+  const out = [];
+  for (const [e, t] of last) {
+    const age = now - t;
+    const w = age <= FOCUS_LINGER ? 1 : 1 - Math.min(1, (age - FOCUS_LINGER) / FOCUS_FADE);
+    if (w <= 0) { last.delete(e); continue; }
+    out.push({ e, w: w * w * (3 - 2 * w) });   // smoothstep: the fade eases out rather than ramping
+  }
+  return out;
+}
+const focusMaskScene = new THREE.Scene();
+const _maskProxies = [];
+function maskProxy(i) {
+  if (_maskProxies[i]) return _maskProxies[i];
+  const mat = new THREE.SpriteMaterial({ transparent: false, depthTest: false, depthWrite: false, alphaTest: 0.25 });
+  /* drawn at its focus weight: a lingering focus fades in the mask, not just in time */
+  mat.userData.w = { value: 1.0 };
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uFocusW = mat.userData.w;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('uniform float opacity;', 'uniform float opacity;\nuniform float uFocusW;')
+      .replace('outgoingLight = diffuseColor.rgb;', 'outgoingLight = vec3(uFocusW);');
+  };
+  mat.customProgramCacheKey = () => 'focusMaskSprite';
+  const s = new THREE.Sprite(mat);
+  s.matrixAutoUpdate = false;
+  s.frustumCulled = false;
+  focusMaskScene.add(s);
+  _maskProxies[i] = s;
+  return s;
+}
+const _visibleInWorld = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+
+/* ── the combat room: kept sharp as a whole ──
+   Zenu: focusing on just the acting creature didn't read well, so the whole
+   room the fight is in is drawn into the focus mask; only what lies outside it
+   blurs. The room is game.combatRoomId (the leader's room when the fight began)
+   plus a one-tile ring for its walls and doorways, and a disc round every live
+   combatant so a fight that spills into a corridor stays sharp where it is. With
+   no room at all (corridor, open overland) the discs are wider. Each cell is a
+   tall box, so creatures and walls standing in it are covered on screen too. */
+export const COMBAT_AREA_RING = 1;          // tiles of wall / doorway kept round the room
+export const COMBAT_AREA_DISC = 2;          // tiles round each combatant, with a room
+export const COMBAT_AREA_DISC_NO_ROOM = 5;  // ... and without one
+const COMBAT_AREA_MAX = 6000;
+const COMBAT_AREA_BOX_H = 3.2;
+
+/** Cells to keep sharp for a fight in room `rid` with combatants at `cells` (grid indices). */
+export function combatAreaCells(d, rid, combatantCells) {
+  if (!d || !d.W || !d.H) return [];
+  const W = d.W, H = d.H, set = new Set();
+  const addDisc = (c, r) => {
+    const cx = c % W, cy = (c / W) | 0;
+    for (let y = Math.max(0, cy - r); y <= Math.min(H - 1, cy + r); y++)
+      for (let x = Math.max(0, cx - r); x <= Math.min(W - 1, cx + r); x++)
+        if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r + r) set.add(y * W + x);
+  };
+  const hasRoom = rid != null && rid >= 0 && d.roomId;
+  if (hasRoom) {
+    for (let c = 0; c < W * H; c++) {
+      if (d.roomId[c] !== rid) continue;
+      const cx = c % W, cy = (c / W) | 0;
+      for (let y = Math.max(0, cy - COMBAT_AREA_RING); y <= Math.min(H - 1, cy + COMBAT_AREA_RING); y++)
+        for (let x = Math.max(0, cx - COMBAT_AREA_RING); x <= Math.min(W - 1, cx + COMBAT_AREA_RING); x++) set.add(y * W + x);
+    }
+  }
+  const r = hasRoom ? COMBAT_AREA_DISC : COMBAT_AREA_DISC_NO_ROOM;
+  for (const c of combatantCells || []) if (c >= 0) addDisc(c, r);
+  return [...set];
+}
+
+let _areaMesh = null, _areaKey = '';
+const _areaM = new THREE.Matrix4();
+function combatAreaMesh() {
+  if (_areaMesh) return _areaMesh;
+  const geo = new THREE.BoxGeometry(1.02, COMBAT_AREA_BOX_H, 1.02);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false, toneMapped: false });
+  _areaMesh = new THREE.InstancedMesh(geo, mat, COMBAT_AREA_MAX);
+  _areaMesh.frustumCulled = false;
+  _areaMesh.renderOrder = -1;
+  _areaMesh.count = 0;
+  _areaMesh.visible = false;
+  focusMaskScene.add(_areaMesh);
+  return _areaMesh;
+}
+
+/** Keep the combat area's boxes current. True while there is an area to keep sharp. */
+function updateCombatArea() {
+  const mesh = combatAreaMesh();
+  const inCombat = !!(game && game.initiative && game.initiative.active);
+  if (combatFocusCur <= 0.01 || !D) { mesh.visible = false; _areaKey = ''; return false; }
+  /* after the fight the last area stays while the combat look eases out */
+  if (!inCombat) return mesh.visible && mesh.count > 0;
+  const rid = game.combatRoomId;
+  const combatants = [];
+  for (const e of (game.initiative.order || [])) {
+    if (!e || !e.data || e.data.hp <= 0 || e.x == null) continue;
+    combatants.push(typeof game.cellOf === 'function' ? game.cellOf(e.x, e.z) : -1);
+  }
+  const key = `${D.W}x${D.H}|${rid}|${combatants.join(',')}`;
+  if (key !== _areaKey) {
+    _areaKey = key;
+    const cells = combatAreaCells(D, rid, combatants);
+    const n = Math.min(cells.length, COMBAT_AREA_MAX);
+    for (let i = 0; i < n; i++) {
+      const c = cells[i];
+      const x = (c % D.W) - D.W / 2 + 0.5, z = ((c / D.W) | 0) - D.H / 2 + 0.5;
+      const gy = typeof groundY === 'function' ? groundY(D, x, z) : 0;
+      _areaM.makeTranslation(x, gy + COMBAT_AREA_BOX_H / 2 - 0.2, z);
+      mesh.setMatrixAt(i, _areaM);
+    }
+    mesh.count = n;
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+  mesh.visible = mesh.count > 0;
+  return mesh.visible;
+}
+
+/** Draw the focus set's silhouettes into POST.rtFocus and soften them. Returns false when nothing is in focus. */
+function renderFocusMask() {
+  const bodies = [];
+  if (combatFocusCur > 0.01) {
+    for (const { e, w } of focusWeights(focusSet(), _focusClock)) {
+      const v = e.ent || e;
+      const mesh = v && v.anim && v.anim.mesh;
+      if (mesh && mesh.isSprite && mesh.material && mesh.material.map && _visibleInWorld(mesh)) bodies.push({ mesh, w });
+    }
+  } else {
+    focusLastWanted.clear();
+  }
+  /* full-strength bodies last, so an overlapping fading one never dims them */
+  bodies.sort((a, b) => a.w - b.w);
+  let i = 0;
+  for (const { mesh, w } of bodies) {
+    const p = maskProxy(i);
+    p.renderOrder = i++;
+    p.material.userData.w.value = w;
+    p.visible = true;
+    p.matrix.copy(mesh.matrixWorld);
+    p.matrixWorld.copy(mesh.matrixWorld);
+    p.center.copy(mesh.center);
+    p.material.map = mesh.material.map;
+    p.material.rotation = mesh.material.rotation || 0;
+  }
+  for (; i < _maskProxies.length; i++) _maskProxies[i].visible = false;
+  const area = updateCombatArea();
+  renderer.setClearColor(0x000000, 1);
+  renderer.setRenderTarget(POST.rtFocus);
+  renderer.clear();
+  if (!bodies.length && !area) return false;
+  renderer.render(focusMaskScene, cam);
+  /* two blur passes there and back: a soft halo round each body, so the edge of focus never shows */
+  POST.blur.uniforms.uRes.value.set(POST.w >> 2, POST.h >> 2);
+  for (let k = 0; k < 2; k++) {
+    POST.blur.uniforms.tS.value = POST.rtFocus.texture; POST.blur.uniforms.uDir.value.set(1, 0);
+    renderer.setRenderTarget(POST.rtFocusB); renderer.render(POST.sBlur, POST.qcam);
+    POST.blur.uniforms.tS.value = POST.rtFocusB.texture; POST.blur.uniforms.uDir.value.set(0, 1);
+    renderer.setRenderTarget(POST.rtFocus); renderer.render(POST.sBlur, POST.qcam);
+  }
+  return true;
+}
 
 export function renderFrame(dt = 0.016) {
   if (!renderer) return;
@@ -3979,14 +4433,26 @@ export function renderFrame(dt = 0.016) {
   renderer.setRenderTarget(POST.rtA); renderer.render(POST.sBlur, POST.qcam);
 
   updateCombatFocus(dt);
+  const masked = renderFocusMask();
   POST.fin.uniforms.tS.value = POST.rtScene.texture;
   POST.fin.uniforms.tB.value = POST.rtA.texture;
+  POST.fin.uniforms.tFocus.value = POST.rtFocus.texture;
+  POST.fin.uniforms.uMaskOn.value = masked ? 1.0 : 0.0;
   POST.fin.uniforms.uRes.value.set(POST.w, POST.h);
   POST.fin.uniforms.uTime.value = elapsed;
-  POST.fin.uniforms.uCombatFocus.value = combatFocusCur;
+  /* combat focus only while something is in it: with nobody focused it would blur the whole screen */
+  focusPresence += ((masked ? 1 : 0) - focusPresence) * Math.min(1, dt * 10);
+  POST.fin.uniforms.uCombatFocus.value = combatFocusCur * focusPresence;
   POST.fin.uniforms.uFocusA.value.copy(focusScreenA);
   POST.fin.uniforms.uFocusB.value.copy(focusScreenB);
-  POST.fin.uniforms.uFocusRadius.value = combatFocusRadius;
+  POST.fin.uniforms.uFocusRadius.value = focusCapsuleRadius;
+  POST.fin.uniforms.uBandY.value = exploreBandY;
+  POST.fin.uniforms.uExploreFade.value = exploreFade;
+  /* Manual combat: the player is reading the whole field to plan, so the blur eases out
+     entirely while it lasts (and back in when it ends or auto takes over). */
+  const manualFight = !!(game && game.controlMode === 'manual' && game.initiative && game.initiative.active);
+  manualSharp += ((manualFight ? 1 : 0) - manualSharp) * Math.min(1, dt * 6);
+  POST.fin.uniforms.uTilt.value = dofStrength * (1 - manualSharp);
 
   if (sunOffset && cam) {
     const _sunView = _p.copy(sunOffset).transformDirection(cam.matrixWorldInverse);
@@ -4025,6 +4491,11 @@ export function tick() {
   timer.update();
   const rawDt = Math.min(timer.getDelta(), 0.05);
   elapsed += rawDt;
+  /* an exploring look-around eases back to the director's low angle once the player lets go */
+  if (camMode === 'explore' && elapsed - _exploreOrbitAt > EXPLORE_PITCH_RETURN && explorePitch !== DEFAULT_EXPLORE_PITCH) {
+    explorePitch += (DEFAULT_EXPLORE_PITCH - explorePitch) * Math.min(1, rawDt * 0.9);
+    if (Math.abs(explorePitch - DEFAULT_EXPLORE_PITCH) < 0.002) explorePitch = DEFAULT_EXPLORE_PITCH;
+  }
 
   if (Math.abs(gameTimeScale - 1.0) > 0.001) {
     gameTimeScale += (1.0 - gameTimeScale) * Math.min(1, rawDt * 10);
@@ -4046,7 +4517,12 @@ export function tick() {
     game.update(gameDt, elapsed);
   }
   renderer.info.reset();
-  renderFrame(rawDt);
+  /* sim/real balance runs step the game faster than real time; nobody is
+     watching, so the frame is not drawn. Nor is it behind the loading
+     curtain: the first frame of a new floor compiled every shader
+     synchronously there and froze the curtain (preloadFloorAssets compiles
+     them asynchronously instead). Drawing resumes as the curtain leaves. */
+  if (!SIM.fast && !loadingCurtainCovers()) renderFrame(rawDt);
   tickPerfOverlay(rawDt, { renderer, scene, game });
   fpsFrames++; fpsTime += rawDt;
   if (fpsTime >= 0.5) {

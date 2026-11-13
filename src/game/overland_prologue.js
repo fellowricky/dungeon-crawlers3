@@ -22,6 +22,7 @@ import { mulberry32 } from './quests.js';
 import { maxCrForDungeonLevel } from './constants.js';
 import { THRESHOLD_THEME } from './threshold_themes.js';
 import { QUEST_OVERLAND_MAP } from '../dungeon/dungeon_generator.js';
+import { resolveOverlandEnvironment } from '../dungeon/overland_weather.js';
 
 /* Overland floors fight at half the dungeon's strength: the approach is the
    gentle ramp into a run, and natural wildlife runs out of believable CRs
@@ -129,6 +130,30 @@ export function autoProloguePlan(q, floor) {
        in their own floorPlans. */
     ...QUEST_OVERLAND_MAP
   };
+}
+
+/**
+ * Theme, time of day, and weather for the loading plate of this floor.
+ * Time and weather use the same seed the overland generator does, so the
+ * still and the weather layer match the map.
+ */
+export function loadingSurface(q, floor, seed, fallbackTheme = '') {
+  const plan = (q && Array.isArray(q.floorPlan))
+    ? q.floorPlan[(floor | 0) - 1]
+    : ((q && !q.skipPrologue) ? autoProloguePlan(q, floor) : null);
+  const mapKind = (plan && plan.mapKind) || (q && q.mapKind) || '';
+  const theme = (plan && plan.theme) || (q && q.theme) || fallbackTheme || '';
+  let timeOfDay = '';
+  let weather = '';
+  if (mapKind === 'overland' && theme) {
+    const env = resolveOverlandEnvironment(theme, seed >>> 0, {
+      ...(plan && plan.timeOfDay ? { timeOfDay: plan.timeOfDay } : {}),
+      ...(plan && plan.weather ? { weather: plan.weather } : {}),
+    });
+    timeOfDay = env.timeOfDay || '';
+    weather = env.weather || '';
+  }
+  return { plan, mapKind, theme, timeOfDay, weather };
 }
 
 /**

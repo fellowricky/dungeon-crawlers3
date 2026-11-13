@@ -111,13 +111,17 @@ function applyLoot(gold, potion, items, gearChest = false) {
   refreshMenus(_g);
   onChestLooted(_g);
 
+  /* Gold and the potion arrive on the feed; the gear is dealt as cards
+     (item_reveal.js), the same way a won fight's drops are. */
   if (typeof _g.notifyLootFeedback === 'function') {
-    _g.notifyLootFeedback({ gold, items, potion });
+    _g.notifyLootFeedback({ gold, potion });
   }
 
   log(`\u{1FA99} The party loots a chest: ${gold} gold.`, 'treasure');
   if (potion) log(`  \u{21B3} a ${potion === 'greater' ? 'Greater Healing' : 'Healing'} Potion.`, 'treasure');
   for (const it of items) log(`  \u{21B3} ${it.name}!`, 'treasure');
-  revealItems(items);   // rare-or-better finds get a card; the rest just flowed through the feed
-  if (gearChest) firstRunTip('equipGear');
+  const potName = potion === 'greater' ? 'a Greater Healing Potion' : potion === 'heal' ? 'a Healing Potion' : '';
+  /* the tutorial's equip card follows the reveal, rather than opening on top of it */
+  const onDone = gearChest ? () => firstRunTip('equipGear') : null;
+  revealItems(items, { title: 'Chest', sub: [`${gold} gold`, potName].filter(Boolean).join(' · '), onDone });
 }

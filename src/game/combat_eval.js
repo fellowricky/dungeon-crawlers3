@@ -15,7 +15,7 @@
  * Everything here is pure and headless-safe (no VFX/UI/THREE), so the balance
  * sim and unit tests can call it directly.
  */
-import { mod, cantripDice } from './srd.js';
+import { mod, cantripDice, weaponSwingCap, isSmallRace } from './srd.js';
 import { getEffectMods, hasEffect, saveModifier } from './conditions.js';
 import { hasFeature } from './features.js';
 
@@ -124,7 +124,7 @@ export function heroAttackEv(h, profile, foe, game) {
        modifier as the real roll (conditions.saveModifier). */
     const saveAb = profile.saveAbility || 'dex';
     const lvl = d.level || 1;
-    const dc = 8 + (2 + Math.floor((lvl - 1) / 4)) + mod(d.effStats?.[d._classAtk || profile.ability] ?? 10);
+    const dc = 8 + (2 + Math.floor((lvl - 1) / 4)) + mod(d.effStats?.[d._classAtk || profile.ability] ?? 10) + (d.spellDCBonus || 0);
     const saveMod = saveModifier(foe, saveAb);
     const pSave = Math.max(0.05, Math.min(0.95, (21 - (dc - saveMod)) / 20));
     /* the caster's advantage is the target's disadvantage, and back */
@@ -140,6 +140,7 @@ export function heroAttackEv(h, profile, foe, game) {
     let adv = 0;
     if (getEffectMods(foe).defAdvantage) adv += 1;
     if (getEffectMods(h).atkDisadvantage) adv -= 1;
+    if (profile.heavy && isSmallRace(d.raceKey)) adv -= 1;   // heavy weapon, Small wielder
     p = hitChance(atkBonus, foeAc, adv);
   }
   const dice = profile.dmg || [1, 6];
@@ -154,6 +155,7 @@ export function heroAttackEv(h, profile, foe, game) {
   if (isCantrip) swings = Math.max(1, profile.beams || 1);
   else if (hasFeature(d, 'extraAttack2')) swings = 3;
   else if (hasFeature(d, 'extraAttack')) swings = 2;
+  if (!isCantrip) swings = weaponSwingCap(d, profile, swings);
   /* damageModifier returns a TAG ('immune'|'resist'|'vuln'|null), not a
      multiplier — translate it. */
   let physMul = 1;
@@ -210,7 +212,11 @@ export function chooseHeroAttackProfile(h, foe, game) {
   let rp = d.aiPrefs && d.aiPrefs.rangedPref != null ? d.aiPrefs.rangedPref : null;
   if (rp == null) {
     const ms = d.aiPrefs && d.aiPrefs.movementStyle;
-    rp = ms === 'kite' ? 0.85 : (ms === 'hold' ? 0.2 : 0.5);
+    /* Kite / Hold Ground say it outright; otherwise a Combat Role the player
+       picked leans it: Artillery shoots, Tank and Striker get stuck in. */
+    const role = d.aiPrefs && d.aiPrefs.role;
+    rp = ms === 'kite' ? 0.85 : (ms === 'hold' ? 0.2
+      : role === 'artillery' ? 0.8 : (role === 'tank' || role === 'striker') ? 0.25 : 0.5);
   }
   const lean = Math.max(0, Math.min(1, rp)) - 0.5;          // -0.5 … +0.5
   const scoreCantrip = evCantrip * (1 + 0.6 * lean);

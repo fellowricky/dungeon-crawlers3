@@ -226,8 +226,8 @@ export const fogMethods = {
     if (floor) this._eachFloorInstance(c, (i) => this._sinkInstance(floor, i));
     const wi = this.wallInst[c];
     if (wi >= 0) {
-      if (wall) this._sinkInstance(wall, wi);
-      if (wallCap) this._sinkInstance(wallCap, wi);
+      if (wall && wi < wall.userData.set.n) this._sinkInstance(wall, wi);
+      if (wallCap && wi < wallCap.userData.set.n) this._sinkInstance(wallCap, wi);
     }
   },
 
@@ -236,8 +236,8 @@ export const fogMethods = {
     if (floor) this._eachFloorInstance(c, (i) => this._raiseInstance(floor, i));
     const wi = this.wallInst[c];
     if (wi >= 0) {
-      if (wall) this._raiseInstance(wall, wi);
-      if (wallCap) this._raiseInstance(wallCap, wi);
+      if (wall && wi < wall.userData.set.n) this._raiseInstance(wall, wi);
+      if (wallCap && wi < wallCap.userData.set.n) this._raiseInstance(wallCap, wi);
     }
   },
 
@@ -296,7 +296,7 @@ export const fogMethods = {
     }
     const wi = this.wallInst[c];
     if (wi >= 0) {
-      if (wall) {
+      if (wall && wi < wall.userData.set.n) {
         if (!wall.userData._cellBright || wall.userData._cellBright.length !== N) wall.userData._cellBright = new Float32Array(N).fill(-1);
         if (wall.userData._cellBright[c] !== multiplier) {
           wall.userData._cellBright[c] = multiplier;
@@ -304,7 +304,7 @@ export const fogMethods = {
           wall.instanceColor.needsUpdate = true;
         }
       }
-      if (wallCap) {
+      if (wallCap && wi < wallCap.userData.set.n) {
         if (!wallCap.userData._cellBright || wallCap.userData._cellBright.length !== N) wallCap.userData._cellBright = new Float32Array(N).fill(-1);
         if (wallCap.userData._cellBright[c] !== multiplier) {
           wallCap.userData._cellBright[c] = multiplier;
@@ -394,8 +394,8 @@ export const fogMethods = {
     }
     const wiN = this.wallInst[c];
     if (wiN >= 0) {
-      if (wall) { if (wall.userData._cellBright) wall.userData._cellBright[c] = 1.0; wall.setColorAt(wiN, _c.set(wall.userData.set.col[wiN])); wall.instanceColor.needsUpdate = true; }
-      if (wallCap) { if (wallCap.userData._cellBright) wallCap.userData._cellBright[c] = 1.0; wallCap.setColorAt(wiN, _c.set(wallCap.userData.set.col[wiN])); wallCap.instanceColor.needsUpdate = true; }
+      if (wall && wiN < wall.userData.set.n) { if (wall.userData._cellBright) wall.userData._cellBright[c] = 1.0; wall.setColorAt(wiN, _c.set(wall.userData.set.col[wiN])); wall.instanceColor.needsUpdate = true; }
+      if (wallCap && wiN < wallCap.userData.set.n) { if (wallCap.userData._cellBright) wallCap.userData._cellBright[c] = 1.0; wallCap.setColorAt(wiN, _c.set(wallCap.userData.set.col[wiN])); wallCap.instanceColor.needsUpdate = true; }
     }
   },
 

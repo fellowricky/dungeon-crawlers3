@@ -46,7 +46,7 @@ describe('Multi-Damage Type Floating Text Breakdown', () => {
     }
   };
 
-  it('displays just the number for single-type neutral damage with no modifiers', () => {
+  it('shows the number and its type for single-type neutral damage with no modifiers', () => {
     const game = createMockGame();
     const mon = createMonster();
 
@@ -58,7 +58,7 @@ describe('Multi-Damage Type Floating Text Breakdown', () => {
     expect(res.dmg).toBe(8);
     expect(res.modLabel).toBeNull();
     expect(game.fxText).toHaveBeenCalledTimes(1);
-    expect(game.fxText).toHaveBeenCalledWith('8', expect.anything(), '#ff8a5a', false);
+    expect(game.fxText).toHaveBeenCalledWith('8 🗡️', expect.anything(), '#ff8a5a', false);
   });
 
   it('displays single-type vulnerable damage with green badge icon', () => {

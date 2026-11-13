@@ -116,10 +116,34 @@ export function equippedRunes(hero){
   return out;
 }
 
+/* Rune slots come from the rarity the piece had BEFORE its first rune: grey and
+   green gear take one, blue and purple two, and Fabled (legendary) gear none.
+   Inscribing still promotes the rarity (RUNE_PROMOTE), so the original rarity
+   is stamped on the item as `runeBaseRarity` at the first inscription. */
+export const RUNE_SLOTS = { common: 1, uncommon: 1, rare: 2, epic: 2, legendary: 0 };
+const RUNE_DEMOTE = { uncommon: 'common', rare: 'uncommon', epic: 'rare' };
+
+/** The rarity a piece had before any rune promoted it. Older saves have no
+ *  stamp, so it is worked back from the promotions their runes caused. */
+export function runeBaseRarity(item){
+  if (!item) return 'common';
+  if (item.runeBaseRarity) return item.runeBaseRarity;
+  let r = item.rarity || 'common';
+  if (r === 'legendary') return r;
+  for (let n = itemRunes(item).length; n > 0 && RUNE_DEMOTE[r]; n--) r = RUNE_DEMOTE[r];
+  return r;
+}
+
+/** How many runes this piece can hold in total. */
+export function runeSlotsFor(item){
+  if (!item || isRune(item) || item.slot === 'dye') return 0;
+  const n = RUNE_SLOTS[runeBaseRarity(item)];
+  return n != null ? n : 1;
+}
+
 export function canInscribeRune(item){
   if (!item || isRune(item) || item.slot === 'dye') return false;
-  const r = item.rarity || 'common';
-  return !!RUNE_PROMOTE[r];
+  return itemRunes(item).length < runeSlotsFor(item);
 }
 
 export function promoteItemRarity(item){
@@ -242,6 +266,11 @@ export function itemCategory(it){
      them beside amulets and rings left the accessory tab full of things the
      PS sort and filter could say nothing about. They get their own tab. */
   if(isConsumable(it)) return 'consumable';
+  /* Torches burn down and get restocked, so the bag files them with the
+     consumables. This is display only: isConsumable() stays false, so the
+     hero AI never treats a light as something to drink or read. The lantern
+     is permanent gear and stays under accessories. */
+  if(it.lightSource === 'torch') return 'consumable';
   if(isRune(it)) return 'other';
   switch(it.slot){
     case 'weapon': return 'weapon';
@@ -286,7 +315,7 @@ import { LIGHT_SOURCES, TORCH_STACK_START, TORCH_BURN_SEC } from './light_source
 import {
   getTuning, bonusesCost, baseCost, itemBudget, affixBudget, baseAffordable,
   rarityWeight, rarityHasPerk, affixSlotsFor, sourceIlvl, bonusLabel, slotLevelOf,
-  baseChassisCost,
+  baseChassisCost, PCT_KEYS,
 } from './budget.js';
 
 /* Re-exported so callers (and the loot editor) reach the pricing engine through
@@ -355,6 +384,20 @@ const BASE_SLOTS = Object.keys(BASES);
    here and rolled via a low-probability branch instead (see KIT_DROP_RATE),
    so random drops still favor combat gear. */
 const BASE_SLOTS_NONKIT = BASE_SLOTS.filter(s => s !== 'kit');
+/* The WORN-gear slots for the random slot pick. Trinkets are excluded too:
+   they have their own TRINKET_DROP_RATE branch, and leaving them in this pick
+   as well gave them a second chance (~19% of drops instead of ~10%). */
+const GEAR_DROP_SLOTS = BASE_SLOTS_NONKIT.filter(s => s !== 'trinket');
+
+/** Random gear slot, weighted by loot_budget.json `slotDropWeight`. */
+function pickDropSlot(rng){
+  const W = getTuning().slotDropWeight || {};
+  const w = GEAR_DROP_SLOTS.map(s => Math.max(0, W[s] ?? 1));
+  const total = w.reduce((a, b) => a + b, 0);
+  let r = rng() * total;
+  for(let i = 0; i < w.length; i++){ r -= w[i]; if(r < 0) return GEAR_DROP_SLOTS[i]; }
+  return GEAR_DROP_SLOTS[GEAR_DROP_SLOTS.length - 1];
+}
 /* Share of random loot that rolls an adventuring-gear kit (~5-10% target). */
 const KIT_DROP_RATE = 0.07;
 /* Share of random loot that rolls a trinket (scrolls/potions). Kept a small
@@ -709,8 +752,30 @@ function affixMaxSteps(aff, ilvl){
  * whitelist only ever subtracts — the affix's own `slots` / `minIlvl` rules
  * still apply on top.
  */
-export function affixEligible(aff, slot, ilvl, base = null){
+/**
+ * The FIXED rules on where an affix may ever roll — its own `slots` list plus
+ * the per-base rules below. Unlike `affixAllow` these are not a per-base choice,
+ * so the loot editor reads this same function to grey out boxes that could
+ * never roll; keep every hard rule here so the two can't disagree.
+ */
+/* Affix keys that, on a WEAPON, only a spellcasting focus may carry. */
+const FOCUS_ONLY_WEAPON_AFFIX = k => k.startsWith('save') || k === 'spellDC' || k === 'concentration';
+
+export function affixSlotRule(aff, slot, base = null){
   if(aff.slots && !aff.slots.includes(slot)) return false;
+  if(slot === 'weapon'){
+    /* Saving-throw wards and spellcraft (Spell DC, Focus) are a caster's
+       thing: on a weapon they belong only to a spellcasting focus (staves and
+       wands). A sword "of Resolve" reads wrong. */
+    if(FOCUS_ONLY_WEAPON_AFFIX(aff.key) && !(base && base.focus)) return false;
+    /* Farshot lengthens a shot, so it needs a weapon that shoots. */
+    if(aff.key === 'range' && !(base && base.melee === false)) return false;
+  }
+  return true;
+}
+
+export function affixEligible(aff, slot, ilvl, base = null){
+  if(!affixSlotRule(aff, slot, base)) return false;
   if(aff.minIlvl != null && ilvl < aff.minIlvl) return false;
   const allow = base && base.affixAllow;
   if(Array.isArray(allow) && !allow.includes(aff.key)) return false;
@@ -727,20 +792,76 @@ export function affixEligible(aff, slot, ilvl, base = null){
  * second tops existing lines up with whatever is left, so budgets are actually
  * consumed instead of quietly evaporating.
  */
+/**
+ * The party's live Magic Find and Gold Find, in percent: the sum over every
+ * living hero's gear (recalc caches `magicFind` / `goldFind` on the hero),
+ * capped by loot_budget.json `find`. Read at the moment loot drops, so it
+ * always reflects what is equipped right now. Combat loot only — see `find._note`.
+ */
+export function partyLootFind(heroes){
+  const F = getTuning().find || {};
+  let mf = 0, gf = 0;
+  for(const h of heroes || []){
+    const d = h && (h.data || h);
+    if(!d || d.hp <= 0) continue;
+    mf += d.magicFind || 0;
+    gf += d.goldFind || 0;
+  }
+  return {
+    magicFind: Math.min(mf, F.magicFindCap ?? 100),
+    goldFind: Math.min(gf, F.goldFindCap ?? 150),
+  };
+}
+/** Gold after the party's Gold Find. */
+export function applyGoldFind(gold, heroes){
+  if(!(gold > 0)) return 0;   // missing/undefined gold on a monster is 0, never NaN
+  return Math.round(gold * (1 + partyLootFind(heroes).goldFind / 100));
+}
+/** Rarity `luck` multiplier after the party's Magic Find. */
+export function magicFindLuck(heroes, luck = 1){
+  return luck * (1 + partyLootFind(heroes).magicFind / 100);
+}
+
+/** Pick from an affix pool where a family counts as ONE entry. */
+function pickFamilyAware(pool, rng){
+  const units = [];
+  const fams = new Map();
+  for(const a of pool){
+    if(!a.family){ units.push([a]); continue; }
+    if(!fams.has(a.family)){ const g = []; fams.set(a.family, g); units.push(g); }
+    fams.get(a.family).push(a);
+  }
+  return pick(pick(units, rng), rng);
+}
+
 function rollAffixes(slot, ilvl, rarity, base, rng){
   const { minAffixBudget } = getTuning().basePricing;
   let remaining = affixBudget(slot, ilvl, rarity, base);
   const maxLines = affixSlotsFor(rarity, ilvl);
   const used = new Set(Object.keys(base?.prim || {}));
+  /* Affix FAMILIES (Bane, Warding, Steadfast) are one choice in the roll, not
+     one per member: the family is picked like any single affix, then its type
+     at random. Without this, fourteen bane types would crowd out everything
+     else. One member per family per item. */
+  const usedFamilies = new Set();
   const out = [];
 
+  /* A weapon carries at most ONE elemental damage type: a blade that burns
+     and freezes at once reads as a bug, not a reward. Once any elem* line is
+     on it (from the base's prim or a roll), the other elements drop out. */
+  const oneElement = slot === 'weapon';
+  const hasElem = () => [...used].some(k => k.startsWith('elem'));
+
   const eligible = () => AFFIXES.filter(a =>
-    !used.has(a.key) && affixEligible(a, slot, ilvl, base) && affixStepCost(a) <= remaining);
+    !used.has(a.key) && !(a.family && usedFamilies.has(a.family))
+    && affixEligible(a, slot, ilvl, base) && affixStepCost(a) <= remaining
+    && !(oneElement && a.key.startsWith('elem') && hasElem()));
 
   while(out.length < maxLines && remaining >= minAffixBudget){
     const pool = eligible();
     if(!pool.length) break;
-    const aff = pick(pool, rng);
+    const aff = pickFamilyAware(pool, rng);
+    if(aff.family) usedFamilies.add(aff.family);
     const step = affixStepCost(aff);
     /* Leave room for the lines still to come, so the first pick can't eat
        everything and leave a "rare" with a single affix. */
@@ -831,7 +952,7 @@ export function rollItem(tier, rng=Math.random, forceSlot=null, opts={}){
   // drops split evenly across combat gear.
   const slot = forceSlot || (rng() < KIT_DROP_RATE ? 'kit'
     : rng() < TRINKET_DROP_RATE ? 'trinket'
-    : pick(BASE_SLOTS_NONKIT, rng));
+    : pickDropSlot(rng));
   /* Driftglobe (docs/LIGHT_IDEAS.md 25): a rare find — a sixth or so of the
      random kit drops past the shallow floors. */
   if (!forceSlot && slot === 'kit' && ilvl >= 3 && rng() < 0.15) return makeLightSourceItem('driftglobe');
@@ -1020,7 +1141,7 @@ export function rollPerk(slot, theme=null, rng=Math.random){
  */
 export function rollLegendary(ilvl, rng=Math.random, opts={}){
   // Legendaries are combat perks — never roll a kit or trinket slot.
-  const slot = opts.forceSlot || pick(BASE_SLOTS_NONKIT.filter(s => s !== 'trinket'), rng);
+  const slot = opts.forceSlot || pick(GEAR_DROP_SLOTS, rng);
   const lvl = Math.max(0, ilvl|0);
   const base = pickAffordableBase(slot, lvl, 'legendary', rng);
   const affixes = rollAffixes(slot, lvl, 'legendary', base, rng);
@@ -1232,6 +1353,7 @@ export function bonusText(item, heroLevel=null){
     const v = bonuses[k];
     if(!v) return;
     if(k === 'speed') parts.push(`+${Math.round(v*100)}% Speed`);
+    else if(PCT_KEYS.includes(k)) parts.push(`+${v}% ${bonusLabel(k)}`);
     else if(k === 'crit') parts.push(`+${v} Crit range`);
     else if(k === 'move') parts.push(`+${v} ft Move`);
     else if(slotLevelOf(k)) parts.push(`+${v} ${bonusLabel(k)}`);
@@ -1264,6 +1386,19 @@ export function bonusText(item, heroLevel=null){
   return parts.join(' — ');
 }
 
+/* Thrown-weapon flight (entities.js spawnThrownWeapon). */
+/** How a thrown weapon flies, from its visual family. `throwFx` on the base
+ *  (spin, arc, iconAngle) overrides any of it. iconAngle is the direction the
+ *  icon's tip points as drawn — DCSS weapon icons are diagonal, tip up-right. */
+export function thrownStyleFor(item) {
+  const vw = (item && item.visualWeapon) || '';
+  const point = vw.startsWith('polearm/');
+  const style = point
+    ? { spin: false, arc: 0.20, iconAngle: Math.PI / 4 }
+    : { spin: true, arc: 0.11, iconAngle: Math.PI / 4 };
+  return { ...style, ...((item && item.throwFx) || {}) };
+}
+
 /** The 5e weapon property tags on an item, as a plain list.
     Split out of bonusText so tooltips can lay the properties out on their own
     line instead of running them into the damage die. */
@@ -1276,8 +1411,13 @@ export function weaponTags(item){
   if(item.twoHanded) tags.push('two-handed');
   if(item.heavy) tags.push('heavy');
   if(item.reach) tags.push('reach');
-  if(item.versatile) tags.push('versatile');
-  if(item.loading) tags.push('loading');
+  /* versatile/loading carry their rule in the tag: the property is only worth
+     anything if the player can see what it does. */
+  if(item.versatile){
+    tags.push(item.dmg && !item.twoHanded
+      ? `versatile (${item.dmg[0]}d${Math.min(12, item.dmg[1] + 2)} two-handed)` : 'versatile');
+  }
+  if(item.loading) tags.push('loading (1 shot/turn)');
   if(item.focus) tags.push('focus');
   return tags;
 }
@@ -1293,7 +1433,7 @@ export function itemReqText(item){
   if(item.slot === 'armor' || item.slot === 'helm'){
     const p = item.prof || 'none';
     const kind = item.slot === 'helm' ? 'helm' : 'armor';
-    if(p === 'none') return item.slot === 'helm' ? 'Cloth helm' : 'Clothing';
+    if(p === 'none') return 'Clothing';   // wearable by every class
     return `${p.charAt(0).toUpperCase()}${p.slice(1)} ${kind}`;
   }
   if(item.slot === 'kit') return 'Kit';
@@ -1477,6 +1617,13 @@ export function migrateItem(it){
     const b = getBase(it.slot, it.baseKey || it.name || '');
     if (b && b.visualNeck) it.visualNeck = b.visualNeck;
   }
+  /* The paper-doll weapon sheet only ever comes from the base, so re-sync it
+     on every load: a base moved to better art (Hand Axe: waraxe -> hatchet)
+     carries the axes already in bags and on heroes along with it. */
+  if (it.slot === 'weapon' && it.visualWeapon) {
+    const b = getBase(it.slot, it.baseKey || it.name || '');
+    if (b && b.visualWeapon && it.visualWeapon !== b.visualWeapon) it.visualWeapon = b.visualWeapon;
+  }
   if(it._migrated) return it;
 
   if(!it.baseKey){
@@ -1512,7 +1659,9 @@ export function migrateItem(it){
       /* Helms predating the light/medium/heavy tags carry no `prof`, which
          canEquip reads as 'none' — i.e. wearable by anyone. Backfill it or a
          save from before the gate keeps a great helm on a wizard. */
-      if (it.prof === undefined && base.prof) it.prof = base.prof;
+      /* Proficiency is a property of the BASE, never rolled — so follow the
+         base even on old saves (hats that were once tagged light armor). */
+      if (base.prof && it.prof !== base.prof) it.prof = base.prof;
       /* weapon-derived attack profile fields (5e): dice, melee/ranged, damage type, focus */
       if (it.slot === 'weapon') {
         if (it.dmg === undefined && base.dmg) it.dmg = base.dmg.slice();

@@ -5,9 +5,10 @@
  */
 
 import { grantXp, XP_TABLE, recalc } from './srd.js';
+import { grantTempHp } from './temp_hp.js';
 import { rollItem, itemPoints, addToInventory, takeFromInventory, BASES, weaponKindOf,
          isBrewablePotion, makeConsumableFromBase, makeRuneItem, isRune, runeFitsItem,
-         canInscribeRune, promoteItemRarity, itemRunes, isSalvageable } from './items.js';
+         canInscribeRune, promoteItemRarity, itemRunes, isSalvageable, runeSlotsFor, runeBaseRarity } from './items.js';
 
 /* Forge categories that are really the weapon slot narrowed to a kind, so a
    ranger who sold their only bow can always make another one. */
@@ -958,7 +959,10 @@ export class GuildManager {
     if (!this.isUnlocked('enchanter')) return { ok: false, reason: 'Enchanter is locked.' };
     if (!item) return { ok: false, reason: 'No item selected.' };
     if (!canInscribeRune(item)) {
-      return { ok: false, reason: 'That piece cannot take another rune (Ancient or Fabled).' };
+      const slots = runeSlotsFor(item);
+      return { ok: false, reason: slots === 0
+        ? 'Fabled gear cannot be enchanted.'
+        : `That piece already holds its ${slots === 1 ? 'one rune' : `${slots} runes`}.` };
     }
     const inv = this.game.inventory || [];
     let runeItem = null;
@@ -990,6 +994,7 @@ export class GuildManager {
       effect: spent.effect || this.runeEffect(spent.runeKey)
     };
     const existing = itemRunes(item);
+    if (!item.runeBaseRarity) item.runeBaseRarity = runeBaseRarity(item);   // slots follow the pre-rune rarity
     item.inscribedRunes = existing.concat([entry]);
     delete item.inscribedRune;
     promoteItemRarity(item);
@@ -1341,7 +1346,7 @@ export class GuildManager {
       h.drillBuff.active = true;
       h.drillBuff.ready = false;
       if (h.drillBuff.tempHp) {
-        h.tempHp = Math.max(h.tempHp || 0, h.drillBuff.tempHp);
+        grantTempHp(h, 'drill', h.drillBuff.tempHp);
       }
       if (h.classKey && typeof recalc === 'function') recalc(h);
     }

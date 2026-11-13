@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { showLoadingScreen, hideLoadingScreen, updateLoadingProgress, advanceLoadingMarch, loadingMarch, MIN_LOADING_TIME_MS, MARCH_FULL_MS } from '../src/ui/loading_screen.js';
+import { showLoadingScreen, hideLoadingScreen, updateLoadingProgress, advanceLoadingMarch, loadingMarch, loadingPlateUrl, marcherLayout, revealLoadingMap, scheduleAfterPaint, MIN_LOADING_TIME_MS, MARCH_FULL_MS } from '../src/ui/loading_screen.js';
 
 describe('Dungeon Loading Screen Overlay', () => {
   let elementRegistry = new Map();
@@ -23,6 +23,13 @@ describe('Dungeon Loading Screen Overlay', () => {
       appendChild(child) {
         this.children.push(child);
         if (child.id) elementRegistry.set(child.id, child);
+      },
+      addEventListener(type, fn) {
+        (this._listeners || (this._listeners = {}))[type] = fn;
+      },
+      dispatchEvent(type) {
+        const fn = this._listeners && this._listeners[type];
+        if (fn) fn();
       }
     };
     if (id) elementRegistry.set(id, el);
@@ -54,6 +61,8 @@ describe('Dungeon Loading Screen Overlay', () => {
     const subtitle = global.document.getElementById('dungeon-loading-subtitle');
     expect(title.textContent).toBe('THE SHATTERED KEEP');
     expect(subtitle.textContent).toBe('Floor 1 of 3');
+    expect(overlay.attributes['data-theme']).toBe('');
+    expect(overlay.style.backgroundImage).toBe('');
   });
 
   it('Default MIN_LOADING_TIME_MS is 1400ms', () => {
@@ -125,5 +134,198 @@ describe('Dungeon Loading Screen Overlay', () => {
 
     // Screen begins fade / hides
     expect(overlay.classList.contains('fade-out') || overlay.classList.contains('hidden')).toBe(true);
+  });
+
+  it('Maps each playable floor to a still plate', () => {
+    expect(loadingPlateUrl('ancient')).toBe('./art/loading/ancient.webp');
+    expect(loadingPlateUrl('verdant')).toBe('./art/loading/verdant.webp');
+    expect(loadingPlateUrl('frost')).toBe('./art/loading/frost.webp');
+    expect(loadingPlateUrl('grim')).toBe('./art/loading/grim.webp');
+    expect(loadingPlateUrl('molten')).toBe('./art/loading/molten.webp');
+    expect(loadingPlateUrl('forest', 'night')).toBe('./art/loading/forest_night.webp');
+    expect(loadingPlateUrl('holdfast', 'dusk')).toBe('./art/loading/holdfast_dusk.webp');
+    expect(loadingPlateUrl('ashfield')).toBe('./art/loading/ashfield_day.webp');
+    expect(loadingPlateUrl('sporewood', 'day')).toBe('./art/loading/sporewood_day.webp');
+    expect(loadingPlateUrl('sea')).toBe('');
+    expect(loadingPlateUrl('')).toBe('');
+  });
+
+  it('Keeps oversize weapon sheets at the same body size', () => {
+    expect(marcherLayout(64)).toEqual({ width: 112, height: 112, drop: 0 });
+    expect(marcherLayout(128)).toEqual({ width: 224, height: 224, drop: 56 });
+    expect(marcherLayout(192, 1, 1)).toEqual({ width: 336, height: 336, drop: 112 });
+    /* A shorter race still stands on the line; only the body shrinks. */
+    expect(marcherLayout(64, 1.15, 0.85)).toEqual({ width: 129, height: 95, drop: 0 });
+  });
+
+  it('Paints the plate for the floor theme', () => {
+    showLoadingScreen({ title: 'ASH WASTE', theme: 'ashfield', timeOfDay: 'dusk' });
+    const overlay = global.document.getElementById('dungeon-loading-overlay');
+    expect(overlay.attributes['data-theme']).toBe('ashfield');
+    expect(overlay.attributes['data-time']).toBe('dusk');
+    expect(overlay.style.backgroundImage).toBe('url("./art/loading/ashfield_dusk.webp")');
+  });
+
+  it('Plays a loop over the still and drops it when the file fails', async () => {
+    showLoadingScreen({ title: 'WOODS', theme: 'forest', timeOfDay: 'night' });
+    const overlay = global.document.getElementById('dungeon-loading-overlay');
+    const video = global.document.getElementById('dungeon-loading-plate');
+    expect(video).not.toBeNull();
+    expect(video.muted).toBe(true);
+    expect(video.loop).toBe(true);
+    /* The still is requested first. The loop waits a turn so it cannot
+       cut in front of the picture. */
+    expect(video.attributes.src || '').toBe('');
+    expect(overlay.style.backgroundImage).toBe('url("./art/loading/forest_night.webp")');
+    await Promise.resolve();
+    expect(video.attributes.src).toBe('./art/loading/forest_night.mp4');
+    expect(video.style.display).toBe('none');
+    video.dispatchEvent('loadeddata');
+    expect(video.style.display).not.toBe('none');
+
+    let plays = 0;
+    video.play = () => {
+      plays += 1;
+      return { catch() {} };
+    };
+    showLoadingScreen({ title: 'WOODS', theme: 'forest', timeOfDay: 'night' });
+    await Promise.resolve();
+    expect(video.attributes.src).toBe('./art/loading/forest_night.mp4');
+    expect(plays).toBe(1);
+
+    showLoadingScreen({ title: 'HEATH', theme: 'moor', timeOfDay: 'dusk' });
+    await Promise.resolve();
+    expect(video.attributes.src).toBe('./art/loading/moor_dusk.mp4');
+    expect(plays).toBe(2);
+
+    video.dispatchEvent('error');
+    expect(video.attributes.src).toBe('');
+    expect(video.style.display).toBe('none');
+    expect(overlay.style.backgroundImage).toBe('url("./art/loading/moor_dusk.webp")');
+
+    showLoadingScreen({ title: 'OPEN SEA', theme: 'sea' });
+    expect(overlay.style.backgroundImage).toBe('');
+    expect(video.style.display).toBe('none');
+    expect(video.attributes.src).toBe('');
+  });
+
+  it('Holds the rest of the load until the still has decoded', async () => {
+    const imgs = [];
+    function FakeImage() { imgs.push(this); }
+    FakeImage.prototype.setAttribute = function () {};
+    Object.defineProperty(FakeImage.prototype, 'src', { set() {} });
+    global.Image = FakeImage;
+    const prevRaf = global.requestAnimationFrame;
+    global.requestAnimationFrame = undefined;
+    try {
+      let ran = false;
+      showLoadingScreen({ title: 'HEATH', theme: 'moor', timeOfDay: 'day' });
+      scheduleAfterPaint(() => { ran = true; });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(ran).toBe(false);
+      expect(imgs).toHaveLength(1);
+      imgs[0].onload();
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      expect(ran).toBe(true);
+    } finally {
+      delete global.Image;
+      global.requestAnimationFrame = prevRaf;
+    }
+  });
+
+  it('Puts the next map and the floor progress on the title card', () => {
+    showLoadingScreen({
+      title: 'THE MISSING HERD',
+      subtitle: 'Preparing encounters...',
+      map: 'Longbarrow Moor — The Drove-road',
+      mapLock: true,
+      floor: 2,
+      floors: 5
+    });
+
+    const map = global.document.getElementById('dungeon-loading-map');
+    const floor = global.document.getElementById('dungeon-loading-floor');
+    const pips = global.document.getElementById('dungeon-loading-pips');
+    const title = global.document.getElementById('dungeon-loading-title');
+    expect(map.textContent).toBe('Longbarrow Moor — The Drove-road');
+    expect(floor.textContent).toBe('Floor 2 of 5');
+    expect(pips.children.map(p => p.className)).toEqual([
+      'dungeon-loading-pip is-done',
+      'dungeon-loading-pip is-now',
+      'dungeon-loading-pip',
+      'dungeon-loading-pip',
+      'dungeon-loading-pip'
+    ]);
+    expect(title.classList.contains('is-echo')).toBe(false);
+
+    revealLoadingMap('The Silent Halls of Mal’goth');
+    expect(map.textContent).toBe('Longbarrow Moor — The Drove-road');
+
+    showLoadingScreen({
+      title: 'A RANDOM DELVE',
+      map: 'Greyfell',
+      floor: 3,
+      floors: 4
+    });
+    expect(map.textContent).toBe('Greyfell');
+    expect(floor.textContent).toBe('Floor 3 of 4');
+    revealLoadingMap('The Silent Halls of Mal’goth');
+    expect(map.textContent).toBe('The Silent Halls of Mal’goth');
+    expect(floor.textContent).toBe('Floor 3 of 4');
+  });
+
+  it('Keeps the walk cycle on a CSS clock, apart from the slide', async () => {
+    const orig = global.document.createElement;
+    global.document.createElement = (tag) => {
+      const el = orig(tag);
+      el.getContext = () => {
+        if (!el._ctx) {
+          el._ctx = {
+            imageSmoothingEnabled: true,
+            drawImage(...args) { (el._draws || (el._draws = [])).push(args); }
+          };
+        }
+        return el._ctx;
+      };
+      return el;
+    };
+
+    const hero = {
+      data: { hp: 12 },
+      ent: { anim: { textures: { walk: { image: { width: 576, height: 256 }, _cell: 64 } } } }
+    };
+    const second = {
+      data: { hp: 12 },
+      ent: { anim: { textures: { walk: { image: { width: 576, height: 256 }, _cell: 64 } } } }
+    };
+    showLoadingScreen({ title: 'WOODS', party: [hero, second] });
+
+    const party = global.document.getElementById('dungeon-loading-party');
+    const frames = party.children;
+    expect(frames).toHaveLength(2);
+    const strip = frames[0].children[0];
+    const other = frames[1].children[0];
+    expect(strip.className).toBe('dungeon-loading-strip');
+    expect(strip.style.animationName).toBe('dungeon-loading-walk');
+    expect(strip.style.animationDuration).toBe('1s');
+    expect(strip.style.animationTimingFunction).toBe('steps(8, end)');
+    expect(strip.style.animationIterationCount).toBe('infinite');
+    expect(strip.style.animationDelay).toBe('0s');
+    expect(other.style.animationDelay).toBe('-0.13s');
+
+    await Promise.resolve();
+
+    const canvas = strip.children[0];
+    expect(canvas._draws).toHaveLength(8);
+    expect(canvas._draws[0].slice(1, 5)).toEqual([64, 192, 64, 64]);
+    expect(canvas._draws[7].slice(1, 5)).toEqual([512, 192, 64, 64]);
+    expect(canvas._draws[0].slice(5)).toEqual([0, 0, 64, 64]);
+    expect(canvas._draws[7].slice(5)).toEqual([448, 0, 64, 64]);
+    expect(frames[0].style.width).toBe('112px');
+    expect(strip.style.width).toBe('896px');
+
+    advanceLoadingMarch(0.05);
+    expect(canvas._draws).toHaveLength(8);
   });
 });

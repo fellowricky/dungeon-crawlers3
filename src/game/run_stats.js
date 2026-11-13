@@ -47,7 +47,7 @@ export function initRunStats(game, quest) {
  *  deliberately NOT camp-shop sale income). No-op outside a quest run. */
 export function trackGold(game, n) {
   if (!game.runStats || !n) return;
-  game.runStats.goldEarned += n;
+  game.runStats.goldEarned += Number.isFinite(n) ? n : 0;
 }
 
 /** An item entering the party's bag from the dungeon (drops, hoards, chests,

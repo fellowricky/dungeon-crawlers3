@@ -18,8 +18,14 @@ import SAVED_OVERRIDES from './game/theme_overrides.json' with { type: 'json' };
 import {
   renderer, cam, camTarget, updateCam, buildScene, renderFrame, liveUpdate,
   finishAnim, applyThemeEnv, applyTorchSettings, lights, registerProp, registeredProps,
-  DEFAULT_CAM_ZOOM, MIN_CAM_ZOOM, MAX_CAM_ZOOM, setSunAngle
+  DEFAULT_CAM_ZOOM, MIN_CAM_ZOOM, MAX_CAM_ZOOM, setSunAngle, scene
 } from './render/dungeon_scene.js';
+import { buildSolidProps } from './game/pathfinding.js';
+import {
+  spawnAmbientCritters, clearAmbientCritters, tickAmbientCritters,
+  ambientCritterCounts, crittersFor
+} from './render/ambient_critters.js';
+import { updateLivePixelFx } from './render/pixelfx_live.js';
 import SAVED_CUSTOM_PROPS from './game/custom_props.json' with { type: 'json' };
 import { setLightDebug, lightDebugOn, tickLightDebug, lightDebugSummary, applyThemeLightLevels, DARK_CUE_DEFAULT } from './render/sprite_lighting.js';
 import { LIGHT_LEVEL_DEFAULTS } from './game/light_sources.js';
@@ -94,13 +100,85 @@ function setPath(obj, pathStr, value) {
 
 let lastD = null;
 let rebuildTimer = 0;
+let critterTimer = 0;
 function scheduleRebuild(delay = 140) {
   clearTimeout(rebuildTimer);
   rebuildTimer = setTimeout(forge, delay);
 }
 
+/** Respawn critters on the forge already on screen. */
+function scheduleCritters(delay = 80) {
+  clearTimeout(critterTimer);
+  critterTimer = setTimeout(placeCritters, delay);
+}
+
+/** Resolved critter row for the theme on screen. Theme overrides win over the moor defaults. */
+function critterCfg() {
+  return crittersFor(state.themeKey, TH().critters);
+}
+
+function critterCountLine() {
+  const c = ambientCritterCounts();
+  const bit = (n, word, plural) => `${n} ${n === 1 ? word : (plural || word + 's')}`;
+  return `${bit(c.frogs, 'frog')} · ${bit(c.snakes, 'snake')} · ${bit(c.dragonflies, 'dragonfly', 'dragonflies')} · ${bit(c.butterflies, 'butterfly', 'butterflies')} · ${bit(c.birds, 'bird')} · ${bit(c.bats, 'bat')} · ${bit(c.skinks, 'skink')} · ${bit(c.squirrels, 'squirrel')} on this map`;
+}
+
+function refreshCritterCount() {
+  const node = document.getElementById('critter-count');
+  if (node) node.textContent = critterCountLine();
+}
+
+const COUNT_KINDS = new Set(['snake', 'dragonfly', 'butterfly', 'bird', 'bat', 'skink', 'squirrel']);
+
+/**
+ * Write one critter field onto the theme and into the save patch. Raising a
+ * count minimum past the maximum pulls the maximum up with it, and the other
+ * way around, so the pair that gets saved is the pair that will spawn.
+ */
+function storeCritter(kind, field, value) {
+  const cur = critterCfg();
+  if (field === 'enabled') value = !!value;
+  else if (field === 'chance') {
+    const n = Number(value);
+    value = Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : cur.frog.chance;
+  } else {
+    const n = Math.round(Number(value));
+    const fallback = cur[kind] && cur[kind][field] != null ? cur[kind][field] : 0;
+    value = Number.isFinite(n) ? Math.min(24, Math.max(0, n)) : fallback;
+  }
+  const next = { ...cur[kind], [field]: value };
+  if (COUNT_KINDS.has(kind) && next.min > next.max) {
+    if (field === 'min') next.max = next.min;
+    else next.min = next.max;
+  }
+  setPath(TH(), `critters.${kind}.${field}`, next[field]);
+  recordPatch(`critters.${kind}.${field}`, next[field]);
+  if (COUNT_KINDS.has(kind) && (field === 'min' || field === 'max')) {
+    const other = field === 'min' ? 'max' : 'min';
+    if (next[other] !== cur[kind][other]) {
+      setPath(TH(), `critters.${kind}.${other}`, next[other]);
+      recordPatch(`critters.${kind}.${other}`, next[other]);
+    }
+  }
+}
+
+/** Props block a bank, so stamp solidProps before the spawn reads the grid. */
+function placeCritters() {
+  clearTimeout(critterTimer);
+  critterTimer = 0;
+  if (!lastD) return ambientCritterCounts();
+  if (!lastD.solidProps) {
+    const solid = buildSolidProps(lastD);
+    if (solid) lastD.solidProps = solid;
+  }
+  spawnAmbientCritters(scene, lastD);
+  refreshCritterCount();
+  return ambientCritterCounts();
+}
+
 /* ---------------- forge ---------------- */
 function forge() {
+  clearAmbientCritters();
   const th = TH();
   const params = {
     seed: state.seed >>> 0,
@@ -125,6 +203,7 @@ function forge() {
   const d = generateDungeon(params.seed, params);
   lastD = d;
   buildScene(d);
+  const counts = placeCritters();
   if (!state.animate) finishAnim();
   cam.zoom = state.zoom;
   cam.updateProjectionMatrix();
@@ -132,8 +211,10 @@ function forge() {
   const weatherStr = (th.overland && d.timeOfDay && d.weather) ? ` · ${d.timeOfDay} · ${d.weather}` : '';
   el('hud').innerHTML =
     `<b>${th.label}</b> · seed ${d.seed}${weatherStr} · ${d.stats.rooms} rooms · ` +
-    `${d.stats.floorTiles} tiles · ${lights.length} lights · ` +
-    `${(performance.now() - t0).toFixed(0)}ms`;
+    `${d.stats.floorTiles} tiles · ${counts.frogs} frogs · ${counts.snakes} snakes · ` +
+    `${counts.dragonflies} dragonflies · ${counts.birds} birds · ${counts.bats} bats · ` +
+    `${counts.skinks} skinks · ${counts.squirrels} squirrels · ` +
+    `${lights.length} lights · ${(performance.now() - t0).toFixed(0)}ms`;
 }
 
 /* ---------------- control builders ---------------- */
@@ -298,7 +379,7 @@ function liveTheme() {
 const envLive = () => applyThemeEnv(liveTheme());
 
 /* ---------------- tabs ---------------- */
-const TABS = ['generate', 'lighting', 'palette', 'textures', 'scatter', 'assets'];
+const TABS = ['generate', 'critters', 'lighting', 'palette', 'textures', 'scatter', 'assets'];
 
 function renderTabs() {
   const bar = el('tabs');
@@ -314,8 +395,78 @@ function renderTabs() {
 
 function renderPanel() {
   body.innerHTML = '';
-  ({ generate: tabGenerate, lighting: tabLighting, palette: tabPalette,
+  ({ generate: tabGenerate, critters: tabCritters, lighting: tabLighting, palette: tabPalette,
      textures: tabTextures, scatter: tabScatter, assets: tabAssets })[state.tab]();
+}
+
+/* A min/max critter. Changing the pair respawns and redraws the rows, because
+   raising the minimum can pull the maximum up with it. */
+function countKindGroup(title, kind, blurb) {
+  const g = group(title);
+  const on = row(g, `Spawn ${title.toLowerCase()}`);
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = critterCfg()[kind].enabled;
+  cb.onchange = () => {
+    storeCritter(kind, 'enabled', cb.checked);
+    placeCritters();
+  };
+  on.append(cb);
+  const respawn = () => { placeCritters(); renderPanel(); };
+  numberRow(g, 'Minimum', {
+    min: 0, max: 24, step: 1,
+    get: () => critterCfg()[kind].min,
+    set: v => storeCritter(kind, 'min', v),
+    live: respawn,
+  });
+  numberRow(g, 'Maximum', {
+    min: 0, max: 24, step: 1,
+    get: () => critterCfg()[kind].max,
+    set: v => storeCritter(kind, 'max', v),
+    live: respawn,
+  });
+  hint(g, blurb);
+}
+
+/* ---- Critters ---- */
+/* Ambiance only. A change here respawns on the current forge; it does not
+   rebuild the rooms. Save still goes out through theme_overrides.json. */
+function tabCritters() {
+  const cfg = critterCfg();
+  const frogs = group('Frogs');
+  const frogOn = row(frogs, 'Spawn frogs');
+  const frogCb = document.createElement('input');
+  frogCb.type = 'checkbox';
+  frogCb.checked = cfg.frog.enabled;
+  frogCb.onchange = () => {
+    storeCritter('frog', 'enabled', frogCb.checked);
+    placeCritters();
+  };
+  frogOn.append(frogCb);
+  slider(frogs, 'Spawn chance', {
+    min: 0, max: 1, step: 0.01,
+    fmt: v => `${Math.round(v * 100)}%`,
+    get: () => critterCfg().frog.chance,
+    set: v => storeCritter('frog', 'chance', v),
+    live: () => scheduleCritters(),
+  });
+  hint(frogs, 'Each body of water rolls this chance and places one frog on a dry floor bank, at least four tiles from another frog. A dry map stays empty.');
+
+  countKindGroup('Snakes', 'snake', 'That many snakes on grass off the track (the two tiles nearest the road). They rest, then crawl four or five tiles. The body lies flat until the crawl.');
+  countKindGroup('Dragonflies', 'dragonfly', 'That many dragonflies over water, or over open floor when the map is dry. Each hovers, then darts a few tiles and glides, and sometimes sits still on a grass top for about a minute. A living hero or monster within five tiles sends it off.');
+  countKindGroup('Butterflies', 'butterfly', 'That many butterflies over grass, or over open floor when the map has none. Each loiters in a slow chaotic flutter, then drifts to a new spot. It sits on a leaf less often than it flies. A living hero or monster within five tiles sends it off.');
+  countKindGroup('Birds', 'bird', 'That many birds, one per clearing that has two trees at least eight tiles apart. Each sits with its wings folded, drops to the ground to peck, then flies to another tree. A living hero or monster within five tiles sends it off.');
+  countKindGroup('Bats', 'bat', 'That many bats, one per clearing with two trees that far apart. Each hangs upside down with its wings folded, then flies to the other tree. The eyes stay dark.');
+  countKindGroup('Skinks', 'skink', 'That many skinks on open stone off the road, never on lava or water. Each basks, then scuttles three or four tiles. Ash wears a rust stripe. The ruins wear a pale shoulder mark. A living hero or monster within five tiles sends it off.');
+  countKindGroup('Squirrels', 'squirrel', 'That many squirrels at the foot of a tree, or on open snow when the map has fewer than two trees. Each sits with its tail curled, then dashes to another tree. A living hero or monster within five tiles sends it off.');
+
+  const info = group('On this map');
+  const count = document.createElement('p');
+  count.className = 'hint';
+  count.id = 'critter-count';
+  count.textContent = critterCountLine();
+  info.appendChild(count);
+  hint(info, `${TH().label} (${state.themeKey}). These respawn on the map in view. Map size, seed, and decor still rebuild from the other tabs, and the new forge places critters again. Save writes this theme into theme_overrides.json.`);
 }
 
 /* ---- Generate ---- */
@@ -561,7 +712,7 @@ function tabPalette() {
   if (TH().particles) {
     select(pt, 'Kind', [{ value: '0', label: '0 — dust' }, { value: '1', label: '1 — embers' },
                         { value: '2', label: '2 — snow' }, { value: '3', label: '3 — wisps' },
-                        { value: '4', label: '4 — spores' }], {
+                        { value: '4', label: '4 — spores' }, { value: '7', label: '7 — blizzard' }], {
       get: () => String(TH().particles.kind), set: v => { TH().particles.kind = +v; recordPatch('particles.kind', +v); } });
     colorRow(pt, 'Colour', themeBinding('particles.color'));
     slider(pt, 'Count', { min: 0, max: 600, step: 10, fmt: v => v | 0, ...themeBinding('particles.n') });
@@ -578,13 +729,12 @@ const DECOR_KEYS = [
   ['sconces', 'Wall sconces', 'Extra wall sconce in furnished rooms.'],
   ['bones', 'Bone litter', 'Skulls, bone piles and skeletons — denser in crypts.'],
   ['webs', 'Cobwebs', 'Corner webs. Native to ancient/grim/verdant and any crypt room; touching this slider switches them on for the current theme too.'],
-  ['moss', 'Moss fringe', 'Moss creeping along wall edges. Native to verdant/sporewood; touching this slider switches it on for the current theme too.'],
   ['icicles', 'Icicles & shards', 'Wall icicles and ice shards on frozen lakes. Native to frost; touching this slider switches them on for the current theme too.']
 ];
 
 /* Overland maps run a different generator: no room archetypes, pillars, sconces
    or webs out there, so those multipliers have nothing to scale. */
-const OVERLAND_DECOR = ['debris', 'bones', 'moss', 'icicles'];
+const OVERLAND_DECOR = ['debris', 'bones', 'icicles'];
 
 function tabScatter() {
   const overland = !!TH().overland;
@@ -1253,6 +1403,8 @@ function editorLoop() {
   loopT += dt;
   loopLast = now;
   liveUpdate(loopT, Infinity);
+  tickAmbientCritters(dt, cam);
+  updateLivePixelFx(dt);
   tickLightDebug(dt);
   renderFrame();
 }
@@ -1262,7 +1414,7 @@ function editorLoop() {
 if (typeof window !== 'undefined') {
   /* `lights` is re-assigned by buildScene, so expose it as a getter — a captured
      reference would go stale on the first re-forge. */
-  window.__editor = { state, patches, customProps, forge, THEMES,
+  window.__editor = { state, patches, customProps, forge, placeCritters, THEMES,
                       get lights(){ return lights; },
                       lastDungeon: () => lastD, bakedTex, recipeFor };
 }

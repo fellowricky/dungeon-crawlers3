@@ -70,9 +70,17 @@ export const CAM_EXPLORE_MARGIN = 0.5;
 /** Look-ahead while the party walks: the frame leads the leader by this many
  *  seconds of their smoothed velocity, capped at CAM_LEAD_MAX tiles. Without
  *  it the smoothing makes the camera trail, and the screen shows more of the
- *  corridor behind the party than of the one it is walking into. */
-export const CAM_LEAD_SECONDS = 0.6;
-export const CAM_LEAD_MAX = 2.0;
+ *  corridor behind the party than of the one it is walking into.
+ *
+ *  The frame SLIDES toward the look-ahead rather than growing to include it:
+ *  zoom is fitted to the party alone, then the centre moves up to CAM_LEAD_FRAME
+ *  of the way to the lead point, never further than the free space round the
+ *  party allows (CAM_LEAD_SLACK of it), so nobody leaves the shot. Including the
+ *  point in the box instead moved the centre only half the way and zoomed out. */
+export const CAM_LEAD_SECONDS = 1.1;
+export const CAM_LEAD_MAX = 3.5;
+export const CAM_LEAD_FRAME = 0.9;
+export const CAM_LEAD_SLACK = 0.85;
 /** Per-second rate the velocity estimate follows the leader's actual motion. */
 export const CAM_LEAD_RATE = 2.5;
 /** A leader displacement larger than this in one frame is a teleport (a new
@@ -91,23 +99,25 @@ export const CAM_FOCUS_DEADBAND = 0.15;
 /** Fractional change in the fitted zoom needed before the director retargets.
  *  Without it every step a monster takes rewrites the zoom and the view
  *  breathes continuously. */
-export const CAM_ZOOM_DEADBAND = 0.06;
+export const CAM_ZOOM_DEADBAND = 0.08;   // 0.06 re-zoomed on small shuffles: calmer at 0.08
 
 /** Smoothing, as critically damped spring smooth times in seconds (see
  *  smoothDamp): roughly how far behind a steadily moving goal each channel
  *  runs. Exploration is slow and soft; a clash is quicker so the punch-in
  *  lands while the swing is still happening. */
-export const CAM_FOCUS_SMOOTH = 0.55;
-export const CAM_FOCUS_SMOOTH_ACTION = 0.33;
+/* (Calmer pass: every swing used to re-aim in 0.33 s and punch the zoom in 0.32 s, so
+   a fight panned and breathed on every action. A touch slower reads as directed.) */
+export const CAM_FOCUS_SMOOTH = 0.7;
+export const CAM_FOCUS_SMOOTH_ACTION = 0.45;
 export const CAM_ZOOM_SMOOTH = 0.6;
-export const CAM_ZOOM_SMOOTH_ACTION = 0.32;
+export const CAM_ZOOM_SMOOTH_ACTION = 0.45;
 export const CAM_ZOOM_SMOOTH_EXPLORE = 1.0;
 export const CAM_PITCH_SMOOTH = 0.55;
 /** Per-second rate the focus goal follows the fitted frame once it has moved
  *  past CAM_FOCUS_DEADBAND (exploring / during a clash) — the spring's input
  *  filter, so a hop of the fitted frame is not a step for the spring. */
 export const CAM_FOCUS_GOAL_RATE = 3.5;
-export const CAM_FOCUS_GOAL_RATE_ACTION = 5.5;
+export const CAM_FOCUS_GOAL_RATE_ACTION = 4.0;
 
 /** The exhale after a fight: zoom and tilt hold for CAM_EXHALE_HOLD, then
  *  ease to the exploration shot over CAM_EXHALE_EASE on long smooth times.
@@ -153,6 +163,41 @@ export function occlusionTiles(pitch) {
  *  hides at least this many fewer blockers. Anything finer than a quadrant
  *  turns the isometric wall art through angles it was never drawn for. */
 export const CAM_YAW_MARGIN = 3;
+/** Exploring, the camera looks along a corridor or down a room's long side when
+ *  the space round the leader has one: its open run along one grid axis is at
+ *  least CAM_ALIGN_MIN_RUN tiles and CAM_ALIGN_RATIO times the other. Open
+ *  ground (no clear axis) keeps the diagonal quarter-turns. */
+export const CAM_ALIGN_MIN_RUN = 5;
+export const CAM_ALIGN_RATIO = 1.6;
+export const CAM_ALIGN_REACH = 9;     // tiles probed each way
+/** Exploring, the angle follows the space: a little lower in tight passages (the
+ *  walls close in), a little higher in wide rooms (more floor to read). The
+ *  narrower of the two open spans picks between them. */
+export const CAM_SPACE_TIGHT = 3, CAM_SPACE_WIDE = 11;
+export const CAM_SPACE_PITCH_LOW = -0.04, CAM_SPACE_PITCH_HIGH = 0.07;
+
+/** In a fight the angle follows its size: a duel sits lower and closer, a brawl
+ *  rises to read the whole melee. Bodies counted are the framed party and foes. */
+export const CAM_FIGHT_SMALL = 3, CAM_FIGHT_BIG = 9;
+export const CAM_FIGHT_PITCH_LOW = -0.06, CAM_FIGHT_PITCH_HIGH = 0.08;
+
+/** The pitch nudge for a fight of `n` bodies. */
+export function fightPitchNudge(n) {
+  if (!(n > 0)) return 0;
+  if (n <= CAM_FIGHT_SMALL) return CAM_FIGHT_PITCH_LOW;
+  if (n >= CAM_FIGHT_BIG) return CAM_FIGHT_PITCH_HIGH;
+  return CAM_FIGHT_PITCH_LOW + (CAM_FIGHT_PITCH_HIGH - CAM_FIGHT_PITCH_LOW) * (n - CAM_FIGHT_SMALL) / (CAM_FIGHT_BIG - CAM_FIGHT_SMALL);
+}
+
+/** The pitch nudge for the space round the leader (0 with no reading). */
+export function spacePitchNudge(st, isBlocked) {
+  if (typeof isBlocked !== 'function' || st.leadPX == null) return 0;
+  const { ex, ez } = spaceSpans(st.leadPX, st.leadPZ, isBlocked);
+  const w = Math.min(ex, ez);
+  if (w <= CAM_SPACE_TIGHT) return CAM_SPACE_PITCH_LOW;
+  if (w >= CAM_SPACE_WIDE) return CAM_SPACE_PITCH_HIGH;
+  return CAM_SPACE_PITCH_LOW + (CAM_SPACE_PITCH_HIGH - CAM_SPACE_PITCH_LOW) * (w - CAM_SPACE_TIGHT) / (CAM_SPACE_WIDE - CAM_SPACE_TIGHT);
+}
 
 /** Seconds the better quadrant must stay better before the camera commits, and
  *  seconds the quarter-turn itself takes. */
@@ -427,7 +472,7 @@ export function frameCamera({
   framing = 'focus', marginFrac = 0, aimY = 0, lead = null
 } = {}) {
   if (framing === 'box') {
-    const box = framingBox(lead ? party.concat([lead]) : party, yaw, pitch);
+    const box = framingBox(party, yaw, pitch);
     if (!box) return null;
     const zoomParty = fitZoom(box.hx, box.hy, aspect, baseHalf, margin, marginFrac);
     let zoomAll = zoomParty;
@@ -437,7 +482,19 @@ export function frameCamera({
     }
     const ceiling = Math.min(maxZoom, restZoom, zoomParty);
     const zoom = Math.min(ceiling, Math.max(minZoom, Math.max(zoomAll, floorZoom)));
-    return { x: box.x, z: box.z, zoom, zoomParty, zoomAll, foesFramed: zoom <= zoomAll };
+    let x = box.x, z = box.z;
+    if (lead) {
+      /* slide toward the direction of travel, within the frame's free space round the party */
+      const o = screenOffset(lead.x, 0, lead.z, box.x, box.z, yaw, pitch);
+      const halfW = (baseHalf * aspect) / zoom, halfH = baseHalf / zoom;
+      const slackX = Math.max(0, halfW - box.hx * (1 + marginFrac) - margin) * CAM_LEAD_SLACK;
+      const slackY = Math.max(0, halfH - box.hy * (1 + marginFrac) - margin) * CAM_LEAD_SLACK;
+      const sx = Math.max(-slackX, Math.min(slackX, o.sx * CAM_LEAD_FRAME));
+      const sy = Math.max(-slackY, Math.min(slackY, o.sy * CAM_LEAD_FRAME));
+      const u = groundShift(sx, sy, yaw, pitch);
+      x += u.x; z += u.z;
+    }
+    return { x, z, zoom, zoomParty, zoomAll, foesFramed: zoom <= zoomAll };
   }
 
   const clash = !!(action && action.intensity > 0 && (action.actor || action.target));
@@ -477,10 +534,20 @@ export function frameCamera({
 
   /* During a clash the frame belongs to the clash: it sits at the ceiling and
      does not pull back for hostiles outside it. Heroes are still guaranteed —
-     the ceiling never exceeds zoomParty. */
+     the ceiling never exceeds zoomParty — and so are BOTH sides of the clash:
+     an archer across the room shooting a hero used to be cropped out of its own
+     shot, because the clash only ever punched in. */
+  let clashFit = Infinity;
+  if (clash) {
+    const pts = [action.actor, action.target].filter(Boolean);
+    if (pts.length > 1) {
+      const ext = framingExtent(pts, focus.x, focus.z, yaw, pitch, CAM_BODY_HEIGHT, aimY);
+      clashFit = fitZoom(ext.hx, ext.hy, aspect, baseHalf, CAM_ACTION_MARGIN);
+    }
+  }
   const zoom = (actionZoom && clash)
-    ? ceiling
-    : Math.min(ceiling, Math.max(minZoom, Math.max(zoomAll, floorZoom)));
+    ? Math.max(minZoom, Math.min(ceiling, clashFit))
+    : Math.min(ceiling, clashFit, Math.max(minZoom, Math.max(zoomAll, floorZoom)));
 
   const lift = aimY ? groundShift(0, aimY * Math.cos(pitch), yaw, pitch) : { x: 0, z: 0 };
   return { x: focus.x + lift.x, z: focus.z + lift.z,
@@ -617,6 +684,44 @@ export function pickActionYaw(currentYaw, focusX, focusZ, isBlocked, {
   }
 
   return (bestScore - hereScore) >= margin ? bestYaw : currentYaw;
+}
+
+/**
+ * The open span round (x, z) along each grid axis: { ex, ez }, in tiles, counting
+ * the cell itself, probing up to `reach` each way until a blocked cell.
+ */
+export function spaceSpans(x, z, isBlocked, reach = CAM_ALIGN_REACH) {
+  const run = (dx, dz) => {
+    let n = 0;
+    for (let i = 1; i <= reach; i++) {
+      if (isBlocked(Math.round(x + dx * i), Math.round(z + dz * i))) break;
+      n++;
+    }
+    return n;
+  };
+  return { ex: run(1, 0) + run(-1, 0) + 1, ez: run(0, 1) + run(0, -1) + 1 };
+}
+
+/**
+ * Exploring: the yaw that looks along the corridor (or down the room's long side)
+ * the leader is in, toward where they are walking, or null when the space has no
+ * clear long axis. Standing still, it faces whichever end the camera already
+ * faces, so stopping never spins the view. The camera sits toward
+ * +(sin yaw, cos yaw), so looking along v means yaw = atan2(-vx, -vz).
+ * Reads the leader's position and smoothed velocity from leadPoint's state.
+ */
+export function alignedExploreYaw(st, isBlocked, currentYaw) {
+  if (typeof isBlocked !== 'function' || st.leadPX == null) return null;
+  const { ex, ez } = spaceSpans(st.leadPX, st.leadPZ, isBlocked);
+  const long = Math.max(ex, ez), short = Math.min(ex, ez);
+  if (long < CAM_ALIGN_MIN_RUN || long < short * CAM_ALIGN_RATIO) return null;
+  const ax = ex > ez ? 1 : 0, az = 1 - ax;
+  const vx = st.leadVX || 0, vz = st.leadVZ || 0;
+  let sgn;
+  const along = ax * vx + az * vz;
+  if (Math.hypot(vx, vz) > 0.3 && Math.abs(along) > 0.15) sgn = Math.sign(along);
+  else sgn = Math.sign(ax * -Math.sin(currentYaw) + az * -Math.cos(currentYaw)) || 1;
+  return Math.atan2(-ax * sgn, -az * sgn);
 }
 
 /**
@@ -814,10 +919,19 @@ export function driveCamera(st, port, dt) {
     // Elevate camera to see over blocking walls
     targetPitch = Math.max(basePitch, occ.minClearingPitch);
   } else if (port.action && port.action.intensity > 0) {
-    // Lower tilt for cinematic action shots when clear of walls
-    targetPitch = basePitch + (CAM_ACTION_PITCH - basePitch) * Math.min(1, port.action.intensity);
+    // Lower tilt for cinematic action shots when clear of walls (from the fight's own size)
+    const n = (port.party || []).length + (port.foes || []).length;
+    const sized = explore || !(port.foes || []).length ? basePitch : basePitch + fightPitchNudge(n);
+    targetPitch = sized + (Math.min(sized, CAM_ACTION_PITCH) - sized) * Math.min(1, port.action.intensity);
   } else if (frame.zoom < CAM_FIT_FLOOR_ZOOM + 1) {
     targetPitch = Math.min(1.1, basePitch + 0.08);
+  } else if (explore && port.cutaway) {
+    /* lower in tight passages, a touch higher in wide rooms (never below the drag floor) */
+    targetPitch = Math.max(0.3, basePitch + spacePitchNudge(st, port.isBlocked));
+  } else if (!explore && (port.foes || []).length) {
+    /* a duel low and close, a brawl higher to read the melee */
+    const n = (port.party || []).length + port.foes.length;
+    targetPitch = Math.min(1.1, Math.max(0.3, basePitch + fightPitchNudge(n)));
   }
 
   // Tilt stabilization: require sustained dwell time before adopting a new pitch goal
@@ -884,8 +998,11 @@ export function driveCamera(st, port, dt) {
             actionWeight: port.actionYawWeight ?? 2.0, pitch: port.pitch,
             tiles: occlusionTiles(port.pitch)
           })
-        : pickYaw(base, frame.x, frame.z, port.isBlocked,
-                  { entities, pitch: port.pitch, tiles: occlusionTiles(port.pitch) });
+        /* exploring with the wall cutaway on: look along the corridor or room; elsewhere
+           (open ground, cutaway off) the clearest quarter-turn as before */
+        : ((explore && port.cutaway ? alignedExploreYaw(st, port.isBlocked, base) : null)
+           ?? pickYaw(base, frame.x, frame.z, port.isBlocked,
+                      { entities, pitch: port.pitch, tiles: occlusionTiles(port.pitch) }));
 
       if (Math.abs(shortestTurn(base, want)) > 1e-6) {
         st.dwell = (st.dwell || 0) + dt;

@@ -44,6 +44,9 @@ export function roundDuration(sec) {
   return (sec > 0 && isFinite(sec)) ? wholeRounds(sec) * ROUND_SECONDS : sec;
 }
 
+/* budget.js is pure data (it imports only its JSON), so this adds no cycle. */
+import { STEADFAST_GROUPS } from './budget.js';
+
 /* ── tiny dice helpers (avoid srd.js import to prevent circular deps) ── */
 function roll(count, sides, bonus = 0) {
   let t = bonus;
@@ -351,7 +354,7 @@ export const EFFECTS = {
     desc:'Takes +1d6 from caster.'
   },
   huntersMarked: {
-    label:'Marked', category:'debuff', color:0x1abc9c, float:'#1abc9c',
+    label:'Marked', category:'debuff', color:0xc02424, float:'#e85040',
     acPenalty:0, speedMul:1, dmgMul:1,
     markEffect:true,
     desc:'Takes +1d6 from ranger.'
@@ -437,8 +440,7 @@ export const EFFECTS = {
   barkskin: {
     label:'Barkskin', category:'buff', color:0x6aaa4a, float:'#6aaa4a',
     acBonus:0, speedMul:1, dmgMul:1,
-    acFloor:16,
-    desc:'AC cannot go below 16.'
+    desc:'AC cannot go below 14 + the caster\'s spellcasting modifier.'
   },
 
   /* ── Monster-ability debuffs (persist until a rest — applied with no
@@ -448,6 +450,11 @@ export const EFFECTS = {
     acPenalty:0, speedMul:1, dmgMul:1,
     stacking:true, maxHpDrainPerStack:5, persist:true,
     desc:'Life force drained: -5 max HP per stack until a rest.'
+  },
+  acidCoated: {
+    label:'Acid-Coated', category:'dot', color:0x7cc048, float:'#7cc048',
+    acPenalty:0, speedMul:1, dmgMul:1,
+    desc:'Still burning with acid: takes more acid damage next round.'
   },
   corroded: {
     label:'Corroded', category:'debuff', color:0xc08040, float:'#d0a060',
@@ -642,7 +649,7 @@ export function tickEffects(e, now) {
     }
     if (eff.repeatSave && now >= eff.nextSave) {
       eff.nextSave = now + (eff.repeatSave.every || ROUND_SECONDS);
-      if (rollSave(e, eff.repeatSave.ability, eff.repeatSave.dc, { magic: true })) {
+      if (rollSave(e, eff.repeatSave.ability, eff.repeatSave.dc, { magic: true, vs: k })) {
         delete e._effects[k];
         ch = true;
       }
@@ -679,7 +686,7 @@ export function getEffectMods(e) {
     m.speedMul *= d.speedMul!=null ? d.speedMul : 1;
     m.dmgTakenMul *= d.dmgTakenMul!=null ? d.dmgTakenMul : 1;
     m.dmgDealtMul *= d.dmgMul!=null ? d.dmgMul : 1;
-    if (d.acFloor) m.acFloor = Math.max(m.acFloor, d.acFloor);
+    if (eff.acFloor) m.acFloor = Math.max(m.acFloor, eff.acFloor);   // set per cast (Barkskin's depends on its caster)
     if (d.magicWeapon) m.magicWeapon = true;
     if (d.incapacitated) m.incapacitated = true;
     if (d.defAdvantage) m.defAdvantage = true;
@@ -730,9 +737,25 @@ export function saveModifier(entity, ability) {
   return m;
 }
 
+/* Hooks the game fills in for party talents (class_talents.js): `bonus(entity,
+   ability)` adds to a save (Aura of Protection); `afterFail(entity, result)`
+   may turn a failed save into a pass (Dark One's Luck). Null outside a game. */
+export const SAVE_HOOKS = { bonus: null, afterFail: null };
+
+/** Steadfast bonus a hero record gets on a save against condition `vs`. */
+export function steadfastBonus(data, vs) {
+  if (!data || !data.steadfast || !vs) return 0;
+  let b = 0;
+  for (const k in data.steadfast) {
+    if (STEADFAST_GROUPS[k] && STEADFAST_GROUPS[k].conditions.includes(vs)) b += data.steadfast[k];
+  }
+  return b;
+}
+
 export function rollSaveDetail(entity, ability, dc, opts = {}) {
   const data = entity.data || entity;
   let m = saveModifier(entity, ability);
+  if (SAVE_HOOKS.bonus) m += SAVE_HOOKS.bonus(entity, ability) || 0;
 
   let adv = opts.adv || 0;
   /* restrained: disadvantage on DEX saves */
@@ -745,6 +768,8 @@ export function rollSaveDetail(entity, ability, dc, opts = {}) {
   }
   /* Magic Resistance (SRD trait): advantage on saving throws vs spells & magic */
   if (opts.magic && data.magicResistance) adv += 1;
+  /* Spell Resistance (Abjurer wizard 14): advantage on saves against spells */
+  else if (opts.magic && data.classKey === 'wizard' && data.subclass === 'abjurer' && (data.level || 0) >= 14) adv += 1;
   /* Bless: +1d4 on saving throws as well as attacks */
   if (entity._effects) {
     for (const k in entity._effects) if (EFFECTS[k]?.blessDice) { m += roll(1, 4); break; }
@@ -753,6 +778,10 @@ export function rollSaveDetail(entity, ability, dc, opts = {}) {
   if (ability === 'dex' && opts.magic && data.feats && data.feats.includes('shieldMaster')
       && data.equipment?.offhand?.slot === 'shield') m += 2;
   if (opts.bonus) m += opts.bonus;
+  /* Steadfast affixes: +N against a condition group. `opts.vs` names the
+     condition this save is resisting; saves that aren't against a condition
+     (damage-only spells) pass none and get nothing. */
+  if (opts.vs && data.steadfast) m += steadfastBonus(data, opts.vs);
 
   const a = roll(1, 20);
   let d20 = a;
@@ -761,7 +790,8 @@ export function rollSaveDetail(entity, ability, dc, opts = {}) {
     d20 = adv > 0 ? Math.max(a, b) : Math.min(a, b);
   }
   const total = d20 + m;
-  return { saved: total >= dc, d20, mod: m, total, dc };
+  const res = { saved: total >= dc, d20, mod: m, total, dc };
+  return (!res.saved && SAVE_HOOKS.afterFail) ? SAVE_HOOKS.afterFail(entity, res) : res;
 }
 
 export function rollSave(entity, ability, dc, opts = {}) {

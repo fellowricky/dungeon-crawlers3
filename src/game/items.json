@@ -337,12 +337,6 @@
           "cha",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -443,9 +437,6 @@
           "cha",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -483,8 +474,6 @@
           "cha",
           "speed",
           "move",
-          "saveDex",
-          "saveCon",
           "elemAcid",
           "elemPoison",
           "elemNecrotic",
@@ -560,12 +549,6 @@
           "cha",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -629,12 +612,6 @@
           "con",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -681,11 +658,6 @@
           "con",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveWis",
-          "saveCha",
           "elemPsychic"
         ],
         "_edited": true
@@ -714,10 +686,6 @@
           "cha",
           "speed",
           "move",
-          "saveDex",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -753,12 +721,6 @@
           "wis",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -797,12 +759,6 @@
           "wis",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -837,10 +793,6 @@
           "wis",
           "speed",
           "move",
-          "saveDex",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -872,10 +824,6 @@
           "cha",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveWis",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -911,12 +859,6 @@
           "cha",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -957,12 +899,6 @@
           "cha",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
-          "saveInt",
-          "saveWis",
-          "saveCha",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -1366,9 +1302,6 @@
           "dex",
           "speed",
           "move",
-          "saveStr",
-          "saveDex",
-          "saveCon",
           "elemFire",
           "elemCold",
           "elemLightning",
@@ -1496,7 +1429,7 @@
         "weaponType": "simple",
         "icon": "dcss/item/weapon/war_axe_1.png",
         "prim": {},
-        "visualWeapon": "blunt/waraxe",
+        "visualWeapon": "blunt/hatchet",
         "light": true,
         "thrown": true,
         "dmg": [
@@ -1866,7 +1799,6 @@
         "_edited": true,
         "affixAllow": [
           "atk",
-          "dmg",
           "hp",
           "crit",
           "heal",
@@ -1880,15 +1812,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -1900,7 +1823,7 @@
           "slot9"
         ],
         "acBase": 0,
-        "prof": "light",
+        "prof": "none",
         "tier": 1
       },
       {
@@ -1919,15 +1842,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -1966,15 +1880,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -1996,7 +1901,7 @@
         "visualHelm": "pirate/tricorne/basic",
         "_edited": true,
         "acBase": 0,
-        "prof": "light",
+        "prof": "none",
         "tier": 1
       },
       {
@@ -2023,15 +1928,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2071,15 +1967,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2118,15 +2005,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2164,15 +2042,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2212,15 +2081,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2258,15 +2118,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2305,15 +2156,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2350,15 +2192,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2391,15 +2224,6 @@
           "saveStr",
           "saveDex",
           "saveCon",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2422,7 +2246,6 @@
         "_edited": true,
         "affixAllow": [
           "atk",
-          "dmg",
           "crit",
           "heal",
           "dex",
@@ -2438,15 +2261,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2488,15 +2302,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2528,7 +2333,6 @@
         "acBase": 3,
         "affixAllow": [
           "atk",
-          "dmg",
           "ac",
           "hp",
           "heal",
@@ -2536,15 +2340,6 @@
           "dex",
           "speed",
           "move",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2567,7 +2362,6 @@
         "acBase": 2,
         "affixAllow": [
           "atk",
-          "dmg",
           "hp",
           "heal",
           "str",
@@ -2578,15 +2372,6 @@
           "saveStr",
           "saveDex",
           "saveCon",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2634,15 +2419,6 @@
           "saveDex",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2655,7 +2431,7 @@
         ],
         "_edited": true,
         "acBase": 0,
-        "prof": "light",
+        "prof": "none",
         "tier": 1
       },
       {
@@ -2666,7 +2442,6 @@
         "_edited": true,
         "affixAllow": [
           "atk",
-          "dmg",
           "crit",
           "dex",
           "cha",
@@ -2678,15 +2453,6 @@
           "saveInt",
           "saveWis",
           "saveCha",
-          "elemFire",
-          "elemCold",
-          "elemLightning",
-          "elemAcid",
-          "elemPoison",
-          "elemNecrotic",
-          "elemRadiant",
-          "elemForce",
-          "elemPsychic",
           "slot1",
           "slot2",
           "slot3",
@@ -2698,7 +2464,7 @@
           "slot9"
         ],
         "acBase": 0,
-        "prof": "light",
+        "prof": "none",
         "tier": 1
       }
     ],
@@ -4423,7 +4189,14 @@
       "b": {
         "dmg": 1
       },
-      "max": 3
+      "max": 3,
+      "slots": [
+        "weapon",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ]
     },
     {
       "key": "ac",
@@ -4781,6 +4554,544 @@
         "weapon"
       ],
       "minIlvl": 16
+    },
+    {
+      "key": "magicFind",
+      "label": "of Fortune",
+      "b": {
+        "magicFind": 5
+      },
+      "max": 4,
+      "slots": [
+        "ring",
+        "amulet",
+        "helm",
+        "gloves"
+      ]
+    },
+    {
+      "key": "goldFind",
+      "label": "of Avarice",
+      "b": {
+        "goldFind": 10
+      },
+      "max": 4,
+      "slots": [
+        "ring",
+        "amulet",
+        "gloves",
+        "boots"
+      ]
+    },
+    {
+      "key": "potionHeal",
+      "label": "of the Apothecary",
+      "b": {
+        "potionHeal": 10
+      },
+      "max": 10,
+      "slots": [
+        "amulet",
+        "ring",
+        "gloves"
+      ]
+    },
+    {
+      "key": "init",
+      "label": "of Vigilance",
+      "b": {
+        "init": 1
+      },
+      "max": 10,
+      "slots": [
+        "helm",
+        "amulet",
+        "boots",
+        "ring"
+      ]
+    },
+    {
+      "key": "spellDC",
+      "label": "of Potency",
+      "b": {
+        "spellDC": 1
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "amulet",
+        "ring"
+      ]
+    },
+    {
+      "key": "concentration",
+      "label": "of Focus",
+      "b": {
+        "concentration": 2
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "amulet",
+        "ring",
+        "helm"
+      ]
+    },
+    {
+      "key": "range",
+      "label": "of Farsight",
+      "b": {
+        "range": 1
+      },
+      "max": 5,
+      "slots": [
+        "weapon"
+      ]
+    },
+    {
+      "key": "bloodthirst",
+      "label": "of Bloodthirst",
+      "b": {
+        "bloodthirst": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring"
+      ]
+    },
+    {
+      "key": "oaDmg",
+      "label": "of the Sentinel",
+      "b": {
+        "oaDmg": 2
+      },
+      "max": 6,
+      "slots": [
+        "weapon",
+        "gloves"
+      ]
+    },
+    {
+      "key": "wardFire",
+      "label": "of Fire Warding",
+      "b": {
+        "wardFire": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardCold",
+      "label": "of Frost Warding",
+      "b": {
+        "wardCold": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardLightning",
+      "label": "of Storm Warding",
+      "b": {
+        "wardLightning": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardAcid",
+      "label": "of Acid Warding",
+      "b": {
+        "wardAcid": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardPoison",
+      "label": "of Venom Warding",
+      "b": {
+        "wardPoison": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardNecrotic",
+      "label": "of Blight Warding",
+      "b": {
+        "wardNecrotic": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardRadiant",
+      "label": "of Dawn Warding",
+      "b": {
+        "wardRadiant": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardForce",
+      "label": "of Force Warding",
+      "b": {
+        "wardForce": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "wardPsychic",
+      "label": "of Mind Warding",
+      "b": {
+        "wardPsychic": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "shield",
+        "helm",
+        "gloves",
+        "boots",
+        "ring",
+        "amulet"
+      ],
+      "family": "ward"
+    },
+    {
+      "key": "steadMind",
+      "label": "of Steadfastness",
+      "b": {
+        "steadMind": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "helm",
+        "shield",
+        "amulet",
+        "ring"
+      ],
+      "family": "steadfast"
+    },
+    {
+      "key": "steadBody",
+      "label": "of Fortitude",
+      "b": {
+        "steadBody": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "helm",
+        "shield",
+        "amulet",
+        "ring"
+      ],
+      "family": "steadfast"
+    },
+    {
+      "key": "steadMove",
+      "label": "of Freedom",
+      "b": {
+        "steadMove": 1
+      },
+      "max": 10,
+      "slots": [
+        "armor",
+        "helm",
+        "shield",
+        "amulet",
+        "ring"
+      ],
+      "family": "steadfast"
+    },
+    {
+      "key": "baneBeast",
+      "label": "of Beastbane",
+      "b": {
+        "baneBeast": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneHumanoid",
+      "label": "of Manbane",
+      "b": {
+        "baneHumanoid": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneUndead",
+      "label": "of Gravebane",
+      "b": {
+        "baneUndead": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneFiend",
+      "label": "of Fiendbane",
+      "b": {
+        "baneFiend": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneMonstrosity",
+      "label": "of Monsterbane",
+      "b": {
+        "baneMonstrosity": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneFey",
+      "label": "of Feybane",
+      "b": {
+        "baneFey": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneElemental",
+      "label": "of Elementbane",
+      "b": {
+        "baneElemental": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneGiant",
+      "label": "of Giantbane",
+      "b": {
+        "baneGiant": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneOoze",
+      "label": "of Oozebane",
+      "b": {
+        "baneOoze": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneConstruct",
+      "label": "of Ironbane",
+      "b": {
+        "baneConstruct": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneDragon",
+      "label": "of Dragonbane",
+      "b": {
+        "baneDragon": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneAberration",
+      "label": "of Voidbane",
+      "b": {
+        "baneAberration": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "baneCelestial",
+      "label": "of Heavenbane",
+      "b": {
+        "baneCelestial": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
+    },
+    {
+      "key": "banePlant",
+      "label": "of Rootbane",
+      "b": {
+        "banePlant": 2
+      },
+      "max": 10,
+      "slots": [
+        "weapon",
+        "gloves",
+        "ring",
+        "amulet"
+      ],
+      "family": "bane"
     }
   ]
 }

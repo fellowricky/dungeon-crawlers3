@@ -20,7 +20,7 @@ import {
 import { poseCast, poseHit } from './game/sprite_pose.js';
 import { GIGAPACK_REGISTRY } from './game/gigapack_registry.js';
 import { THEMES, FLOOR, generateDungeon } from './dungeon/dungeon_generator.js';
-import { groundY } from './dungeon/elevation.js';
+import { groundY, surfaceY } from './dungeon/elevation.js';
 import {
   renderer, scene, cam, camTarget, yaw, updateCam, setYawPitch, buildScene, finishAnim,
   liveUpdate, renderFrame, BASE_HALF, DEFAULT_CAM_ZOOM, MAX_CAM_ZOOM,
@@ -32,13 +32,18 @@ import {
   VFX_LIB, VFX_ANIMS, VFX_SHEET_LIBRARY, CANTRIP_ANIM_BINDINGS,
   spawnCompositeAnimation, updateCompositeFX,
 } from './game/vfx_animations.js';
-import { spawnLivePixelFx, spawnLightMote, spawnManaBurst } from './render/pixelfx_live.js';
+import { LIGHT_DEFAULTS } from './game/spell_lights.js';
+import { DARK_ZONES, inDarkZone, tickLightRegistry } from './game/light_sources.js';
+import { updateDarkness } from './render/darkness.js';
+import { spawnLivePixelFx, spawnLightMote, spawnManaBurst, spawnElementImpact, spawnEntangleWeeds, spawnFaerieStars, spawnFaerieSparkle, spawnGreaseSlick, spawnFlamingSphere, spawnAcidSplat, spawnScytheReap, spawnWardCircle, spawnHadarPortal, spawnThunderclap, spawnSmiteCleave, spawnSmiteImpact, SMITE_CLEAVE_SLAM, LIVE_IMPACTS, spawnLiveImpact, spawnMoonbeam } from './render/pixelfx_live.js';
 import * as stormCloudFx from './render/pfx/storm_cloud.js';
 import * as wispFx from './render/pfx/wisp.js';
 import { PAL } from './vendor/pixelfx/core/index.js';
 import { syncStatusAuras, STATUS_AURAS } from './render/status_auras.js';
-import { EFFECTS as STATUS_DEFS, clearAllEffects } from './game/conditions.js';
-import { spawnBodyEffect, chestWorldY, spawnSpellCharge, SPELL_CHARGE_SECONDS } from './render/body_fx.js';
+import { EFFECTS as STATUS_DEFS, clearAllEffects, hasEffect, applyEffect, getEffect, clearEffect } from './game/conditions.js';
+import { flickerMirrorImage } from './render/mirror_images.js';
+import { spawnBodyEffect, chestWorldY, spawnSpellCharge, SPELL_CHARGE_SECONDS, playSummonArrival, playBlinkStep } from './render/body_fx.js';
+import { COMPANIONS } from './game/summons.js';
 
 /* ─────────────────────────────────────────────────────────────
    DOM
@@ -86,6 +91,7 @@ el.themeSelect.value = DUNGEON_THEME_KEYS.includes('ancient') ? 'ancient' : DUNG
 
 const cellToWorld = (d, gx, gy) => ({ x: gx - d.W / 2 + 0.5, z: gy - d.H / 2 + 0.5 });
 const floorY = (x, z) => groundY(stageD, x, z);
+const surfaceAt = (x, z) => surfaceY(stageD, x, z);
 
 /** Two floor cells STAGE_GAP apart on one row of a room, with clear floor
  *  between them and no prop on either — the longest clean run near a room's
@@ -284,7 +290,8 @@ function drawHitArea() {
     }
     pts.push(at(a.x, a.z));
   } else {
-    const t = targetUnit;
+    /* a spell centred on its caster (Thunderwave) has its area there, not on the target */
+    const t = sp.ai && sp.ai.aoeOrigin === 'self' ? attackerUnit : targetUnit;
     for (let i = 0; i <= 64; i++) {
       const th = (i / 64) * Math.PI * 2;
       pts.push(at(t.x + Math.cos(th) * area.radius, t.z + Math.sin(th) * area.radius));
@@ -468,6 +475,7 @@ function selectAnim(id) {
   el.travelArcVal.textContent = editing.travel.arc.toFixed(2);
   el.travelSound.value = editing.travelSound || '';
   el.impactSound.value = editing.impactSound || '';
+  syncLightControls();
   renderLayers();
 }
 
@@ -591,11 +599,19 @@ function numControl(value, min, max, step, onInput) {
 }
 function selControl(options, value, onInput) {
   const sel = document.createElement('select');
-  for (const [v, label] of options) {
+  const add = (parent, [v, label]) => {
     const opt = document.createElement('option');
     opt.value = v; opt.textContent = label;
     if (v === value) opt.selected = true;
-    sel.appendChild(opt);
+    parent.appendChild(opt);
+  };
+  /* an entry is [value, label], or { group, items } for a labelled category of them */
+  for (const entry of options) {
+    if (!entry.group) { add(sel, entry); continue; }
+    const g = document.createElement('optgroup');
+    g.label = entry.group;
+    entry.items.forEach(it => add(g, it));
+    sel.appendChild(g);
   }
   sel.addEventListener('change', () => onInput(sel.value));
   return sel;
@@ -645,7 +661,10 @@ function buildTypeControls(container, key) {
       container.appendChild(trow('Orient to target', orient));
     }
   } else if (layer.type === 'live') {
-    const kind = selControl([['missile', 'Missile'], ['magicMissile', 'Magic Missile'], ['beam', 'Beam']], layer.fx || 'missile', v => { markModified(currentId); layer.fx = v; });
+    const kind = selControl([
+      { group: 'Projectiles', items: [['missile', 'Missile'], ['magicMissile', 'Magic Missile'], ['magicRibbon', 'Magic Ribbon'], ['softMote', 'Soft Mote'], ['arrow', 'Arrow'], ['beam', 'Beam']] },
+      { group: 'Impacts', items: Object.entries(LIVE_IMPACTS).map(([k, d]) => [k, d.label]) },
+    ], layer.fx || 'missile', v => { markModified(currentId); layer.fx = v; });
     container.appendChild(trow('Effect', kind));
     const pal = selControl(Object.keys(PAL).map(k => [k, k]), layer.palette || 'arcane', v => { markModified(currentId); layer.palette = v; });
     container.appendChild(trow('Palette', pal));
@@ -818,18 +837,43 @@ const CAST_PREVIEW_SPELLS = new Set([
   'dancingLights', 'chillTouch', 'viciousMockery', 'magicMissile', 'shield', 'bless', 'entangle', 'healingWord', 'chaosBolt',
   'dragonBreathSpell', 'armsOfHadar', 'thunderousSmite', 'huntersMark', 'bane', 'faerieFire',
   'hideousLaughter', 'protectionFromEvil', 'grease', 'inflictWounds', 'thunderwave',
-  'cureWounds', 'shieldOfFaith', 'chromaticOrb', 'findFamiliar',
+  'cureWounds', 'shieldOfFaith', 'chromaticOrb', 'findFamiliar', 'acidArrow', 'barkskin', 'blindness',
+  'darkness', 'enlargeReduce', 'flamingSphere', 'holdPerson', 'lesserRestoration', 'magicWeapon', 'mirrorImage', 'mistyStep',
 ]);
+const PREVIEW_AFFLICTIONS = ['poisoned', 'paralyzed', 'blinded'];   // Lesser Restoration: each Play cures the next
+let nextAffliction = 0;
 const PREVIEW_HP = 5;      // low enough for Sleep's pool to put every stand-in under
 let previewCloud = null;   // Call Lightning's live cloud
 let castPreview = null;    // { game, targets, next } — the stand-in fight a cast runs in
 
 let previewMote = null;
+let previewWeeds = null;   // Entangle's standing weeds
+let previewSparkle = null; // Faerie Fire's standing glitter
+let previewSlick = null;   // Grease's slick
+let previewSphere = null;  // Flaming Sphere's ball of fire
+let previewMoon = null;    // Moonbeam's shaft and pool
+let previewStepHome = null; // where Misty Step's caster stood before it crossed
+let previewFamiliar = null; // the familiar Find Familiar last summoned
+const FAMILIAR_KINDS = ['owlFamiliar', 'impFamiliar', 'viperFamiliar'];
+let nextFamiliar = 0;      // each Play summons the next, so all three can be judged
 function resetCastPreview() {
+  if (previewWeeds) { previewWeeds.remove(); previewWeeds = null; }
+  if (previewSparkle) { previewSparkle.remove(); previewSparkle = null; }
+  if (previewSlick) { previewSlick.remove(); previewSlick = null; }
+  if (previewSphere) { previewSphere.remove(); previewSphere = null; }
+  if (previewMoon) { previewMoon.remove(); previewMoon = null; }
+  if (previewStepHome && attackerUnit) {
+    attackerUnit.x = previewStepHome.x; attackerUnit.z = previewStepHome.z;
+    attackerUnit.ent.grp.position.set(attackerUnit.x, floorY(attackerUnit.x, attackerUnit.z), attackerUnit.z);
+    previewStepHome = null;
+  }
+  if (previewFamiliar) { scene.remove(previewFamiliar.ent.grp); previewFamiliar = null; }
   if (previewCloud) { previewCloud.remove(); previewCloud = null; }
   if (previewMote) { previewMote.remove(); previewMote = null; }
+  DARK_ZONES.clear();
   if (attackerUnit) { attackerUnit.conc = null; clearDancingLights(attackerUnit); clearAllEffects(attackerUnit); }
   if (allyUnit) clearAllEffects(allyUnit);
+  if (attackerUnit) attackerUnit.faceTarget = null;
   castPreview = null;
 }
 
@@ -902,15 +946,60 @@ function previewCast() {
   if (a && typeof a.play === 'function') a.play(a.anims ? 'attack' : 'spellcast', true);
   if (spell.chargeFx) spawnBodyEffect(spell.chargeFx, h);
   else spawnSpellCharge(h, spell.color);
+  /* A heal is aimed at the ally from the first frame, as heroStartCastAnim aims it in combat. */
+  const onAlly = spell.ai && (spell.ai.when === 'hurtAlly' || spell.ai.buffTarget === 'ally');
+  if (onAlly) { allyUnit._side = 'hero'; h.faceTarget = allyUnit; }
+  if (currentId === 'lesserRestoration') applyEffect(allyUnit, PREVIEW_AFFLICTIONS[nextAffliction++ % PREVIEW_AFFLICTIONS.length], { duration: 60, elapsed: 0 });
   {
-    const t = targets[0];
+    const t = h.faceTarget || targets[0];
     poseCast(visualOf(h), t ? t.x - h.x : 0, t ? t.z - h.z : 0, SPELL_CHARGE_SECONDS);
   }
   if (el.sfxCb.checked) playSfx('spellCharge', { volume: 0.6 });
   setTimeout(() => {
     if (castPreview !== preview) return;
-    try { spell.cast(preview.game, h, targets[0], [h, allyUnit], spell.level || 1); }
+    /* Handed the ally outright: at full health a heal would find nobody to cure. */
+    let cast = true;
+    try { cast = spell.cast(preview.game, h, onAlly ? allyUnit : targets[0], [h, allyUnit], spell.level || 1); }
     catch (err) { console.warn('[vfx editor] cast preview:', err); }
+    /* Mirror Image: a blow passes through one, then two break, so the flicker and the shatter can be judged. */
+    if (currentId === 'mirrorImage') [[1500, 'flicker'], [2200, 'break'], [3000, 'break']].forEach(([ms, what]) => setTimeout(() => {
+      if (castPreview !== preview) return;
+      const eff = getEffect(h, 'mirrorImages');
+      if (!eff) return;
+      if (what === 'flicker') flickerMirrorImage(h);
+      else { eff.images -= 1; if (eff.images <= 0) clearEffect(h, 'mirrorImages'); }
+    }, ms));
+    /* Magic Weapon pays off on a hit: swing once it has taken hold, with the sparks a hit would make. */
+    if (currentId === 'magicWeapon') setTimeout(() => {
+      if (castPreview !== preview) return;
+      const anim = h.ent && h.ent.anim, t = targets[0];
+      if (anim && anim.play) anim.play('slash', true);
+      if (t) setTimeout(() => {
+        if (castPreview === preview) spawnLiveImpact(scene, 'hitSpark', new THREE.Vector3(t.x, t.ent.grp.position.y + 0.6, t.z), { palette: 'arcane' });
+      }, 450);
+    }, 1200);
+    /* Thunderwave won't go off with nobody in reach, and the stand-ins stand further off: show its wave anyway. */
+    if (cast === false && currentId === 'thunderwave') {
+      preview.game.playAbilityFx(h, 'thunderwave', { at: h, spell: true });
+      preview.game.fxThunderclap(h);
+    }
+    /* Thunderous Smite's show is the next melee hit, so the bench swings one a moment after the cast. */
+    if (h.smiteNext) {
+      const t = targets[0];
+      setTimeout(() => {
+        h.smiteNext = false;
+        if (h._smiteFx) { h._smiteFx.remove(); h._smiteFx = null; }
+        if (castPreview !== preview) return;
+        if (a && typeof a.play === 'function') a.play(a.anims ? 'attack' : 'slash', true);
+        spawnSmiteCleave(scene, new THREE.Vector3(h.x, floorY(h.x, h.z), h.z), { x: t.x, z: t.z });
+        setTimeout(() => {
+          if (castPreview !== preview) return;
+          spawnSmiteImpact(scene, new THREE.Vector3(t.x, floorY(t.x, t.z), t.z));
+          hitFlash(t.ent);
+          poseHit(visualOf(t), t.x - h.x, t.z - h.z);
+        }, SMITE_CLEAVE_SLAM * 1000);
+      }, 1500);
+    }
   }, SPELL_CHARGE_SECONDS * 1000);
 }
 
@@ -945,11 +1034,52 @@ function castGame(h, targets) {
       spawnBeamEffect(scene, from, to, opts);
     },
     spawnAoEZone(_c, k, x, z, radius, options = {}) {
-      spawnAoEVisual(scene, { x, y: floorY(x, z), z }, options.color || 0xffffff, radius, 4.0, { ...options });
+      spawnAoEVisual(scene, { x, y: floorY(x, z), z }, options.color || 0xffffff, radius, 4.0, { ...options, y: floorY(x, z), heightAt: surfaceAt });
       return { id: 'preview', caster: h, spellKey: k, x, z, radius, options, savesThisTurn: new Set() };
     },
     fxBodyEffect(kind, creature) { return spawnBodyEffect(kind, creature); },
-    fxManaBurst(e, palette) { spawnManaBurst(scene, new THREE.Vector3(e.x, floorY(e.x, e.z), e.z), PAL[palette]); },
+    fxAcidSplat(pos, from) { spawnAcidSplat(scene, pos, pos.y - floorY(pos.x, pos.z), from); },
+    fxScytheReap(e, caster, size) { spawnScytheReap(scene, new THREE.Vector3(e.x, floorY(e.x, e.z), e.z), caster, size); },
+    fxManaBurst(e, palette, size) { spawnManaBurst(scene, new THREE.Vector3(e.x, floorY(e.x, e.z), e.z), PAL[palette], size); },
+    fxElementImpact(e, type) {
+      if (type === 'poison') return spawnBodyEffect('chromaticPoison', e);
+      const y = floorY(e.x, e.z);
+      spawnElementImpact(scene, type, new THREE.Vector3(e.x, y + 0.5 * (e.data?.scale || 1) + 0.4, e.z), new THREE.Vector3(e.x, y, e.z));
+    },
+    fxPlaySfx(name, opts) { if (el.sfxCb.checked) playSfx(name, opts); },
+    fxFaerieStars(x, z) { spawnFaerieStars(scene, x, z, floorY); },
+    fxThunderclap(e) { spawnThunderclap(scene, e.x, e.z, floorY, surfaceAt, (sec, fn) => setTimeout(fn, sec * 1000)); },
+    fxWardCircle(e, palette) { spawnWardCircle(scene, e.x, e.z, surfaceAt, palette); },
+    fxHadarPortal(x, z, radius) { spawnHadarPortal(scene, x, z, surfaceAt, radius); },
+    fxGreaseSlick(x, z) { return (previewSlick = spawnGreaseSlick(scene, x, z, surfaceAt)); },
+    fxFlamingSphere(x, z) { return (previewSphere = spawnFlamingSphere(scene, x, z, floorY)); },
+    fxSummonArrival(e) { playSummonArrival(e, (sec, fn) => setTimeout(fn, sec * 1000)); },
+    /* Misty Step: three tiles over, and back to where it started at the next Play */
+    escapeTeleportCell() { return 0; },
+    teleportEntity(e) {
+      if (!previewStepHome) previewStepHome = { x: e.x, z: e.z };
+      e.x += 3; e.z += 2;
+      e.ent.grp.position.set(e.x, floorY(e.x, e.z), e.z);
+      return true;
+    },
+    fxMoonbeam(x, z) { return (previewMoon = spawnMoonbeam(scene, x, z, floorY)); },
+    resolveMoonbeamDamage(zone, m) {
+      if (zone.liveFx) zone.liveFx.flash(1);
+      spawnBodyEffect('moonScorch', m);
+    },
+    fxBlinkStep(e, cross) { playBlinkStep(e, (sec, fn) => setTimeout(fn, sec * 1000), cross); },
+    summons: {
+      spawn(summoner) {
+        const data = COMPANIONS[FAMILIAR_KINDS[nextFamiliar++ % FAMILIAR_KINDS.length]].factory(5);
+        const x = summoner.x + 1.2, z = summoner.z + 0.6;
+        previewFamiliar = { ent: makeHeroMesh(data), data, x, z, isMonster: false };
+        previewFamiliar.ent.grp.position.set(x, floorY(x, z), z);
+        scene.add(previewFamiliar.ent.grp);
+        return previewFamiliar;
+      },
+    },
+    fxFaerieSparkle(x, z) { return (previewSparkle = spawnFaerieSparkle(scene, x, z, floorY)); },
+    fxEntangleWeeds(x, z, radius) { return (previewWeeds = spawnEntangleWeeds(scene, x, z, radius, floorY)); },
     hasLOS() { return true; },
     healHero(who, amt) { makeFloatText(scene, '+' + amt, new THREE.Vector3(who.x, floorY(who.x, who.z) + 1.3, who.z), '#6ae06a'); },
     /* Each round's bolt goes to the next stand-in, as the druid would pick a fresh target. */
@@ -976,6 +1106,8 @@ function castGame(h, targets) {
        arrival, the other targets' impacts landing with it. */
     playAbilityFx(caster, k, opts = {}) {
       const at = opts.at || caster;
+      /* The caster turns to whoever the spell lands on, as heroStartCastAnim does. */
+      if (at !== caster) caster.faceTarget = at;
       const anim = animFor(k);
       if (!anim) { if (opts.onImpact) opts.onImpact(opts.toPos || at); return; }
       const from = opts.fromPos || new THREE.Vector3(caster.x, chestWorldY(caster), caster.z);
@@ -1021,7 +1153,7 @@ function previewPersistentZone() {
     spellSave() { return true; },
     concentrate() {},
     spawnAoEZone(_c, _k, x, z, radius, options = {}) {
-      spawnAoEVisual(scene, { x, y: floorY(x, z), z }, options.color || 0xffffff, radius, 4.0, { ...options });
+      spawnAoEVisual(scene, { x, y: floorY(x, z), z }, options.color || 0xffffff, radius, 4.0, { ...options, y: floorY(x, z), heightAt: surfaceAt });
       return { id: 'preview', caster: h, spellKey: _k, x, z, radius, options, savesThisTurn: new Set() };
     }
   };
@@ -1076,6 +1208,55 @@ el.travelSound.addEventListener('change', () => { markModified(currentId); editi
 el.impactSound.addEventListener('change', () => { markModified(currentId); editing.impactSound = el.impactSound.value; });
 el.playTravelSound.addEventListener('click', () => { if (el.travelSound.value) playSfx(el.travelSound.value, { volume: 0.6 }); });
 el.playImpactSound.addEventListener('click', () => { if (el.impactSound.value) playSfx(el.impactSound.value, { volume: 0.6 }); });
+
+/* ── Light: an animation's `light` block (game/spell_lights.js) ─────────── */
+const LIGHT_SLIDERS = [
+  ['travel', 'Flight', 0, 10, 0.1], ['travelRange', 'Flight range', 1, 14, 0.5],
+  ['impact', 'Impact', 0, 16, 0.1], ['impactRange', 'Impact range', 1, 20, 0.5],
+  ['fade', 'Fade', 0.05, 2, 0.05], ['flicker', 'Flicker', 0, 0.6, 0.01],
+  ['delay', 'Flare delay', 0, 1.5, 0.01],
+];
+const lightOn = $('light-on'), lightColor = $('light-color'), lightSliders = $('light-sliders');
+const lightInputs = {};
+for (const [key, label, min, max, step] of LIGHT_SLIDERS) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const lab = document.createElement('label');
+  lab.append(label + ' ');
+  const input = Object.assign(document.createElement('input'), { type: 'range', min, max, step });
+  const val = document.createElement('span');
+  lab.append(input, ' ', val);
+  row.append(lab);
+  lightSliders.append(row);
+  lightInputs[key] = { input, val };
+  input.addEventListener('input', () => {
+    if (!editing.light) return;
+    markModified(currentId);
+    editing.light[key] = parseFloat(input.value);
+    val.textContent = editing.light[key].toFixed(2);
+  });
+}
+function syncLightControls() {
+  const def = { ...LIGHT_DEFAULTS, ...(editing.light || {}) };
+  const on = !!editing.light && editing.light.enabled !== false;
+  lightOn.checked = on;
+  lightColor.value = def.color;
+  lightSliders.style.display = on ? '' : 'none';
+  for (const [key] of LIGHT_SLIDERS) {
+    lightInputs[key].input.value = def[key];
+    lightInputs[key].val.textContent = def[key].toFixed(2);
+  }
+}
+lightOn.addEventListener('change', () => {
+  markModified(currentId);
+  editing.light = { ...LIGHT_DEFAULTS, ...(editing.light || {}), enabled: lightOn.checked };
+  syncLightControls();
+});
+lightColor.addEventListener('input', () => {
+  if (!editing.light) return;
+  markModified(currentId);
+  editing.light.color = lightColor.value;
+});
 
 /* ── Audio volume (the game persists these in localStorage — if SFX was muted
    in a previous session the editor would otherwise be silent). ─────────── */
@@ -1199,8 +1380,9 @@ function animate(time) {
   /* The scene module's own tick() drives game.update(), which this page never
      initialises — so, like the dungeon editor, run just the visual half. */
   liveUpdate(loopT, Infinity, dt);
-  tickUnit(attackerUnit, targetUnit, dt);
+  tickUnit(attackerUnit, (attackerUnit && attackerUnit.faceTarget) || targetUnit, dt);
   tickUnit(targetUnit, attackerUnit, dt);
+  if (previewFamiliar) tickUnit(previewFamiliar, targetUnit, dt);
   for (const u of extraTargets) tickUnit(u, attackerUnit, dt);
   /* Statuses a previewed cast left on its stand-ins (Sleep's Zs) persist
      until the next cast, as they would until something wakes them. */
@@ -1209,6 +1391,23 @@ function animate(time) {
   updateWorldFx(scene, dt);
   updateFloatTexts(scene, cam);
   updateCompositeFX(scene, dt);
+  tickLightRegistry(dt);
+  updateDarkness(scene, dt, floorY);
+  /* The bench has no sprite lighting, so a stand-in in the dark is shaded here, as the game shades it. */
+  for (const u of [attackerUnit, allyUnit, ...allTargets()]) {
+    const lit = u && u.ent && u.ent.anim && u.ent.anim.mesh && u.ent.anim.mesh.material.userData && u.ent.anim.mesh.material.userData.sprLit;
+    if (!lit) continue;
+    const dark = DARK_ZONES.size > 0 && inDarkZone(u.x, u.z);
+    if (dark || u._previewDark) { lit.L.value.setScalar(dark ? 0.12 : 1); lit.R.value.setScalar(dark ? 0.12 : 1); }
+    u._previewDark = dark;
+  }
+  /* The game's hero loop sizes an enlarged creature; do the same here. */
+  for (const u of [attackerUnit, allyUnit]) {
+    const g = u && u.ent && u.ent.grp;
+    if (!g) continue;
+    const want = hasEffect(u, 'enlarged') ? 1.5 : 1;
+    if (g.scale.x !== want) g.scale.setScalar(Math.abs(g.scale.x - want) > 0.005 ? g.scale.x + (want - g.scale.x) * Math.min(1, dt * 8) : want);
+  }
   for (const u of [attackerUnit, allyUnit, ...allTargets()]) if (u) updateFlash(u.ent, dt);
   renderFrame(dt);
 }

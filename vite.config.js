@@ -60,6 +60,52 @@ function saveMonstersPlugin() {
         });
       });
 
+      /* XP Balancer: writes the XP table into src/game/srd.js and the quest
+         reward defaults into src/game/quests.js, so a balance pass ships in
+         code instead of living in one browser's localStorage. Only the one
+         line / three defaults are replaced; the rest of each file is untouched. */
+      server.middlewares.use('/api/save-xp-table', (req, res) => {
+        if (req.method !== 'POST') { res.statusCode = 405; return res.end('Method Not Allowed'); }
+        let body = '';
+        req.on('data', c => { body += c; });
+        req.on('end', () => {
+          const reply = (code, obj) => {
+            res.statusCode = code;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(obj));
+          };
+          try {
+            const { table, quest } = JSON.parse(body);
+            const ok = Array.isArray(table) && table.length === 21
+              && table.every(v => Number.isInteger(v) && v >= 0)
+              && table.slice(2).every((v, i) => v > table[i + 1]);
+            if (!ok) return reply(400, { success: false, error: 'table must be 21 rising whole numbers' });
+
+            const srdPath = path.resolve(__dirname, 'src/game/srd.js');
+            const srd = fs.readFileSync(srdPath, 'utf8');
+            const re = /const default_xp_table = \[[^\]]*\];/;
+            if (!re.test(srd)) return reply(500, { success: false, error: 'default_xp_table line not found in srd.js' });
+            fs.writeFileSync(srdPath, srd.replace(re, `const default_xp_table = [${table.join(', ')}];`), 'utf8');
+
+            if (quest) {
+              const qPath = path.resolve(__dirname, 'src/game/quests.js');
+              let qs = fs.readFileSync(qPath, 'utf8');
+              const setDefault = (key, val) => {
+                if (!Number.isFinite(val)) return;
+                qs = qs.replace(new RegExp(`(getItem\\('${key}'\\) \\|\\| ')[^']*(')`), `$1${val}$2`);
+              };
+              setDefault('dc_quest_xp_base', quest.base);
+              setDefault('dc_quest_xp_coeff', quest.coeff);
+              setDefault('dc_side_xp_mult', quest.side);
+              fs.writeFileSync(qPath, qs, 'utf8');
+            }
+            reply(200, { success: true });
+          } catch (err) {
+            reply(500, { success: false, error: err.message });
+          }
+        });
+      });
+
       server.middlewares.use('/api/save-monsters', (req, res) => {
         if (req.method === 'POST') {
           let body = '';

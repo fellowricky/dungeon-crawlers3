@@ -408,5 +408,45 @@ describe('Items & Loot System', () => {
       expect(dmgDiff.isPositive).toBe(true);
     });
   });
-});
+  describe('loot sanity', () => {
+    it('a weapon never rolls more than one elemental damage type', () => {
+      const rng = mulberry32(4242);
+      for (let i = 0; i < 4000; i++) {
+        const it = rollItem(1 + (i % 10), rng, 'weapon', { forceRarity: ['uncommon', 'rare', 'epic'][i % 3] });
+        const elems = Object.keys(it.bonuses || {}).filter(k => k.startsWith('elem'));
+        expect(elems.length).toBeLessThanOrEqual(1);
+      }
+    });
 
+    it('helms, armor and shields never carry damage', () => {
+      const rng = mulberry32(99);
+      for (const slot of ['helm', 'armor', 'shield']) {
+        for (let i = 0; i < 1500; i++) {
+          const it = rollItem(1 + (i % 12), rng, slot, { forceRarity: ['rare', 'epic', 'legendary'][i % 3] });
+          const bad = Object.keys(it.bonuses || {}).filter(k => k === 'dmg' || k.startsWith('elem'));
+          expect(bad, `${slot} ${it.name}`).toEqual([]);
+        }
+      }
+    });
+
+    it('only staves and wands roll saving-throw affixes among weapons', () => {
+      const rng = mulberry32(31);
+      let focusSaves = 0;
+      for (let i = 0; i < 6000; i++) {
+        const it = rollItem(1 + (i % 12), rng, 'weapon', { forceRarity: ['rare', 'epic', 'legendary'][i % 3] });
+        const saves = Object.keys(it.bonuses || {}).filter(k => k.startsWith('save'));
+        if (getBase('weapon', it.baseKey)?.focus) focusSaves += saves.length ? 1 : 0;
+        else expect(saves, it.name).toEqual([]);
+      }
+      expect(focusSaves).toBeGreaterThan(0);   // casters' foci still get them
+    });
+
+    it('a helm with no AC has no intrinsic power score', () => {
+      const hood = rollItem(1, mulberry32(7), 'helm', { baseKey: 'Rag Hood' });
+      hood.affixes = [];
+      recomputeItemBonuses(hood);
+      expect(Object.keys(hood.bonuses)).toHaveLength(0);
+      expect(itemPoints(hood)).toBe(0);
+    });
+  });
+});

@@ -3,7 +3,7 @@
  * Mixed onto Game — menus.js / shop.js call these methods.
  */
 import {
-  recalc, canEquip, spendAbilityPoint, spendSkillPoint, spendSkillRank, pickSubclass, SUBCLASSES, roll
+  recalc, canEquip, spendAbilityPoint, spendSkillPoint, spendSkillRank, pickSubclass, SUBCLASSES, roll, potionHealAmount
 } from './srd.js';
 import { resolveChoice } from './features.js';
 import { slotsFor, migrateItem, migrateInventory, itemCategory, itemPoints,
@@ -62,7 +62,7 @@ export const inventoryMethods = {
     }
     if (!worst || wf >= 1) return;
     this.potions[kind]--;
-    const amt = kind === 'superior' ? roll(8, 4, 8) : kind === 'greater' ? roll(4, 4, 4) : roll(2, 4, 2);
+    const amt = potionHealAmount(kind, worst.data);   // Alchemist % of the drinker
     worst.data.hp = Math.min(worst.data.maxHp, worst.data.hp + amt);
     makeFloatText(this.engine.scene, '+' + amt, _v.set(worst.x, 1.3, worst.z), '#6ae0ff');
     log(`🧪 You toss ${worst.data.name} a potion (+${amt}).`, 'heal');
@@ -378,6 +378,8 @@ export const inventoryMethods = {
       log(`📜 ${hero.name} learns ${opt.label}!`, 'level');
     } else if (choice.pick === 'wildShapeForm') {
       log(`🌿 ${hero.name} selects ${opt.label} for Wild Shape!`, 'level');
+    } else if (choice.pick === 'metamagic') {
+      log(`✴️ ${hero.name} masters ${opt.label}!`, 'level');
     }
     recalc(hero);
     this.afterGearChange(hero);

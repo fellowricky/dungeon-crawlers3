@@ -9,7 +9,7 @@ export const RAMPS = {
   hush:     ['#07060d', '#131026', '#241f44', '#3a3470', '#5a52a0', '#8a84d0', '#c8c4f4'],
   /* Restrained: PAL.bone's wrapping (web silk, rope) with a pale glow in place of the roots' green */
   silkGlow: ['#3a352c', '#8a806c', '#e4dcc8', '#fffaf0'],
-  marked:   ['#04140f', '#0a2a22', '#11483a', '#178f72', '#1abc9c', '#6ce8c8', '#c8fff0', '#ffffff'],  // the game's Marked teal
+  marked:   ['#140606', '#2e0b0b', '#561212', '#8c1a1a', '#c02424', '#e85040', '#ff9a80', '#ffe0d0'],  // Hunter's Mark: a hunter's red
 };
 
 /** An 8-step ramp from a spell's own colours: near-black up through `color`,

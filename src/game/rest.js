@@ -7,7 +7,7 @@
  *   short → partial recover (warlocks full)
  *   long  → full recover
  */
-import { hasFeature, totalSlots, recoverSlots, restoreCharges } from './features.js';
+import { hasFeature, totalSlots, recoverSlots, restoreCharges, restoreSorceryPoints, restoreArcaneWard } from './features.js';
 import { drawBar } from './entities.js';
 import { log, updatePartyFrames } from './ui.js';
 import { clearEffectsByTag } from './conditions.js';
@@ -78,6 +78,27 @@ export function applyShortRestToHero(h, opts = {}) {
     h.ki = h.kiMax;
   }
 
+  /* Sorcery points come back on a long rest only — except Sorcerous
+     Restoration (level 5): once per long rest, a short rest restores half the
+     sorcerer's level. A shrine / full-heal rest counts as a long one. */
+  if (h.sorcPointsMax) {
+    if (opts.fullHeal || opts.reason === 'shrine') {
+      restoreSorceryPoints(h);
+      h.sorcRestoreUsed = false;
+    } else if (hasFeature(h, 'sorcerousRestoration') && !h.sorcRestoreUsed
+               && (h.sorcPoints || 0) < h.sorcPointsMax) {
+      const got = restoreSorceryPoints(h, Math.max(1, Math.floor((h.level || 1) / 2)));
+      if (got > 0) h.sorcRestoreUsed = true;
+    }
+  }
+
+  /* Arcane Ward (Abjurer): a full-heal or shrine rest fills it; otherwise
+     Warding Recovery (L6) gives half of it back on a short rest. */
+  if (h.wardMax) {
+    if (opts.fullHeal || opts.reason === 'shrine') restoreArcaneWard(h);
+    else if ((h.level || 0) >= 6) restoreArcaneWard(h, Math.ceil(h.wardMax / 2));
+  }
+
   /* Song of Rest is no longer a short-rest effect — it is a passive
      post-combat heal (10% max HP) applied in combat.js when a room's last
      monster dies. Short rests already heal the party, so the old bonus was
@@ -105,6 +126,8 @@ export function applyLongRestToHero(h) {
   if (totalSlots(h.slotsMax) > 0) h.slots = { ...h.slotsMax };
   if (h.layOnHandsMax) h.layOnHands = h.layOnHandsMax;
   if (h.kiMax) h.ki = h.kiMax;
+  if (h.sorcPointsMax) { h.sorcPoints = h.sorcPointsMax; h.sorcRestoreUsed = false; }
+  if (h.wardMax) restoreArcaneWard(h);
 }
 
 /**

@@ -28,11 +28,13 @@ import {
   spawnAoEVisual,
 } from './entities.js';
 import { spawnPixelVfx } from '../render/pixel_vfx.js';
-import { updateLivePixelFx, spawnLiveMissile, spawnLiveBeam } from '../render/pixelfx_live.js';
+import { updateLivePixelFx, spawnLiveMissile, spawnLiveBeam, spawnLiveImpact, LIVE_IMPACTS } from '../render/pixelfx_live.js';
+import { tickAmbientCritters } from '../render/ambient_critters.js';
 import { PAL } from '../vendor/pixelfx/core/index.js';
 import { playNixieEffect } from '../render/nixie_vfx.js';
 import { playSfx } from './audio.js';
 import { hold } from './fx_clock.js';
+import { lightDefOf, startTravelLight, moveSpellLight, flareSpellLight, updateSpellLights } from './spell_lights.js';
 import LIB from './vfx_animations.json' with { type: 'json' };
 
 export const VFX_LIB = LIB;
@@ -197,8 +199,12 @@ export function spawnLayer(scene, layer, pos, beamFrom = null, beamTo = null, de
       });
       return [];
     }
+    if (LIVE_IMPACTS[layer.fx]) {
+      spawnLiveImpact(scene, layer.fx, pos, { palette: layer.palette, scale, opacity: base.opacity, renderOrder: ro });
+      return [];
+    }
     /* A live-drawn missile (render/pfx/missile.js): `palette` is a pixelfx ramp name. */
-    return [spawnLiveMissile(scene, pos, { kind: layer.fx, palette: layer.palette, scale, dur, opacity: base.opacity })];
+    return [spawnLiveMissile(scene, pos, { kind: layer.fx, palette: layer.palette, scale, dur, opacity: base.opacity, renderOrder: ro })];
   } else if (layer.type === 'sprite') {
     const sd = layer.frames
       ? { frames: layer.frames, frameInterval: layer.frameInterval }
@@ -300,6 +306,7 @@ export function spawnCompositeAnimation(scene, anim, opts = {}) {
     : (opts.travelSound || (anim.travelSound ? () => playSfx(anim.travelSound, { volume: 0.4 }) : null));
 
   const impactDur = impactDuration(anim.impact);
+  const lightDef = lightDefOf(anim);
 
   /* Spells with no travel layers fire their impact immediately — no dead air. */
   const hasTravelLayers = !!(travel.back && travel.back.enabled) || !!(travel.front && travel.front.enabled);
@@ -311,6 +318,7 @@ export function spawnCompositeAnimation(scene, anim, opts = {}) {
     /* `hitAt` (seconds): the blow lands partway through a built-up impact
        (Sacred Flame: the blessing opens, the hit comes with the flames). */
     const land = () => {
+      if (lightDef) flareSpellLight(scene, lightDef, to);
       playImpactFor(anim, opts, to);
       if (opts.onImpact) opts.onImpact(to);
     };
@@ -362,6 +370,8 @@ export function spawnCompositeAnimation(scene, anim, opts = {}) {
       ? null
       : (opts.impactSound || (anim.impactSound ? () => playSfx(anim.impactSound, { volume: 0.75 }) : null)),
     onImpact: opts.onImpact || null,
+    lightDef,
+    light: lightDef ? startTravelLight(scene, lightDef, from) : null,
   };
   travelPool.push(T);
 
@@ -437,9 +447,11 @@ export function hasActiveCompositeFX() {
 
 /** Advance composite animations (travel tween + custom glow/smoke pool).
  *  Called from the game main loop and the editor's render loop. */
-export function updateCompositeFX(scene, dt) {
+export function updateCompositeFX(scene, dt, camera, actors) {
   updateFxPool(scene, dt);
+  tickAmbientCritters(dt, camera, actors);
   updateLivePixelFx(dt);
+  updateSpellLights(dt);
   for (let i = delayedLayers.length - 1; i >= 0; i--) {
     if ((delayedLayers[i].t -= dt) > 0) continue;
     const { fire } = delayedLayers[i];
@@ -458,7 +470,9 @@ export function updateCompositeFX(scene, dt) {
       if (!it.mesh) continue;
       flightPos(T, k, it.mesh.position);
     }
+    if (T.light) moveSpellLight(T.light, flightPos(T, k, _ahead));
     if (k >= 1) {
+      if (T.lightDef) flareSpellLight(T.scene, T.lightDef, T.to, T.light);
       if (T.impactSound) T.impactSound();
       fireImpactLayers(T.scene, T.impact, T.to, T.from, T.groundAt);
       if (T.onImpact) T.onImpact(T.to);

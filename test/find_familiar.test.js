@@ -68,6 +68,20 @@ describe('Find Familiar Companion System', () => {
     expect(mockGame.fxLog).toHaveBeenCalledWith(expect.stringContaining('Owl 🦉'), 'buff');
   });
 
+  it('summons after the charge, and blinks the familiar in', () => {
+    const pending = [];
+    const familiar = { data: { name: 'Owl Familiar' } };
+    const mockGame = {
+      markSpellUsed: vi.fn(), playAbilityFx: vi.fn(), fxLog: vi.fn(), fxSummonArrival: vi.fn(),
+      fxDelay: (sec, cb) => pending.push({ sec, cb }),
+      summons: { spawn: vi.fn().mockReturnValue(familiar) },
+    };
+    SPELLS.findFamiliar.cast(mockGame, { x: 0, z: 0, data: { name: 'Gandalf', classKey: 'wizard' } }, null, [], 1, null, 'owlFamiliar');
+    expect(mockGame.summons.spawn).not.toHaveBeenCalled();
+    pending[0].cb();
+    expect(mockGame.fxSummonArrival).toHaveBeenCalledWith(familiar);
+  });
+
   it('should honor familiarChoice on hero data when casting without explicit choice', () => {
     const mockGame = {
       markSpellUsed: vi.fn(),

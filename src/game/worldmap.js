@@ -3,8 +3,8 @@
  */
 import { generateQuests } from './quests.js';
 import { showLoadingScreenPainted, hideLoadingScreen } from '../ui/loading_screen.js';
-import { prologueSummary } from './overland_prologue.js';
-import { WORLD, HUB } from './world_regions.js';
+import { prologueSummary, loadingSurface } from './overland_prologue.js';
+import { WORLD, HUB, windRoad } from './world_regions.js';
 import { THEMES } from '../dungeon/dungeon_generator.js';
 import { storyMissionState, makeStoryQuest } from './story.js';
 import { showBriefing } from './story_dialog.js';
@@ -19,7 +19,7 @@ import { HAIR_VALUES, HAIR_EXTENSION_VALUES, FACIAL_HAIR_VALUES, HAIR_COLORS,
          skinColorsFor, getRaceDefaults } from './appearance.js';
 import { log, updateResources } from './ui.js';
 import { playNarration, stopNarration } from './audio.js';
-import { refreshMenus, openMenu, bindItemHoverTooltip, hideItemTooltip } from './menus.js';
+import { refreshMenus, openMenu, bindItemHoverTooltip, hideItemTooltip, partyCompareHTML, consumableCardHTML } from './menus.js';
 import { FACILITY_DEFINITIONS,
          TECH_TREE, RUNE_RECIPES, SLAYING_ORDERS, BATTLE_DOCTRINES, EXPEDITION_TEMPLATES,
          TRAINING_GEAR, trainingFloorsForGain } from './guild.js';
@@ -361,13 +361,12 @@ function renderRoute(q) {
   if (!route || !Array.isArray(route.path) || route.path.length < 4) { svg.innerHTML = ''; return; }
   const pts = [];
   for (let i = 0; i < route.path.length; i += 2) pts.push([route.path[i] + 0.5, route.path[i + 1] + 0.5]);
-  const ends = [...(route.camps || []), pts.length - 1];
-  let html = '', start = 0;
-  ends.forEach((end, d) => {
+  /* Drawn as a seeded meander through the grid path; camps and the pin stay put. */
+  let html = '';
+  windRoad(route, q.seed).forEach((line, d) => {
     const colour = THEMES[route.legs[d]]?.accent || '#d7c18f';
-    const seg = pts.slice(start, end + 1).map(p => p.join(',')).join(' ');
+    const seg = line.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
     html += `<polyline class="wm-route-day" points="${seg}" stroke="${colour}" />`;
-    start = end;
   });
   for (const k of route.camps || []) {
     const [x, y] = pts[k];
@@ -568,14 +567,31 @@ function embarkStory() {
   }
 }
 
+function embarkCurtain(q) {
+  const floor = (q && q.startFloor) ? q.startFloor : 1;
+  const seed = q ? (q.seed + (floor - 1) * 9973) : 0;
+  const surface = loadingSurface(q, floor, seed, q && q.theme);
+  const plan = surface.plan;
+  return {
+    title: (q && q.name) || 'EMBARKING',
+    subtitle: 'The party sets out...',
+    map: (plan && plan.name) || (q && (q.place || q.siteName)) || '',
+    mapLock: !!(plan && plan.name),
+    floor,
+    floors: q && q.floors,
+    party: G && G.heroes,
+    theme: surface.theme,
+    timeOfDay: surface.timeOfDay,
+    weather: surface.weather,
+    seed
+  };
+}
+
 async function launchStoryQuest(q) {
   hideWorldMap();
   /* startQuest() forges the floor synchronously — show the curtain and let it
      paint first so embarking acknowledges the click immediately. */
-  await showLoadingScreenPainted({
-    title: q.name || 'EMBARKING', subtitle: 'The party sets out...',
-    party: G && G.heroes
-  });
+  await showLoadingScreenPainted(embarkCurtain(q));
   G.startQuest(q);
   log(`📖 Chapter ${q.chapter}: ${q.name} — the party sets out for ${q.place}.`, 'sys');
   if (q.embarkText) {
@@ -589,10 +605,7 @@ async function launchStoryQuest(q) {
  *  a replay from How to Play. Same curtain-then-forge order as a story quest. */
 export async function launchTutorialQuest(q) {
   hideWorldMap();
-  await showLoadingScreenPainted({
-    title: q.name || 'EMBARKING', subtitle: 'The party sets out...',
-    party: G && G.heroes
-  });
+  await showLoadingScreenPainted(embarkCurtain(q));
   G.startQuest(q);
   log(`📘 Tutorial: ${q.name} — the party sets out for ${q.place}.`, 'sys');
   if (q.embarkText) log(q.embarkText, 'story');
@@ -603,10 +616,7 @@ async function embarkSelected() {
   if (!selected || !G) return;
   const q = selected;
   hideWorldMap();
-  await showLoadingScreenPainted({
-    title: q.name || 'EMBARKING', subtitle: 'The party sets out...',
-    party: G && G.heroes
-  });
+  await showLoadingScreenPainted(embarkCurtain(q));
   G.startQuest(q);
   log(`🗺️ The party embarks on ${q.name} (${q.floors} floor${q.floors > 1 ? 's' : ''}, Lv ${q.level}).`, 'sys');
   if (q.embarkText) log(q.embarkText, 'story');
@@ -651,6 +661,7 @@ function itemMatchesFilter(shopObj, filter) {
 }
 
 // ===== Town Shop Panel Logic =====
+let shopCmpPick = null;   // which party member the selected item is compared with (null: whoever gains most)
 function renderShopPanel() {
   const buyGrid = $('wm-shop-buy-grid');
   const sellGrid = $('wm-shop-sell-grid');
@@ -701,6 +712,7 @@ function renderShopPanel() {
       const idx = +el.dataset.i;
       const shopObj = G.townShopInventory[idx];
       selShopItem = { type: 'buy', shopObj, index: idx };
+      shopCmpPick = null;
       renderShopPanel();
     });
   });
@@ -726,6 +738,7 @@ function renderShopPanel() {
         const idx = +el.dataset.i;
         const item = G.inventory[idx];
         selShopItem = { type: 'sell', item, index: idx };
+        shopCmpPick = null;
         renderShopPanel();
       });
     });
@@ -744,34 +757,13 @@ function renderShopPanel() {
       const affordable = G.gold >= shopObj.price;
       allowed = affordable;
 
+      /* the game's one item card, compared against any party member's gear */
       if (shopObj.type === 'potion') {
-        content = `
-          <div class="id-name">${itemIconHTML(shopObj.icon)} ${shopObj.name}</div>
-          <div class="id-slot">Consumable</div>
-          <div class="id-bonus" style="margin-top:10px">${shopObj.desc}</div>
-        `;
+        content = consumableCardHTML(shopObj.icon, shopObj.name, shopObj.desc);
       } else {
-        const it = shopObj.item;
-        migrateItem(it);
-        const pLine = perkText(it);
-        let bonus = bonusText(it) || 'No bonuses';
-        if (it.scroll || it.potion) {
-          let what = '';
-          if (it.scroll && it.spellKey) {
-            const sp = SPELLS[it.spellKey];
-            what = sp ? `${sp.label}${sp.level ? ' (Lv ' + sp.level + ')' : ''} — ${sp.desc}` : it.spellKey;
-          } else if (it.potion && it.buffKey) {
-            const eff = EFFECTS[it.buffKey];
-            what = eff ? `${eff.label} — ${eff.desc}` : it.buffKey;
-          }
-          bonus = `${what}\n${it.charges} charge${it.charges === 1 ? '' : 's'} remaining`;
-        }
-        content = `
-          <div class="id-name" style="color:${it.color}">${itemIconHTML(it.icon)} ${it.name}</div>
-          <div class="id-slot">${cap(it.slot)} — ${cap(it.rarity)} · ${ilvlText(it)}</div>
-          <div class="id-bonus" style="margin-top:10px">${bonus}</div>
-          ${pLine ? `<div class="id-perk" style="margin-top:5px; color:#e8a83f;">${pLine}</div>` : ''}
-        `;
+        const r = partyCompareHTML(shopObj.item, G.heroes || [], shopCmpPick);
+        shopCmpPick = r.pick;
+        content = r.html;
       }
 
       btnText = `Buy for ${shopObj.price}g`;
@@ -801,16 +793,11 @@ function renderShopPanel() {
 
     } else { // sell
       const item = selShopItem.item;
-      migrateItem(item);
-      const pLine = perkText(item);
       allowed = true;
-
-      content = `
-        <div class="id-name" style="color:${item.color}">${itemIconHTML(item.icon)} ${item.name}</div>
-        <div class="id-slot">${cap(item.slot)} — ${cap(item.rarity)} · ${ilvlText(item)}</div>
-        <div class="id-bonus" style="margin-top:10px">${bonusText(item) || 'No bonuses'}</div>
-        ${pLine ? `<div class="id-perk" style="margin-top:5px; color:#e8a83f;">${pLine}</div>` : ''}
-      `;
+      /* selling: the same card and comparison, so it's clear whether anyone still wants it */
+      const r = partyCompareHTML(item, G.heroes || [], shopCmpPick);
+      shopCmpPick = r.pick;
+      content = r.html;
 
       btnText = qtyOf(item) > 1 ? `Sell one for ${item.value}g (${qtyOf(item)} held)` : `Sell for ${item.value}g`;
       clickHandler = () => {
@@ -830,7 +817,7 @@ function renderShopPanel() {
 
     detail.innerHTML = `
       <div class="wm-shop-detail-card">
-        <div>
+        <div class="item-card shop-card">
           ${content}
         </div>
         <div style="margin-top:20px;">
@@ -841,6 +828,10 @@ function renderShopPanel() {
     `;
 
     $('wm-shop-action-btn').addEventListener('click', clickHandler);
+    detail.querySelectorAll('[data-cmp-hero]').forEach(el => el.addEventListener('click', () => {
+      shopCmpPick = +el.dataset.cmpHero;
+      renderShopPanel();
+    }));
 
   } else {
     detail.innerHTML = `<div style="text-align:center; color:#5a6474; font-size:16px; margin-top:40px;">Select an item from Buy or Sell stock to view details.</div>`;

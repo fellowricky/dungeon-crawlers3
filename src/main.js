@@ -17,8 +17,10 @@ import {
 import { POST } from './render/dungeon_materials.js';
 import { initAssetPack } from './game/asset_pack.js';
 import { loadIconManifest } from './game/icons.js';
-import { showLoadingScreen, hideLoadingScreen } from './ui/loading_screen.js';
-import { initTestDungeon } from './game/test_dungeon.js';
+import { showLoadingScreen, hideLoadingScreen, scheduleAfterPaint, revealLoadingMap } from './ui/loading_screen.js';
+import { resolveOverlandEnvironment } from './dungeon/overland_weather.js';
+import { initTestDungeon, mountTestDelveTitleButton } from './game/test_dungeon.js';
+import { showTitleLoading } from './game/ui.js';
 
 /* ---------------- DOM Elements ---------------- */
 const el = {
@@ -57,7 +59,7 @@ const OBJ_MESHES = {
   props: ['pillar','debrisA','debrisB','debrisC','chestBody','chestTrim','chestSeam','tent','bone',
           'skull','skeleton','bonePile','spiderWeb',
           'ring','crystal','grave','sarco','candle','icicle','shard','roots','barrel','crate','table',
-          'bench','chair','bookshelf','weaponRack','statue','urn','rug','magicCircle','tapestry','sconce',
+          'bench','chair','bookshelf','bookshelfBooks','weaponRack','statue','urn','rug','magicCircle','tapestry','sconce',
           'treasureHeap','alchemyBench','hangingCage','webbing','shackle','alcove','stalagmite',
           'scrollPedestal','weaponRackShield','potionPedestal','charnelPile','crystalCluster'],
   torches: ['torch','flame','flameCore','brazier','coals'],
@@ -166,6 +168,7 @@ function presentDungeon(d, animate){
   if (!animate || !el.tAnim.checked) finishAnim();
 
   game.onDungeon(d);
+  if (d && d.name) revealLoadingMap(d.name);
   if (game.state === 'boot') {
     hideLoadingScreen();
   }
@@ -215,26 +218,45 @@ const ENGINE = {
   }
 };
 
+function forgeCurtain() {
+  const opts = { title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' };
+  const theme = THEMES[themeSel];
+  if (themeSel && themeSel !== 'auto' && theme) {
+    opts.theme = themeSel;
+    opts.map = theme.label;
+    if (theme.overland && el.seed) {
+      const env = resolveOverlandEnvironment(themeSel, (Number(el.seed.value) || 1) >>> 0);
+      opts.timeOfDay = env.timeOfDay;
+      opts.weather = env.weather;
+      opts.seed = (Number(el.seed.value) || 1) >>> 0;
+    }
+  }
+  return opts;
+}
+
+/* The click has to put the curtain on screen before forge() runs. forge()
+   builds the whole floor in this turn, and a same-turn call never paints. */
+function forgeWhenPainted() {
+  showLoadingScreen(forgeCurtain());
+  scheduleAfterPaint(() => forge(true));
+}
+
 /* ---------------- UI Event Handlers ---------------- */
 if(el.seed) el.seed.addEventListener('change', () => {
-  showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
-  forge(true);
+  forgeWhenPainted();
 });
 if(el.dice) el.dice.addEventListener('click', () => {
-  showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
   el.seed.value = 1 + Math.floor(Math.random()*999999);
-  forge(true);
+  forgeWhenPainted();
 });
 if(el.forge) el.forge.addEventListener('click', () => {
-  showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
-  forge(true);
+  forgeWhenPainted();
 });
 
 document.querySelectorAll('#chips .chip').forEach(ch => {
   ch.addEventListener('click', () => {
-    showLoadingScreen({ title: 'FORGING DUNGEON', subtitle: 'Sculpting corridors and placing encounters...' });
     setThemeSel(ch.dataset.t);
-    forge(true);
+    forgeWhenPainted();
   });
 });
 
@@ -277,15 +299,32 @@ window.addEventListener('resize', () => {
 window.game = game;
 window.ENGINE = ENGINE;
 
-showLoadingScreen({ title: 'LOADING DUNGEON FORGE', subtitle: 'Preparing assets & archives...' });
+/* The main menu waits on the title card, not the dungeon curtain. The map
+   plaque is for floors. Mount the dev button first so its row is already in
+   the menu box when that first frame paints. */
+mountTestDelveTitleButton();
+showTitleLoading('Preparing assets & archives...');
 /* The icon index tells the registry which generated PNGs exist, so a missing
    one falls back to its old emoji instead of rendering a broken image. It is
    loaded alongside the asset pack and never blocks boot: if the fetch fails,
-   every lookup stays optimistic and the UI still works. */
-Promise.all([initAssetPack(), loadIconManifest()]).finally(() => {
-  game.init(ENGINE);
-  initTestDungeon(game);
-  forge(true);
-  tick();
-  hideLoadingScreen();
+   every lookup stays optimistic and the UI still works.
+   Yield a paint first. A cached pack resolves in a microtask of this turn
+   and used to forge before the title card was on screen. */
+scheduleAfterPaint(() => {
+  Promise.all([initAssetPack(), loadIconManifest()]).finally(() => {
+    game.init(ENGINE);
+    initTestDungeon(game);
+    forge(true);
+    tick();
+    /* Balance-test harness (sim/real): the real game, driven in fast-forward.
+       Dev server only — sim/ is not part of any build. */
+    if (import.meta.env && import.meta.env.DEV && new URLSearchParams(location.search).has('sim')) {
+      /* The first fetch of the module can fail while the dev server is still
+         transforming it; try again a few times before giving up. */
+      const simBoot = '/sim/real/boot.js';
+      const loadSim = (left) => import(/* @vite-ignore */ simBoot + (left < 5 ? '?retry=' + left : ''))
+        .catch(err => (left > 0 ? new Promise(r => setTimeout(r, 1500)).then(() => loadSim(left - 1)) : Promise.reject(err)));
+      loadSim(5);
+    }
+  });
 });

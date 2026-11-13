@@ -15,6 +15,7 @@ import { combatMethods } from '../src/game/combat.js';
 import { monsterAiMethods } from '../src/game/monster_ai.js';
 import { initiativeMethods } from '../src/game/initiative.js';
 import { turnEngineMethods } from '../src/game/turn_engine.js';
+import { reservationMethods } from '../src/game/reservation.js';
 import { hasEffect } from '../src/game/conditions.js';
 import { FLOOR, WALL } from '../src/game/constants.js';
 
@@ -118,9 +119,15 @@ export class HeadlessGame {
     this.questFloor = 0;
     this._jitterT = 0;
     this.storyProgress = {};
-    this.summons = { summaryFor: () => null, restore: () => {}, syncScales: () => {} };
-    this.visitedRooms = [];
-    this.revealed = null;
+    /* Summons are a renderer-side roster; in the sim a summon spell simply
+       produces no creature (it still spends its slot). */
+    this.summons = { summaryFor: () => null, restore: () => {}, syncScales: () => {},
+      spawn: () => null, dismiss: () => {}, revive: () => null, getActive: () => [],
+      serialize: () => null, onShortRest: () => {}, onLongRest: () => {}, onFloorEnter: () => {} };
+    /* Everything is known in the sim: a monster that drops out of the fight
+       (banished, dismissed) can wake again without a fog map. */
+    this.visitedRooms = new Proxy([], { get: (t, k) => (k === 'length' ? t.length : (typeof k === 'string' && /^\d+$/.test(k) ? true : t[k])) });
+    this.revealed = new Uint8Array(W * H).fill(1);
     this.leaderTrail = [];
     this._intelLogged = false;
     this._unlockedDoors = new Set();
@@ -143,7 +150,7 @@ export class HeadlessGame {
 
     /* ── Mix in ALL domain methods (same as Game.prototype) ──────────── */
     Object.assign(this, pathfindingMethods, combatMethods, monsterAiMethods,
-      initiativeMethods, turnEngineMethods);
+      initiativeMethods, turnEngineMethods, reservationMethods);
   }
 
   /* ═════════════════════════════════════════════════════════════════════

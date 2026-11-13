@@ -6,14 +6,16 @@ import { RACES, CLASSES, PLAYABLE_RACES, PLAYABLE_CLASSES,
          subclassOf, SKILLS, getDefaultProficiencies, STARTER_GEAR, WILD_SHAPE_FORMS } from './srd.js';
 import { SPELLS } from './spells.js';
 import { canHide } from './light_rules.js';
-import { drawHeroPortrait } from './sprite_animator.js';
+import { drawHeroPortrait, squatPlan, blitLayerShaped } from './sprite_animator.js';
 import { playUiTap } from './audio.js';
 
 import { iconHtml, iconifyText } from './icons.js';
 import { showLoadingScreenPainted } from '../ui/loading_screen.js';
 import { totalSlots, hasSlotFor, slotBreakdown, hasFeature,
-  chargeDef, chargesLeft, isArcanum } from './features.js';
+  chargeDef, chargesLeft, isArcanum,
+  METAMAGIC, hasMetamagic, sorceryPointsLeft, flexSlotLevelFor, FLEX_SLOT_COST } from './features.js';
 import { getAvailableAttackOptions } from './combat.js';
+import { hasTides } from './wild_magic.js';
 import { ROUND_SECONDS } from './conditions.js';   // leaf module — no cycle
 import { openOptions } from './options_ui.js';
 import { onError } from './errors.js';
@@ -22,7 +24,7 @@ import { HAIR_GROUPS, HAIR_EXTENSION_GROUPS, FACIAL_HAIR_GROUPS,
          HAIR_VALUES, HAIR_EXTENSION_VALUES, FACIAL_HAIR_VALUES,
          HAIR_COLORS, EYE_COLORS, SKIN_PALETTES, skinColorsFor,
          getRaceDefaults, labelFor, recolorPixels, isCharacterLayer,
-         LAYER_ORDER, buildLayerPaths, layerTint } from './appearance.js';
+         LAYER_ORDER, buildLayerPaths, layerTint, heroShape, HEAD_LAYERS } from './appearance.js';
 import { makeStarterItem } from './items.js';
 
 /* Headless-safe: unit tests and the balance sim import game modules (and so
@@ -609,7 +611,7 @@ export const ABILITY_ICON = {
   frenzy:'🪓', bearTotem:'🐻', cuttingWords:'💬', combatInspiration:'🎵',
   wildShape:'🐺', wildShapeClass:'🐺', quiveringPalm:'🫱', shadowStep:'👥',
   sacredWeapon:'✨', vowOfEnmity:'🎯', colossusSlayer:'🏹', summonCompanion:'🐺',
-  dragonBreath:'🐲', wildSurge:'🔮', fiendishBlessing:'😈', feyPresence:'🌸',
+  dragonBreath:'🐲', wildSurge:'🔮', arcaneWard:'🔷', projectedWard:'🔷', fiendishBlessing:'😈', feyPresence:'🌸',
   flurryOfBlows:'👊', patientDefense:'🛡️', stepOfTheWind:'💨', stunningStrike:'💫', ki:'🥋', rage:'😡', divineSmite:'💫', tidesOfChaos:'🌀',
   bardicInspiration:'🎵', indomitable:'🛡', layOnHands:'🙏', channelDivinity:'✝',
   secondWind:'🌀', remarkableAthlete:'🏃', fastHands:'💨',
@@ -627,7 +629,7 @@ export const ABILITY_ICON = {
   rayOfSickness:'🤢', findFamiliar:'🦉',
 
   // Tier 2
-  dragonBreathSpell:'🐲', scorchingRay:'🔥', spiritualWeapon:'⚔', moonbeam:'🌙', moveMoonbeam:'🌙',
+  dragonBreathSpell:'🐲', scorchingRay:'🔥', spiritualWeapon:'⚔', moonbeam:'🌙', moveMoonbeam:'🌙', moveSphere:'🔥',
   shatter:'💥', blindness:'🙈', holdPerson:'⛓️', rayOfEnfeeblement:'🥀',
   web:'🕸️', lesserRestoration:'🌿', acidArrow:'🧪', mistyStep:'🌫️',
   silence:'🤫', magicWeapon:'✨', barkskin:'🪵', enlargeReduce:'📏',
@@ -675,8 +677,8 @@ const HUD_FEATURES = [
     has: h => h.features && h.features.includes('actionSurgeClass') },
   { key:'rage', ico:'😡', label:'Rage', recharge:'long',
     has: h => h.features && h.features.includes('rage') },
-  { key:'tidesOfChaos', ico:'🌀', label:'Tides of Chaos', recharge:'short',
-    has: h => h.features && h.features.includes('tidesOfChaos') },
+  { key:'tidesOfChaos', ico:'🌀', label:'Tides of Chaos', recharge:'long',
+    has: h => hasTides(h) },
   { key:'bardicInspiration', ico:'🎵', label:'Bardic Inspiration', recharge:'short',
     has: h => h.features && h.features.includes('bardicInspiration') },
   { key:'wildShapeClass', ico:'🐺', label:'Wild Shape', recharge:'short',
@@ -759,6 +761,21 @@ function abilityIconSets(h){
     pushCount(resources, 'ki', '🥋', 'Ki', kCur,
       `Ki — ${kCur}/${kMax} points left (recharges on short rest)`);
   }
+  if (h.wardMax > 0) {
+    const wCur = Math.max(0, h.wardHp ?? h.wardMax);
+    pushCount(resources, 'arcaneWard', '🔷', 'Arcane Ward', wCur,
+      `Arcane Ward — ${wCur}/${h.wardMax} HP. Soaks damage before you do and lasts between fights; `
+      + `each spell slot you spend recharges it by twice the slot level, a long rest fills it`
+      + `${(h.level || 0) >= 6 ? ', a short rest gives half back' : ''}. `
+      + `Projected Ward: your reaction shields an ally within ${(h.level || 0) >= 18 ? 'sight' : '6 tiles'} from a heavy hit.`);
+  }
+  if (h.sorcPointsMax > 0) {
+    const sCur = sorceryPointsLeft(h);
+    const mm = (h.metamagic || []).map(k => METAMAGIC[k] && METAMAGIC[k].label).filter(Boolean);
+    pushCount(resources, 'sorcery', '✴️', 'Sorcery Points', sCur,
+      `Sorcery Points — ${sCur}/${h.sorcPointsMax} left (full on a long rest)`
+      + (mm.length ? ` · Metamagic: ${mm.join(', ')}` : ''));
+  }
 
   /* ── Class skills that do not spend slots ── */
   for (const f of HUD_FEATURES) {
@@ -794,7 +811,9 @@ function abilityIconSets(h){
       tipExtra = `${sp.desc || ''} · Mystic Arcanum · ${ready ? REST_TIP.long.ready : REST_TIP.long.spent}`;
     } else if (sp.recharge === 'slot') {
       ready = hasSlotFor(h, sp.level || 1);
-      tipExtra = `${sp.desc || ''} · costs a level-${sp.level || 1}+ slot (${ready ? 'ready' : 'no slot'})`;
+      const flex = !ready && flexSlotLevelFor(h, sp.level || 1);
+      if (flex) ready = true;
+      tipExtra = `${sp.desc || ''} · costs a level-${sp.level || 1}+ slot (${flex ? `no slot — ${FLEX_SLOT_COST[flex]} sorcery points make one` : ready ? 'ready' : 'no slot'})`;
     } else if (sp.recharge === 'short' || sp.recharge === 'long' || sp.recharge === 'day') {
       const bucket = sp.recharge === 'short' ? 'short' : 'long';
       ready = chargesLeft(h, 'spell:' + key) > 0;
@@ -823,7 +842,9 @@ function abilityIconSets(h){
     const alias = SUBCLASS_ALIASES[a.key];
     if (!seen.has(a.key) && !seen.has('spell:' + a.key) && !(alias && seen.has(alias))) {
       const ico = iconHtml('ability', a.key, ABILITY_ICON[a.key] || '★');
-      if (a.recharge === 'slot') {
+      if (a.recharge === 'ward') {
+        /* Fed by the Arcane Ward — the ward tile above already shows it */
+      } else if (a.recharge === 'slot') {
         /* Slot-fuelled: belongs with the spells, and the slot tiles already
            say how many castings are left. */
         pushReady(spells, a.key, ico, a.name, hasSlotFor(h, a.level || 1),
@@ -1109,15 +1130,14 @@ export function buildPartyFrames(heroes){
         <span class="pf-name">${h.name}</span>
         <span class="pf-leader" title="Party leader">👑</span>
         <span class="pf-light" id="pf${i}-light"></span>
+        <span class="pf-ac" id="pf${i}-sub">AC ${h.ac}</span>
         <span class="pf-lvl">Lv <b id="pf${i}-lvl">${h.level}</b></span>
         <span class="pf-comp-slot" id="pf${i}-comp"></span>
       </div>
-      <div class="pf-sub" id="pf${i}-sub">${RACES[h.raceKey].label} ${cls.label} — AC ${h.ac}</div>
       <div class="pf-hpbar"><div class="pf-hpfill" id="pf${i}-hp"></div><div class="pf-tempfill" id="pf${i}-tmp"></div><span class="pf-hptext" id="pf${i}-hpt"></span></div>
       <div class="pf-abils pf-resources" id="pf${i}-ab"></div>
       <div class="pf-abils pf-spells" id="pf${i}-sp"></div>
-      <div class="pf-effects" id="pf${i}-eff"></div>
-      <div class="pf-xpbar"><div class="pf-xpfill" id="pf${i}-xp"></div></div>`;
+      <div class="pf-effects" id="pf${i}-eff"></div>`;
     f.addEventListener('click', (e)=>{
       const abilEl = e.target.closest ? e.target.closest('.pf-abil') : null;
       /* slot tiles are a readout, not an action — clicking one queues nothing */
@@ -1196,17 +1216,16 @@ export function updatePartyFrames(heroes){
       : (h.hp<=0 ? 'DOWN' : (tmp>0 ? `${h.hp}/${h.maxHp} +${tmp}` : `${h.hp}/${h.maxHp}`));
     $('pf'+i+'-lvl').textContent = h.level;
     setLightBadge(i, h);
-    const sub = subclassOf(h);
-    $('pf'+i+'-sub').textContent = inWS
-      ? `${wsForm.icon} ${wsForm.label} — AC ${h.ac}`
-      : `${RACES[h.raceKey].label} ${sub?sub.label:CLASSES[h.classKey].label} — AC ${h.ac}`;
+    /* Race/class line is gone (the character screen has it); only AC stays,
+       beside the level. A wild-shaped druid shows the form's icon with it. */
+    const acEl = $('pf'+i+'-sub');
+    acEl.textContent = inWS ? `${wsForm.icon} AC ${h.ac}` : `AC ${h.ac}`;
+    acEl.title = inWS ? `Wild Shape: ${wsForm.label}` : 'Armor Class';
     renderAbilityRows(h, $('pf'+i+'-ab'), $('pf'+i+'-sp'));
     const effEl = $('pf'+i+'-eff');
     if (effEl) {
       effEl.innerHTML = buildEffectsHTML(h);
     }
-    const lo = XP_TABLE[h.level], hi = XP_TABLE[Math.min(h.level+1, MAX_LEVEL)];
-    $('pf'+i+'-xp').style.width = (h.level>=MAX_LEVEL ? 100 : 100*(h.xp-lo)/Math.max(1,hi-lo))+'%';
     const frame = $('pframe'+i);
     frame.classList.toggle('down', h.hp<=0);
     frame.classList.toggle('leader', !!_leaderHook && _leaderHook.getLeader() === i);
@@ -1364,6 +1383,21 @@ export function showBanner(text, sub='', styleClass=''){
 /* ---------------- title screen / main menu ---------------- */
 
 /**
+ * Boot wait. The title card is up and the menu keeps its layout, but the
+ * buttons stay hidden until showTitle(). This is the main-menu loading
+ * screen: no dungeon plaque, no map plate.
+ */
+export function showTitleLoading(status = 'Preparing assets & archives...'){
+  const ts = $('titlescreen');
+  if(!ts) return;
+  ts.classList.add('show', 'is-loading');
+  if (typeof ts.setAttribute === 'function') ts.setAttribute('aria-busy', 'true');
+  document.body.classList.add('title-open');
+  const line = $('ts-loading');
+  if (line && status) line.textContent = status;
+}
+
+/**
  * Boot screen: the title card with New Game / Continue / Settings / Exit.
  * `onNew` hands off to the party setup screen, `onContinue` loads the save
  * (its button is disabled when there isn't one).
@@ -1374,6 +1408,8 @@ export function showTitle(hasSave, { onNew, onContinue, onLoad }){
      stranded hidden (index.html ships <body class="title-open">). */
   if(!ts) { document.body.classList.remove('title-open'); layoutHud(); onNew(); return; }
   ts.classList.add('show');
+  ts.classList.remove('is-loading');
+  if (typeof ts.setAttribute === 'function') ts.setAttribute('aria-busy', 'false');
   document.body.classList.add('title-open');
 
   const close = ()=>{
@@ -1397,7 +1433,7 @@ export function showTitle(hasSave, { onNew, onContinue, onLoad }){
     contBtn.onclick = async ()=>{
       if(!hasSave) return;
       close();
-      await showLoadingScreenPainted({ title: 'LOADING GAME', subtitle: 'Restoring your saved run...' });
+      await showLoadingScreenPainted({ title: 'LOADING GAME', subtitle: 'Restoring your saved run...', mapLock: true });
       onContinue();
     };
   }
@@ -1412,7 +1448,7 @@ export function showTitle(hasSave, { onNew, onContinue, onLoad }){
          is blocking, so only that one gets the curtain. */
       if (onLoad) { close(); onLoad(); return; }
       close();
-      await showLoadingScreenPainted({ title: 'LOADING GAME', subtitle: 'Restoring your saved run...' });
+      await showLoadingScreenPainted({ title: 'LOADING GAME', subtitle: 'Restoring your saved run...', mapLock: true });
       onContinue();
     };
   }
@@ -1579,24 +1615,23 @@ export function showSetup(onEmbark, onBack){
      shading (luminosity) but applies the tint's hue and saturation. Works on
      both neutral (grayscale) and pre-coloured sprites, unlike multiply which
      only looks good on grayscale bases. */
-  function drawTintedLayer(ctx, img, tintColor, matchLightness = false) {
+  /* One layer's preview frame as its own 64px canvas, tinted. */
+  function tintedLayerFrame(img, tintColor, matchLightness = false) {
     /* Walk sheets are 4 rows tall; oversize sheets (128px weapon sweeps) get
        centre-cropped so every layer lines up on the 64px preview frame. */
     const cell = Number.isInteger(img.height / 4) ? img.height / 4 : 64;
     const sxSrc = (cell - 64) / 2;
     const sySrc = PREVIEW_DIRS[previewDirIdx].row * cell + (cell - 64) / 2;
-    if (!tintColor) {
-      ctx.drawImage(img, sxSrc, sySrc, 64, 64, 0, 0, 64, 64);
-      return;
-    }
     const tc = document.createElement('canvas');
     tc.width = 64; tc.height = 64;
-    const t = tc.getContext('2d');
+    const t = tc.getContext('2d', { willReadFrequently: !!tintColor });
     t.drawImage(img, sxSrc, sySrc, 64, 64, 0, 0, 64, 64);
-    const id = t.getImageData(0, 0, 64, 64);
-    recolorPixels(id.data, tintColor, matchLightness);
-    t.putImageData(id, 0, 0);
-    ctx.drawImage(tc, 0, 0);
+    if (tintColor) {
+      const id = t.getImageData(0, 0, 64, 64);
+      recolorPixels(id.data, tintColor, matchLightness);
+      t.putImageData(id, 0, 0);
+    }
+    return tc;
   }
 
   /* The kit a hero of this class will actually embark in. Built once per class
@@ -1619,8 +1654,10 @@ export function showSetup(onEmbark, onBack){
   async function drawPreview(canvas, slot) {
     const ctx = canvas.getContext('2d');
     const visual = slot.visual;
-    const sx = visual.spriteScaleX || 1.0;
-    const sy = visual.spriteScaleY || 1.0;
+    /* Overall race size scales the whole figure; a body build (dwarf) goes
+       into the body layers only, the same way the dungeon sprite composes it. */
+    const shape = heroShape(visual);
+    const sx = shape.quadX, sy = shape.quadY;
 
     const paths = buildLayerPaths(visual, starterKit(slot.classKey));
 
@@ -1646,12 +1683,15 @@ export function showSetup(onEmbark, onBack){
     }
 
     const kit = starterKit(slot.classKey);
+    /* matchLightness only for skin/hair/eyes — gear keeps its painted
+       shading and takes just the dye's hue. See recolorPixels. */
+    const frames = LAYER_ORDER.map((layer, i) =>
+      imgs[i] ? tintedLayerFrame(imgs[i], layerTint(layer, visual, kit), isCharacterLayer(layer)) : null);
+    const one = { cols: 1, rows: 1 };
+    const headFrame = frames[LAYER_ORDER.indexOf('head')];
+    const plan = squatPlan(shape, headFrame ? { img: headFrame } : null, one, 64);
     LAYER_ORDER.forEach((layer, i) => {
-      const img = imgs[i];
-      if (!img) return;
-      /* matchLightness only for skin/hair/eyes — gear keeps its painted
-         shading and takes just the dye's hue. See recolorPixels. */
-      drawTintedLayer(ctx, img, layerTint(layer, visual, kit), isCharacterLayer(layer));
+      if (frames[i]) blitLayerShaped(ctx, frames[i], one, 64, -1, plan, HEAD_LAYERS.has(layer));
     });
 
     if (sx !== 1.0 || sy !== 1.0) {
@@ -2132,7 +2172,7 @@ export function showSetup(onEmbark, onBack){
     if(slots.some(s => pointsLeft(s) < 0 || skillsOver(s) > 0)) return;
     ov.classList.remove('show');
     /* Third blocking entry point: leaving party setup forges the first floor. */
-    await showLoadingScreenPainted({ title: 'ENTERING THE DUNGEON', subtitle: 'The party sets out...' });
+    await showLoadingScreenPainted({ title: 'ENTERING THE DUNGEON', subtitle: 'The party sets out...', mapLock: true });
     onEmbark(slots);
   };
 }
@@ -2234,7 +2274,7 @@ export function updateManualCombatBar(game) {
     let aimDesc = 'Click on target';
     if (isSpellTargeting) {
       const ts = game.targetingState;
-      const sp = SPELLS[ts.spellKey] || (ts.spellKey === 'moveMoonbeam' ? { label: 'Move Moonbeam' } : null);
+      const sp = SPELLS[ts.spellKey] || (ts.spellKey === 'moveMoonbeam' ? { label: 'Move Moonbeam' } : ts.spellKey === 'moveSphere' ? { label: 'Move Flaming Sphere' } : null);
       aimTitle = `AIMING: ${sp ? sp.label : ts.spellKey}`;
       if (ts.isMultiTarget) {
         aimDesc = `Click target for Dart ${(ts.assignedTargets?.length || 0) + 1} of ${ts.totalDarts}`;
@@ -2337,6 +2377,9 @@ export function updateManualCombatBar(game) {
 
   /* Bonus Action Abilities */
   const bonusAbilities = [];
+  if (cur.conc?.key === 'flamingSphere') {
+    bonusAbilities.push({ key: 'moveSphere', label: 'Move Flaming Sphere', desc: 'Roll it up to 30 ft; ramming a creature burns them and stops it' });
+  }
   if ((d.secondWind || hasFeature(d, 'secondWind')) && !d.secondWindUsed) {
     bonusAbilities.push({ key: 'secondWind', label: 'Second Wind', desc: 'Heal 1d10 + level' });
   }
@@ -2370,6 +2413,24 @@ export function updateManualCombatBar(game) {
   }
   if (hasFeature(d, 'stepOfTheWind') && (d.ki === undefined || d.ki >= 1)) {
     bonusAbilities.push({ key: 'stepOfTheWind', label: '💨 Step of the Wind (1 Ki)', desc: 'Dash / Disengage (+40% speed)' });
+  }
+  /* Flexible Casting (Font of Magic): points ↔ slots, a bonus action each */
+  if (hasFeature(d, 'fontOfMagic') && d.sorcPointsMax > 0) {
+    const sp = sorceryPointsLeft(d);
+    const topSlot = Math.min(5, Math.max(0, ...Object.keys(d.slotsMax || {}).map(Number)));
+    for (let lv = 1; lv <= topSlot; lv++) {
+      if (sp >= FLEX_SLOT_COST[lv]) {
+        bonusAbilities.push({ key: `fontSlot:${lv}`, label: `✴️ Create Level-${lv} Slot (${FLEX_SLOT_COST[lv]} SP)`,
+          desc: `Shape sorcery points into a spell slot (${sp} SP left)` });
+      }
+    }
+    if (sp < d.sorcPointsMax) {
+      const lvls = Object.keys(d.slots || {}).map(Number).filter(lv => (d.slots[lv] || 0) > 0).sort((a, b) => a - b).slice(0, 3);
+      for (const lv of lvls) {
+        bonusAbilities.push({ key: `fontPoints:${lv}`, label: `✴️ Melt Level-${lv} Slot (+${Math.min(lv, d.sorcPointsMax - sp)} SP)`,
+          desc: `Turn an unspent spell slot back into sorcery points (${sp}/${d.sorcPointsMax} SP)` });
+      }
+    }
   }
   if (hasFeature(d, 'bardicInspiration') && chargesLeft(d, 'bardicInspiration') > 0) {
     bonusAbilities.push({ key: 'bardicInspiration', label: 'Bardic Inspiration', desc: 'Party gains advantage on their next attack' });
@@ -2438,8 +2499,22 @@ export function updateManualCombatBar(game) {
 
       const castLvl = _spellTierFilter && _spellTierFilter > 0 ? _spellTierFilter : null;
 
+      /* Metamagic toggles: arm options; the next spell they fit takes them. */
+      const mmKnown = (cur.data.metamagic || []).filter(k => METAMAGIC[k]);
+      const armed = cur._mmArmed || {};
+      const mmChips = mmKnown.length ? `
+        <div class="mbar-tier-filters">
+          <span style="font-size:11px;color:#e6a35a;align-self:center;padding-right:4px;">✴️ ${sorceryPointsLeft(cur.data)} SP</span>
+          ${mmKnown.map(k => {
+            const mm = METAMAGIC[k];
+            const cost = mm.cost === 'level' ? 'lvl' : mm.cost;
+            return `<button class="mbar-tier-chip mm-chip ${armed[k] ? 'active' : ''}" data-mm="${k}" title="${mm.desc.replace(/"/g, '&quot;')}">${mm.label.replace(' Spell', '')} (${cost})</button>`;
+          }).join('')}
+        </div>` : '';
+
       bodyHtml = `
         ${filterChips}
+        ${mmChips}
         ${visibleSpells.length ? visibleSpells.map(k => {
           const sp = SPELLS[k];
           const isScroll = k === trinketScrollKey;
@@ -2447,7 +2522,10 @@ export function updateManualCombatBar(game) {
           const costDesc = sp?.thrown ? `${trinket.name} ×${trinket.charges}` : sp?.level ? `Level ${sp.level} Slot` : isScroll ? `Scroll ×${trinket.charges}` : 'Cantrip';
           const finalCastLvl = castLvl || sp?.level || 1;
           const isUpcast = sp?.level > 0 && castLvl && castLvl > sp.level;
-          const disabled = (isBonus && bonusUsed) || (!isBonus && (actUsed || (cur.attacksLeft > 0 && cur.attackActionCommitted)));
+          /* an armed Quickened Spell moves a leveled action spell onto the bonus action */
+          const quickOk = !!armed.quickened && (sp?.level || 0) > 0 && !isBonus && !bonusUsed;
+          const isReaction = !!(sp && sp.reaction);
+          const disabled = isReaction || (isBonus && bonusUsed) || (!isBonus && !quickOk && (actUsed || (cur.attacksLeft > 0 && cur.attackActionCommitted)));
 
           return `
             <button class="mbar-entry-btn spell-cast-btn" data-spell="${k}" data-level="${finalCastLvl}" ${disabled ? 'disabled' : ''}>
@@ -2459,7 +2537,7 @@ export function updateManualCombatBar(game) {
                 <div class="mbar-entry-desc">${sp?.desc || ''}</div>
               </div>
               <div class="mbar-entry-right">
-                <span class="mbar-entry-badge">${isBonus ? 'Bonus' : 'Action'}</span>
+                <span class="mbar-entry-badge">${isReaction ? 'Reaction' : isBonus || quickOk ? 'Bonus' : 'Action'}</span>
                 <span class="mbar-entry-sub">${costDesc}</span>
               </div>
             </button>
@@ -2691,8 +2769,24 @@ export function updateManualCombatBar(game) {
     };
   });
 
+  /* Metamagic toggles (spell drawer) */
+  bar.querySelectorAll('.mm-chip').forEach(chip => {
+    chip.onclick = (e) => {
+      e.stopPropagation();
+      const k = chip.dataset.mm;
+      const armed = cur._mmArmed || (cur._mmArmed = {});
+      armed[k] = !armed[k];
+      /* one primary option per spell: arming one disarms the others
+         (Empowered stacks, Quickened is about timing, so both stay) */
+      if (armed[k] && !METAMAGIC[k].stacks && k !== 'quickened') {
+        for (const o of ['twinned', 'heightened', 'subtle']) if (o !== k) armed[o] = false;
+      }
+      updateManualCombatBar(game);
+    };
+  });
+
   /* Tier Filter chips */
-  bar.querySelectorAll('.mbar-tier-chip').forEach(chip => {
+  bar.querySelectorAll('.mbar-tier-chip:not(.mm-chip)').forEach(chip => {
     chip.onclick = (e) => {
       e.stopPropagation();
       const tierVal = chip.dataset.filterTier;
@@ -2743,6 +2837,7 @@ export function updateManualCombatBar(game) {
         game.manualPerformCommonAction(cur, item.dataset.type);
       } else if (act === 'action-ability' || act === 'bonus-ability') {
         if (item.dataset.key === 'moveMoonbeam') game.manualPerformSpell(cur, 'moveMoonbeam');
+        else if (item.dataset.key === 'moveSphere') game.manualPerformSpell(cur, 'moveSphere');
         else if (item.dataset.key === 'useTrinket') game.manualUseTrinket(cur);
         else if (act === 'bonus-ability') game.manualPerformBonusAbility(cur, item.dataset.key);
         else if (act === 'action-ability') game.manualPerformActionAbility(cur, item.dataset.key);

@@ -55,7 +55,8 @@ describe('Drop Wild Shape', () => {
     const hero = {
       data: {
         name: 'Druid',
-        hp: 15, maxHp: 30, preWildShapeHp: 25,
+        /* L3 druid, CON 12: 8 + 8 + 2x5 + 3x1 = 29 max HP once recalc runs */
+        hp: 15, maxHp: 29, preWildShapeHp: 25,
         inWildShape: true, wildShapeHp: 20, wildShapeMaxHp: 20,
         wildShapeActiveForm: 'bear', level: 3, classKey: 'druid',
         stats: { str: 10, dex: 14, con: 12, int: 12, wis: 16, cha: 10 },

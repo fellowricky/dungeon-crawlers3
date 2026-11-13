@@ -383,7 +383,10 @@ export function grantSideObjectiveReward(game, so) {
   const each = Math.max(1, Math.round(so.rewardXp / Math.max(1, real.length)));
   const before = real.map(h => h.data.level);
   for (const h of real) grantXp(h.data, each, log);
-  if (real.some((h, i) => h.data.level > before[i]) && game.announceLevelUp) game.announceLevelUp();
+  if (real.some((h, i) => h.data.level > before[i]) && game.announceLevelUp) {
+    if (game.celebrateLevelUps) game.celebrateLevelUps(real, before);
+    game.announceLevelUp();
+  }
   updateResources(game);
   updatePartyFrames(game.heroes.map(h => h.data));
   game.saveGame();

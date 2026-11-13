@@ -20,6 +20,7 @@ import { FLOOR, HERO_SPEED,
   STUCK_SIDESTEP_T, STUCK_REPATH_T, STUCK_TELEPORT_T, STUCK_SIDESTEP_DIST
 } from './constants.js';
 import { firstRunTip } from './help_ui.js';
+import { pinUnitCard, unpinUnitCard } from './unit_card.js';
 
 /** The room the leader is standing in, or -1 (corridor, doorway, off-grid). */
 function _leaderRoom(game, leader) {
@@ -698,14 +699,35 @@ export const exploreMethods = {
     this._pathVisualGroup = group;
   },
 
-  commandMove(x, z) {
-    if (this.state !== 'crawl' || !this.D || this.paused) return;
+  /** `picked`: the creature drawn under the click, to the pixel (render/sprite_pick.js);
+   *  null when the click hit no creature. Left undefined by callers without a
+   *  renderer, which fall back to the creature on the clicked tile. */
+  commandMove(x, z, picked = undefined) {
+    if (this.state !== 'crawl' || !this.D) return;
+
+    /* Inspect (unit_card.js): outside manual combat and targeting, a click on a
+       creature pins its card above the combat log instead of pointing the way.
+       It works while paused, so a frozen fight can be read. Clicking empty
+       ground puts the card away and moves as before. */
+    const manualFight = this.controlMode === 'manual' && this.initiative && this.initiative.active;
+    const targeting = (this.targetingState && this.targetingState.active) || (this.attackTargetingState && this.attackTargetingState.active);
+    if (!manualFight && !targeting) {
+      const unit = picked !== undefined ? picked : this.unitAtPoint(x, z);
+      if (unit) { pinUnitCard(unit); return; }
+      unpinUnitCard();
+    }
+    if (this.paused) return;
 
     /* Manual spell targeting confirmation */
     if (this.targetingState && this.targetingState.active) {
       const ts = this.targetingState;
-      const clickedHero = (this.heroes || []).find(h => h.data && h.data.hp > 0 && Math.hypot(h.x - x, h.z - z) < 1.4);
-      const clickedMonster = (this.monsters || []).find(m => m.active && m.data && m.data.hp > 0 && Math.hypot(m.x - x, m.z - z) < 1.4);
+      /* the creature drawn under the click when the renderer picked one (render/sprite_pick.js) */
+      const clickedHero = picked !== undefined
+        ? (picked && !this.monsters.includes(picked) && picked.data.hp > 0 ? picked : null)
+        : (this.heroes || []).find(h => h.data && h.data.hp > 0 && Math.hypot(h.x - x, h.z - z) < 1.4);
+      const clickedMonster = picked !== undefined
+        ? (picked && this.monsters.includes(picked) ? picked : null)
+        : (this.monsters || []).find(m => m.active && m.data && m.data.hp > 0 && Math.hypot(m.x - x, m.z - z) < 1.4);
       const target = (ts.isAlly && clickedHero) ? clickedHero : (clickedMonster || (ts.isAlly ? clickedHero : null));
       this.confirmSpellTargeting(x, z, target);
       return;
@@ -717,8 +739,10 @@ export const exploreMethods = {
     if (this.attackTargetingState && this.attackTargetingState.active) {
       const at = this.attackTargetingState;
       const rawCell = this.cellOf(x, z);
-      const clickedMonster = this.monsters.find(m => m.active && m.data.hp > 0
-        && (this.cellOf(m.x, m.z) === rawCell || Math.hypot(m.x - x, m.z - z) < 0.6));
+      const clickedMonster = picked !== undefined
+        ? (picked && this.monsters.includes(picked) ? picked : null)
+        : this.monsters.find(m => m.active && m.data.hp > 0
+          && (this.cellOf(m.x, m.z) === rawCell || Math.hypot(m.x - x, m.z - z) < 0.6));
       if (clickedMonster) {
         const hero = at.hero;
         const profile = at.profile;
@@ -767,7 +791,10 @@ export const exploreMethods = {
            cells. Heroes who have already acted can't attack, so their click
            always falls through to movement. */
         if (!cur.actUsed) {
-          const clickedMonster = (typeof this.monsters.find === 'function') ? this.monsters.find(m => m.active && m.data.hp > 0 && (this.cellOf(m.x, m.z) === rawCell || Math.hypot(m.x - x, m.z - z) < 0.6)) : null;
+          /* the monster drawn under the click (render/sprite_pick.js); its tile when no renderer picked */
+          const clickedMonster = picked !== undefined
+            ? (picked && this.monsters.includes(picked) ? picked : null)
+            : ((typeof this.monsters.find === 'function') ? this.monsters.find(m => m.active && m.data.hp > 0 && (this.cellOf(m.x, m.z) === rawCell || Math.hypot(m.x - x, m.z - z) < 0.6)) : null);
           if (clickedMonster) {
             this.clearPendingMove();
             this.manualPerformAttack(cur, clickedMonster);
@@ -797,6 +824,17 @@ export const exploreMethods = {
 
     this.userGoal = cell;
     log('📍 You point the way — the party heads there.', 'sys');
+  },
+
+  /** The creature standing on the tile at (x, z), or right at the point:
+   *  a living monster first, then a hero. Same test as the click-to-attack one. */
+  unitAtPoint(x, z) {
+    if (!this.D) return null;
+    const cell = this.cellOf(x, z);
+    const on = (e) => (cell >= 0 && this.cellOf(e.x, e.z) === cell) || Math.hypot(e.x - x, e.z - z) < 0.6;
+    return (this.monsters || []).find(m => m.active && m.data && m.data.hp > 0 && on(m))
+      || (this.heroes || []).find(h => h.data && on(h))
+      || null;
   },
 
   roomDone(rid) {

@@ -310,6 +310,16 @@ describe('Manual Mode & Action Economy', () => {
     expect(game.targetingState).toBeNull();
   });
 
+  it('does not ask where to aim Thunderwave, which goes off round the caster', () => {
+    const hero = game.heroes[0];
+    game.controlMode = 'manual';
+    hero.data.slots = { 1: 2 };
+    hero.data.knownSpells = ['thunderwave'];
+    game.spellDamage = () => {};   // the bench's monsters have no health bar to draw on
+    game.manualPerformSpell(hero, 'thunderwave');
+    expect(game.targetingState).toBeFalsy();
+  });
+
   it('immediately casts self and party buffs without entering ground targeting', () => {
     const hero = game.heroes[0];
     game.controlMode = 'manual';

@@ -197,12 +197,22 @@ describe('monsterTacticalAction — Disengage', () => {
     expect(m.actUsed).toBe(false);
   });
 
-  it('a bloodied standard monster pinned in melee Disengages and flees', () => {
+  /* Phase 3 (turn_planner): a retreat throws away the turn's damage, so a
+     standard monster only flees when one more round would likely drop it
+     (combat_eval.inMortalDanger), not merely because it is bloodied. */
+  it('a nearly dead standard monster pinned in melee Disengages and flees', () => {
     const m = mon({ moveLeft: 4, data: { name: 'Goblin', hp: 2, maxHp: 20, speed: 3 } });
-    const g = mkGame({ heroes: [hero({ x: 1.6, z: 0 })] });
+    const g = mkGame({ heroes: [hero({ x: 1.6, z: 0 })], monsters: [m] });
     const res = g.monsterTacticalAction(m, BAND_TGT, 1.6, 0.016);
     expect(res).toBe(true);
     expect(m.actUsed).toBe(true);
+  });
+
+  it('a bloodied monster that would survive another round stands and fights', () => {
+    const m = mon({ moveLeft: 4, data: { name: 'Goblin', hp: 6, maxHp: 20, speed: 3 } });
+    const g = mkGame({ heroes: [hero({ x: 1.6, z: 0 })], monsters: [m], findPath: () => [0, 1] });
+    expect(g.monsterTacticalAction(m, BAND_TGT, 1.6, 0.016)).toBe(false);
+    expect(m.disengageActive).toBe(false);
   });
 
   it('a bloodied berserker pinned in melee still refuses to Disengage', () => {
@@ -228,25 +238,29 @@ describe('monsterKite — ranged disengage gate', () => {
     expect(m.disengageActive).toBe(false);
   });
 
-  it('a bloodied ranged monster Disengages before retreating', () => {
-    const m = mon({ data: { name: 'Slinger', hp: 5, maxHp: 20, speed: 3, ranged: true, rngRange: 6 } });
+  it('a ranged monster about to drop Disengages before retreating', () => {
+    const m = mon({ data: { name: 'Slinger', hp: 2, maxHp: 20, speed: 3, ranged: true, rngRange: 6 } });
     const pinner = hero({ x: 1.6, z: 0 });
-    const g = mkGame({ heroes: [pinner], monsters: [] });
+    const g = mkGame({ heroes: [pinner], monsters: [m] });
     g.monsterKite(m, { x: 10, z: 0 }, pinner, 0.016);
     expect(m.actUsed).toBe(true);
     expect(m.disengageActive).toBe(true);
   });
 
-  it('a ranged monster double-pinned by melee Disengages to escape', () => {
+  it('a healthy ranged monster double-pinned by melee shoots instead of Disengaging', () => {
+    /* Disengage would cost the shot; it fires first and backs off on its
+       movement instead (Phase 3). */
     const m = mon({ data: { name: 'Slinger', hp: 20, maxHp: 20, speed: 3, ranged: true, rngRange: 6 } });
+    let shots = 0;
     const g = mkGame({
       heroes: [hero({ x: 1.6, z: 0 }), hero({ x: 0.5, z: 1.2 })],
-      monsters: [],
+      monsters: [m],
+      monsterRangedAttack: () => { shots++; },
     });
     const pinner = g.heroes[0];
-    g.monsterKite(m, { x: 10, z: 0 }, pinner, 0.016);
-    expect(m.actUsed).toBe(true);
-    expect(m.disengageActive).toBe(true);
+    g.monsterKite(m, pinner, pinner, 0.016);
+    expect(m.disengageActive).toBe(false);
+    expect(shots).toBe(1);
   });
 });
 

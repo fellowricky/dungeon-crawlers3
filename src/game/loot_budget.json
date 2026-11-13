@@ -36,7 +36,20 @@
     "elem": 12,
     "spellSlotBase": 6,
     "spellSlotPerLevel": 12,
-    "grantSpellPerLevel": 20
+    "grantSpellPerLevel": 20,
+    "_noteUtility": "Hand-set (not measured by sim/value.mjs): magicFind/goldFind/potionHeal are per PERCENT, init per +1, spellDC per +1 DC, concentration per +1 on concentration saves, bloodthirst per HP healed on a kill, oaDmg per +1 opportunity-attack damage, range per +1 tile, ward per -1 damage of one element, steadfast per +1 on saves vs one condition group, bane per +1 damage vs one creature type.",
+    "magicFind": 20,
+    "goldFind": 20,
+    "potionHeal": 12,
+    "init": 8,
+    "spellDC": 14,
+    "concentration": 12,
+    "bloodthirst": 16,
+    "oaDmg": 12,
+    "range": 14,
+    "ward": 8,
+    "steadfast": 8,
+    "bane": 12
   },
   "elemTypeMult": {
     "_note": "Commonly-resisted damage types are cheaper; rarely-resisted ones cost more.",
@@ -68,6 +81,11 @@
     "boots": 0.5,
     "trinket": 0.6,
     "kit": 0.5
+  },
+  "slotDropWeight": {
+    "_note": "How often each gear slot is picked for a random drop (relative weights; absent = 1). Kits and trinkets have their own fixed branches in rollItem and are not in this pick. Shields are halved because half the classes can't use one and two-handed weapons rule them out; weapons are raised so there are more to compare.",
+    "weapon": 1.5,
+    "shield": 0.5
   },
   "rarityMult": {
     "_note": "Deliberately FLAT compared to the old 1.0/1.7/2.5/3.5/4.8 value curve. This is what stops the power spike and keeps deep commons competitive with shallow epics.",
@@ -145,7 +163,7 @@
     }
   },
   "basePricing": {
-    "_note": "How much of the budget the base item itself eats. damageDieRef is the free baseline die (a d4 costs nothing); every point of average damage above it costs `costs.dmg`. ARMOUR AND HELMS ARE NOT PRICED FROM THEIR AC. Those bases carry a `tier` in items.json, and tierIlvl says which item level each tier unlocks at; the base is charged the whole base-share of THAT level's budget, so it lands there by construction. That is what lets the weight classes share unlock levels while their AC numbers differ -- alignment is authored, not derived. The maths is slot-agnostic (both cost and budget carry slotWeight), so any slot listed here gets tier pricing; slots absent from it (shields) still price off acBase.",
+    "_note": "How much of the budget the base item itself eats. damageDieRef is the free baseline die (a d4 costs nothing); every point of average damage above it costs `costs.dmg`. ARMOUR AND HELMS ARE NOT PRICED FROM THEIR AC. Those bases carry a `tier` in items.json, and tierIlvl says which item level each tier unlocks at; the base is charged the whole base-share of THAT level's budget, so it lands there by construction. That is what lets the weight classes share unlock levels while their AC numbers differ -- alignment is authored, not derived. The maths is slot-agnostic (both cost and budget carry slotWeight), so any slot listed here gets tier pricing; slots absent from it (shields, helms) still price off acBase: +1 AC = costs.ac, exactly like an AC affix. Helms left tier pricing on 2026-11-12 so a +2 AC helm costs 40, matching its AC.",
     "damageDieRef": 4,
     "tierIlvl": {
       "armor": [
@@ -154,22 +172,25 @@
         7,
         11,
         15
-      ],
-      "helm": [
-        1,
-        7,
-        15
       ]
     },
     "twoHandedDiscount": 0.85,
+    "versatileShare": 0.5,
     "rangedMult": 1,
     "baseMaxShare": 0.9,
     "minAffixBudget": 2,
     "baseMinShare": 0.25
   },
+  "find": {
+    "_note": "Party-wide Magic Find / Gold Find (sum of every living hero's gear, read live), capped. Applies to COMBAT loot only: kill gold, boss gold, monster drops and the boss hoard. Chests, quest rewards and sales are untouched. Magic Find multiplies the non-common rarity weights by (1 + MF/100).",
+    "magicFindCap": 100,
+    "goldFindCap": 150,
+    "wardCapPerType": 10,
+    "_noteWard": "wardCapPerType: the most damage Warding can take off one elemental hit, however many pieces stack it."
+  },
   "gold": {
     "_note": "Shop/sell value derived from the item's real point cost, so pricing and economy can never drift apart.",
-    "perPoint": 50,
+    "perPoint": 20,
     "flat": 0,
     "perkBonus": 9870
   },

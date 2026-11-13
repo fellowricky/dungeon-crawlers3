@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeHero, recalc, unarmedFallback, grantXp, XP_TABLE } from '../src/game/srd.js';
+import { makeHero, recalc, unarmedFallback, grantXp, XP_TABLE, isMonkWeapon } from '../src/game/srd.js';
 import { applyShortRestToHero, applyLongRestToHero } from '../src/game/rest.js';
 import { hasKi, spendKi, restoreKi, kiLeft, hasFeature } from '../src/game/features.js';
 import { EFFECTS } from '../src/game/conditions.js';
@@ -141,4 +141,15 @@ describe('Monk Ki System & Mechanics', () => {
     game.subclassCombatStart(heroObj, [heroObj]);
     expect(monk.ki).toBe(4);
   });
+
+  it('Martial Arts: a monk uses DEX with monk weapons, including staves', () => {
+    expect(isMonkWeapon({ melee: true, weaponType: 'simple', twoHanded: true, focus: true })).toBe(true);   // staff
+    expect(isMonkWeapon({ melee: true, weaponType: 'simple', twoHanded: true })).toBe(false);               // greatclub
+    expect(isMonkWeapon({ melee: true, weaponType: 'martial', baseKey: 'Shortsword' })).toBe(true);
+    expect(isMonkWeapon({ melee: true, weaponType: 'martial', baseKey: 'Longsword' })).toBe(false);
+    const monk = makeHero('M', 'human', 'monk', MONK_STATS);
+    recalc(monk);
+    if (monk.weaponProfile && isMonkWeapon(monk.equipment.weapon)) expect(monk.weaponProfile.ability).toBe('dex');
+  });
 });
+

@@ -40,13 +40,17 @@ describe('D&D 5e Compliant Moonbeam Spell', () => {
     const foe = { _side: 'mon', x: 5, z: 5, data: { name: 'Goblin', hp: 10 } };
     mockGame.monsters = [foe];
 
+    let land = null;
+    mockGame.playAbilityFx = vi.fn((_h, _k, opts) => { land = opts.onImpact; });
     const result = SPELLS.moonbeam.cast(mockGame, hero, foe, [foe], 2);
+    expect(spawnedZone).toBeNull();    // nothing until the charge has played
+    land();
 
     expect(result).toBe(true);
     expect(mockGame.markSpellUsed).toHaveBeenCalledWith(hero, SPELLS.moonbeam);
     expect(spawnedZone).toBeDefined();
     expect(spawnedZone.spellKey).toBe('moonbeam');
-    expect(spawnedZone.options.cylinderBeam).toBe(true);
+    expect(spawnedZone.options.noGround).toBe(true);
     expect(concentrated).toBeDefined();
     expect(concentrated.key).toBe('moonbeam');
     expect(mockGame.resolveMoonbeamDamage).toHaveBeenCalledWith(spawnedZone, foe);

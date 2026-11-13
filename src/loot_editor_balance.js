@@ -17,6 +17,25 @@ import {
 } from './game/budget.js';
 
 const TUNING_STORAGE_KEY = 'dc_loot_editor_tuning_v1';
+import { packDraft, unpackDraft, diffPaths } from './editor_draft_merge.js';
+
+/* An old whole-file tuning draft (saved before drafts tracked a baseline).
+   While set, it keeps overriding loot_budget.json and is saved back in the old
+   format, until the user picks "use project files" or "keep my edits". */
+let tuningLegacy = false;
+export function tuningDraftStatus() {
+  return {
+    legacy: tuningLegacy,
+    overrides: tuningLegacy ? diffPaths(getTuning(), defaultTuning()) : [],
+  };
+}
+/** Resolve an old-format draft: adopt the project file, or keep the draft. */
+export function resolveLegacyTuning(keep) {
+  if (!tuningLegacy) return;
+  tuningLegacy = false;
+  if (keep) saveTuningDraft();
+  else { localStorage.removeItem(TUNING_STORAGE_KEY); setTuning(defaultTuning()); }
+}
 
 /* Reference costs measured by sim/value.mjs (sim/reports/value_latest.md).
    Shown beside each knob so a hand-tuned value can be compared against what the
@@ -55,14 +74,20 @@ function loadTuningDraft() {
   const saved = localStorage.getItem(TUNING_STORAGE_KEY);
   if (!saved) return;
   try {
-    setTuning(JSON.parse(saved));
+    /* Only the knobs the user changed survive; everything else comes from the
+       current loot_budget.json (see editor_draft_merge.js). */
+    const { data, legacy } = unpackDraft(saved, defaultTuning());
+    tuningLegacy = legacy;
+    setTuning(data);
   } catch (e) {
     console.error('Bad saved tuning draft, falling back to defaults:', e);
   }
 }
 
 function saveTuningDraft() {
-  localStorage.setItem(TUNING_STORAGE_KEY, JSON.stringify(getTuning()));
+  localStorage.setItem(TUNING_STORAGE_KEY, tuningLegacy
+    ? JSON.stringify(getTuning())                      // unresolved old draft: keep its format
+    : packDraft(getTuning(), defaultTuning()));
 }
 
 function refreshAfterTuningChange() {
@@ -321,6 +346,7 @@ function handleExportTuning() {
 function handleResetTuning() {
   if (!confirm('Discard all tuning overrides and go back to the measured defaults?')) return;
   localStorage.removeItem(TUNING_STORAGE_KEY);
+  tuningLegacy = false;
   setTuning(defaultTuning());
   refreshAfterTuningChange();
   toast('Tuning reset to measured defaults.');

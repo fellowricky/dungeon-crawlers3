@@ -63,9 +63,10 @@ import {
 import { _v } from './shared.js';
 import { onKill } from './quest_events.js';
 import { spawnCompositeAnimation, hasActiveCompositeFX } from './vfx_animations.js';
-import { groundY } from '../dungeon/elevation.js';
-import { spawnLivePixelFx, spawnLightMote, spawnManaBurst } from '../render/pixelfx_live.js';
-import { spawnBodyEffect, chestWorldY, spawnSpellCharge, SPELL_CHARGE_SECONDS } from '../render/body_fx.js';
+import { groundY, surfaceY } from '../dungeon/elevation.js';
+import { flickerMirrorImage } from '../render/mirror_images.js';
+import { spawnLivePixelFx, spawnLightMote, spawnManaBurst, spawnElementImpact, spawnEntangleWeeds, spawnFaerieStars, spawnFaerieSparkle, spawnGreaseSlick, spawnFlamingSphere, spawnAcidSplat, spawnScytheReap, spawnWardCircle, spawnHadarPortal, spawnThunderclap, spawnSmiteCleave, spawnSmiteImpact, SMITE_CLEAVE_SLAM, spawnLiveImpact, spawnMoonbeam, spawnCoinCollect } from '../render/pixelfx_live.js';
+import { spawnBodyEffect, chestWorldY, spawnSpellCharge, SPELL_CHARGE_SECONDS, playSummonArrival, playBlinkStep } from '../render/body_fx.js';
 import { poseCast, poseHit } from './sprite_pose.js';
 import { visualOf } from './entities.js';
 import * as stormCloudFx from '../render/pfx/storm_cloud.js';
@@ -108,20 +109,16 @@ export const gameHookMethods = {
    *  stays clear of the floor. The leader-frame pulse is kept — that is what
    *  still ties a pickup to WHO picked it up.
    *
-   *  The gold sparkle stays in the world, at the leader: it is a burst rather
-   *  than something you have to read, so it loses nothing by being in 3D. */
+   *  The gold itself is shown in the world, where it was won (or at the leader,
+   *  when it came from nowhere in particular): coins burst and zip into a counter.
+   *  Gold arriving together (an AoE clearing a pack) becomes one fountain. */
   notifyLootFeedback(data) {
     if (!data) return;
 
     if (data.gold && data.gold > 0) {
       pushLootFeed({ icon: '\u{1FA99}', name: `${data.gold} Gold`, rarity: 'common' });
       pulseLeaderFrame('gold');
-      const leader = typeof this.partyLeader === 'function' ? this.partyLeader() : null;
-      if (leader && this.engine?.scene && this.fxImpactBurst) {
-        const lx = typeof leader.x === 'number' ? leader.x : (leader.ent?.grp?.position?.x || 0);
-        const lz = typeof leader.z === 'number' ? leader.z : (leader.ent?.grp?.position?.z || 0);
-        this.fxImpactBurst(new THREE.Vector3(lx, 1.4, lz), 'holy', '#ffd700', 14);
-      }
+      this._queueCoinCollect(data.gold, data.at);
     }
 
     /* A chest can hand over several items at once. Stagger them so they arrive
@@ -143,6 +140,21 @@ export const gameHookMethods = {
       pushLootFeed({ icon: '\u{1F9EA}', name: potName, rarity: 'uncommon' });
       pulseLeaderFrame('gear', 'uncommon');
     }
+  },
+
+  _queueCoinCollect(amount, at) {
+    if (!this.engine?.scene) return;
+    if (this._coinPending) { this._coinPending.amount += amount; return; }
+    const pending = this._coinPending = { amount, at };
+    setTimeout(() => {
+      this._coinPending = null;
+      const leader = typeof this.partyLeader === 'function' ? this.partyLeader() : null;
+      const from = pending.at || leader;
+      if (!from || !this.engine?.scene) return;
+      const x = typeof from.x === 'number' ? from.x : (from.ent?.grp?.position?.x || 0);
+      const z = typeof from.z === 'number' ? from.z : (from.ent?.grp?.position?.z || 0);
+      spawnCoinCollect(this.engine.scene, { x, y: this.D ? groundY(this.D, x, z) : 0, z }, pending.amount);
+    }, 120);
   },
 
   notifyGold(amount) {
@@ -284,9 +296,55 @@ export const gameHookMethods = {
     return { place: (px, py, pz) => fx.mesh.position.set(px, py, pz), remove: () => fx.remove() };
   },
   /** pixelfx's Mana Burst on the floor under `e`, in a named PAL ramp. */
-  fxManaBurst(e, palette) {
-    spawnManaBurst(this.engine.scene, new THREE.Vector3(e.x, groundY(this.D, e.x, e.z), e.z), PAL[palette]);
+  fxAcidSplat(pos, from) { spawnAcidSplat(this.engine.scene, pos, pos.y - groundY(this.D, pos.x, pos.z), from); },
+  fxScytheReap(e, caster, size) { spawnScytheReap(this.engine.scene, new THREE.Vector3(e.x, groundY(this.D, e.x, e.z), e.z), caster, size); },
+  fxManaBurst(e, palette, size) {
+    spawnManaBurst(this.engine.scene, new THREE.Vector3(e.x, groundY(this.D, e.x, e.z), e.z), PAL[palette], size);
   },
+  /** A smiting swing: the cleave starts so that its slam meets the blow, `delaySec` from now. It holds nothing up. */
+  fxSmiteSwing(h, foe, delaySec) {
+    const lead = delaySec - SMITE_CLEAVE_SLAM;
+    const play = () => spawnSmiteCleave(this.engine.scene, new THREE.Vector3(h.x, groundY(this.D, h.x, h.z), h.z), { x: foe.x, z: foe.z }, Math.max(0, -lead));
+    if (lead > 0) this.fxDelay(lead, play, { hold: false }); else play();
+  },
+  fxSmiteImpact(foe) { spawnSmiteImpact(this.engine.scene, new THREE.Vector3(foe.x, groundY(this.D, foe.x, foe.z), foe.z)); },
+  fxThunderclap(e) {
+    spawnThunderclap(this.engine.scene, e.x, e.z, (px, pz) => groundY(this.D, px, pz), (px, pz) => surfaceY(this.D, px, pz),
+      (sec, fn) => this.fxDelay(sec, fn, { hold: false }));
+  },
+  fxWardCircle(e, palette) { spawnWardCircle(this.engine.scene, e.x, e.z, (px, pz) => surfaceY(this.D, px, pz), palette); },
+  /** Arms of Hadar's flat void portal round (x, z), its rim at `radius`. */
+  fxHadarPortal(x, z, radius) { spawnHadarPortal(this.engine.scene, x, z, (px, pz) => surfaceY(this.D, px, pz), radius); },
+  /** Grease's slick on the floor; the handle's remove() fades it. */
+  fxGreaseSlick(x, z) { return spawnGreaseSlick(this.engine.scene, x, z, (px, pz) => surfaceY(this.D, px, pz)); },
+  /** Moonbeam's shaft and pool; the handle's flash/glideTo/remove drive both. */
+  fxMoonbeam(x, z) { return spawnMoonbeam(this.engine.scene, x, z, (px, pz) => groundY(this.D, px, pz)); },
+  /** A blow passes through a Mirror Image without breaking it: one of them flickers. */
+  fxMirrorFlicker(e) { flickerMirrorImage(e); },
+  /** A weapon hit under Magic Weapon: violet sparks at the target's chest. */
+  fxMagicWeaponHit(foe) { spawnLiveImpact(this.engine.scene, 'hitSpark', this.fxChestPos(foe), { palette: 'arcane' }); },
+  /** Flaming Sphere's ball of fire; the handle's remove() fades it. */
+  fxFlamingSphere(x, z) { return spawnFlamingSphere(this.engine.scene, x, z, (px, pz) => groundY(this.D, px, pz)); },
+  /** Misty Step: blink out here, cross() as the light pops, blink in over there. */
+  fxBlinkStep(e, cross) { playBlinkStep(e, (sec, fn) => this.fxDelay(sec, fn), cross); },
+  /** A summon blinks in: hidden until the light opens into its shape. */
+  fxSummonArrival(e) { playSummonArrival(e, (sec, fn) => this.fxDelay(sec, fn, { hold: false })); },
+  fxFaerieStars(x, z) { spawnFaerieStars(this.engine.scene, x, z, (px, pz) => groundY(this.D, px, pz)); },
+  /** Faerie Fire's standing glitter; the handle's remove() fades it. */
+  fxFaerieSparkle(x, z) { return spawnFaerieSparkle(this.engine.scene, x, z, (px, pz) => groundY(this.D, px, pz)); },
+  /** Entangle's standing weeds across a circle; the handle's remove() shrinks them away. */
+  fxEntangleWeeds(x, z, radius) {
+    return spawnEntangleWeeds(this.engine.scene, x, z, radius, (px, pz) => groundY(this.D, px, pz));
+  },
+  /** Chromatic Orb's landing on `e`, in the look of the damage type it rolled. */
+  fxElementImpact(e, type) {
+    if (type === 'poison') return spawnBodyEffect('chromaticPoison', e);
+    const y = groundY(this.D, e.x, e.z);
+    spawnElementImpact(this.engine.scene, type,
+      new THREE.Vector3(e.x, y + 0.5 * (e.data?.scale || 1) + 0.4, e.z), new THREE.Vector3(e.x, y, e.z));
+  },
+  /** A hero's level-up celebration, on their own sprite. It holds up nothing: the fight carries on round it. */
+  fxLevelUp(hero) { return spawnBodyEffect('levelUp', hero); },
   /** A pixelfx effect painted onto a creature's own sprite (render/body_fx.js). */
   fxBodyEffect(kind, creature) {
     if (this._afterCastLead(() => this.fxBodyEffect(kind, creature))) return null;
@@ -406,7 +464,9 @@ export const gameHookMethods = {
      AoE zone visuals
      ════════════════════════════════════════════════════════════════════ */
   fxAoEVisual(pos, color, size, duration, options = null) {
-    return spawnAoEVisual(this.engine.scene, pos, color, size, duration, options);
+    /* zones drape over the terrain */
+    const opts = this.D ? { heightAt: (x, z) => surfaceY(this.D, x, z), ...options } : options;
+    return spawnAoEVisual(this.engine.scene, pos, color, size, duration, opts);
   },
   fxRemoveAoEVisual(visual) {
     if (visual) removeAoEVisual(this.engine.scene, visual);

@@ -1,0 +1,7150 @@
+{
+  "byClass": {
+    "barbarian": [
+      {
+        "class": "barbarian",
+        "race": "halfelf",
+        "name": "Bram-barbarian",
+        "encounters": 30,
+        "dmgDealt": 4003,
+        "dmgTaken": 947,
+        "overkill": 0,
+        "healingDone": 14,
+        "kills": 39,
+        "downs": 2,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 37,
+            "dmgTaken": 15,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 43,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 53,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 198,
+            "dmgTaken": 13,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 368,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 390,
+            "dmgTaken": 20,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 730,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 557,
+            "dmgTaken": 357,
+            "healingDone": 9,
+            "kills": 1,
+            "downs": 1,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 842,
+            "dmgTaken": 387,
+            "healingDone": 5,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 1
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 785,
+            "dmgTaken": 155,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "barbarian",
+        "race": "gnome",
+        "name": "Isolde-barbarian",
+        "encounters": 30,
+        "dmgDealt": 3566,
+        "dmgTaken": 632,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 43,
+        "downs": 3,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 16,
+            "dmgTaken": 3,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 53,
+            "dmgTaken": 1,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 16,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 169,
+            "dmgTaken": 44,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 217,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 816,
+            "dmgTaken": 33,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 483,
+            "dmgTaken": 321,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 3,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 996,
+            "dmgTaken": 212,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 367,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 433,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "barbarian",
+        "race": "wolf",
+        "name": "Bram-barbarian",
+        "encounters": 30,
+        "dmgDealt": 4283,
+        "dmgTaken": 380,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 40,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 16,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 97,
+            "dmgTaken": 11,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 115,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 206,
+            "dmgTaken": 28,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 240,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 445,
+            "dmgTaken": 11,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 455,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1017,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 716,
+            "dmgTaken": 154,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 976,
+            "dmgTaken": 176,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "barbarian",
+        "race": "dwarf",
+        "name": "Lyra-barbarian",
+        "encounters": 30,
+        "dmgDealt": 3298,
+        "dmgTaken": 492,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 37,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 84,
+            "dmgTaken": 45,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 47,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 185,
+            "dmgTaken": 15,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 175,
+            "dmgTaken": 44,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 246,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 556,
+            "dmgTaken": 155,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 217,
+            "dmgTaken": 66,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 397,
+            "dmgTaken": 109,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1129,
+            "dmgTaken": 22,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 262,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "barbarian",
+        "race": "gnome",
+        "name": "Kira-barbarian",
+        "encounters": 30,
+        "dmgDealt": 6151,
+        "dmgTaken": 1063,
+        "overkill": 0,
+        "healingDone": 47,
+        "kills": 53,
+        "downs": 3,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 47,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 84,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 81,
+            "dmgTaken": 16,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 132,
+            "dmgTaken": 5,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 303,
+            "dmgTaken": 147,
+            "healingDone": 8,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 686,
+            "dmgTaken": 58,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 616,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1172,
+            "dmgTaken": 539,
+            "healingDone": 39,
+            "kills": 6,
+            "downs": 3,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1172,
+            "dmgTaken": 42,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1858,
+            "dmgTaken": 230,
+            "healingDone": 0,
+            "kills": 15,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "rogue": [
+      {
+        "class": "rogue",
+        "race": "dragonborn",
+        "name": "Kira-rogue",
+        "encounters": 30,
+        "dmgDealt": 3371,
+        "dmgTaken": 533,
+        "overkill": 0,
+        "healingDone": 10,
+        "kills": 51,
+        "downs": 4,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 40,
+            "dmgTaken": 63,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 3,
+            "deaths": 1
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 111,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 188,
+            "dmgTaken": 57,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 370,
+            "dmgTaken": 54,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 454,
+            "dmgTaken": 66,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 648,
+            "dmgTaken": 119,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 199,
+            "dmgTaken": 84,
+            "healingDone": 10,
+            "kills": 3,
+            "downs": 1,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 515,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 783,
+            "dmgTaken": 60,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "rogue",
+        "race": "gnome",
+        "name": "Toby-rogue",
+        "encounters": 30,
+        "dmgDealt": 2590,
+        "dmgTaken": 506,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 43,
+        "downs": 2,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 88,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 117,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 87,
+            "dmgTaken": 9,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 168,
+            "dmgTaken": 17,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 119,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 220,
+            "dmgTaken": 8,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 430,
+            "dmgTaken": 98,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 279,
+            "dmgTaken": 219,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 2,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 562,
+            "dmgTaken": 47,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 520,
+            "dmgTaken": 96,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "rogue",
+        "race": "halforc",
+        "name": "Odo-rogue",
+        "encounters": 30,
+        "dmgDealt": 3156,
+        "dmgTaken": 627,
+        "overkill": 0,
+        "healingDone": 72,
+        "kills": 64,
+        "downs": 3,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 68,
+            "dmgTaken": 44,
+            "healingDone": 15,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 147,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 186,
+            "dmgTaken": 23,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 360,
+            "dmgTaken": 7,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 303,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 381,
+            "dmgTaken": 122,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 265,
+            "dmgTaken": 49,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 314,
+            "dmgTaken": 320,
+            "healingDone": 57,
+            "kills": 3,
+            "downs": 3,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 594,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 538,
+            "dmgTaken": 32,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "rogue",
+        "race": "halforc",
+        "name": "Bram-rogue",
+        "encounters": 30,
+        "dmgDealt": 3238,
+        "dmgTaken": 857,
+        "overkill": 0,
+        "healingDone": 34,
+        "kills": 45,
+        "downs": 2,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 35,
+            "dmgTaken": 7,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 48,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 95,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 196,
+            "dmgTaken": 36,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 416,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 312,
+            "dmgTaken": 202,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 348,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 716,
+            "dmgTaken": 302,
+            "healingDone": 34,
+            "kills": 9,
+            "downs": 2,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 457,
+            "dmgTaken": 193,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 615,
+            "dmgTaken": 79,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "rogue",
+        "race": "halforc",
+        "name": "Magda-rogue",
+        "encounters": 30,
+        "dmgDealt": 1797,
+        "dmgTaken": 274,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 40,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 55,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 40,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 47,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 207,
+            "dmgTaken": 184,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 201,
+            "dmgTaken": 19,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 264,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 125,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 218,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 160,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 480,
+            "dmgTaken": 53,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "rogue",
+        "race": "dwarf",
+        "name": "Wren-rogue",
+        "encounters": 30,
+        "dmgDealt": 1977,
+        "dmgTaken": 323,
+        "overkill": 0,
+        "healingDone": 12,
+        "kills": 44,
+        "downs": 1,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 32,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 54,
+            "dmgTaken": 2,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 116,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 189,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 129,
+            "dmgTaken": 3,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 200,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 201,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 395,
+            "dmgTaken": 288,
+            "healingDone": 12,
+            "kills": 7,
+            "downs": 1,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 298,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 363,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "rogue",
+        "race": "halfling",
+        "name": "Lyra-rogue",
+        "encounters": 30,
+        "dmgDealt": 3217,
+        "dmgTaken": 932,
+        "overkill": 0,
+        "healingDone": 27,
+        "kills": 45,
+        "downs": 2,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 128,
+            "dmgTaken": 69,
+            "healingDone": 27,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 53,
+            "dmgTaken": 17,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 102,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 191,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 199,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 123,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 370,
+            "dmgTaken": 262,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 2,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 705,
+            "dmgTaken": 193,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 693,
+            "dmgTaken": 285,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 653,
+            "dmgTaken": 106,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "wolf": [
+      {
+        "class": "wolf",
+        "race": "elf",
+        "name": "Aldric-wolf",
+        "encounters": 30,
+        "dmgDealt": 1362,
+        "dmgTaken": 652,
+        "overkill": 0,
+        "healingDone": 65,
+        "kills": 4,
+        "downs": 3,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 82,
+            "healingDone": 17,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 3,
+            "dmgTaken": 5,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 36,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 40,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 42,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 21,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 34,
+            "dmgTaken": 263,
+            "healingDone": 34,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 125,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 566,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 560,
+            "dmgTaken": 121,
+            "healingDone": 14,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wolf",
+        "race": "tiefling",
+        "name": "Magda-wolf",
+        "encounters": 30,
+        "dmgDealt": 1147,
+        "dmgTaken": 239,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 22,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 18,
+            "dmgTaken": 17,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 8,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 44,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 152,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 44,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 90,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 76,
+            "dmgTaken": 51,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 168,
+            "dmgTaken": 65,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 186,
+            "dmgTaken": 29,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 361,
+            "dmgTaken": 65,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wolf",
+        "race": "halfling",
+        "name": "Garrick-wolf",
+        "encounters": 30,
+        "dmgDealt": 701,
+        "dmgTaken": 324,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 12,
+        "downs": 2,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 21,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 3,
+            "dmgTaken": 16,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 36,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 42,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 37,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 125,
+            "dmgTaken": 134,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 2,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 222,
+            "dmgTaken": 78,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 96,
+            "dmgTaken": 45,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 89,
+            "dmgTaken": 51,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wolf",
+        "race": "dwarf",
+        "name": "Garrick-wolf",
+        "encounters": 30,
+        "dmgDealt": 373,
+        "dmgTaken": 201,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 16,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 36,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 27,
+            "dmgTaken": 4,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 83,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 33,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 27,
+            "dmgTaken": 51,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 12,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 45,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 88,
+            "dmgTaken": 13,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 18,
+            "dmgTaken": 8,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wolf",
+        "race": "wolf",
+        "name": "Bram-wolf",
+        "encounters": 30,
+        "dmgDealt": 870,
+        "dmgTaken": 1356,
+        "overkill": 0,
+        "healingDone": 30,
+        "kills": 18,
+        "downs": 3,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 60,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 56,
+            "dmgTaken": 45,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 60,
+            "dmgTaken": 45,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 36,
+            "dmgTaken": 66,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 93,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 95,
+            "dmgTaken": 87,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 128,
+            "dmgTaken": 33,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 134,
+            "dmgTaken": 441,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 3,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 96,
+            "dmgTaken": 246,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 112,
+            "dmgTaken": 387,
+            "healingDone": 30,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wolf",
+        "race": "gnome",
+        "name": "Doric-wolf",
+        "encounters": 30,
+        "dmgDealt": 823,
+        "dmgTaken": 1728,
+        "overkill": 0,
+        "healingDone": 82,
+        "kills": 25,
+        "downs": 13,
+        "deaths": 7,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 45,
+            "dmgTaken": 62,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 2,
+            "deaths": 1
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 15,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 22,
+            "dmgTaken": 69,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 131,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 124,
+            "healingDone": 16,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 228,
+            "dmgTaken": 228,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 124,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 62,
+            "dmgTaken": 467,
+            "healingDone": 45,
+            "kills": 0,
+            "downs": 4,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 54,
+            "dmgTaken": 496,
+            "healingDone": 21,
+            "kills": 0,
+            "downs": 4,
+            "deaths": 2
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 147,
+            "dmgTaken": 151,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 1,
+            "deaths": 1
+          }
+        }
+      },
+      {
+        "class": "wolf",
+        "race": "dragonborn",
+        "name": "Isolde-wolf",
+        "encounters": 30,
+        "dmgDealt": 1663,
+        "dmgTaken": 529,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 7,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 36,
+            "dmgTaken": 43,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 32,
+            "dmgTaken": 3,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 45,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 44,
+            "dmgTaken": 84,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 54,
+            "dmgTaken": 42,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 73,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 292,
+            "dmgTaken": 169,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 418,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 421,
+            "dmgTaken": 76,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 263,
+            "dmgTaken": 67,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "monk": [
+      {
+        "class": "monk",
+        "race": "human",
+        "name": "Wren-monk",
+        "encounters": 30,
+        "dmgDealt": 4725,
+        "dmgTaken": 319,
+        "overkill": 0,
+        "healingDone": 14,
+        "kills": 78,
+        "downs": 1,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 16,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 50,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 149,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 216,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 392,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 416,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 574,
+            "dmgTaken": 36,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 632,
+            "dmgTaken": 104,
+            "healingDone": 14,
+            "kills": 7,
+            "downs": 1,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1127,
+            "dmgTaken": 87,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1106,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "monk",
+        "race": "dwarf",
+        "name": "Kira-monk",
+        "encounters": 30,
+        "dmgDealt": 4077,
+        "dmgTaken": 508,
+        "overkill": 0,
+        "healingDone": 14,
+        "kills": 55,
+        "downs": 4,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 29,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 62,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 64,
+            "dmgTaken": 64,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 1,
+            "deaths": 1
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 216,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 302,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 679,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 677,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 905,
+            "dmgTaken": 270,
+            "healingDone": 14,
+            "kills": 7,
+            "downs": 3,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 505,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 638,
+            "dmgTaken": 62,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "monk",
+        "race": "tiefling",
+        "name": "Doric-monk",
+        "encounters": 30,
+        "dmgDealt": 4378,
+        "dmgTaken": 193,
+        "overkill": 0,
+        "healingDone": 14,
+        "kills": 72,
+        "downs": 4,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 44,
+            "dmgTaken": 67,
+            "healingDone": 4,
+            "kills": 5,
+            "downs": 4,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 93,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 110,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 493,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 15,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 367,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 385,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 689,
+            "dmgTaken": 40,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 548,
+            "dmgTaken": 52,
+            "healingDone": 10,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 695,
+            "dmgTaken": 34,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 954,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "monk",
+        "race": "familiar",
+        "name": "Aldric-monk",
+        "encounters": 30,
+        "dmgDealt": 4047,
+        "dmgTaken": 497,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 63,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 35,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 101,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 228,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 221,
+            "dmgTaken": 31,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 267,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 287,
+            "dmgTaken": 24,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 348,
+            "dmgTaken": 20,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 981,
+            "dmgTaken": 137,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 888,
+            "dmgTaken": 82,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 691,
+            "dmgTaken": 203,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "monk",
+        "race": "halforc",
+        "name": "Vessa-monk",
+        "encounters": 30,
+        "dmgDealt": 4988,
+        "dmgTaken": 288,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 78,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 58,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 95,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 140,
+            "dmgTaken": 11,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 282,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 348,
+            "dmgTaken": 24,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 573,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 525,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1002,
+            "dmgTaken": 94,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1278,
+            "dmgTaken": 60,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 687,
+            "dmgTaken": 31,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "monk",
+        "race": "halforc",
+        "name": "Wren-monk",
+        "encounters": 30,
+        "dmgDealt": 4761,
+        "dmgTaken": 1168,
+        "overkill": 0,
+        "healingDone": 20,
+        "kills": 75,
+        "downs": 3,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 14,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 126,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 201,
+            "dmgTaken": 58,
+            "healingDone": 0,
+            "kills": 14,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 95,
+            "dmgTaken": 7,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 553,
+            "dmgTaken": 122,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 464,
+            "dmgTaken": 60,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 859,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1000,
+            "dmgTaken": 290,
+            "healingDone": 20,
+            "kills": 5,
+            "downs": 3,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 738,
+            "dmgTaken": 137,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 711,
+            "dmgTaken": 444,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "wizard": [
+      {
+        "class": "wizard",
+        "race": "tiefling",
+        "name": "Doric-wizard",
+        "encounters": 30,
+        "dmgDealt": 0,
+        "dmgTaken": 3075,
+        "overkill": 0,
+        "healingDone": 211,
+        "kills": 52,
+        "downs": 28,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 70,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 415,
+            "healingDone": 48,
+            "kills": 3,
+            "downs": 4,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 1403,
+            "healingDone": 92,
+            "kills": 8,
+            "downs": 14,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 604,
+            "healingDone": 40,
+            "kills": 1,
+            "downs": 7,
+            "deaths": 1
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 553,
+            "healingDone": 31,
+            "kills": 2,
+            "downs": 3,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wizard",
+        "race": "halfling",
+        "name": "Toby-wizard",
+        "encounters": 30,
+        "dmgDealt": 0,
+        "dmgTaken": 380,
+        "overkill": 0,
+        "healingDone": 7,
+        "kills": 35,
+        "downs": 1,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 53,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 26,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 60,
+            "healingDone": 7,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 113,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 71,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 1,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 27,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wizard",
+        "race": "human",
+        "name": "Piotr-wizard",
+        "encounters": 30,
+        "dmgDealt": 0,
+        "dmgTaken": 1675,
+        "overkill": 0,
+        "healingDone": 51,
+        "kills": 87,
+        "downs": 5,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 15,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 14,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 125,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 753,
+            "healingDone": 47,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 133,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 610,
+            "healingDone": 4,
+            "kills": 7,
+            "downs": 5,
+            "deaths": 1
+          }
+        }
+      },
+      {
+        "class": "wizard",
+        "race": "tiefling",
+        "name": "Magda-wizard",
+        "encounters": 30,
+        "dmgDealt": 0,
+        "dmgTaken": 884,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 66,
+        "downs": 4,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 58,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 69,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 84,
+            "healingDone": 0,
+            "kills": 16,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 97,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 299,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 3,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 63,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 1,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 214,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "wizard",
+        "race": "dwarf",
+        "name": "Fenn-wizard",
+        "encounters": 30,
+        "dmgDealt": 275,
+        "dmgTaken": 1352,
+        "overkill": 0,
+        "healingDone": 60,
+        "kills": 47,
+        "downs": 8,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 132,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 2,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 239,
+            "healingDone": 15,
+            "kills": 4,
+            "downs": 3,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 100,
+            "dmgTaken": 435,
+            "healingDone": 21,
+            "kills": 1,
+            "downs": 3,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 123,
+            "dmgTaken": 185,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 52,
+            "dmgTaken": 361,
+            "healingDone": 24,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "ranger": [
+      {
+        "class": "ranger",
+        "race": "dragonborn",
+        "name": "Sariel-ranger",
+        "encounters": 30,
+        "dmgDealt": 6916,
+        "dmgTaken": 619,
+        "overkill": 0,
+        "healingDone": 6,
+        "kills": 65,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 56,
+            "dmgTaken": 18,
+            "healingDone": 6,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 167,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 183,
+            "dmgTaken": 19,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 317,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 259,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 736,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 996,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1458,
+            "dmgTaken": 300,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1154,
+            "dmgTaken": 17,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1590,
+            "dmgTaken": 221,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "ranger",
+        "race": "gnome",
+        "name": "Piotr-ranger",
+        "encounters": 30,
+        "dmgDealt": 2691,
+        "dmgTaken": 239,
+        "overkill": 0,
+        "healingDone": 15,
+        "kills": 39,
+        "downs": 1,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 28,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 129,
+            "dmgTaken": 8,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 65,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 173,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 263,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 306,
+            "dmgTaken": 161,
+            "healingDone": 15,
+            "kills": 5,
+            "downs": 1,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 445,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 751,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 265,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 266,
+            "dmgTaken": 25,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "ranger",
+        "race": "dwarf",
+        "name": "Nyx-ranger",
+        "encounters": 30,
+        "dmgDealt": 5878,
+        "dmgTaken": 113,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 88,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 60,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 151,
+            "dmgTaken": 22,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 146,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 227,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 371,
+            "dmgTaken": 31,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 961,
+            "dmgTaken": 16,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 912,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 762,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1036,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1252,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "fighter": [
+      {
+        "class": "fighter",
+        "race": "wolf",
+        "name": "Fenn-fighter",
+        "encounters": 30,
+        "dmgDealt": 5082,
+        "dmgTaken": 821,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 74,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 81,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 234,
+            "dmgTaken": 20,
+            "healingDone": 0,
+            "kills": 15,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 157,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 190,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 262,
+            "dmgTaken": 61,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 557,
+            "dmgTaken": 191,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 811,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1089,
+            "dmgTaken": 414,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 633,
+            "dmgTaken": 42,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1068,
+            "dmgTaken": 93,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "fighter",
+        "race": "elf",
+        "name": "Kira-fighter",
+        "encounters": 30,
+        "dmgDealt": 2996,
+        "dmgTaken": 448,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 30,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 15,
+            "dmgTaken": 10,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 76,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 168,
+            "dmgTaken": 15,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 161,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 70,
+            "dmgTaken": 20,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 390,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 691,
+            "dmgTaken": 96,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 611,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 751,
+            "dmgTaken": 156,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "fighter",
+        "race": "dragonborn",
+        "name": "Piotr-fighter",
+        "encounters": 30,
+        "dmgDealt": 4220,
+        "dmgTaken": 1217,
+        "overkill": 0,
+        "healingDone": 60,
+        "kills": 60,
+        "downs": 2,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 32,
+            "dmgTaken": 3,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 59,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 123,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 112,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 140,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 330,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 491,
+            "dmgTaken": 412,
+            "healingDone": 60,
+            "kills": 7,
+            "downs": 2,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 762,
+            "dmgTaken": 190,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1123,
+            "dmgTaken": 429,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1048,
+            "dmgTaken": 169,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "cleric": [
+      {
+        "class": "cleric",
+        "race": "familiar",
+        "name": "Isolde-cleric",
+        "encounters": 30,
+        "dmgDealt": 4523,
+        "dmgTaken": 679,
+        "overkill": 0,
+        "healingDone": 6,
+        "kills": 77,
+        "downs": 1,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 24,
+            "dmgTaken": 51,
+            "healingDone": 6,
+            "kills": 5,
+            "downs": 1,
+            "deaths": 1
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 8,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 45,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 17,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 253,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 330,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 735,
+            "dmgTaken": 135,
+            "healingDone": 0,
+            "kills": 16,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 247,
+            "dmgTaken": 214,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 800,
+            "dmgTaken": 99,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 2064,
+            "dmgTaken": 180,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "cleric",
+        "race": "halfelf",
+        "name": "Sariel-cleric",
+        "encounters": 30,
+        "dmgDealt": 4613,
+        "dmgTaken": 528,
+        "overkill": 0,
+        "healingDone": 29,
+        "kills": 33,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 21,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 60,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 90,
+            "dmgTaken": 76,
+            "healingDone": 20,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 145,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 91,
+            "dmgTaken": 16,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 690,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1088,
+            "dmgTaken": 73,
+            "healingDone": 9,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 710,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1688,
+            "dmgTaken": 318,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "cleric",
+        "race": "halfelf",
+        "name": "Magda-cleric",
+        "encounters": 30,
+        "dmgDealt": 5083,
+        "dmgTaken": 2211,
+        "overkill": 0,
+        "healingDone": 45,
+        "kills": 44,
+        "downs": 19,
+        "deaths": 10,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 79,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 1
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 42,
+            "dmgTaken": 8,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 55,
+            "dmgTaken": 6,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 310,
+            "dmgTaken": 16,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 161,
+            "dmgTaken": 77,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 848,
+            "dmgTaken": 195,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 2,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 850,
+            "dmgTaken": 130,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 751,
+            "dmgTaken": 388,
+            "healingDone": 18,
+            "kills": 2,
+            "downs": 4,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1388,
+            "dmgTaken": 743,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 6,
+            "deaths": 3
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 678,
+            "dmgTaken": 569,
+            "healingDone": 27,
+            "kills": 0,
+            "downs": 6,
+            "deaths": 3
+          }
+        }
+      }
+    ],
+    "druid": [
+      {
+        "class": "druid",
+        "race": "tiefling",
+        "name": "Nyx-druid",
+        "encounters": 30,
+        "dmgDealt": 2361,
+        "dmgTaken": 205,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 35,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 5,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 515,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 248,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 213,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 116,
+            "dmgTaken": 82,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 407,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 862,
+            "dmgTaken": 118,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "halfling",
+        "name": "Wren-druid",
+        "encounters": 30,
+        "dmgDealt": 2489,
+        "dmgTaken": 534,
+        "overkill": 0,
+        "healingDone": 50,
+        "kills": 42,
+        "downs": 3,
+        "deaths": 2,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 27,
+            "healingDone": 7,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 180,
+            "dmgTaken": 5,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 175,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 235,
+            "dmgTaken": 75,
+            "healingDone": 36,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 249,
+            "dmgTaken": 108,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 302,
+            "dmgTaken": 38,
+            "healingDone": 7,
+            "kills": 2,
+            "downs": 1,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 408,
+            "dmgTaken": 216,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 2,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 433,
+            "dmgTaken": 34,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 507,
+            "dmgTaken": 31,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "tiefling",
+        "name": "Fenn-druid",
+        "encounters": 30,
+        "dmgDealt": 1564,
+        "dmgTaken": 1624,
+        "overkill": 0,
+        "healingDone": 108,
+        "kills": 44,
+        "downs": 0,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 141,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 32,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 103,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 362,
+            "dmgTaken": 1296,
+            "healingDone": 108,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 317,
+            "dmgTaken": 96,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 311,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 298,
+            "dmgTaken": 202,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "halforc",
+        "name": "Lyra-druid",
+        "encounters": 30,
+        "dmgDealt": 4462,
+        "dmgTaken": 338,
+        "overkill": 0,
+        "healingDone": 18,
+        "kills": 40,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 18,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 15,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 309,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 252,
+            "dmgTaken": 8,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 139,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 235,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1959,
+            "dmgTaken": 196,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 675,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 860,
+            "dmgTaken": 134,
+            "healingDone": 18,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "halfelf",
+        "name": "Doric-druid",
+        "encounters": 30,
+        "dmgDealt": 3185,
+        "dmgTaken": 590,
+        "overkill": 0,
+        "healingDone": 7,
+        "kills": 44,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 34,
+            "healingDone": 7,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 34,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 192,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 241,
+            "dmgTaken": 42,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 229,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 54,
+            "dmgTaken": 10,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 279,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 815,
+            "dmgTaken": 299,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 19,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1341,
+            "dmgTaken": 186,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "human",
+        "name": "Nyx-druid",
+        "encounters": 30,
+        "dmgDealt": 2835,
+        "dmgTaken": 747,
+        "overkill": 0,
+        "healingDone": 99,
+        "kills": 48,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 87,
+            "dmgTaken": 2,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 419,
+            "dmgTaken": 27,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 14,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 437,
+            "dmgTaken": 68,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 108,
+            "dmgTaken": 33,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 996,
+            "dmgTaken": 450,
+            "healingDone": 99,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 160,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 614,
+            "dmgTaken": 146,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "dragonborn",
+        "name": "Aldric-druid",
+        "encounters": 30,
+        "dmgDealt": 2445,
+        "dmgTaken": 1226,
+        "overkill": 0,
+        "healingDone": 51,
+        "kills": 43,
+        "downs": 5,
+        "deaths": 3,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 43,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 29,
+            "dmgTaken": 4,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 365,
+            "dmgTaken": 18,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 156,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 301,
+            "dmgTaken": 264,
+            "healingDone": 21,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 79,
+            "dmgTaken": 83,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 280,
+            "dmgTaken": 524,
+            "healingDone": 30,
+            "kills": 3,
+            "downs": 3,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 399,
+            "dmgTaken": 83,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 793,
+            "dmgTaken": 238,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 2,
+            "deaths": 1
+          }
+        }
+      },
+      {
+        "class": "druid",
+        "race": "dragonborn",
+        "name": "Vessa-druid",
+        "encounters": 30,
+        "dmgDealt": 3202,
+        "dmgTaken": 982,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 40,
+        "downs": 2,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 15,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 69,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 426,
+            "dmgTaken": 7,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 218,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 15,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 384,
+            "dmgTaken": 575,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 2,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 620,
+            "dmgTaken": 42,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 747,
+            "dmgTaken": 104,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 723,
+            "dmgTaken": 225,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "paladin": [
+      {
+        "class": "paladin",
+        "race": "elf",
+        "name": "Piotr-paladin",
+        "encounters": 30,
+        "dmgDealt": 5083,
+        "dmgTaken": 380,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 71,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 21,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 79,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 257,
+            "dmgTaken": 4,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 330,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 271,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 693,
+            "dmgTaken": 44,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 551,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 959,
+            "dmgTaken": 143,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 988,
+            "dmgTaken": 30,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 934,
+            "dmgTaken": 145,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "paladin",
+        "race": "dragonborn",
+        "name": "Garrick-paladin",
+        "encounters": 30,
+        "dmgDealt": 8106,
+        "dmgTaken": 455,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 55,
+        "downs": 3,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 53,
+            "dmgTaken": 31,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 169,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 110,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 535,
+            "dmgTaken": 31,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 305,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 988,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 460,
+            "dmgTaken": 225,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 3,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 745,
+            "dmgTaken": 80,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1977,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 2764,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "paladin",
+        "race": "tiefling",
+        "name": "Isolde-paladin",
+        "encounters": 30,
+        "dmgDealt": 6944,
+        "dmgTaken": 568,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 78,
+        "downs": 3,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 59,
+            "dmgTaken": 44,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 204,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 135,
+            "dmgTaken": 13,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 246,
+            "dmgTaken": 24,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 559,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 511,
+            "dmgTaken": 22,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 217,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 881,
+            "dmgTaken": 370,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 3,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1611,
+            "dmgTaken": 54,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 2521,
+            "dmgTaken": 29,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "warlock": [
+      {
+        "class": "warlock",
+        "race": "halforc",
+        "name": "Vessa-warlock",
+        "encounters": 30,
+        "dmgDealt": 97,
+        "dmgTaken": 982,
+        "overkill": 0,
+        "healingDone": 67,
+        "kills": 36,
+        "downs": 6,
+        "deaths": 3,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 64,
+            "healingDone": 18,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 207,
+            "healingDone": 21,
+            "kills": 0,
+            "downs": 3,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 185,
+            "healingDone": 0,
+            "kills": 13,
+            "downs": 1,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 102,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 97,
+            "dmgTaken": 424,
+            "healingDone": 28,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 1
+          }
+        }
+      },
+      {
+        "class": "warlock",
+        "race": "human",
+        "name": "Aldric-warlock",
+        "encounters": 30,
+        "dmgDealt": 422,
+        "dmgTaken": 390,
+        "overkill": 0,
+        "healingDone": 22,
+        "kills": 47,
+        "downs": 2,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 62,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 44,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 12,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 68,
+            "dmgTaken": 40,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 39,
+            "dmgTaken": 237,
+            "healingDone": 22,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 1
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 209,
+            "dmgTaken": 49,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "warlock",
+        "race": "halfelf",
+        "name": "Vessa-warlock",
+        "encounters": 30,
+        "dmgDealt": 0,
+        "dmgTaken": 117,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 52,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 14,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 9,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 48,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 34,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "warlock",
+        "race": "halfelf",
+        "name": "Sariel-warlock",
+        "encounters": 30,
+        "dmgDealt": 0,
+        "dmgTaken": 1937,
+        "overkill": 0,
+        "healingDone": 56,
+        "kills": 85,
+        "downs": 9,
+        "deaths": 6,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 25,
+            "healingDone": 6,
+            "kills": 9,
+            "downs": 1,
+            "deaths": 1
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 68,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 226,
+            "healingDone": 8,
+            "kills": 14,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 362,
+            "healingDone": 30,
+            "kills": 8,
+            "downs": 2,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 48,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 375,
+            "healingDone": 12,
+            "kills": 7,
+            "downs": 4,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 406,
+            "healingDone": 0,
+            "kills": 16,
+            "downs": 1,
+            "deaths": 1
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 427,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 1,
+            "deaths": 1
+          }
+        }
+      }
+    ],
+    "familiar": [
+      {
+        "class": "familiar",
+        "race": "halfelf",
+        "name": "Lyra-familiar",
+        "encounters": 30,
+        "dmgDealt": 1948,
+        "dmgTaken": 413,
+        "overkill": 0,
+        "healingDone": 53,
+        "kills": 8,
+        "downs": 1,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 11,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 10,
+            "dmgTaken": 6,
+            "healingDone": 8,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 71,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 45,
+            "dmgTaken": 36,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 74,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 99,
+            "dmgTaken": 52,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 79,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 177,
+            "dmgTaken": 202,
+            "healingDone": 45,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 710,
+            "dmgTaken": 96,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 672,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "familiar",
+        "race": "familiar",
+        "name": "Toby-familiar",
+        "encounters": 30,
+        "dmgDealt": 464,
+        "dmgTaken": 999,
+        "overkill": 0,
+        "healingDone": 178,
+        "kills": 7,
+        "downs": 12,
+        "deaths": 6,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 4,
+            "dmgTaken": 36,
+            "healingDone": 7,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 1
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 8,
+            "dmgTaken": 7,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 5,
+            "dmgTaken": 54,
+            "healingDone": 8,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 15,
+            "dmgTaken": 99,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 3,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 24,
+            "dmgTaken": 82,
+            "healingDone": 14,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 26,
+            "dmgTaken": 142,
+            "healingDone": 26,
+            "kills": 0,
+            "downs": 2,
+            "deaths": 1
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 54,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 46,
+            "dmgTaken": 200,
+            "healingDone": 24,
+            "kills": 0,
+            "downs": 4,
+            "deaths": 2
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 132,
+            "dmgTaken": 273,
+            "healingDone": 99,
+            "kills": 0,
+            "downs": 1,
+            "deaths": 1
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 150,
+            "dmgTaken": 106,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 1,
+            "deaths": 1
+          }
+        }
+      }
+    ],
+    "bard": [
+      {
+        "class": "bard",
+        "race": "halfling",
+        "name": "Nyx-bard",
+        "encounters": 30,
+        "dmgDealt": 892,
+        "dmgTaken": 661,
+        "overkill": 0,
+        "healingDone": 0,
+        "kills": 37,
+        "downs": 3,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 51,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 11,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 42,
+            "dmgTaken": 10,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 46,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 88,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 85,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 162,
+            "dmgTaken": 252,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 146,
+            "dmgTaken": 327,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 3,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 113,
+            "dmgTaken": 22,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 53,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 106,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "bard",
+        "race": "dwarf",
+        "name": "Odo-bard",
+        "encounters": 30,
+        "dmgDealt": 900,
+        "dmgTaken": 587,
+        "overkill": 0,
+        "healingDone": 42,
+        "kills": 31,
+        "downs": 1,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 19,
+            "dmgTaken": 35,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 63,
+            "dmgTaken": 22,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 28,
+            "dmgTaken": 20,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 38,
+            "dmgTaken": 133,
+            "healingDone": 23,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 28,
+            "dmgTaken": 52,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 30,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 167,
+            "dmgTaken": 57,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 102,
+            "dmgTaken": 129,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 111,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 314,
+            "dmgTaken": 125,
+            "healingDone": 19,
+            "kills": 10,
+            "downs": 1,
+            "deaths": 1
+          }
+        }
+      },
+      {
+        "class": "bard",
+        "race": "familiar",
+        "name": "Toby-bard",
+        "encounters": 30,
+        "dmgDealt": 890,
+        "dmgTaken": 249,
+        "overkill": 0,
+        "healingDone": 8,
+        "kills": 21,
+        "downs": 1,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 36,
+            "dmgTaken": 8,
+            "healingDone": 8,
+            "kills": 3,
+            "downs": 1,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 68,
+            "dmgTaken": 5,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 181,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 95,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 41,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 25,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 57,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 205,
+            "dmgTaken": 92,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 65,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 117,
+            "dmgTaken": 94,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "bard",
+        "race": "dragonborn",
+        "name": "Fenn-bard",
+        "encounters": 30,
+        "dmgDealt": 1292,
+        "dmgTaken": 415,
+        "overkill": 0,
+        "healingDone": 28,
+        "kills": 34,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 41,
+            "healingDone": 14,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 157,
+            "dmgTaken": 11,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 215,
+            "dmgTaken": 14,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 66,
+            "dmgTaken": 50,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 12,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 69,
+            "dmgTaken": 13,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 206,
+            "dmgTaken": 60,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 200,
+            "dmgTaken": 26,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 197,
+            "dmgTaken": 142,
+            "healingDone": 14,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 170,
+            "dmgTaken": 58,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "bard",
+        "race": "elf",
+        "name": "Odo-bard",
+        "encounters": 30,
+        "dmgDealt": 1879,
+        "dmgTaken": 1291,
+        "overkill": 0,
+        "healingDone": 121,
+        "kills": 37,
+        "downs": 4,
+        "deaths": 1,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 56,
+            "dmgTaken": 12,
+            "healingDone": 7,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 59,
+            "dmgTaken": 19,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 95,
+            "dmgTaken": 38,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 77,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 47,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 171,
+            "dmgTaken": 69,
+            "healingDone": 12,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 366,
+            "dmgTaken": 447,
+            "healingDone": 68,
+            "kills": 4,
+            "downs": 2,
+            "deaths": 1
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 311,
+            "dmgTaken": 191,
+            "healingDone": 20,
+            "kills": 1,
+            "downs": 2,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 456,
+            "dmgTaken": 193,
+            "healingDone": 14,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 241,
+            "dmgTaken": 322,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      }
+    ],
+    "sorcerer": [
+      {
+        "class": "sorcerer",
+        "race": "halfelf",
+        "name": "Sariel-sorcerer",
+        "encounters": 30,
+        "dmgDealt": 1562,
+        "dmgTaken": 393,
+        "overkill": 0,
+        "healingDone": 41,
+        "kills": 58,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 12,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 89,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 98,
+            "dmgTaken": 92,
+            "healingDone": 7,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 21,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 29,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 60,
+            "healingDone": 34,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 1464,
+            "dmgTaken": 90,
+            "healingDone": 0,
+            "kills": 8,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "sorcerer",
+        "race": "elf",
+        "name": "Odo-sorcerer",
+        "encounters": 30,
+        "dmgDealt": 2074,
+        "dmgTaken": 1001,
+        "overkill": 0,
+        "healingDone": 65,
+        "kills": 29,
+        "downs": 0,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 6,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 3,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 45,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 40,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 39,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 90,
+            "healingDone": 0,
+            "kills": 2,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 485,
+            "dmgTaken": 248,
+            "healingDone": 8,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 1417,
+            "dmgTaken": 363,
+            "healingDone": 57,
+            "kills": 4,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 172,
+            "dmgTaken": 173,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          }
+        }
+      },
+      {
+        "class": "sorcerer",
+        "race": "halforc",
+        "name": "Garrick-sorcerer",
+        "encounters": 30,
+        "dmgDealt": 2812,
+        "dmgTaken": 1759,
+        "overkill": 0,
+        "healingDone": 9,
+        "kills": 54,
+        "downs": 10,
+        "deaths": 0,
+        "attacks": 0,
+        "hits": 0,
+        "misses": 0,
+        "crits": 0,
+        "byLevel": {
+          "1": {
+            "encounters": 3,
+            "dmgDealt": 0,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 7,
+            "downs": 0,
+            "deaths": 0
+          },
+          "2": {
+            "encounters": 3,
+            "dmgDealt": 8,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 0,
+            "downs": 0,
+            "deaths": 0
+          },
+          "3": {
+            "encounters": 3,
+            "dmgDealt": 59,
+            "dmgTaken": 20,
+            "healingDone": 0,
+            "kills": 3,
+            "downs": 0,
+            "deaths": 0
+          },
+          "4": {
+            "encounters": 3,
+            "dmgDealt": 180,
+            "dmgTaken": 0,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "5": {
+            "encounters": 3,
+            "dmgDealt": 67,
+            "dmgTaken": 41,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "6": {
+            "encounters": 3,
+            "dmgDealt": 56,
+            "dmgTaken": 44,
+            "healingDone": 0,
+            "kills": 10,
+            "downs": 0,
+            "deaths": 0
+          },
+          "7": {
+            "encounters": 3,
+            "dmgDealt": 238,
+            "dmgTaken": 100,
+            "healingDone": 0,
+            "kills": 9,
+            "downs": 0,
+            "deaths": 0
+          },
+          "8": {
+            "encounters": 3,
+            "dmgDealt": 1257,
+            "dmgTaken": 769,
+            "healingDone": 0,
+            "kills": 1,
+            "downs": 6,
+            "deaths": 0
+          },
+          "9": {
+            "encounters": 3,
+            "dmgDealt": 590,
+            "dmgTaken": 190,
+            "healingDone": 0,
+            "kills": 5,
+            "downs": 0,
+            "deaths": 0
+          },
+          "10": {
+            "encounters": 3,
+            "dmgDealt": 357,
+            "dmgTaken": 595,
+            "healingDone": 9,
+            "kills": 0,
+            "downs": 4,
+            "deaths": 0
+          }
+        }
+      }
+    ]
+  },
+  "summary": {
+    "barbarian": {
+      "count": 5,
+      "avgDmgDealt": 4260.2,
+      "avgDmgTaken": 702.8,
+      "avgHealing": 12.2,
+      "avgKills": 42.4,
+      "avgDowns": 1.6,
+      "avgDeaths": 1,
+      "avgEncounters": 30
+    },
+    "rogue": {
+      "count": 7,
+      "avgDmgDealt": 2763.714285714286,
+      "avgDmgTaken": 578.8571428571429,
+      "avgHealing": 22.142857142857142,
+      "avgKills": 47.42857142857143,
+      "avgDowns": 2,
+      "avgDeaths": 0.8571428571428571,
+      "avgEncounters": 30
+    },
+    "wolf": {
+      "count": 7,
+      "avgDmgDealt": 991.2857142857143,
+      "avgDmgTaken": 718.4285714285714,
+      "avgHealing": 25.285714285714285,
+      "avgKills": 14.857142857142858,
+      "avgDowns": 3,
+      "avgDeaths": 1.5714285714285714,
+      "avgEncounters": 30
+    },
+    "monk": {
+      "count": 6,
+      "avgDmgDealt": 4496,
+      "avgDmgTaken": 495.5,
+      "avgHealing": 10.333333333333334,
+      "avgKills": 70.16666666666667,
+      "avgDowns": 2,
+      "avgDeaths": 0.8333333333333334,
+      "avgEncounters": 30
+    },
+    "wizard": {
+      "count": 5,
+      "avgDmgDealt": 55,
+      "avgDmgTaken": 1473.2,
+      "avgHealing": 65.8,
+      "avgKills": 57.4,
+      "avgDowns": 9.2,
+      "avgDeaths": 1,
+      "avgEncounters": 30
+    },
+    "ranger": {
+      "count": 3,
+      "avgDmgDealt": 5161.666666666667,
+      "avgDmgTaken": 323.6666666666667,
+      "avgHealing": 7,
+      "avgKills": 64,
+      "avgDowns": 0.3333333333333333,
+      "avgDeaths": 0.3333333333333333,
+      "avgEncounters": 30
+    },
+    "fighter": {
+      "count": 3,
+      "avgDmgDealt": 4099.333333333333,
+      "avgDmgTaken": 828.6666666666666,
+      "avgHealing": 20,
+      "avgKills": 54.666666666666664,
+      "avgDowns": 0.6666666666666666,
+      "avgDeaths": 0.3333333333333333,
+      "avgEncounters": 30
+    },
+    "cleric": {
+      "count": 3,
+      "avgDmgDealt": 4739.666666666667,
+      "avgDmgTaken": 1139.3333333333333,
+      "avgHealing": 26.666666666666668,
+      "avgKills": 51.333333333333336,
+      "avgDowns": 6.666666666666667,
+      "avgDeaths": 3.6666666666666665,
+      "avgEncounters": 30
+    },
+    "druid": {
+      "count": 8,
+      "avgDmgDealt": 2817.875,
+      "avgDmgTaken": 780.75,
+      "avgHealing": 41.625,
+      "avgKills": 42,
+      "avgDowns": 1.25,
+      "avgDeaths": 0.875,
+      "avgEncounters": 30
+    },
+    "paladin": {
+      "count": 3,
+      "avgDmgDealt": 6711,
+      "avgDmgTaken": 467.6666666666667,
+      "avgHealing": 0,
+      "avgKills": 68,
+      "avgDowns": 2,
+      "avgDeaths": 0.6666666666666666,
+      "avgEncounters": 30
+    },
+    "warlock": {
+      "count": 4,
+      "avgDmgDealt": 129.75,
+      "avgDmgTaken": 856.5,
+      "avgHealing": 36.25,
+      "avgKills": 55,
+      "avgDowns": 4.25,
+      "avgDeaths": 2.5,
+      "avgEncounters": 30
+    },
+    "familiar": {
+      "count": 2,
+      "avgDmgDealt": 1206,
+      "avgDmgTaken": 706,
+      "avgHealing": 115.5,
+      "avgKills": 7.5,
+      "avgDowns": 6.5,
+      "avgDeaths": 3.5,
+      "avgEncounters": 30
+    },
+    "bard": {
+      "count": 5,
+      "avgDmgDealt": 1170.6,
+      "avgDmgTaken": 640.6,
+      "avgHealing": 39.8,
+      "avgKills": 32,
+      "avgDowns": 1.8,
+      "avgDeaths": 0.6,
+      "avgEncounters": 30
+    },
+    "sorcerer": {
+      "count": 3,
+      "avgDmgDealt": 2149.3333333333335,
+      "avgDmgTaken": 1051,
+      "avgHealing": 38.333333333333336,
+      "avgKills": 47,
+      "avgDowns": 3.3333333333333335,
+      "avgDeaths": 0,
+      "avgEncounters": 30
+    }
+  }
+}

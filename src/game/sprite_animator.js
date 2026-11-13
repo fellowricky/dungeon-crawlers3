@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { recolorPixels, isCharacterLayer,
-         LAYER_ORDER, buildLayerPaths, layerTint } from './appearance.js';
+         LAYER_ORDER, buildLayerPaths, layerTint, heroShape, HEAD_LAYERS } from './appearance.js';
 import { atlasCount, atlasSheetIndex, applyAtlasUV, atlasStep,
          attackImpactDelay as atlasAttackImpactDelay, nextAnimPhase, measureFrameAnchor, resolveAtlasAnchor, applyAtlasAnchor,
          sharedSheetTexture } from './sprite_atlas.js';
@@ -18,6 +18,10 @@ const ANIM_META = {
 };
 
 const DIRS = { up: 0, left: 1, down: 2, right: 3 };
+
+/* Thrust-family weapons (spear/rapier/dagger/polearm/magic) whose LPC weapon
+   folder has slash.png but no thrust.png — checked against public/lpc/weapon. */
+export const SLASH_ONLY_WEAPONS = new Set(['polearm/scythe', 'sword/rapier']);
 
 /**
  * Facing hysteresis, as an angle (radians) a direction must pass the boundary
@@ -126,6 +130,95 @@ function blitLayer(ctx, src, meta, cell, freezeCol = -1) {
   }
 }
 
+/* ---------------- Body builds (dwarf) ----------------
+   heroShape() hands a non-uniform race scale to the body alone. The body
+   layers are squashed about the feet (the same point the quad is planted on,
+   HeroSprite.applyCell), and the head layers keep their pixels and slide by
+   however far the neck moved. The neck is read per frame off the head layer
+   itself, so the walk bob and the hurt collapse carry the head along. */
+const FEET_FROM_BOTTOM = 64 * 0.04;   // HeroSprite.applyCell's anchor inside the 64px body frame
+const feetY = cell => (cell + 64) / 2 - FEET_FROM_BOTTOM;
+
+/* `head` is the head layer's { img, freezeCol } entry (null without one). */
+export function squatPlan(shape, head, meta, cell) {
+  if (!shape || (shape.bodyX === 1 && shape.bodyY === 1)) return null;
+  const { bodyX, bodyY } = shape;
+  const W = meta.cols * cell, H = meta.rows * cell;
+  const offs = new Array(meta.cols * meta.rows).fill(null);
+  if (head && head.img) {
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    blitLayer(cx, head.img, meta, cell, head.freezeCol ?? -1);
+    const px = cx.getImageData(0, 0, W, H).data;
+    for (let r = 0; r < meta.rows; r++) for (let col = 0; col < meta.cols; col++) {
+      let bottom = -1, minX = cell, maxX = -1;
+      for (let y = 0; y < cell; y++) {
+        const row = (r * cell + y) * W + col * cell;
+        for (let x = 0; x < cell; x++) {
+          if (px[(row + x) * 4 + 3] < 8) continue;
+          bottom = y;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+        }
+      }
+      if (bottom < 0) continue;
+      offs[r * meta.cols + col] = {
+        dx: Math.round(((minX + maxX + 1) / 2 - cell / 2) * (bodyX - 1)),
+        dy: Math.round((feetY(cell) - (bottom + 1)) * (1 - bodyY))
+      };
+    }
+  }
+  /* A frame with no head pixels borrows its row's nearest neighbour, else a
+     standing neck (LPC's sits ~30px down the 64px frame). */
+  const standing = { dx: 0, dy: Math.round((feetY(cell) - ((cell - 64) / 2 + 30)) * (1 - bodyY)) };
+  for (let r = 0; r < meta.rows; r++) for (let col = 0; col < meta.cols; col++) {
+    const i = r * meta.cols + col;
+    if (offs[i]) continue;
+    let best = null;
+    for (let d = 1; d < meta.cols && !best; d++) {
+      best = (col - d >= 0 && offs[r * meta.cols + col - d]) || (col + d < meta.cols && offs[r * meta.cols + col + d]) || null;
+    }
+    offs[i] = best || standing;
+  }
+  return { bodyX, bodyY, offs };
+}
+
+/* blitLayer under a squat plan: head layers shifted, the rest squashed. Each
+   frame is clipped to its own cell so a widened frame never bleeds into the
+   next one. Falls through to blitLayer when there is no plan. */
+export function blitLayerShaped(ctx, src, meta, cell, freezeCol, plan, isHead) {
+  if (!plan) { blitLayer(ctx, src, meta, cell, freezeCol); return; }
+  const fs = frameSizeOf(src, meta);
+  if (!fs) { blitLayer(ctx, src, meta, cell, freezeCol); return; }
+  const imgCols = Math.floor(src.width / fs);
+  const pad = (cell - fs) / 2;
+  const smooth = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  for (let r = 0; r < meta.rows; r++) {
+    for (let c = 0; c < meta.cols; c++) {
+      const sc = freezeCol >= 0 ? Math.min(freezeCol, imgCols - 1) : Math.min(c, imgCols - 1);
+      const x0 = c * cell, y0 = r * cell;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x0, y0, cell, cell);
+      ctx.clip();
+      if (isHead) {
+        const o = plan.offs[r * meta.cols + c];
+        ctx.drawImage(src, sc * fs, r * fs, fs, fs, x0 + pad + o.dx, y0 + pad + o.dy, fs, fs);
+      } else {
+        const ax = x0 + cell / 2, ay = y0 + feetY(cell);
+        const w = Math.round(fs * plan.bodyX), h = Math.round(fs * plan.bodyY);
+        const dx = Math.round(ax - (ax - (x0 + pad)) * plan.bodyX);
+        const dy = Math.round(ay - (ay - (y0 + pad)) * plan.bodyY);
+        ctx.drawImage(src, sc * fs, r * fs, fs, fs, dx, dy, w, h);
+      }
+      ctx.restore();
+    }
+  }
+  ctx.imageSmoothingEnabled = smooth;
+}
+
 /**
  * Configures a SpriteMaterial with camera-aligned depth tilt correction.
  *
@@ -174,6 +267,11 @@ export function configureSpriteMaterial(mat, options = {}) {
     };
   }
   const pose = mat.userData.sprPose;
+  /* A 1-px outline round the body (rgb, a = on): white while the cursor rests on
+     a creature, red while its unit card is up (unit_card.js setUnitOutline).
+     Off by default, and the neighbour samples only run while it is on. */
+  if (!mat.userData.sprOutline) mat.userData.sprOutline = { value: new THREE.Vector4(1, 1, 1, 0) };
+  const outline = mat.userData.sprOutline;
 
   mat.onBeforeCompile = (shader, renderer) => {
     if (oldOnBeforeCompile) oldOnBeforeCompile(shader, renderer);
@@ -201,13 +299,27 @@ export function configureSpriteMaterial(mat, options = {}) {
     shader.uniforms.uSprLitR = lit.R;
     shader.uniforms.uSprFog = lit.fog;
     shader.uniforms.uSprFogTop = lit.fogTop;
+    shader.uniforms.uSprOutline = outline;
     shader.fragmentShader = shader.fragmentShader
-      .replace('uniform float opacity;', 'uniform float opacity;\nuniform vec3 uSprLitL;\nuniform vec3 uSprLitR;\nuniform vec4 uSprFog;\nuniform float uSprFogTop;\nvarying float vSprSide;\nvarying float vSprH;')
+      .replace('uniform float opacity;', 'uniform float opacity;\nuniform vec3 uSprLitL;\nuniform vec3 uSprLitR;\nuniform vec4 uSprFog;\nuniform float uSprFogTop;\nuniform vec4 uSprOutline;\nvarying float vSprSide;\nvarying float vSprH;')
+      /* the outline: a clear pixel touching the body takes the outline colour */
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float sprOut = 0.0;
+        #ifdef USE_MAP
+        if (uSprOutline.a > 0.0 && diffuseColor.a < 0.35) {
+          vec2 tx = 1.0 / vec2(textureSize(map, 0));
+          float n = max(max(texture2D(map, vMapUv + vec2(tx.x, 0.0)).a, texture2D(map, vMapUv - vec2(tx.x, 0.0)).a),
+                        max(texture2D(map, vMapUv + vec2(0.0, tx.y)).a, texture2D(map, vMapUv - vec2(0.0, tx.y)).a));
+          if (n > 0.35) { sprOut = 1.0; diffuseColor = vec4(uSprOutline.rgb, uSprOutline.a * opacity); }
+        }
+        #endif`)
       /* The body only fills the middle of its frame, so the blend runs across
          that rather than the padded quad edge to edge. */
       .replace('outgoingLight = diffuseColor.rgb;',
         'outgoingLight = diffuseColor.rgb * mix(uSprLitL, uSprLitR, smoothstep(-0.22, 0.22, vSprSide));\n' +
-        'outgoingLight = mix(outgoingLight, uSprFog.rgb, uSprFog.a * (1.0 - smoothstep(0.0, uSprFogTop, vSprH)));');
+        'outgoingLight = mix(outgoingLight, uSprFog.rgb, uSprFog.a * (1.0 - smoothstep(0.0, uSprFogTop, vSprH)));\n' +
+        /* the outline stays its own colour: unlit, unfogged */
+        'if (sprOut > 0.5) outgoingLight = uSprOutline.rgb;');
   };
 
   mat.customProgramCacheKey = () => `depthTiltSprite_${forwardBias.toFixed(3)}`;
@@ -216,6 +328,90 @@ export function configureSpriteMaterial(mat, options = {}) {
 
 // Cache composed textures so we don't redraw canvases for identical visual setups
 const textureCache = {};
+
+/* ── Magic Weapon's glow ──────────────────────────────────────────────────
+   The paper doll's weapon on its own, as an atlas laid out like the composed
+   one: the weapon layers are drawn and every other layer, in order, erases what
+   it would cover, so a blade behind the body doesn't shine through it. Each
+   remaining pixel turns violet, and the empty pixels round it become a line. */
+const WEAPON_LAYERS = new Set(['weapon_crystal_behind', 'weapon_behind', 'weapon', 'weapon_crystal']);
+const glowCache = {};   // composed cache key -> [one texture per sparkle phase] | null (no weapon) | 'loading'
+const GLOW_LO = [150, 105, 255], GLOW_HI = [235, 225, 255], GLOW_LINE = [140, 90, 255];
+
+function weaponGlowPixels(data, W, H, cell) {
+  const out = new Uint8ClampedArray(W * H * 4), solid = (i) => data[i * 4 + 3] > 40;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x, o = i * 4;
+      if (solid(i)) {
+        const lum = (data[o] + data[o + 1] + data[o + 2]) / 765;
+        for (let k = 0; k < 3; k++) out[o + k] = GLOW_LO[k] + (GLOW_HI[k] - GLOW_LO[k]) * lum;
+        out[o + 3] = 55 + 110 * lum;   // light, so the weapon's own shading still reads under it
+        continue;
+      }
+      /* the line stays inside this frame's cell: never leaking into the next frame */
+      const touches = (x % cell > 0 && solid(i - 1)) || (x % cell < cell - 1 && solid(i + 1))
+        || (y % cell > 0 && solid(i - W)) || (y % cell < cell - 1 && solid(i + W));
+      if (!touches) continue;
+      for (let k = 0; k < 3; k++) out[o + k] = GLOW_LINE[k];
+      out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
+/* The sparkle: each frame of the atlas picks a few of its weapon's pixels, and the overlay cycles through
+   SPARKLE_PHASES copies in which each of those twinkles in turn: a dot, a cross, a star, and back down.
+   Baked, so they stay crisp at the sprite's own pixel size. */
+const SPARKLE_PHASES = 6, SPARKLE_MS = 95, SPARKLE_SHAPE = [0, 1, 2, 3, 2, 1];
+const hash32 = (a, b, c) => {
+  let h = Math.imul(a + 1, 73856093) ^ Math.imul(b + 1, 19349663) ^ Math.imul(c + 1, 83492791);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return (h ^ (h >>> 16)) >>> 0;
+};
+
+function weaponSparkles(data, W, H, cell) {
+  const out = [];
+  for (let row = 0; row * cell < H; row++) {
+    for (let col = 0; col * cell < W; col++) {
+      const pixels = [];
+      for (let y = row * cell; y < (row + 1) * cell; y++) {
+        for (let x = col * cell; x < (col + 1) * cell; x++) if (data[(y * W + x) * 4 + 3] > 40) pixels.push([x, y]);
+      }
+      if (!pixels.length) continue;
+      const slots = Math.max(3, Math.min(7, Math.round(pixels.length / 22)));
+      for (let s = 0; s < slots; s++) {
+        const [x, y] = pixels[hash32(col, row, s) % pixels.length];
+        /* every third one is a mote drifting up off the weapon instead of a star on it */
+        out.push({ x, y, x0: col * cell, y0: row * cell, mote: s % 3 === 2, phase: hash32(row, s, col) % SPARKLE_PHASES });
+      }
+    }
+  }
+  return out;
+}
+
+function stampSparkles(pix, W, cell, sparkles, phase) {
+  const put = (s, x, y, r, g, b) => {
+    if (x < s.x0 || y < s.y0 || x >= s.x0 + cell || y >= s.y0 + cell) return;
+    const o = (y * W + x) * 4;
+    pix[o] = r; pix[o + 1] = g; pix[o + 2] = b; pix[o + 3] = 255;
+  };
+  for (const s of sparkles) {
+    const p = (phase + s.phase) % SPARKLE_PHASES;
+    if (s.mote) {
+      put(s, s.x, s.y - p * 3, p < 3 ? 255 : 205, p < 3 ? 255 : 180, 255);
+      continue;
+    }
+    const size = SPARKLE_SHAPE[p];
+    if (!size) continue;
+    put(s, s.x, s.y, 255, 255, 255);
+    if (size < 2) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      put(s, s.x + dx, s.y + dy, 235, 225, 255);
+      if (size > 2) put(s, s.x + dx * 2, s.y + dy * 2, 170, 130, 255);
+    }
+  }
+}
 export class HeroSprite {
   constructor(hero, color) {
     /* Share the hero's own visual object rather than a copy — the Equipment
@@ -266,10 +462,115 @@ export class HeroSprite {
   applyCell(cell) {
     this._curCell = cell;
     const k = cell / 64;
-    const sx = this.visual.spriteScaleX || 1.0;
-    const sy = this.visual.spriteScaleY || 1.0;
+    const { quadX: sx, quadY: sy } = heroShape(this.visual);
     this.mesh.scale.set(1.125 * sx * k, 1.125 * sy * k, 1);
     this.mesh.center.set(0.5, ((cell - 64) / 2 + 64 * 0.04) / cell);
+  }
+
+  /** Magic Weapon: the weapon alone glows, in an additive twin of the sprite. Flares as it comes on. */
+  setWeaponGlow(on) {
+    if (!on) { if (this._glow) this._glow.visible = false; return; }
+    if (!this._glow) this._glow = this._makeWeaponGlow();
+    if (!this._glow.visible) { this._glow.visible = true; this._glowFrom = performance.now(); }
+  }
+
+  _makeWeaponGlow() {
+    const src = this.mesh;
+    const mat = configureSpriteMaterial(new THREE.SpriteMaterial({
+      map: this.material.map, transparent: true, opacity: 0,
+      depthTest: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    /* The hit overlay's program: the same material, already compiled, so no stall as the spell lands. */
+    mat.customProgramCacheKey = () => 'hitOverlayDepthTiltSprite';
+    const ov = new THREE.Sprite(mat);
+    ov.renderOrder = (src.renderOrder || 0) + 2;
+    ov.center.copy(src.center);
+    ov.visible = false;
+    ov.onBeforeRender = () => {
+      const body = this.material.map, tex = this.weaponGlowTexture(this.state);
+      if (!tex || !body) { mat.opacity = 0; return; }
+      if (mat.map == null) mat.needsUpdate = true;
+      mat.map = tex;
+      tex.repeat.copy(body.repeat);
+      tex.offset.copy(body.offset);
+      ov.center.copy(src.center);
+      mat.rotation = this.material.rotation;
+      const a = this.material.userData && this.material.userData.sprPose, b = mat.userData && mat.userData.sprPose;
+      if (a && b) { b.pose.value.copy(a.pose.value); b.dir.value.copy(a.dir.value); }
+      const now = performance.now(), flare = Math.max(0, 1 - (now - this._glowFrom) / 600);
+      mat.opacity = 0.72 + 0.2 * Math.sin(now / 240);
+      mat.color.setScalar(1 + 1.6 * flare * flare);
+    };
+    src.add(ov);
+    return ov;
+  }
+
+  /** This action's weapon-only atlas: null until it's built, or when nothing is held. */
+  weaponGlowTexture(action) {
+    if (!ANIM_META[action]) return null;
+    const key = this.getCacheKey(action);
+    const got = glowCache[key];
+    if (got === undefined) {
+      glowCache[key] = 'loading';
+      this._buildWeaponGlow(action, key).catch(() => { glowCache[key] = null; });
+      return null;
+    }
+    if (got === 'loading' || !got) return null;
+    return got[Math.floor(performance.now() / SPARKLE_MS) % got.length];
+  }
+
+  async _buildWeaponGlow(action, key) {
+    const meta = ANIM_META[action], paths = buildLayerPaths(this.visual, this.equipment);
+    if (!LAYER_ORDER.some((l) => WEAPON_LAYERS.has(l) && paths[l])) { glowCache[key] = null; return; }
+    /* the same layers, fallbacks and cell size as loadState, so it lines up frame for frame */
+    const isIdle = action === 'idle';
+    const imgs = await Promise.all(LAYER_ORDER.map(async layer => {
+      if (!paths[layer]) return null;
+      const img = await loadImage(`${ASSETS_ROOT}${paths[layer]}/${action}.png`, isIdle);
+      if (img) return { img, freezeCol: -1 };
+      if (!isIdle) return null;
+      const still = await loadImage(`${ASSETS_ROOT}${paths[layer]}/walk.png`);
+      return still ? { img: still, freezeCol: 0 } : null;
+    }));
+    let cell = 64;
+    for (const entry of imgs) {
+      if (!entry) continue;
+      const fs = frameSizeOf(entry.img, meta);
+      if (fs > cell) cell = fs;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = meta.cols * cell;
+    canvas.height = meta.rows * cell;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    /* the same body build as loadState, or the glow slides off the weapon */
+    const plan = squatPlan(heroShape(this.visual), imgs[LAYER_ORDER.indexOf('head')], meta, cell);
+    let any = false;
+    for (let i = 0; i < LAYER_ORDER.length; i++) {
+      if (!imgs[i]) continue;
+      const weapon = WEAPON_LAYERS.has(LAYER_ORDER[i]);
+      any = any || weapon;
+      ctx.globalCompositeOperation = weapon ? 'source-over' : 'destination-out';
+      blitLayerShaped(ctx, imgs[i].img, meta, cell, imgs[i].freezeCol, plan, HEAD_LAYERS.has(LAYER_ORDER[i]));
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    if (!any) { glowCache[key] = null; return; }
+    const W = canvas.width, H = canvas.height, weaponPx = ctx.getImageData(0, 0, W, H).data;
+    const base = weaponGlowPixels(weaponPx, W, H, cell), sparkles = weaponSparkles(weaponPx, W, H, cell), phases = [];
+    for (let phase = 0; phase < SPARKLE_PHASES; phase++) {
+      const pix = new Uint8ClampedArray(base);
+      stampSparkles(pix, W, cell, sparkles, phase);
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      c.getContext('2d').putImageData(new ImageData(pix, W, H), 0, 0);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+      tex.repeat.set(1 / meta.cols, 1 / meta.rows);
+      phases.push(tex);
+    }
+    glowCache[key] = phases;
   }
 
   /* re-compose every loaded animation (called after equipment changes) */
@@ -310,6 +611,8 @@ export class HeroSprite {
          in identical gear compose different sprites — without this they would
          share a textureCache entry and the toggle would appear to do nothing. */
       this.visual.hideHelm ? 'nohat' : '',
+      /* a body build (dwarf) composes different pixels from the same layers */
+      (({ bodyX, bodyY }) => `${bodyX}x${bodyY}`)(heroShape(this.visual)),
       action
     ];
     if (this.equipment) {
@@ -367,6 +670,7 @@ export class HeroSprite {
     canvas.width = meta.cols * cell;
     canvas.height = meta.rows * cell;
     const ctx = canvas.getContext('2d');
+    const plan = squatPlan(heroShape(this.visual), imgs[LAYER_ORDER.indexOf('head')], meta, cell);
 
     for (let i = 0; i < LAYER_ORDER.length; i++) {
       const entry = imgs[i];
@@ -374,7 +678,7 @@ export class HeroSprite {
       const layer = LAYER_ORDER[i];
       const tint = layerTint(layer, this.visual, this.equipment);
       const src = tint ? tintImage(entry.img, tint, isCharacterLayer(layer)) : entry.img;
-      blitLayer(ctx, src, meta, cell, entry.freezeCol);
+      blitLayerShaped(ctx, src, meta, cell, entry.freezeCol, plan, HEAD_LAYERS.has(layer));
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -418,6 +722,13 @@ export class HeroSprite {
 
   resolveAttackAction(profile = null) {
     if (profile) {
+      /* A throw is a swing that lets go: polearms (spear, javelin, trident)
+         throw from the thrust, blades/axes/hammers from an overhand slash.
+         Without this a thrown dagger played the BOW animation. */
+      if (profile.throwing) {
+        const tvw = (this.equipment?.weapon?.visualWeapon || '').toLowerCase();
+        return tvw.startsWith('polearm/') && !SLASH_ONLY_WEAPONS.has(tvw) ? 'thrust' : 'slash';
+      }
       if (profile.source === 'cantrip' || profile.cantripScale) return 'spellcast';
       if (profile.melee === false || (profile.name && profile.name.toLowerCase().includes('bow'))) return 'shoot';
     }
@@ -425,7 +736,10 @@ export class HeroSprite {
     const vw = (this.equipment?.weapon?.visualWeapon || '').toLowerCase();
     if (wep.includes('bow') || wep.includes('crossbow') || vw.startsWith('ranged/')) return 'shoot';
     if (wep.includes('spear') || wep.includes('rapier') || wep.includes('dagger') || vw.startsWith('polearm/') || vw.startsWith('magic/')) {
-      if (vw === 'polearm/scythe') return 'slash';
+      /* The thrust family, except weapons whose LPC art ships no thrust.png:
+         playing thrust there drops the weapon layer and the hero jabs empty-
+         handed. They use the attack sheet they do have. */
+      if (SLASH_ONLY_WEAPONS.has(vw)) return 'slash';
       return 'thrust';
     }
     const c = this.hero?.classKey;
@@ -560,7 +874,14 @@ function drawPortraitFrame(ctx, img, tint) {
   const off = (64 - fs) / 2; // negative for oversize: center-crop to the body
   const cw = ctx.canvas.width || 64;
   const ch = ctx.canvas.height || 64;
-  if (!tint) { ctx.drawImage(img, 0, 2 * fs, fs, fs, 0, 0, cw, ch); return; }
+  if (!tint) {
+    /* Crop the body-sized 64px centre out of an oversize frame, like the tinted
+       path below. Scaling the whole 128px frame into the portrait shrank
+       oversize weapons (katana, scimitar, spears, bow) to half size and slid
+       them down to the waist. */
+    ctx.drawImage(img, -off, 2 * fs - off, 64, 64, 0, 0, cw, ch);
+    return;
+  }
   const tmp = document.createElement('canvas'); tmp.width = 64; tmp.height = 64;
   const t = tmp.getContext('2d');
   t.drawImage(img, 0, 2 * fs, fs, fs, off, off, fs, fs);
@@ -631,6 +952,7 @@ export async function composeHeroWalkSheet(hero) {
     visual.gender, visual.skinColor, visual.hair, visual.hairColor,
     visual.hairExtension, visual.hairExtColor, visual.eyeColor, visual.hornTint,
     visual.hideHelm ? 'nohat' : '',
+    (({ bodyX, bodyY }) => `${bodyX}x${bodyY}`)(heroShape(visual)),
     JSON.stringify(paths), gear.join(',')
   ].join('|');
   if (walkSheetCache.has(key)) return walkSheetCache.get(key);
@@ -651,11 +973,12 @@ export async function composeHeroWalkSheet(hero) {
   canvas.height = meta.rows * cell;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
+  const plan = squatPlan(heroShape(visual), imgs[LAYER_ORDER.indexOf('head')], meta, cell);
   for (const entry of imgs) {
     if (!entry) continue;
     const tint = layerTint(entry.layer, visual, equipment);
     const src = tint ? tintImage(entry.img, tint, isCharacterLayer(entry.layer)) : entry.img;
-    blitLayer(ctx, src, meta, cell, -1);
+    blitLayerShaped(ctx, src, meta, cell, -1, plan, HEAD_LAYERS.has(entry.layer));
   }
   const sheet = { canvas, cell, cols: meta.cols, rows: meta.rows, rightRow: DIRS.right };
   walkSheetCache.set(key, sheet);
@@ -959,8 +1282,10 @@ export class BeastSprite {
     this.mesh = new THREE.Sprite(this.material);
     this.mesh.renderOrder = 10;
 
-    const sx = (this.visual.spriteScaleX || 1.0) * ((formConfig.scaleX || 1.6) * 0.75);
-    const sy = (this.visual.spriteScaleY || 1.0) * ((formConfig.scaleY || 1.6) * 0.75);
+    /* the race's overall size only: a dwarf's body build is for the dwarf, not the bear */
+    const shape = heroShape(this.visual);
+    const sx = shape.quadX * ((formConfig.scaleX || 1.6) * 0.75);
+    const sy = shape.quadY * ((formConfig.scaleY || 1.6) * 0.75);
     this.mesh.scale.set(sx, sy, 1);
     /* Anchor the quad at the FEET, not at a fixed 4% of the frame. The forms'
        sheets do not pad alike: the wolf's paws sit 16px above the bottom of its

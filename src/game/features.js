@@ -75,9 +75,9 @@ export function styleRerollsLowDice(h, profile) {
 export const FEATS = {
   tough: {
     label: 'Tough',
-    desc: '+2 max HP per level (scales as you grow).',
-    pb: {}, // applied specially in recalc via level
-    hpPerLevel: 2
+    desc: 'Start every fight with 2 temporary HP per level (scales as you grow).',
+    pb: {}, // applied in featureBonuses via level, as start-of-fight temp HP
+    tempHpPerLevel: 2
   },
   resilient: {
     label: 'Resilient (Constitution)',
@@ -143,9 +143,9 @@ export const FEATS = {
   },
   durable: {
     label: 'Durable',
-    desc: '+1 CON and +1 max HP per level (hardy constitution).',
+    desc: '+1 CON, and start every fight with 1 temporary HP per level (hardy constitution).',
     pb: { con: 1 },
-    hpPerLevel: 1
+    tempHpPerLevel: 1
   },
 
   /* ---- Equipment-proficiency feats ------------------------------------
@@ -587,7 +587,7 @@ export const FEATURES = {
   },
   rage: {
     label: 'Rage',
-    desc: 'Once per long rest, when hurt enter Rage: +2 melee dmg, +2 AC, half damage taken.',
+    desc: 'Uses equal to your proficiency bonus per long rest (Deep Fury adds more). When hurt, enter Rage: +2 melee dmg, +2 AC, half damage taken.',
     combat: 'rage'
   },
   recklessAttack: {
@@ -624,6 +624,11 @@ export const FEATURES = {
     label: 'Step of the Wind',
     desc: 'Spend 1 Ki as a bonus action to Dash or Disengage (+50% speed).',
     combat: 'stepOfTheWind'
+  },
+  deflectMissiles: {
+    label: 'Deflect Missiles',
+    desc: 'Once per round, a ranged weapon hit on you is reduced by 1d10 + DEX + monk level. Reduced to 0, you catch it.',
+    combat: 'deflectMissiles'
   },
   stunningStrike: {
     label: 'Stunning Strike',
@@ -680,10 +685,12 @@ export const FEATURES = {
     desc: 'Once per long rest: advantage on an attack roll.',
     combat: 'tidesOfChaos'
   },
+  /* The sorcerer's Metamagic: picks, not a flat bonus (see METAMAGIC). This
+     used to be "+1 spell damage", which was all that told a sorcerer from a
+     wizard. */
   metamagic: {
-    label: 'Metamagic: Empowered',
-    desc: '+1 spell damage (always on).',
-    pb: { dmg: 1 }
+    label: 'Metamagic',
+    desc: 'Spend sorcery points to twist your spells. Choose two Metamagic options; one more at levels 10 and 17.'
   },
   eldritchBlast: {
     label: 'Eldritch Blast',
@@ -705,10 +712,12 @@ export const FEATURES = {
     desc: '+1 to attack rolls (broad training).',
     pb: { atk: 1 }
   },
+  /* Sorcery points (srd.js recalc sets sorcPointsMax; rest.js refills them).
+     It used to be "+1 level-1 slot"; the sorcerer had no points at all. */
   fontOfMagic: {
     label: 'Font of Magic',
-    desc: '+1 spell slot maximum.',
-    slotBonus: 1
+    desc: 'Sorcery points equal to your level (at least 2), refilled on a long rest. Spend them on Metamagic, or turn them into a spell slot when you run dry (1st 2 · 2nd 3 · 3rd 5 · 4th 6 · 5th 7). A slot can also be melted down into points equal to its level.',
+    combat: 'fontOfMagic'
   },
   pactMagic: {
     label: 'Pact Magic',
@@ -727,8 +736,8 @@ export const FEATURES = {
   },
   divineHealth: {
     label: 'Divine Health',
-    desc: '+4 max HP; pure constitution of faith.',
-    pb: { hp: 4 }
+    desc: 'Start every fight with 4 temporary HP; pure constitution of faith.',
+    pb: { fightTempHp: 4 }
   },
   naturalExplorer: {
     label: 'Natural Explorer',
@@ -763,8 +772,8 @@ export const FEATURES = {
   },
   primalChampion: {
     label: 'Primal Champion',
-    desc: '+2 STR, +2 CON, +10 HP. Maximum STR/CON raised to 24.',
-    pb: { str: 2, con: 2, hp: 10 }
+    desc: '+2 STR, +2 CON. Maximum STR/CON raised to 24.',
+    pb: { str: 2, con: 2 }
   },
 
   /* ===== Fighter L11-20 ===== */
@@ -868,8 +877,8 @@ export const FEATURES = {
   },
   diamondSoul: {
     label: 'Diamond Soul',
-    desc: '+1 AC, +4 HP; proficiency in all saving throws.',
-    pb: { ac: 1, hp: 4 }
+    desc: '+1 AC; proficiency in all saving throws.',
+    pb: { ac: 1 }
   },
   emptyBody: {
     label: 'Empty Body',
@@ -925,20 +934,25 @@ export const FEATURES = {
   /* ===== Sorcerer L11-20 ===== */
   metamagicExpert: {
     label: 'Metamagic Expert',
-    desc: '+2 spell damage; third metamagic option unlocked.',
-    pb: { dmg: 2 }
+    desc: 'Choose a fourth Metamagic option.'
   },
+  /* Level 5 (rest.js applyShortRestToHero). It used to sit at level 20 as
+     "+2 spell dmg, +1 atk, regain 4 SP" — and there were no SP to regain. */
   sorcerousRestoration: {
     label: 'Sorcerous Restoration',
-    desc: '+2 spell dmg, +1 atk. Regain 4 SP on short rest.',
-    pb: { dmg: 2, atk: 1 }
+    desc: 'Once per long rest, a short rest restores sorcery points equal to half your level.'
+  },
+  arcaneApotheosis: {
+    label: 'Arcane Apotheosis',
+    desc: 'Once per turn, one Metamagic option costs no sorcery points.',
+    pb: { dmg: 2 }
   },
 
   /* ===== Warlock L11-20 ===== */
   eldritchMaster: {
     label: 'Eldritch Master',
-    desc: '+2 damage, +6 HP. Regain all pact slots 1/long rest.',
-    pb: { dmg: 2, hp: 6 },
+    desc: '+2 damage. Regain all pact slots 1/long rest.',
+    pb: { dmg: 2 },
     combat: 'eldritchMaster'
   }
 };
@@ -990,8 +1004,8 @@ export const INVOCATIONS = {
   },
   fiendishVigor: {
     label: 'Fiendish Vigor',
-    desc: 'False life at will: +5 maximum HP.',
-    pb: { hp: 5 }
+    desc: 'False life at will: start every fight with 5 temporary HP.',
+    pb: { fightTempHp: 5 }
   },
   devilsSight: {
     label: "Devil's Sight",
@@ -1022,9 +1036,9 @@ export const INVOCATIONS = {
 export const SUBCLASS_MILESTONES = {
   fighter: {
     champion: { 6: { pb: { crit: 1 }, label: 'Superior Critical' }, 10: { pb: { dmg: 2 }, label: 'Survivor' },
-                14: { pb: { crit: 1, dmg: 2 }, label: 'Champion Ascendant' }, 18: { pb: { dmg: 3, hp: 10 }, label: 'Legendary Champion' } },
-    guardian: { 6: { pb: { ac: 1, hp: 4 }, label: 'Hold the Line' }, 10: { pb: { ac: 1 }, label: 'Bulwark' },
-                14: { pb: { ac: 1, hp: 8 }, label: 'Iron Bulwark' }, 18: { pb: { ac: 2, hp: 12 }, label: 'Living Wall' } }
+                14: { pb: { crit: 1, dmg: 2 }, label: 'Champion Ascendant' }, 18: { pb: { dmg: 3 }, label: 'Legendary Champion' } },
+    guardian: { 6: { pb: { ac: 1 }, label: 'Hold the Line' }, 10: { pb: { ac: 1 }, label: 'Bulwark' },
+                14: { pb: { ac: 1 }, label: 'Iron Bulwark' }, 18: { pb: { ac: 2 }, label: 'Living Wall' } }
   },
   rogue: {
     thief: { 6: { pb: { move: 5 }, label: 'Supreme Sneak' }, 10: { pb: { ac: 1, dmg: 1 }, label: 'Use Magic Device' },
@@ -1034,21 +1048,21 @@ export const SUBCLASS_MILESTONES = {
   },
   cleric: {
     life: { 6: { pb: { heal: 3 }, label: 'Blessed Healer' }, 10: { pb: { heal: 2, ac: 1 }, label: 'Supreme Healing' },
-            14: { pb: { heal: 3, hp: 6 }, label: 'Divine Restoration' }, 18: { pb: { heal: 4, ac: 1 }, label: 'Avatar of Life' } },
+            14: { pb: { heal: 3 }, label: 'Divine Restoration' }, 18: { pb: { heal: 4, ac: 1 }, label: 'Avatar of Life' } },
     war: { 6: { pb: { atk: 1, dmg: 1 }, label: 'War Priest' }, 10: { pb: { dmg: 2 }, label: 'Avatar of Battle' },
            14: { pb: { atk: 1, dmg: 3 }, label: 'Scourge of Heretics' }, 18: { pb: { dmg: 4, ac: 1 }, label: 'Vessel of War' } }
   },
   wizard: {
     evoker: { 6: { pb: { dmg: 2 }, label: 'Potent Cantrip' }, 10: { pb: { dmg: 2 }, label: 'Overchannel' },
               14: { pb: { dmg: 3, atk: 1 }, label: 'Unstable Overchannel' }, 18: { pb: { dmg: 4 }, label: 'Archmage of Evocation' } },
-    abjurer: { 6: { pb: { ac: 1, hp: 6 }, label: 'Projected Ward' }, 10: { pb: { ac: 1 }, label: 'Spell Resistance' },
-               14: { pb: { ac: 1, hp: 8 }, label: 'Greater Abjuration' }, 18: { pb: { ac: 2, hp: 12 }, label: 'Wardmaster' } }
+    abjurer: { 6: { pb: { ac: 1 }, label: 'Warding Recovery' }, 10: { pb: { ac: 1 }, label: 'Spell Breaker' },
+               14: { pb: { ac: 1 }, label: 'Spell Resistance' }, 18: { pb: { ac: 2 }, label: 'Wardmaster' } }
   },
   barbarian: {
     berserker: { 6: { pb: { dmg: 2 }, label: 'Mindless Rage' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Intimidating Presence' },
                  14: { pb: { dmg: 3, str: 1 }, label: 'Furious Rampage' }, 18: { pb: { dmg: 4, atk: 1 }, label: 'Unstoppable Fury' } },
-    totem: { 6: { pb: { ac: 1, hp: 6 }, label: 'Aspect of the Eagle' }, 10: { pb: { ac: 1 }, label: 'Totemic Attunement' },
-             14: { pb: { ac: 1, hp: 8 }, label: 'Spirit Guardian' }, 18: { pb: { ac: 2, hp: 14 }, label: 'Totem Incarnate' } }
+    totem: { 6: { pb: { ac: 1 }, label: 'Aspect of the Eagle' }, 10: { pb: { ac: 1 }, label: 'Totemic Attunement' },
+             14: { pb: { ac: 1 }, label: 'Spirit Guardian' }, 18: { pb: { ac: 2 }, label: 'Totem Incarnate' } }
   },
   bard: {
     lore: { 6: { pb: { atk: 1 }, label: 'Additional Magical Secrets' }, 10: { pb: { dmg: 1, heal: 2 }, label: 'Peerless Skill' },
@@ -1058,9 +1072,9 @@ export const SUBCLASS_MILESTONES = {
   },
   druid: {
     land: { 6: { pb: { atk: 1 }, label: "Land's Stride" }, 10: { pb: { dmg: 2 }, label: "Nature's Ward" },
-            14: { pb: { dmg: 2, atk: 1 }, label: "Nature's Sanctuary" }, 18: { pb: { dmg: 3, hp: 10 }, label: 'Archdruid of the Land' } },
-    moon: { 6: { pb: { dmg: 1, hp: 6 }, label: 'Primal Strike' }, 10: { pb: { dmg: 2 }, label: 'Elemental Wild Shape' },
-            14: { pb: { dmg: 2, hp: 10 }, label: 'Thousand Forms' }, 18: { pb: { dmg: 4, ac: 1 }, label: 'Primal Avatar' } }
+            14: { pb: { dmg: 2, atk: 1 }, label: "Nature's Sanctuary" }, 18: { pb: { dmg: 3 }, label: 'Archdruid of the Land' } },
+    moon: { 6: { pb: { dmg: 1 }, label: 'Primal Strike' }, 10: { pb: { dmg: 2 }, label: 'Elemental Wild Shape' },
+            14: { pb: { dmg: 2 }, label: 'Thousand Forms' }, 18: { pb: { dmg: 4, ac: 1 }, label: 'Primal Avatar' } }
   },
   monk: {
     openhand: { 6: { pb: { dmg: 1 }, label: 'Wholeness of Body' }, 10: { pb: { ac: 1, move: 5 }, label: 'Quivering Palm Ready' },
@@ -1078,17 +1092,18 @@ export const SUBCLASS_MILESTONES = {
     hunter: { 6: { pb: { dmg: 1 }, label: 'Multiattack Defense' }, 10: { pb: { atk: 1, dmg: 1 }, label: 'Superior Hunter' },
               14: { pb: { dmg: 2, atk: 1 }, label: 'Apex Predator' }, 18: { pb: { dmg: 3, atk: 1 }, label: 'Legendary Hunter' } },
     beastmaster: { 6: { pb: { ac: 1 }, label: 'Exceptional Training' }, 10: { pb: { dmg: 2 }, label: 'Bestial Fury' },
-                   14: { pb: { dmg: 2, hp: 8 }, label: 'Shared Fury' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Pack Alpha' } }
+                   14: { pb: { dmg: 2 }, label: 'Shared Fury' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Pack Alpha' } }
   },
   sorcerer: {
-    draconic: { 6: { pb: { dmg: 2 }, label: 'Elemental Affinity' }, 10: { pb: { ac: 1, hp: 4 }, label: 'Dragon Wings' },
-                14: { pb: { dmg: 2, ac: 1 }, label: 'Dragon Fear' }, 18: { pb: { dmg: 4, hp: 6 }, label: 'Draconic Ascension' } },
+    draconic: { 6: { pb: { dmg: 2 }, label: 'Elemental Affinity' }, 10: { pb: { ac: 1 }, label: 'Dragon Wings' },
+                14: { pb: { dmg: 2, ac: 1 }, label: 'Dragon Fear' }, 18: { pb: { dmg: 4 }, label: 'Draconic Ascension' } },
+    /* each also does something (wild_magic.js), keyed by sorcerer level */
     wildmagic: { 6: { pb: { atk: 1 }, label: 'Bend Luck' }, 10: { pb: { dmg: 2 }, label: 'Controlled Chaos' },
-                 14: { pb: { dmg: 2, atk: 1 }, label: 'Spell Bombardment' }, 18: { pb: { dmg: 4 }, label: 'Chaos Ascendant' } }
+                 14: { pb: { dmg: 2, atk: 1 }, label: 'Spell Bombardment' }, 18: { pb: { dmg: 4 }, label: 'Tamed Surge' } }
   },
   warlock: {
-    fiend: { 6: { pb: { dmg: 1, hp: 4 }, label: "Dark One's Own Luck" }, 10: { pb: { dmg: 2 }, label: 'Fiendish Resilience' },
-             14: { pb: { dmg: 2, hp: 6 }, label: 'Hurl Through Hell' }, 18: { pb: { dmg: 4 }, label: 'Fiendish Ascendancy' } },
+    fiend: { 6: { pb: { dmg: 1 }, label: "Dark One's Own Luck" }, 10: { pb: { dmg: 2 }, label: 'Fiendish Resilience' },
+             14: { pb: { dmg: 2 }, label: 'Hurl Through Hell' }, 18: { pb: { dmg: 4 }, label: 'Fiendish Ascendancy' } },
     archfey: { 6: { pb: { ac: 1 }, label: 'Misty Escape' }, 10: { pb: { atk: 1, ac: 1 }, label: 'Beguiling Defenses' },
                14: { pb: { ac: 1, dmg: 2 }, label: 'Dark Delirium' }, 18: { pb: { dmg: 3, ac: 1 }, label: 'Archfey Presence' } }
   }
@@ -1097,6 +1112,137 @@ export const SUBCLASS_MILESTONES = {
 /* ================================================================
    Per-class level tables (levels 1–10)
    ================================================================ */
+
+/* ── Metamagic (sorcerer) ──────────────────────────────────────────────────
+   Picks stored on h.metamagic, read by hasMetamagic. Each costs sorcery
+   points at cast time; combat.js metamagicForCast decides (AI) or reads the
+   armed toggles (manual) and applies them. One option per spell, except
+   Empowered, which stacks with any of the others (as in 5e).
+
+   Careful Spell is left out on purpose: hero area spells never hit allies in
+   this game, so it would cost a pick and do nothing. Subtle takes its place —
+   monsters here DO counterspell (combat.js checkCounterspellInterrupt). */
+export const METAMAGIC = {
+  twinned:    { label: 'Twinned Spell',    cost: 'level',
+    desc: 'A single-target spell also strikes a second foe. Costs points equal to the spell\'s level. Not for concentration or multi-target spells.' },
+  quickened:  { label: 'Quickened Spell',  cost: 2,
+    desc: '2 points: cast an action spell as a bonus action, leaving your action for a cantrip or attack.' },
+  heightened: { label: 'Heightened Spell', cost: 2,
+    desc: '2 points: the spell\'s main target has disadvantage on its first saving throw against it.' },
+  empowered:  { label: 'Empowered Spell',  cost: 1, stacks: true,
+    desc: '1 point: reroll the spell\'s damage dice that land 1 or 2. Can be added on top of another option.' },
+  subtle:     { label: 'Subtle Spell',     cost: 1,
+    desc: '1 point: cast without words or gestures — the spell cannot be counterspelled.' }
+};
+
+export function hasMetamagic(h, key) {
+  if (!h) return false;
+  const d = h.data || h;
+  return !!(d.metamagic && d.metamagic.includes(key));
+}
+
+/* ── Sorcery points (Font of Magic) ──────────────────────────────────────── */
+
+/** Points to create a slot of each level (5e Flexible Casting; 5th is the cap). */
+export const FLEX_SLOT_COST = { 1: 2, 2: 3, 3: 5, 4: 6, 5: 7 };
+
+/** Pool size for a hero data object: level, but never below 2. */
+/* ── Arcane Ward (Abjurer wizard) ───────────────────────────────────────────
+   A hit-point shield that lives on the hero record (d.wardHp / d.wardMax) and
+   persists between fights. Any spell cast with a slot recharges it by twice
+   the slot's level; a long rest fills it; Warding Recovery (L6) gives half
+   back on a short rest. abjuration.js spends it. */
+export function isAbjurer(d, lv = 3) {
+  return !!d && d.classKey === 'wizard' && d.subclass === 'abjurer' && (d.level || 0) >= lv;
+}
+
+/** 2 × level + INT modifier (3 × level at Wardmaster, L18), at least 1. */
+export function wardMaxFor(d) {
+  if (!isAbjurer(d)) return 0;
+  const st = d.effStats || d.stats || {};
+  const intMod = Math.floor(((st.int ?? 10) - 10) / 2);
+  const per = (d.level || 0) >= 18 ? 3 : 2;
+  return Math.max(1, per * d.level + intMod);
+}
+
+/** Put HP back into the ward, capped at its maximum. Returns what was added. */
+export function restoreArcaneWard(d, amount) {
+  if (!d || !(d.wardMax > 0)) return 0;
+  const cur = Math.max(0, d.wardHp ?? d.wardMax);
+  const next = amount == null ? d.wardMax : Math.min(d.wardMax, cur + Math.max(0, amount));
+  d.wardHp = next;
+  return next - cur;
+}
+
+export function sorceryPointsMaxFor(d) {
+  return Math.max(2, (d && d.level) | 0);
+}
+
+export function sorceryPointsLeft(h) {
+  if (!h) return 0;
+  const d = h.data || h;
+  if (!d.sorcPointsMax) return 0;
+  if (d.sorcPoints === undefined) d.sorcPoints = d.sorcPointsMax;
+  return Math.max(0, Math.min(d.sorcPoints, d.sorcPointsMax));
+}
+
+export function hasSorceryPoints(h, n = 1) {
+  return sorceryPointsLeft(h) >= n;
+}
+
+export function spendSorceryPoints(h, n = 1) {
+  if (!h) return false;
+  const d = h.data || h;
+  if (n <= 0) return true;
+  if (!hasSorceryPoints(d, n)) return false;
+  d.sorcPoints = sorceryPointsLeft(d) - n;
+  return true;
+}
+
+/** Add points up to the max (undefined amount = refill). Returns points gained. */
+export function restoreSorceryPoints(h, amount) {
+  if (!h) return 0;
+  const d = h.data || h;
+  if (!d.sorcPointsMax) return 0;
+  const before = sorceryPointsLeft(d);
+  d.sorcPoints = amount === undefined ? d.sorcPointsMax : Math.min(d.sorcPointsMax, before + amount);
+  return d.sorcPoints - before;
+}
+
+/** The cheapest slot level ≥ lvl that points could create, or 0. */
+export function flexSlotLevelFor(h, lvl = 1) {
+  const d = h && (h.data || h);
+  if (!d || !hasFeature(d, 'fontOfMagic')) return 0;
+  for (let l = Math.max(1, lvl); l <= 5; l++) {
+    if (hasSorceryPoints(d, FLEX_SLOT_COST[l])) return l;
+  }
+  return 0;
+}
+
+/** Spend points for a slot of exactly `lvl` and add it to the pool (it may sit
+ *  above slotsMax until spent — created slots vanish on a long rest anyway).
+ *  Returns true when the slot was made. */
+export function createSlotFromPoints(h, lvl) {
+  const d = h && (h.data || h);
+  const cost = FLEX_SLOT_COST[lvl];
+  if (!d || !cost || !hasFeature(d, 'fontOfMagic')) return false;
+  if (!spendSorceryPoints(d, cost)) return false;
+  if (!d.slots || typeof d.slots === 'number') d.slots = {};
+  d.slots[lvl] = (d.slots[lvl] || 0) + 1;
+  return true;
+}
+
+/** Melt one slot of exactly `lvl` into points equal to its level. The points
+ *  can't push past the max. Returns the points gained (0 = nothing done). */
+export function convertSlotToPoints(h, lvl) {
+  const d = h && (h.data || h);
+  if (!d || !hasFeature(d, 'fontOfMagic') || !d.slots || typeof d.slots === 'number') return 0;
+  if (!((d.slots[lvl] || 0) > 0)) return 0;
+  const room = (d.sorcPointsMax || 0) - sorceryPointsLeft(d);
+  if (room <= 0) return 0;
+  d.slots[lvl]--;
+  return restoreSorceryPoints(d, Math.min(room, lvl));
+}
 
 const FS_MARTIAL = ['archery', 'defense', 'dueling', 'greatWeapon', 'protection'];
 const FS_MELEE = ['defense', 'dueling', 'greatWeapon', 'twoWeapon'];
@@ -1122,6 +1268,9 @@ function arcanum(id, tier) {
   const ord = { 6: '6th', 7: '7th', 8: '8th', 9: '9th' }[tier] || `${tier}th`;
   return { type: 'choice', pick: 'arcanum', id, classKey: 'warlock', tier,
            title: `Mystic Arcanum (${ord})` };
+}
+function metamagicPick(id) {
+  return { type: 'choice', pick: 'metamagic', id, title: 'Choose a Metamagic option' };
 }
 function wildShapeFormChoice() {
   return { type: 'choice', pick: 'wildShapeForm', id: 'wild_shape_form', title: 'Choose Wild Shape Form' };
@@ -1296,7 +1445,7 @@ export const CLASS_PROGRESSION = {
   monk: {
     1: [auto('martialArts'), auto('ki')],
     2: [auto('flurryOfBlows'), auto('patientDefense'), auto('stepOfTheWind')],
-    3: [subclass()],
+    3: [subclass(), auto('deflectMissiles')],
     4: [asi(4)],
     5: [auto('extraAttack'), auto('stunningStrike')],
     6: [milestone(6)],
@@ -1360,27 +1509,31 @@ export const CLASS_PROGRESSION = {
     20: [asi(20), auto('foeSlayer')]
   },
   sorcerer: {
-    1: [auto('tidesOfChaos'),
+    /* Font of Magic replaced Tides of Chaos at level 1 (Tides belongs to the
+       Wild Magic subclass in 5e). Metamagic moved from 3 to 2, where it is
+       two real picks instead of a flat +1 damage. */
+    1: [auto('fontOfMagic'),
         learnSpell('sor_kn1a', 'sorcerer', 1), learnSpell('sor_kn1b', 'sorcerer', 1)],
-    2: [auto('fontOfMagic'), learnSpell('sor_kn2', 'sorcerer', 1)],
-    3: [subclass(), auto('metamagic'), learnSpell('sor_kn3', 'sorcerer', 2)],
+    2: [auto('metamagic'), metamagicPick('sor_mm2a'), metamagicPick('sor_mm2b'),
+        learnSpell('sor_kn2', 'sorcerer', 1)],
+    3: [subclass(), learnSpell('sor_kn3', 'sorcerer', 2)],
     4: [asi(4), learnSpell('sor_kn4', 'sorcerer', 2)],
-    5: [learnSpell('sor_kn5', 'sorcerer', 3)],
+    5: [auto('sorcerousRestoration'), learnSpell('sor_kn5', 'sorcerer', 3)],
     6: [milestone(6), learnSpell('sor_kn6', 'sorcerer', 3)],
     7: [learnSpell('sor_kn7', 'sorcerer', 4)],
     8: [asi(8), learnSpell('sor_kn8', 'sorcerer', 4)],
     9: [learnSpell('sor_kn9', 'sorcerer', 5, 'Learn a 5th-level spell')],
-    10: [asi(10), milestone(10), learnSpell('sor_kn10', 'sorcerer', 5)],
+    10: [asi(10), milestone(10), metamagicPick('sor_mm10'), learnSpell('sor_kn10', 'sorcerer', 5)],
     11: [],
     12: [asi(12), learnSpell('sor_kn12', 'sorcerer', 6, 'Learn a 6th-level spell')],
     13: [],
     14: [asi(14), milestone(14), learnSpell('sor_kn14', 'sorcerer', 7, 'Learn a 7th-level spell')],
     15: [],
     16: [asi(16), learnSpell('sor_kn16', 'sorcerer', 8, 'Learn an 8th-level spell')],
-    17: [auto('metamagicExpert')],
+    17: [auto('metamagicExpert'), metamagicPick('sor_mm17')],
     18: [asi(18), milestone(18), learnSpell('sor_kn18', 'sorcerer', 9, 'Mastery: 9th-level spell')],
     19: [],
-    20: [asi(20), auto('sorcerousRestoration')]
+    20: [asi(20), auto('arcaneApotheosis')]
   },
   /* Spells known follow the SRD warlock curve exactly: 2 at level 1, then one
      per level to 9, then one every other level (11/13/15/17/19) — 15 by 20.
@@ -1548,7 +1701,7 @@ const CHARGE_DEFS = {
   fiendishBlessing:   { max: 1, recharge: 'short' },
   feyPresence:        { max: 1, recharge: 'short' },
   dragonBreath:       { max: 1, recharge: 'short' },
-  wildSurge:          { max: 1, recharge: 'short' },
+  tamedSurge:         { max: 1, recharge: 'long' },
   combatInspiration:  { max: 1, recharge: 'short' },
   cuttingWords:       { max: 1, recharge: 'short' },
   bearTotem:          { max: 1, recharge: 'short' },
@@ -1592,7 +1745,12 @@ export function chargeDef(key, hero) {
     def = DEFAULT_CHARGE;
   }
 
-  const max = def.max === 'pb' ? pb : (typeof def.max === 'number' ? def.max : pb);
+  let max = def.max === 'pb' ? pb : (typeof def.max === 'number' ? def.max : pb);
+  /* Deep Fury (barbarian talent): +1 Rage use per rank, up to 4. */
+  if (key === 'rage' && hero) {
+    const d = hero.data || hero;
+    max += Math.min(4, (d.skills && d.skills.deepFury) | 0);
+  }
   return { max, recharge: def.recharge };
 }
 
@@ -1704,7 +1862,7 @@ export function featureBonuses(h) {
     const f = FEATS[key];
     if (f) {
       add(f.pb);
-      if (f.hpPerLevel) total.hp = (total.hp || 0) + f.hpPerLevel * h.level;
+      if (f.tempHpPerLevel) total.fightTempHp = (total.fightTempHp || 0) + f.tempHpPerLevel * h.level;
     }
   }
   if (h.fightingStyle && FIGHTING_STYLES[h.fightingStyle]) {
@@ -1722,6 +1880,7 @@ export function initProgressionFields(h) {
   if (!h.feats) h.feats = [];
   if (!h.knownSpells) h.knownSpells = [];
   if (!h.invocations) h.invocations = [];
+  if (!h.metamagic) h.metamagic = [];
   if (!h.arcana) h.arcana = [];
   if (!h.pendingChoices) h.pendingChoices = [];
   if (!h.resolvedChoices) h.resolvedChoices = [];
@@ -1798,6 +1957,11 @@ function buildChoiceOptions(h, grant) {
                          && level >= (inv.minLevel || 1))
       .map(([k, inv]) => ({ key: k, label: inv.label, desc: inv.desc }));
   }
+  if (grant.pick === 'metamagic') {
+    return Object.entries(METAMAGIC)
+      .filter(([k]) => !(h.metamagic || []).includes(k))
+      .map(([k, mm]) => ({ key: k, label: mm.label, desc: mm.desc }));
+  }
   if (grant.pick === 'arcanum') {
     /* Arcanum draws from exactly its own tier — the whole point is a spell far
        above what a 5th-level pact slot could ever pay for. */
@@ -1809,6 +1973,9 @@ function buildChoiceOptions(h, grant) {
         label: SPELLS[k].label,
         desc: `L${SPELLS[k].level} — ${SPELLS[k].desc} (once per long rest)`
       }));
+  }
+  if (grant.pick === 'familiar') {
+    return Object.entries(FAMILIAR_FORMS).map(([key, f]) => ({ key, label: `${f.icon} ${f.label}`, desc: f.desc }));
   }
   if (grant.pick === 'wildShapeForm') {
     return Object.values(WILD_SHAPE_FORMS).map(wf => ({
@@ -2129,6 +2296,71 @@ export function syncMissingArcana(h) {
 }
 
 /**
+ * Bring a sorcerer built before the November 2026 class rework onto the new
+ * table: Font of Magic (sorcery points) replaces Tides of Chaos at level 1,
+ * Metamagic becomes picks from level 2, Sorcerous Restoration moves to 5 and
+ * level 20 gets Arcane Apotheosis. Picks the hero is now owed are queued, so a
+ * level-12 sorcerer loading an old save is asked for three Metamagic options.
+ * Idempotent: every step checks before it adds.
+ */
+/* ── Find Familiar ─────────────────────────────────────────────────────────
+   The familiar is chosen once, as a level-up choice, at the moment the hero
+   learns Find Familiar — and then it is fixed. spells.js findFamiliar summons
+   h.familiarChoice. */
+export const FAMILIAR_FORMS = {
+  owlFamiliar:   { icon: '🦉', label: 'Owl Familiar',   desc: 'Dexterous flyer with keen senses and slashing talons' },
+  impFamiliar:   { icon: '👿', label: 'Imp Familiar',   desc: 'Fiendish familiar with fire sting and high magic acumen' },
+  viperFamiliar: { icon: '🐍', label: 'Viper Familiar', desc: 'Swift serpent with venomous bite attacks' }
+};
+
+/** Queue the familiar pick for a hero who knows Find Familiar but has not
+ *  chosen one. Idempotent; also run by migrateProgression for old saves. */
+export function syncFamiliarChoice(h) {
+  if (!h || !(h.knownSpells || []).includes('findFamiliar') || h.familiarChoice) return;
+  if (!h.pendingChoices) return;
+  queueChoice(h, { type: 'choice', pick: 'familiar', id: 'familiar_form', title: 'Choose your familiar — it cannot be changed' });
+}
+
+/**
+ * Abjurer saves from before the November 2026 rework: the milestones were
+ * renamed (Projected Ward is the subclass active now, so 6/10/14 became
+ * Warding Recovery / Spell Breaker / Spell Resistance). Milestones keep a
+ * label snapshot, so refresh it. Idempotent.
+ */
+export function syncAbjurerRework(h) {
+  if (!h || h.classKey !== 'wizard' || h.subclass !== 'abjurer') return;
+  const ms = SUBCLASS_MILESTONES.wizard.abjurer;
+  for (const m of h.subclassMilestones || []) if (ms[m.level]) m.label = ms[m.level].label;
+}
+
+export function syncSorcererRework(h) {
+  if (!h || h.classKey !== 'sorcerer') return;
+  initProgressionFields(h);
+  const lv = Math.max(1, h.level || 1);
+  /* Tides of Chaos is the Wild Magic subclass's now; until that subclass is
+     reworked, a wild-magic sorcerer keeps the one they had. */
+  const ti = h.features.indexOf('tidesOfChaos');
+  if (ti >= 0 && h.subclass !== 'wildmagic') h.features.splice(ti, 1);
+  const want = [[1, 'fontOfMagic'], [2, 'metamagic'], [5, 'sorcerousRestoration'],
+                [17, 'metamagicExpert'], [20, 'arcaneApotheosis']];
+  for (const [minLv, key] of want) {
+    if (lv >= minLv && !h.features.includes(key)) h.features.push(key);
+  }
+  /* Wild Magic's level-18 milestone was renamed (Chaos Ascendant → Tamed
+     Surge); milestones keep a label snapshot, so refresh it. */
+  if (h.subclass === 'wildmagic') {
+    const ms = SUBCLASS_MILESTONES.sorcerer.wildmagic;
+    for (const m of h.subclassMilestones || []) if (ms[m.level]) m.label = ms[m.level].label;
+  }
+  const table = CLASS_PROGRESSION.sorcerer;
+  for (let l = 1; l <= lv; l++) {
+    for (const g of (table[l] || [])) {
+      if (g.type === 'choice' && g.pick === 'metamagic') queueChoice(h, g);
+    }
+  }
+}
+
+/**
  * Migrate legacy heroes: unlock auto features for levels already gained,
  * do not dump every historical choice on them.
  */
@@ -2138,12 +2370,20 @@ export function migrateProgression(h) {
      counts knownSpells minus arcana to decide what is still owed */
   syncMissingArcana(h);
   syncMissingInvocations(h);
+  syncSorcererRework(h);
+  syncAbjurerRework(h);
+  syncFamiliarChoice(h);
   syncMissingSpellChoices(h);
   /* A pending pick keeps a SNAPSHOT of its options (label + desc) from the
      moment it was queued, and that snapshot lives in the save. Rebuild it on
      every load so a feat that was renamed, rewritten or removed since the
      hero last levelled is shown as it is now, not as it was. */
   refreshPendingOptions(h);
+  /* Features added to a class table after a hero passed that level. */
+  if (h.classKey === 'monk' && (h.level || 1) >= 3) {
+    if (!h.features) h.features = [];
+    if (!h.features.includes('deflectMissiles')) h.features.push('deflectMissiles');
+  }
   if (h.progressionVersion >= 1) return;
   for (let lv = 1; lv <= h.level; lv++) {
     applyLevelGrants(h, lv, null, { autosOnly: true });
@@ -2185,6 +2425,9 @@ export function resolveChoice(h, choiceId, optionKey) {
   } else if (choice.pick === 'invocation') {
     if (!h.invocations) h.invocations = [];
     if (!h.invocations.includes(opt.key)) h.invocations.push(opt.key);
+  } else if (choice.pick === 'metamagic') {
+    if (!h.metamagic) h.metamagic = [];
+    if (!h.metamagic.includes(opt.key)) h.metamagic.push(opt.key);
   } else if (choice.pick === 'arcanum') {
     if (!h.arcana) h.arcana = [];
     if (!h.arcana.includes(opt.key)) h.arcana.push(opt.key);
@@ -2194,6 +2437,8 @@ export function resolveChoice(h, choiceId, optionKey) {
     if (h.charges) delete h.charges['arcanum:' + opt.key];
   } else if (choice.pick === 'wildShapeForm') {
     h.wildShapeForm = opt.key;
+  } else if (choice.pick === 'familiar') {
+    h.familiarChoice = opt.key;
   } else {
     return { ok: false, reason: 'Unknown choice type.' };
   }
@@ -2202,6 +2447,8 @@ export function resolveChoice(h, choiceId, optionKey) {
   if (!h.resolvedChoices.includes(choiceId)) h.resolvedChoices.push(choiceId);
 
   h.pendingChoices.splice(idx, 1);
+  /* learning Find Familiar asks which familiar, right away (syncFamiliarChoice) */
+  syncFamiliarChoice(h);
   refreshPendingOptions(h);
   return { ok: true, choice, opt };
 }
@@ -2219,6 +2466,10 @@ export function listUnlockedFeatureLabels(h) {
   for (const key of h.invocations || []) {
     const inv = INVOCATIONS[key];
     if (inv) out.push({ key, label: `Invocation: ${inv.label}`, desc: inv.desc });
+  }
+  for (const key of h.metamagic || []) {
+    const mm = METAMAGIC[key];
+    if (mm) out.push({ key: `mm_${key}`, label: `Metamagic: ${mm.label}`, desc: mm.desc });
   }
   if (h.fightingStyle && FIGHTING_STYLES[h.fightingStyle]) {
     const fs = FIGHTING_STYLES[h.fightingStyle];

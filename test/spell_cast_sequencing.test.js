@@ -392,19 +392,24 @@ describe('span ribbon', () => {
   });
 });
 
-describe('Ray of Sickness composite', () => {
-  it('its ray sheet is a span layer, and the unrotated copy at the target is retired', () => {
-    const anim = VFX_ANIMS.rayOfSickness;
-    expect(anim.travel.front.type).toBe('sheet');
-    expect(anim.travel.front.span).toBe(true);
-    expect(anim.impact.back.enabled).toBe(false);
+describe('Span sheet composite', () => {
+  it('Ray of Sickness is a live poison beam landing a live hit', () => {
+    const { travel, impact } = VFX_ANIMS.rayOfSickness;
+    expect(travel.front).toMatchObject({ type: 'live', fx: 'beam', palette: 'poison' });
+    expect(impact.front).toMatchObject({ type: 'live', fx: 'hitSpark', palette: 'poison' });
   });
 
   it('lays the sheet from caster to target and re-aims it for whatever camera draws it', () => {
     const scene = new THREE.Scene();
     const from = new THREE.Vector3(0, 0.55, 0);
     const to = new THREE.Vector3(4, 0.9, 1);
-    spawnCompositeAnimation(scene, VFX_ANIMS.rayOfSickness, { from, to, travelSound: false, impactSound: false });
+    const off = { enabled: false, type: 'none', color: '#ffffff', scale: 1, dur: 0.3, opacity: 1, blend: 'normal' };
+    const spanAnim = {
+      travel: { duration: 0.45, arc: 0.1, back: off,
+        front: { enabled: true, type: 'sheet', sheet: 'spell_rayOfSickness', span: true, color: '#ffffff', scale: 1, dur: 1.2, opacity: 0.9, blend: 'additive', fps: 30 } },
+      impact: { delay: 0, back: off, front: off },
+    };
+    spawnCompositeAnimation(scene, spanAnim, { from, to, travelSound: false, impactSound: false });
     const ribbon = scene.children.find(o => o.isMesh && typeof o.onBeforeRender === 'function'
       && o.geometry && o.geometry.attributes.position && o.geometry.attributes.position.count === 4);
     expect(ribbon).toBeTruthy();

@@ -26,7 +26,10 @@ import {
   CLASSES, RACES, mod, roll, d as die, d20Roll,
   heroDamage, pickAttackProfile, subclassOf, spawnMonster, crForDungeonLevel,
 } from '../src/game/srd.js';
-import { hasFeature, featBonusDamage, featExtraAttacks, totalSlots } from '../src/game/features.js';
+import { hasFeature, featBonusDamage, totalSlots } from '../src/game/features.js';
+/* featExtraAttacks left features.js when feat bonus attacks became bonus actions
+   (featBonusActionAttack); the abstract model just counts none. */
+const featExtraAttacks = () => 0;
 import { perkMag } from '../src/game/items.js';
 
 const ROUND_CAP = 300;          // safety net against un-winnable stalemates

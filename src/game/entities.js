@@ -19,17 +19,22 @@ import { measureFrameAnchor, resolveAtlasAnchor, applyAtlasAnchor, atlasDuration
          sharedSheetTexture, sharedSheetFromLoader, warmSharedSheet, evictSharedSheets, nextAnimPhase } from './sprite_atlas.js';
 import { GIGAPACK_REGISTRY } from './gigapack_registry.js';
 import LIB from './vfx_animations.json' with { type: 'json' };
+import { darkMaskSweep } from '../render/darkness.js';
 import { isIdentityColorBalance, loadBalancedCanvas, colorBalanceKey } from './color_balance.js';
 import { playNixieEffect, stopNixieEffect, warmupNixieVfx } from '../render/nixie_vfx.js';
 import { spawnPixelVfx, updatePixelVfx, clearPixelVfx, PIXEL_VFX_PRESETS } from '../render/pixel_vfx.js';
-import { clearLivePixelFx, spawnLiveBeam, spawnLivePixelFx } from '../render/pixelfx_live.js';
+import { clearLivePixelFx, spawnLiveBeam, spawnLivePixelFx, spawnDamagePop } from '../render/pixelfx_live.js';
+import { clearAmbientCritters } from '../render/ambient_critters.js';
 import * as holyPillarFx from '../vendor/pixelfx/fx/holy/holy-pillar.js';
 import * as flamePillarFx from '../vendor/pixelfx/fx/fire/flame-pillar.js';
 import { rampFrom } from '../render/pfx/ramps.js';
+import { drapeGeometry } from '../render/drape.js';
 import { syncStatusAuras } from '../render/status_auras.js';
 import { preloadCommonSFX } from './audio.js';
 import { updateLoadingProgress } from '../ui/loading_screen.js';
 import { DAMAGE_TYPE_ICONS } from './constants.js';
+import { parseDamageFloat } from './damage_float.js';
+import { hasPixelIndicator } from '../render/status_auras.js';
 import { reportError } from './errors.js';
 import { spanRibbon, cameraBasisFromYawPitch, cameraBasisFromMatrix } from './span_ribbon.js';
 
@@ -129,7 +134,8 @@ export function drawStatusTray(tray, entity) {
     return;
   }
 
-  const effects = Object.keys(entity._effects);
+  /* only what no pixel indicator already shows on the creature (render/status_auras.js) */
+  const effects = Object.keys(entity._effects).filter((k) => !hasPixelIndicator(k));
   if (effects.length === 0) {
     tex.needsUpdate = true;
     return;
@@ -320,6 +326,10 @@ export function attachXrayGhost(anim, tint) {
 }
 
 export function makeHeroMesh(hero){
+  /* A throwable weapon flies as its own icon; warm the texture now so the
+     first throw doesn't fly an empty quad while it downloads. */
+  const _wpn = hero && hero.equipment && hero.equipment.weapon;
+  if (_wpn && _wpn.thrown && _wpn.icon) getOrLoadSpriteTexture(_wpn.icon);
   const cls = CLASSES[hero.classKey] || CLASSES.fighter;
   const color = cls ? cls.color : 0xa0c080;
   const grp = new THREE.Group();
@@ -917,6 +927,19 @@ export function parseFloatTextTokens(str) {
 export function makeFloatText(scene, text, pos, color, isCrit = false) {
   if (!text) return;
   const str = String(text);
+
+  /* Numbers are pixel art (render/pfx/damage_pop.js, crit_pop.js). Words stay text below. */
+  const number = parseDamageFloat(str);
+  if (number) {
+    pushActivePuffsUp(new THREE.Vector3(pos.x, pos.y + 0.2, pos.z), 0.48);
+    /* A number must never be what stops a blow resolving: if the art fails, the text below still says it. */
+    try {
+      spawnDamagePop(scene, pos, number, { color, isCrit });
+      return;
+    } catch (err) {
+      console.warn('[float text] pixel number failed, drawing text:', err);
+    }
+  }
 
   /* 1. Dynamic Vertical Stacking Offset */
   const spawnPosY = pos.y + 0.2;
@@ -1522,7 +1545,8 @@ export function hitFlash(ent){
   if (v.anim && v.anim.mesh) {
     /* Not every anim exposes a hurt state (static monster sprites, the stubs in
        tests) — the flash must not depend on the animation being there. */
-    if (typeof v.anim.play === 'function' && !v.anim._dying) v.anim.play('hurt', true);
+    /* A body held still (paralyzed) doesn't flinch: it would freeze in the hurt pose. */
+    if (typeof v.anim.play === 'function' && !v.anim._dying && !v.anim._held) v.anim.play('hurt', true);
     boostColor(v.anim.mesh.material.color, FLASH_TINT, FLASH_BOOST);
     /* Remember the rest position ONCE, so overlapping hits cannot ratchet the
        sprite away from where it belongs. */
@@ -1586,7 +1610,7 @@ export function updateFlash(ent, dt){
 
   v.flashT = 0;
   if (v.anim && v.anim.mesh) {
-    v.anim.mesh.material.color.set(0xffffff);
+    v.anim.mesh.material.color.set(v.restTint != null ? v.restTint : 0xffffff);
     v.anim.mesh.position.x = v._shudderHome || 0;
     if (v.anim.hitOverlay) {
       v.anim.hitOverlay.material.opacity = 0;
@@ -1659,6 +1683,7 @@ export function releasePooledLight(scene, light) {
   light.intensity = 0;
   light.position.set(0, -100, 0);
   light._pooledActive = false;
+  light._owner = null;
 }
 
 /**
@@ -1799,9 +1824,10 @@ export function spawnAoEVisual(scene, pos, color = 0x3fd0bb, size = 3.0, duratio
   mat.toneMapped = false;
 
   const group = new THREE.Group();
-  group.position.set(pos.x, 0.33, pos.z);
+  /* `options.y`: a zone's floor height, so its circle starts on the ground, raised floors included. */
+  group.position.set(pos.x, options && options.y != null ? options.y : 0.33, pos.z);
 
-  let innerMat = null, borderMat = null;
+  let innerMat = null, borderMat = null, draped = null;
   let innerBaseOp = 0.08, borderBaseOp = 0.6;
   const isLine = options && options.shape === 'line';
   if (isLine) {
@@ -1854,7 +1880,12 @@ export function spawnAoEVisual(scene, pos, color = 0x3fd0bb, size = 3.0, duratio
       side: THREE.DoubleSide
     });
     innerMat.toneMapped = false;
-    const innerGeom = new THREE.CircleGeometry(size, 32).rotateX(-Math.PI/2);
+    /* `options.heightAt(x, z)`: the world floor height. Given it, the circle is a fine
+       mesh that drapes over steps and raised floors instead of passing through them. */
+    const heightAt = options && options.heightAt;
+    const innerGeom = (heightAt
+      ? new THREE.RingGeometry(0.001, size, 96, Math.ceil(size / 0.12))
+      : new THREE.CircleGeometry(size, 32)).rotateX(-Math.PI/2);
     const innerMesh = new THREE.Mesh(innerGeom, innerMat);
     group.add(innerMesh);
 
@@ -1868,9 +1899,15 @@ export function spawnAoEVisual(scene, pos, color = 0x3fd0bb, size = 3.0, duratio
       side: THREE.DoubleSide
     });
     borderMat.toneMapped = false;
-    const borderGeom = new THREE.RingGeometry(size - 0.05, size + 0.05, 32).rotateX(-Math.PI/2);
+    const borderGeom = new THREE.RingGeometry(size - 0.05, size + 0.05, heightAt ? 192 : 32).rotateX(-Math.PI/2);
     const borderMesh = new THREE.Mesh(borderGeom, borderMat);
     group.add(borderMesh);
+    /* a zone that draws its own floor (Moonbeam's pool) keeps only the light and the lifecycle */
+    if (options && options.noGround) innerMesh.visible = borderMesh.visible = false;
+    if (heightAt) {
+      draped = { geos: [innerGeom, borderGeom], heightAt, x: null, y: null, z: null };
+      redrape(draped, group);
+    }
   }
 
   // Optional 3D vertical cylinder beam (e.g. Moonbeam)
@@ -2071,6 +2108,7 @@ export function spawnAoEVisual(scene, pos, color = 0x3fd0bb, size = 3.0, duratio
     sheetT: 0,
     sparkleFx,
     vineFx,
+    draped,
     t: 0,
     dur: duration,
     size,
@@ -2081,6 +2119,14 @@ export function spawnAoEVisual(scene, pos, color = 0x3fd0bb, size = 3.0, duratio
 
   activeAoEVisuals.push(visual);
   return visual;
+}
+
+/** Fit a zone's circle to the floor under it, if it has moved since it last was. */
+function redrape(d, group) {
+  const p = group.position;
+  if (p.x === d.x && p.y === d.y && p.z === d.z) return;
+  d.x = p.x; d.y = p.y; d.z = p.z;
+  for (const g of d.geos) drapeGeometry(g, p.x, p.z, p.y, d.heightAt);
 }
 
 /** Disposes and removes a persistent ground visual zone. */
@@ -2117,6 +2163,7 @@ export function removeAoEVisual(scene, visual) {
         v.tubeGeom.dispose();
       }
     }
+    if (visual.draped) for (const g of visual.draped.geos) g.dispose();
     activeAoEVisuals.splice(idx, 1);
   }
 }
@@ -2157,11 +2204,83 @@ const CANTRIP_PROJ_SHEETS = {
   artificer: 'round_sparkle_burst_001_large_blue',
 };
 
+/* ─── Thrown weapons ──────────────────────────────────────────────────────
+   A thrown dagger/axe/spear flies as its own DCSS item icon, a camera-facing
+   sprite, on a real parabola with a shadow blob sliding along the floor under
+   it — the shadow is what makes the height read in 2.5D. Two motions:
+     spin  — daggers, axes, hammers tumble end over end on a low arc
+     point — spears, javelins, tridents fly tip-first on a higher arc, the
+             sprite turned each frame to the SCREEN-space direction of travel
+   A miss doesn't vanish: a point weapon sticks in the floor, a spinner
+   clatters, then both fade. */
+let _projCamera = null;
+const _thrownLinger = [];
+let _shadowTex = null;
+function getShadowTexture() {
+  if (_shadowTex) return _shadowTex;
+  const cv = document.createElement('canvas');
+  cv.width = 32; cv.height = 32;
+  const ctx = cv.getContext('2d');
+  if (ctx && typeof ctx.createRadialGradient === 'function') {
+    try {
+      const g = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      g.addColorStop(0, 'rgba(0,0,0,0.55)');
+      g.addColorStop(0.6, 'rgba(0,0,0,0.3)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 32, 32);
+    } catch (e) {}
+  }
+  _shadowTex = new THREE.CanvasTexture(cv);
+  return _shadowTex;
+}
+
+/** Screen-space angle (radians, +x right, +y up) of the move a -> b. */
+function screenAngle(a, b) {
+  if (!_projCamera) return Math.atan2(-(b.z - a.z), b.x - a.x);
+  const pa = a.clone().project(_projCamera);
+  const pb = b.clone().project(_projCamera);
+  const asp = _projCamera.aspect || 1;
+  return Math.atan2(pb.y - pa.y, (pb.x - pa.x) * asp);
+}
+
+function spawnThrownWeapon(scene, from, to, onHit, opts) {
+  const style = { spin: true, arc: 0.11, iconAngle: Math.PI / 4, ...(opts.style || {}) };   // items.js thrownStyleFor
+  const tex = getOrLoadSpriteTexture(opts.icon || 'dcss/item/weapon/dagger.png');
+  const mat = configureSpriteMaterial(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  const mesh = new THREE.Sprite(mat);
+  const size = opts.scale || 0.6;   // was 0.8: a thrown dagger read as big as the thrower's torso
+  mesh.scale.set(size, size, 1);
+  mesh.position.copy(from);
+  mesh.renderOrder = 40;
+  scene.add(mesh);
+
+  const shMat = new THREE.MeshBasicMaterial({ map: getShadowTexture(), transparent: true, depthWrite: false });
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.32), shMat);
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.set(from.x, 0.03, from.z);
+  scene.add(shadow);
+
+  const dist = Math.hypot(to.x - from.x, to.z - from.z);
+  const dur = Math.max(0.22, dist / 10.5);
+  /* Tumble direction follows the throw: moving right on screen spins clockwise. */
+  const dirSign = Math.cos(screenAngle(from, to)) >= 0 ? -1 : 1;
+  const turns = Math.max(1.5, Math.min(4, dist / 2.2));
+  projectiles.push({
+    mesh, mat, glowMat: null, from: from.clone(), to: to.clone(), t: 0, dur, onHit,
+    kind: 'thrown', style, shadow, shMat,
+    arcH: Math.max(0.35, dist * style.arc), spinRate: dirSign * turns * Math.PI * 2 / dur,
+    miss: !!opts.miss, _prev: from.clone()
+  });
+  return dur;
+}
+
 /** Fire a projectile from `from` to `to`; calls onHit() when it lands. */
 export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
   if (typeof globalThis.setCombatActionFocus === 'function') {
     globalThis.setCombatActionFocus(from, to, 1.05);
   }
+  if (kind === 'thrown') return spawnThrownWeapon(scene, from, to, onHit, opts);
   if (kind === 'arrow') {
     const geo = _projGeo.arrow;
     const mat = new THREE.MeshBasicMaterial({ color }); mat.toneMapped = false;
@@ -2245,6 +2364,17 @@ export function spawnProjectile(scene, from, to, kind, color, onHit, opts = {}){
   const curve = opts.curve || null;
   projectiles.push({ mesh, mat, glowMat, glowMesh, tex, sheetDef, scale, curve, from: from.clone(), to: to.clone(), t: 0, dur, onHit, kind });
   return dur;
+}
+
+function updateThrownLinger(scene, dt) {
+  for (let i = _thrownLinger.length - 1; i >= 0; i--) {
+    const L = _thrownLinger[i];
+    L.t += dt;
+    const k = L.t / L.dur;
+    if (L.spin && k < 0.4) L.mat.rotation += L.spinRate * dt * (1 - k / 0.4);   // skids to a stop
+    L.mat.opacity = k < 0.6 ? 1 : Math.max(0, (1 - k) / 0.4);
+    if (k >= 1) { scene.remove(L.mesh); L.mat.dispose(); _thrownLinger.splice(i, 1); }
+  }
 }
 
 /** A quick expanding procedural pixel slash / spell burst. */
@@ -2610,7 +2740,11 @@ export function preloadAllSpellAndCombatVFX(renderer = null, scene = null, camer
       const cylGeo = new THREE.CylinderGeometry(1, 1, 1, 16);
       warmupScene.add(new THREE.Mesh(cylGeo, cylMat));
 
-      renderer.compile(warmupScene, warmupCam);
+      /* Async: nothing reads these programs back until they report done.
+         A blocking compile waits on the GPU process for every shader, and
+         that freezes the loading curtain along with the main thread. */
+      if (typeof renderer.compileAsync === 'function') renderer.compileAsync(warmupScene, warmupCam).catch(() => {});
+      else renderer.compile(warmupScene, warmupCam);
     } catch(e) {}
   }
 
@@ -2782,9 +2916,23 @@ export async function preloadFloorAssets(game, renderer = null, scene = null, ca
 
   // 6. Pre-compile active live scene with renderer
   report(94, 'Compiling WebGL shaders & lighting...');
+  darkMaskSweep(scene);   // before compiling, so a Darkness cast mid-fight recompiles nothing
   if (renderer && scene && camera && typeof renderer.compile === 'function') {
+    /* compileAsync links every program and then polls for completion
+       (KHR_parallel_shader_compile) instead of asking for the info log at
+       once. That question blocks until the GPU process has compiled the
+       shader: up to 1.6 s each with ANGLE on D3D11, 15 s for a floor, with
+       the main thread and the curtain both frozen. Capped so a driver that
+       never reports done cannot hold the curtain up. */
     try {
-      renderer.compile(scene, camera);
+      if (typeof renderer.compileAsync === 'function') {
+        await Promise.race([
+          renderer.compileAsync(scene, camera),
+          new Promise(r => setTimeout(r, 20000))
+        ]);
+      } else {
+        renderer.compile(scene, camera);
+      }
     } catch(e) { reportError('shader precompile', e, 'warn'); }
   }
 
@@ -3630,8 +3778,10 @@ export function spawnBeamEffect(scene, from, to, opts = {}) {
   });
 }
 
-export function updateProjectiles(scene, dt){
+export function updateProjectiles(scene, dt, camera = null){
+  if (camera) _projCamera = camera;
   updateFlashLights(scene, dt);
+  updateThrownLinger(scene, dt);
   for(let i=projectiles.length-1;i>=0;i--){
     const p = projectiles[i];
     p.t += dt;
@@ -3656,7 +3806,21 @@ export function updateProjectiles(scene, dt){
       p.mesh.position.lerpVectors(p.from, p.to, k);
     }
 
-    if (p.kind === 'arrow') {
+    if (p.kind === 'thrown') {
+      /* Parabola over the straight line; the shadow stays on the floor. */
+      p.mesh.position.y += 4 * p.arcH * k * (1 - k);
+      p.shadow.position.set(p.mesh.position.x, 0.03, p.mesh.position.z);
+      const lift = Math.max(0, p.mesh.position.y);
+      const sh = 1 / (1 + lift * 0.9);                      // higher = smaller, fainter shadow
+      p.shadow.scale.setScalar(0.6 + 0.6 * sh);
+      p.shMat.opacity = 0.35 + 0.65 * sh;
+      if (p.style.spin) p.mat.rotation += p.spinRate * dt;
+      else {
+        const ang = screenAngle(p._prev, p.mesh.position);
+        if (p.mesh.position.distanceToSquared(p._prev) > 1e-6) p.mat.rotation = ang - p.style.iconAngle;
+      }
+      p._prev.copy(p.mesh.position);
+    } else if (p.kind === 'arrow') {
       p.mesh.position.y += Math.sin(k*Math.PI)*0.22;   // gentle arc
     } else {
       // Animate spritesheet UV offsets for magic bolt projectiles
@@ -3692,6 +3856,18 @@ export function updateProjectiles(scene, dt){
     }
 
     if(k >= 1 || !Number.isFinite(k) || p.t > (p.dur || 0.5) + 1.2){
+      if (p.kind === 'thrown') {
+        scene.remove(p.shadow);
+        p.shadow.geometry.dispose();
+        if (p.miss) {
+          /* Stays on the floor a moment: a spear sticks, a dagger clatters. */
+          _thrownLinger.push({ mesh: p.mesh, mat: p.mat, t: 0, dur: p.style.spin ? 0.55 : 1.0,
+            spin: p.style.spin, spinRate: p.spinRate * 0.25 });
+          projectiles.splice(i, 1);
+          if(p.onHit){ try { p.onHit(); } catch(e){ reportError('projectile impact', e); } }
+          continue;
+        }
+      }
       scene.remove(p.mesh);
       if (p.mat) p.mat.dispose();
       if (p.glowMat) p.glowMat.dispose();
@@ -3795,7 +3971,9 @@ export function updateProjectiles(scene, dt){
   for (let i = activeAoEVisuals.length - 1; i >= 0; i--) {
     const v = activeAoEVisuals[i];
     v.t += dt;
-    if (v.shape !== 'line') {
+    /* a draped circle is shaped to the ground under it, so it can't spin; it reshapes as a moving zone travels */
+    if (v.draped) redrape(v.draped, v.group);
+    else if (v.shape !== 'line') {
       v.group.rotation.y += dt * v.rotateSpeed;
     }
     const pulse = 0.8 + 0.2 * Math.sin(v.t * v.pulseSpeed * Math.PI);
@@ -4082,6 +4260,7 @@ export function updateEntityStatusAuras(entities = [], dt = 0.016) {
 /** Drop all live effects (called when a level unloads or on combat reset). */
 export function clearEffects(scene){
   if (!scene) return;
+  clearAmbientCritters();
   clearLivePixelFx();
   for(const p of projectiles){ scene.remove(p.mesh); if(p.mat) p.mat.dispose(); if(p.glowMat) p.glowMat.dispose(); if(p.tex) p.tex.dispose(); }
   for(const s of slashes){ scene.remove(s.m); if(s.mat) s.mat.dispose(); }

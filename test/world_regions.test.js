@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   WORLD, IMPASSABLE, MIN_DOORSTEP_CELLS, THEMES_ON_GROUND, DUNGEON_SITES, MAX_TRAVEL_DAYS, HUB,
   biomeAt, biomeOfCell, cellAt, cellCentre, cellsFor, biomeCounts, isPassable,
-  reachableCellsFor, travelDays, planRoute, pickPin
+  reachableCellsFor, travelDays, planRoute, pickPin, windRoad, ROAD_BEND, TRAVEL_COST
 } from '../src/game/world_regions.js';
 import { THRESHOLD_THEME, autoProloguePlan, prologueLength, depthFloor } from '../src/game/overland_prologue.js';
 import { THEMES } from '../src/dungeon/dungeon_generator.js';
@@ -121,7 +121,7 @@ describe('travel', () => {
     }
   });
 
-  it('a day is holdfast only when it never leaves holdfast', () => {
+  it('each travel day is a biome the road crosses that day', () => {
     for (const theme of DUNGEON_THEMES) {
       for (let s = 0; s < 12; s++) {
         const pin = pickPin(theme, mulberry32(500 + s));
@@ -129,16 +129,76 @@ describe('travel', () => {
         const ends = [...route.camps, route.path.length / 2 - 1];
         let start = 0;
         ends.forEach((end, d) => {
-          // Cells strictly inside the day; the boundary steps are shared with the neighbouring days.
-          if (route.legs[d] === 'holdfast') {
-            for (let k = start + 1; k < end; k++) {
-              expect(biomeOfCell(route.path[2 * k], route.path[2 * k + 1])).toBe('holdfast');
-            }
+          // The last day is the pin's ground, checked above.
+          if (d < route.days - 1) {
+            const crossed = new Set();
+            for (let k = start; k <= end; k++) crossed.add(biomeOfCell(route.path[2 * k], route.path[2 * k + 1]));
+            expect(crossed).toContain(route.legs[d]);
           }
           start = end;
         });
       }
     }
+  });
+
+  it('the drawn road winds but keeps the hub, camps and pin in place', () => {
+    for (const theme of DUNGEON_THEMES) {
+      for (let s = 0; s < 6; s++) {
+        const pin = pickPin(theme, mulberry32(800 + s));
+        const route = planRoute(pin.x, pin.y, theme, mulberry32(90 + s));
+        const days = windRoad(route, 4242 + s);
+        expect(days).toHaveLength(route.days);
+        const at = k => [route.path[2 * k] + 0.5, route.path[2 * k + 1] + 0.5];
+        const anchors = [0, ...route.camps, route.path.length / 2 - 1].map(at);
+        days.forEach((line, d) => {
+          expect(line[0]).toEqual(anchors[d]);
+          expect(line[line.length - 1]).toEqual(anchors[d + 1]);
+          // Never strays more than the bend (plus smoothing slack) from the grid path.
+          for (const [x, y] of line) {
+            let best = Infinity;
+            for (let k = 0; k < route.path.length / 2; k++) {
+              const [px, py] = at(k); best = Math.min(best, Math.hypot(px - x, py - y));
+            }
+            expect(best).toBeLessThanOrEqual(ROAD_BEND + 0.75);
+          }
+        });
+        expect(windRoad(route, 4242 + s)).toEqual(days);   // same quest, same road
+      }
+    }
+  });
+
+  it('each travel day is the biome the party spends the most time in, holdfast included', () => {
+    // Recomputed here from the drawn path and TRAVEL_COST, independent of the paint.
+    let holdfastDays = 0;
+    for (const theme of DUNGEON_THEMES) {
+      for (let s = 0; s < 12; s++) {
+        const pin = pickPin(theme, mulberry32(500 + s));
+        const route = planRoute(pin.x, pin.y, theme, mulberry32(60 + s));
+        const cells = [];
+        for (let i = 0; i < route.path.length; i += 2) cells.push([route.path[i], route.path[i + 1]]);
+        const steps = []; let total = 0;
+        for (let i = 1; i < cells.length; i++) {
+          const [c0, r0] = cells[i - 1], [c1, r1] = cells[i];
+          const len = (c0 !== c1 && r0 !== r1) ? Math.SQRT2 : 1;
+          const ba = biomeOfCell(c0, r0), bb = biomeOfCell(c1, r1);
+          const ta = len * TRAVEL_COST[ba] / 2, tb = len * TRAVEL_COST[bb] / 2;
+          steps.push({ t0: total, tm: total + ta, t1: total + ta + tb, ba, bb });
+          total += ta + tb;
+        }
+        for (let d = 0; d < route.days - 1; d++) {
+          const t0 = total * d / route.days, t1 = total * (d + 1) / route.days, spent = {};
+          for (const st of steps) {
+            const ha = Math.max(0, Math.min(t1, st.tm) - Math.max(t0, st.t0));
+            const hb = Math.max(0, Math.min(t1, st.t1) - Math.max(t0, st.tm));
+            spent[st.ba] = (spent[st.ba] || 0) + ha; spent[st.bb] = (spent[st.bb] || 0) + hb;
+          }
+          const most = Math.max(...Object.values(spent));
+          expect(spent[route.legs[d]]).toBeCloseTo(most, 9);
+          if (route.legs[d] === 'holdfast') holdfastDays++;
+        }
+      }
+    }
+    expect(holdfastDays).toBeGreaterThan(0);   // the heartland does read as holdfast somewhere
   });
 
   it('ancient pins spread over ruins, forest and sporewood instead of following area', () => {

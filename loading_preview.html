@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading screen recipes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090b12;
+      --panel: rgba(12, 14, 22, 0.88);
+      --line: rgba(255, 255, 255, 0.08);
+      --gold: #d9a441;
+      --text: #e2e4f0;
+      --muted: #8e95b0;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #030404; color: var(--text); font-family: Outfit, sans-serif; }
+    #stage {
+      position: fixed;
+      inset: 0;
+      background: #030404 center / cover no-repeat;
+    }
+    #plate, #weather {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      background: transparent;
+    }
+    /* Hidden until a frame arrives. The script sets display:block. Clearing
+       an inline style would fall back to this rule and the loop would stay hidden. */
+    #plate { z-index: 0; image-rendering: auto; display: none; }
+    #weather { z-index: 1; image-rendering: pixelated; }
+    #caption {
+      position: absolute;
+      left: 332px;
+      bottom: 22px;
+      z-index: 2;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(3, 4, 4, 0.62);
+      border: 1px solid var(--line);
+      font-size: 13px;
+      letter-spacing: 0.4px;
+    }
+    aside {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 312px;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px 14px 18px;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+    .kicker {
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--gold);
+    }
+    h1 { margin: 0; font-size: 20px; font-weight: 600; }
+    p.hint { margin: 0; color: var(--muted); font-size: 12px; font-weight: 300; line-height: 1.45; }
+    #filter {
+      width: 100%;
+      background: #0e101a;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 14px;
+    }
+    #count { color: var(--muted); font-size: 12px; }
+    #list { overflow: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
+    #list h2 {
+      margin: 12px 0 4px;
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    #list button {
+      text-align: left;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 300;
+      cursor: pointer;
+    }
+    #list button[data-kind]::after {
+      content: '';
+      float: right;
+      width: 7px;
+      height: 7px;
+      margin-top: 5px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+    #list button:hover { background: rgba(255, 255, 255, 0.04); }
+    #list button.on {
+      border-color: rgba(217, 164, 65, 0.45);
+      background: rgba(217, 164, 65, 0.12);
+    }
+    @media (max-width: 720px) {
+      aside { width: 100%; height: 42vh; top: auto; border-right: 0; border-top: 1px solid var(--line); }
+      #caption { left: 16px; bottom: calc(42vh + 16px); }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <video id="plate" muted loop autoplay playsinline preload="auto"></video>
+    <canvas id="weather" class="dungeon-loading-weather"></canvas>
+    <div id="caption"></div>
+  </div>
+  <aside>
+    <div class="kicker">DEV HUB</div>
+    <h1>Loading screens</h1>
+    <p class="hint">Every plate the curtain can show. A gold dot means rain, fog, snow, or blizzard is drawn over it. A row marked loop has a shipped mp4. Arrow keys step through the list.</p>
+    <input id="filter" type="search" placeholder="Filter theme or weather" aria-label="Filter recipes">
+    <div id="count"></div>
+    <div id="list"></div>
+  </aside>
+  <script type="module" src="./src/ui/loading_preview.js"></script>
+</body>
+</html>

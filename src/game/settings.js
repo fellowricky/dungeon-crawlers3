@@ -61,7 +61,8 @@ export const SETTING_DEFAULTS = Object.freeze({
   graphicsQuality: 'high', // 'low' | 'medium' | 'high' — lights, shadows, post-processing, pixel ratio
   screenShake: true,       // camera shake on heavy hits and explosions
   hitStop: true,           // the brief freeze-frame on hits and crits
-  filmGrain: true,         // the post-process grain and tilt-shift blur
+  filmGrain: true,         // the post-process film grain
+  depthOfField: 'strong',  // 'off' | 'subtle' | 'strong': the explore tilt-shift band and combat focus blur
   uiScale: 1.0,            // HUD scale multiplier (0.8 – 1.4)
   perfOverlay: false,      // frame-time / draw-call readout (also F3)
 

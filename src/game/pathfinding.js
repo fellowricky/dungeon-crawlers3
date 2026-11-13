@@ -86,7 +86,7 @@ export function buildChokepoints(grid, W, H) {
 }
 
 /** Prop kinds that act as impassable solid obstacles (pillars, tables, coffins, etc.).
- *  Small scatter (skeletons, bones, debris, rocks, moss, plant scatter) remain walkable. */
+ *  Small scatter (skeletons, bones, debris, rocks, plant scatter) remain walkable. */
 export const SOLID_PROP_KINDS = new Set([
   /* altarTable is solid only as a FALLBACK — see PODIUM_PROP_KINDS below. */
   'pillar', 'pillarA', 'pillarB', 'table', 'altarTable', 'coffin', 'sarco',
@@ -95,7 +95,7 @@ export const SOLID_PROP_KINDS = new Set([
   'weaponRack', 'shieldRack', 'brazier', 'crate', 'barrel', 'urn', 'vase',
   'bench', 'chair', 'globe', 'anvil', 'ossuaryWall', 'runicObelisk',
   'glacialSpire', 'stalagmite', 'hearthPit', 'smeltingCrucible', 'cairn',
-  'skulltotem', 'boulderPile', 'tree', 'snowtree', 'tree_winter', 'swamptree', 'deadtree',
+  'skulltotem', 'boulderPile', 'tree', 'snowtree', 'tree_winter', 'swamptree', 'sporewillow', 'deadtree',
   'elm', 'oak', 'birch', 'hawthorn', 'pollarded',   /* broadleaf (3d/Holdfast) */
   'spruce', 'fir', 'pine',                          /* conifers (3d/Forest) */
   'snowspruce', 'snowfir', 'snowpine',              /* the same, frosted (snowfield) */
@@ -108,7 +108,7 @@ export const SOLID_PROP_KINDS = new Set([
      (the floor exit, which has to be walked up to), bridgeRailing/woodRailing
      (placed on the bridge DECK cell with a visual offset, so marking them would
      sever the bridge), fren1-4 (ferns — they scatter through the same
-     propScatter channel as moss, mushroom caps and roots, all ground cover),
+     propScatter channel as mushroom caps and roots, all ground cover),
      and the rest of the soft/flat scatter (bush, vinemound, ingotStack,
      signposts, wheel). */
   'boneTotem', 'grave', 'mushroomLog',
@@ -155,7 +155,7 @@ export const PODIUM_PROP_KINDS = new Set(['altarTable']);
 export const SIGHT_BLOCKING_KINDS = new Set([
   'pillar', 'pillarA', 'pillarB', 'statue', 'bookshelf', 'scrollshelf', 'megalith',
   'runicObelisk', 'glacialSpire', 'stalagmite', 'ossuaryWall',
-  'tree', 'snowtree', 'tree_winter', 'swamptree', 'deadtree',
+  'tree', 'snowtree', 'tree_winter', 'swamptree', 'sporewillow', 'deadtree',
   'elm', 'oak', 'birch', 'hawthorn', 'pollarded', 'spruce', 'fir', 'pine',
   'snowspruce', 'snowfir', 'snowpine',
   'boneTotem', 'skulltotem', 'iceThrone', 'throne', 'forge', 'boulderPile',
@@ -203,6 +203,7 @@ export const PROP_FOOTPRINTS = {
   snowtree:        { radius: 0.8 },
   tree_winter:     { radius: 0.8 },
   swamptree:       { radius: 0.8 },
+  sporewillow:     { radius: 0.8 },
   deadtree:        { radius: 0.8 },
   elm:             { radius: 0.8 },
   oak:             { radius: 0.9 },

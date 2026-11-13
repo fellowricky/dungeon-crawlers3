@@ -60,7 +60,7 @@ describe('SRD 5.1 Adaptation', () => {
     expect(hero.level).toBe(1);
     expect(hero.xp).toBe(0);
     // Fighter base hit die is 10, human gives +1 to all stats, making con 15 (mod +2).
-    // HP = 10 (hit die) + 8 (grit) + 2 (con mod) = 20.
+    // HP = 10 (hit die) + 8 (level-1 grit) + 2 (con mod) = 20.
     expect(hero.maxHp).toBe(20);
     /* Tier-0 starting gear: a Peasant Shirt sets no AC floor, so a level-1 hero
        is genuinely unarmored at 10 + Dex. Starters used to be a Chain Shirt
@@ -76,7 +76,7 @@ describe('SRD 5.1 Adaptation', () => {
     hero.level = 3;
     recalc(hero);
     
-    // Level 3 maxHp should scale: L1 (10) + 8 + 2*avg(6) + 3*2 (con) = 18 + 12 + 6 = 36
+    // Level 3: L1 (10) + 8 + 2*avg(6) + 3*2 (con) = 18 + 12 + 6 = 36
     expect(hero.maxHp).toBe(36);
   });
 
@@ -85,16 +85,17 @@ describe('SRD 5.1 Adaptation', () => {
     expect(rogue.speedFt).toBe(30);
     expect(rogue.speedMult).toBe(1.0);
 
-    // Invest 1 rank in Fleet-Foot (+5 ft)
+    // Fleet-Foot left the rogue tree: an old rank is refunded, not counted as speed
     rogue.skills = { fleetfoot: 1 };
     recalc(rogue);
-    expect(rogue.speedFt).toBe(35);
+    expect(rogue.speedFt).toBe(30);
+    expect(rogue.skills.fleetfoot).toBeUndefined();
     expect(rogue.speedMult).toBe(1.0);
 
     // Add Mobile feat (+10 ft)
     rogue.feats = ['mobile'];
     recalc(rogue);
-    expect(rogue.speedFt).toBe(45);
+    expect(rogue.speedFt).toBe(40);
     expect(rogue.speedMult).toBe(1.0);
   });
 

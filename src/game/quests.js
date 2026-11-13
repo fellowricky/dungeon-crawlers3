@@ -35,9 +35,9 @@ export function asDungeonTheme(theme, rng = Math.random) {
   return BIOME_TO_DUNGEON[theme] || THEMES[Math.floor(rng() * THEMES.length)];
 }
 
-const getQuestXpBase = () => parseFloat(globalThis.localStorage?.getItem('dc_quest_xp_base') || '30');
-const getQuestXpCoeff = () => parseFloat(globalThis.localStorage?.getItem('dc_quest_xp_coeff') || '15');
-const getSideXpMult = () => parseFloat(globalThis.localStorage?.getItem('dc_side_xp_mult') || '0.30');
+const getQuestXpBase = () => parseFloat(globalThis.localStorage?.getItem('dc_quest_xp_base') || '100');
+const getQuestXpCoeff = () => parseFloat(globalThis.localStorage?.getItem('dc_quest_xp_coeff') || '50');
+const getSideXpMult = () => parseFloat(globalThis.localStorage?.getItem('dc_side_xp_mult') || '1');
 
 /** Deterministic PRNG for stable sequel offers. */
 export function mulberry32(seed) {

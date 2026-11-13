@@ -429,7 +429,7 @@
     "spellChromaticOrb": {
       "category": "school",
       "files": [
-        "Spells/Chromatic Orb.wav"
+        "Spells/Chromatic Orb Flight.wav"
       ],
       "fallback": "spellArcane",
       "note": "per-spell Chromatic Orb"

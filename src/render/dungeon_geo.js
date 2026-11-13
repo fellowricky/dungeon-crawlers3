@@ -279,7 +279,6 @@ GEO.roots = mergeGeos([
   xg(tube(V3(0.12,1.45,-0.08),V3(0.15,0.8,0.3), V3(0.05,0.02,1.1)), 0,0,0, 0,0,0, 1),
   xg(tube(V3(-0.02,1.2,-0.05),V3(-0.5,0.7,0.3), V3(-0.2,0.02,0.55)), 0,0,0, 0,0,0, 1)
 ]);
-GEO.moss  = new THREE.CircleGeometry(0.42,9).rotateX(-Math.PI/2).translate(0,0.013,0);
 GEO.wallIvy = new THREE.PlaneGeometry(0.88, 1.55).translate(0, 0.77, 0);
 GEO.threshold = scaledBoxUV(chamferBox(0.98, 0.08, 0.98, 0.02).translate(0, 0.04, 0), 2.12, 0.85, 0.65, 1.0);
 GEO.crack = new THREE.PlaneGeometry(1.2,1.2).rotateX(-Math.PI/2).translate(0,0.016,0);
@@ -324,16 +323,54 @@ GEO.chair = mergeGeos([
   xg(new THREE.BoxGeometry(0.05,0.3,0.05), 0.14,0.15,0.14, 0,0,0, 1),
   xg(new THREE.BoxGeometry(0.04,0.38,0.38), -0.15,0.52,0, 0,0,0, 1)
 ]);
-GEO.bookshelf = mergeGeos([
-  xg(chamferBox(0.9,1.6,0.35,0.03), 0,0.8,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.82,0.04,0.3), 0,0.45,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.82,0.04,0.3), 0,0.9,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.82,0.04,0.3), 0,1.35,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.18,0.32,0.22), -0.22,0.63,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.24,0.28,0.22), 0.05,0.61,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.16,0.35,0.22), -0.18,1.09,0, 0,0,0, 1),
-  xg(new THREE.BoxGeometry(0.28,0.3,0.22), 0.18,1.07,0, 0,0,0, 1)
-]);
+/* An open-fronted case: the wall is behind local -Z, the room in front (+Z).
+   Its back sits at z = -BOOKSHELF_BACK so the scene can slide it flush to the
+   wall face. The old version was a solid 0.35-deep box with its shelves and
+   books inside it (so it read as a plain crate), and chamferBox carries no UVs,
+   so its wood smeared one texel across the whole face. */
+export const BOOKSHELF_BACK = 0.16;
+GEO.bookshelf = worldBoxUV(mergeGeos([
+  xg(new THREE.BoxGeometry(0.9,1.6,0.03), 0,0.8,-0.145, 0,0,0, 1),          // back panel
+  xg(new THREE.BoxGeometry(0.05,1.6,0.32), -0.425,0.8,0, 0,0,0, 1),         // sides
+  xg(new THREE.BoxGeometry(0.05,1.6,0.32), 0.425,0.8,0, 0,0,0, 1),
+  xg(new THREE.BoxGeometry(0.98,0.06,0.36), 0,1.63,0.02, 0,0,0, 1),         // crown
+  xg(new THREE.BoxGeometry(0.9,0.09,0.32), 0,0.045,0, 0,0,0, 1),            // plinth
+  xg(new THREE.BoxGeometry(0.8,0.035,0.29), 0,0.47,-0.005, 0,0,0, 1),       // shelves: four equal ~0.36 bays
+  xg(new THREE.BoxGeometry(0.8,0.035,0.29), 0,0.85,-0.005, 0,0,0, 1),
+  xg(new THREE.BoxGeometry(0.8,0.035,0.29), 0,1.23,-0.005, 0,0,0, 1)
+]), 1.6);
+/* The books, drawn as their own set so they can take a leather tint. Fixed
+   (not random) so every shelf in a level matches the one in the editor. */
+GEO.bookshelfBooks = (() => {
+  const rows = [
+    { y: 0.09,   gaps: [3, 9],  stack: 7 },
+    { y: 0.4875, gaps: [5],     lean: 10 },
+    { y: 0.8675, gaps: [2, 6],  stack: 11 },
+    { y: 1.2475, gaps: [4],     sparse: true }
+  ];
+  const parts = [];
+  rows.forEach((row, ri) => {
+    let x = -0.39;
+    for (let i = 0; ; i++) {
+      const h1 = (i * 37 + ri * 13) % 7;
+      const w = 0.035 + ((i * 5 + ri * 3) % 4) * 0.01;
+      const span = i === row.stack ? 0.2 : (i === row.lean ? w + 0.12 : w);
+      if (x + span > 0.395) break;   // the side panel's inner face is at 0.40
+      if (row.gaps.includes(i) || (row.sparse && i > 7)) { x += w + 0.03; continue; }
+      if (i === row.stack) {   // a few lying flat
+        for (let k = 0; k < 3; k++)
+          parts.push(xg(new THREE.BoxGeometry(0.2 - k * 0.02, 0.035, 0.18), x + 0.1, row.y + 0.0175 + k * 0.036, 0.0, 0,(k - 1) * 0.12,0, 1));
+        x += 0.22; continue;
+      }
+      const h = 0.2 + h1 * 0.02;   // <= 0.32: clears a 0.36 bay
+      const lean = i === row.lean ? 0.32 : 0;
+      parts.push(xg(new THREE.BoxGeometry(w, h, 0.2 + (h1 % 3) * 0.015),
+        x + w / 2 + (lean ? 0.06 : 0), row.y + h / 2 - (lean ? 0.015 : 0), 0.0, 0,0,-lean, 1));
+      x += w + 0.004 + (lean ? 0.12 : 0);
+    }
+  });
+  return worldBoxUV(mergeGeos(parts), 3.0);
+})();
 GEO.weaponRack = mergeGeos([
   xg(new THREE.BoxGeometry(0.06,1.1,0.06), -0.4,0.55,-0.15, 0.2,0,0, 1),
   xg(new THREE.BoxGeometry(0.06,1.1,0.06), -0.4,0.55,0.15, -0.2,0,0, 1),

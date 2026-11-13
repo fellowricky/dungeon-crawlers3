@@ -11,12 +11,13 @@ import {
   featureBonuses, spellSlotsFor, seedNewHeroProgression, migrateProgression,
   applyLevelGrants, initProgressionFields, pendingChoiceCount, hasFeature,
   totalSlots, equipmentGrants, hasDualWielder, featACBonus, isCasterClass,
-  SKILL_POINTS_PER_LEVEL, talentPointsThrough,
+  SKILL_POINTS_PER_LEVEL, talentPointsThrough, sorceryPointsMaxFor, wardMaxFor,
   featSaveProficiencies, featCantripRangeMul, featRerollsDamage,
   styleDamageBonus, styleRerollsLowDice
 } from './features.js';
 export { SKILL_POINTS_PER_LEVEL };
 import { getRaceDefaults, migrateVisualColors } from './appearance.js';
+import { BANE_TYPES, STEADFAST_GROUPS, getTuning } from './budget.js';
 
 /* ---------------- dice ---------------- */
 export function d(n){ return 1 + Math.floor(Math.random()*n); }
@@ -85,6 +86,9 @@ export const profBonus = lvl => 2 + Math.floor((lvl-1)/4);
 /* Damage types a gear `elem*` affix can carry. Mirrors ELEM_TYPES in budget.js;
    duplicated here so the rules layer doesn't import the pricing layer. */
 export const ELEM_DAMAGE_TYPES = ['fire','cold','lightning','acid','poison','necrotic','radiant','force','psychic'];
+/* Most damage Warding can take off one elemental hit, however much is
+   stacked — loot_budget.json find.wardCapPerType. */
+export function wardCap(){ return getTuning().find?.wardCapPerType ?? 10; }
 
 /**
  * TIER-0 starting kit. Every entry is a ZERO-POINT base: no `prim` block, a d4
@@ -180,8 +184,9 @@ export const CLASS_SAVES = {
   familiar:  ['dex','wis'],
 };
 
-/* XP needed to REACH each level (index = level) — tripled after level 2 */
-const default_xp_table = [0, 0, 71, 1181, 3038, 5768, 9518, 14382, 20770, 28601, 37957, 49099, 62044, 77132, 94486, 113533, 133904, 155690, 178818, 203264, 229068];
+/* XP needed to REACH each level (index = level). Built by xp_balancer.html from
+   measured floors (sim/xp_floor_census.mjs): ~5 floors to level 2, ~8.5 per level after. */
+const default_xp_table = [0, 0, 1000, 4410, 9500, 16590, 26140, 38430, 54100, 73660, 97240, 125410, 158870, 198450, 244690, 298510, 366430, 444140, 532330, 631890, 743630];
 let loaded_xp_table = default_xp_table;
 try {
   const stored = globalThis.localStorage?.getItem('dc_xp_table');
@@ -197,12 +202,12 @@ export const RACES = {
    *              (turn_engine.cellsForSpeed) to derive a per-turn cell budget.
    *              Small races (dwarf/gnome/halfling) are 25 ft; all others 30 ft. */
   human:      { label:'Human',    bonus:{str:1,dex:1,con:1,int:1,wis:1,cha:1}, speed:1.0, speedFt:30, trait:'Versatile: +1 to every ability score.' },
-  dwarf:      { label:'Hill Dwarf', bonus:{con:2,wis:1}, speed:0.9, speedFt:25, hpPerLevel:1, trait:'Dwarven Toughness: +1 HP per level.' },
+  dwarf:      { label:'Hill Dwarf', bonus:{con:2,wis:1}, speed:0.9, speedFt:25, trait:'Stout: +2 CON and +1 WIS; slow but steady (25 ft).' },
   elf:        { label:'High Elf', bonus:{dex:2,int:1}, speed:1.1, speedFt:30, critFinesse:true, trait:'Keen Senses: Proficiency in Perception. Crits on 19–20 with ranged attacks.', skills: ['perception'] },
-  halfling:   { label:'Lightfoot Halfling', bonus:{dex:2,cha:1}, speed:1.0, speedFt:25, lucky:true, trait:'Lucky: rerolls natural 1s on attack rolls.' },
+  halfling:   { label:'Lightfoot Halfling', bonus:{dex:2,cha:1}, speed:1.0, speedFt:25, small:true, lucky:true, trait:'Lucky: rerolls natural 1s on attack rolls. Small: heavy weapons attack at disadvantage.' },
   halforc:    { label:'Half-Orc', bonus:{str:2,con:1}, speed:1.0, speedFt:30, savageCrit:true, trait:'Savage Attacks: Proficiency in Intimidation. +1 damage die on melee crits.', skills: ['intimidation'] },
   dragonborn: { label:'Dragonborn', bonus:{str:2,cha:1}, speed:1.0, speedFt:30, trait:'Draconic Ancestry: resistance to elemental damage.' },
-  gnome:      { label:'Rock Gnome', bonus:{int:2,con:1}, speed:0.9, speedFt:25, trait:'Gnome Cunning: +2 on saving throws against magic.' },
+  gnome:      { label:'Rock Gnome', bonus:{int:2,con:1}, speed:0.9, speedFt:25, small:true, trait:'Gnome Cunning: +2 on saving throws against magic. Small: heavy weapons attack at disadvantage.' },
   halfelf:    { label:'Half-Elf', bonus:{cha:2,dex:1,con:1}, speed:1.0, speedFt:30, trait:'Skill Versatility: Proficiency in 2 extra skills of choice.', skills: ['deception', 'persuasion'] },
   tiefling:   { label:'Tiefling', bonus:{cha:2,int:1}, speed:1.0, speedFt:30, trait:'Hellish Resistance: +1 AC and fire resistance.' },
   /* Not a player option — the stat block behind the ranger's wolf companion.
@@ -225,9 +230,12 @@ export const CLASSES = {
     secondWind:true,
     skills:[
       { key:'weaponMaster', name:'Weapon Master', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
-      { key:'brute',        name:'Brute',         max:5, desc:'+1 weapon damage per rank.',    b:{dmg:1} },
-      { key:'toughness',    name:'Toughness',     max:5, desc:'+6 max HP per rank.',           b:{hp:6} },
-      { key:'guardian',     name:'Guardian',      max:3, desc:'+1 AC per rank.',               b:{ac:1} }
+      { key:'guardian',     name:'Guardian',      max:3, desc:'+1 AC per rank.',               b:{ac:1} },
+      { key:'toughness',    name:'Toughness',     max:5, desc:'+5 temporary HP at the start of each fight per rank.',           b:{fightTempHp:5} },
+      /* class_talents.js counterstrike (monster_ai melee miss) */
+      { key:'counterstrike', name:'Counterstrike', max:3, desc:'When an enemy misses you in melee, strike back with your weapon. Once per fight per rank, at most once per round.', b:{} },
+      /* class_talents.js cleave */
+      { key:'cleave', name:'Cleave', max:2, desc:'When your melee attack drops a foe, make a free attack on another foe beside you. Rank 2: a critical hit cleaves too. Once per turn.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -235,7 +243,7 @@ export const CLASSES = {
     }
   },
   rogue: {
-    label:'Rogue', color:0x8f95a3, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple', weaponSpecific:['Rapier','Shortsword','Longsword'],
+    label:'Rogue', color:0x8f95a3, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple', weaponSpecific:['Rapier','Shortsword','Longsword','Hand Crossbow'],
     statPriority:['dex','con','wis','int','cha','str'],
     baseAC:11, acPlusDex:true, acDesc:'Leather armor + Dex',
     attack:{ name:'Shortbow', ability:'dex', dmg:[1,6], range:7, melee:false },
@@ -243,9 +251,9 @@ export const CLASSES = {
     sneakDice: lvl => Math.ceil(lvl/2),
     skills:[
       { key:'deadlyAim',  name:'Deadly Aim', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
-      { key:'assassin',   name:'Assassin',   max:2, desc:'Crit range widens by 1 per rank (crit on 19, then 18).', b:{crit:1} },
       { key:'evasion',    name:'Evasion',    max:4, desc:'+1 AC per rank.',               b:{ac:1} },
-      { key:'fleetfoot',  name:'Fleet-Foot', max:4, desc:'+5 ft Move (1 tile) per rank.',      b:{move:5} },
+      { key:'streetHardened', name:'Street-Hardened', max:5, desc:'+4 temporary HP at the start of each fight per rank.', b:{fightTempHp:4} },
+      { key:'assassin',   name:'Assassin',   max:2, desc:'Crit range widens by 1 per rank (crit on 19, then 18).', b:{crit:1} },
       /* combat.js heroAttackRoll; docs/LIGHT_IDEAS.md 7 */
       { key:'shadowStrike', name:'Shadow Strike', max:2, desc:'Your first attack each fight, made from dim light or darkness: +1 Sneak Attack die per rank, no ally needed.', b:{} }
     ],
@@ -262,12 +270,13 @@ export const CLASSES = {
     feature:'Cure Wounds: heals the most wounded ally (slots recharge on short/long rest).',
     healer:true,
     skills:[
-      { key:'blessedHealer', name:'Blessed Healer', max:5, desc:'+3 healing per rank.',        b:{heal:3} },
-      { key:'divineFavor',   name:'Divine Favor',   max:5, desc:'+1 Sacred Flame damage per rank.', b:{dmg:1} },
       { key:'sanctuary',     name:'Sanctuary',      max:3, desc:'+1 AC per rank.',              b:{ac:1} },
-      { key:'devotion',      name:'Devotion',       max:4, desc:'+5 max HP per rank.',          b:{hp:5} },
+      { key:'blessedHealer', name:'Blessed Healer', max:5, desc:'+3 healing per rank.',        b:{heal:3} },
+      { key:'devotion',      name:'Devotion',       max:4, desc:'+4 temporary HP at the start of each fight per rank.',          b:{fightTempHp:4} },
       /* combat.js lightAbilities; docs/LIGHT_IDEAS.md 50 */
-      { key:'radiantFlare',  name:'Radiant Flare',  max:1, desc:'Once per short rest: a burst of holy light floods 4 tiles with bright light and sears undead and shadow creatures for 2d8 radiant.', b:{} }
+      { key:'radiantFlare',  name:'Radiant Flare',  max:1, desc:'Once per short rest: a burst of holy light floods 4 tiles with bright light and sears undead and shadow creatures for 2d8 radiant.', b:{} },
+      /* class_talents.js guidingFlame */
+      { key:'guidingFlame', name:'Guiding Flame', max:3, desc:'A foe that fails its save against your Sacred Flame glows: the next ally to attack it gets +1 to hit per rank.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -282,10 +291,13 @@ export const CLASSES = {
     feature:'Arcane Study: at level 3, chooses a school with slot-fueled spells.',
     blaster:true,
     skills:[
-      { key:'evoker',     name:'Evoker',      max:5, desc:'+1 Fire Bolt damage per rank.', b:{dmg:1} },
-      { key:'focused',    name:'Focused',     max:5, desc:'+1 to attack rolls per rank.',  b:{atk:1} },
-      { key:'arcaneWard', name:'Arcane Ward', max:5, desc:'+4 max HP per rank.',           b:{hp:4} },
-      { key:'mageArmor',  name:'Mage Armor',  max:3, desc:'+1 AC per rank.',               b:{ac:1} }
+      { key:'focused',    name:'Focused',     max:3, desc:'+1 spell save DC per rank.',  b:{spellDC:1} },
+      { key:'mageArmor',  name:'Mage Armor',  max:3, desc:'+1 AC per rank.',               b:{ac:1} },
+      { key:'arcaneWard', name:'Arcane Ward', max:5, desc:'+3 temporary HP at the start of each fight per rank.',           b:{fightTempHp:3} },
+      /* class_talents.js potentCantrip */
+      { key:'potentCantrip', name:'Potent Cantrip', max:2, desc:'A foe that succeeds on the save against your cantrip still takes a quarter of its damage per rank (half at rank 2).', b:{} },
+      /* class_talents.js talentsFightEnd */
+      { key:'arcaneRecovery', name:'Arcane Recovery', max:3, desc:'When a fight ends, regain one spent spell slot of up to your rank in level (1st, then 2nd, then 3rd).', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -299,10 +311,13 @@ export const CLASSES = {
     attack:{ name:'Greatsword', ability:'str', dmg:[2,6], range:1.6, melee:true },
     feature:'Rage: enter Rage when hurt (+2 melee dmg, +2 AC, halve incoming dmg).',
     skills:[
-      { key:'savageStrikes', name:'Savage Strikes', max:5, desc:'+1 attack damage per rank.', b:{dmg:1} },
-      { key:'unarmoredToughness', name:'Toughness', max:5, desc:'+6 max HP per rank.', b:{hp:6} },
+      { key:'furiousAtk', name:'Furious Attack', max:3, desc:'+1 to attack rolls per rank.', b:{atk:1} },
       { key:'dangerSense', name:'Danger Sense', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'furiousAtk', name:'Furious Attack', max:3, desc:'+1 to attack rolls per rank.', b:{atk:1} }
+      { key:'unarmoredToughness', name:'Toughness', max:5, desc:'+6 temporary HP at the start of each fight per rank.', b:{fightTempHp:6} },
+      /* features.js chargeDef: added to the rage pool */
+      { key:'deepFury', name:'Deep Fury', max:4, desc:'+1 Rage use per rank.', b:{} },
+      /* class_talents.js talentAttackDamage */
+      { key:'bloodiedFury', name:'Bloodied Fury', max:5, desc:'+1 weapon damage per rank while you are below half HP, doubled while raging.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -310,7 +325,7 @@ export const CLASSES = {
     }
   },
   bard: {
-    label:'Bard', color:0xe8a8ff, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple', weaponSpecific:['Rapier','Shortsword','Longsword'],
+    label:'Bard', color:0xe8a8ff, hitDie:8, armorProf:'light', shieldProf:false, weaponProf:'simple', weaponSpecific:['Rapier','Shortsword','Longsword','Hand Crossbow'],
     statPriority:['cha','dex','con','wis','str','int'],
     baseAC:11, acPlusDex:true, acDesc:'Leather Armor + Dex',
     attack:{ name:'Rapier', ability:'cha', dmg:[1,8], range:1.5, melee:true },
@@ -318,9 +333,12 @@ export const CLASSES = {
     healer:true,
     skills:[
       { key:'loreMaster', name:'Lore Master', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
-      { key:'inspirePower', name:'Inspiring Voice', max:5, desc:'+1 healing per rank.', b:{heal:1} },
       { key:'defensiveInsp', name:'Defensive Riffs', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'hearty', name:'Hearty', max:4, desc:'+5 max HP per rank.', b:{hp:5} }
+      { key:'hearty', name:'Hearty', max:4, desc:'+4 temporary HP at the start of each fight per rank.', b:{fightTempHp:4} },
+      /* class_talents.js jarringChord (monster_ai attack rolls) */
+      { key:'jarringChord', name:'Jarring Chord', max:3, desc:'Reaction: when an enemy attack would hit an ally within 6 tiles, play a jarring note and subtract 1d6 from the roll. Only used when the d6 could turn the hit into a miss. Once per fight per rank, at most once per round.', b:{} },
+      /* class_talents.js talentCombatStart */
+      { key:'rousingOverture', name:'Rousing Overture', max:3, desc:'At the start of each fight, every ally gets +1 to attack rolls per rank for the first round.', b:{} }
     ],
     skillChoices: {
       count: 3,
@@ -335,10 +353,13 @@ export const CLASSES = {
     feature:'Wild Shape: transforms into a Bear (+20 temp HP, 2d6 claws).',
     healer:true,
     skills:[
-      { key:'natureWrath', name:'Nature Wrath', max:5, desc:'+1 spell damage per rank.', b:{dmg:1} },
-      { key:'wildVitality', name:'Wild Vitality', max:5, desc:'+6 max HP per rank.', b:{hp:6} },
       { key:'barkskin', name:'Barkskin', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'naturalHealer', name:'Natural Healer', max:3, desc:'+3 healing per rank.', b:{heal:3} }
+      { key:'natureWrath', name:'Nature Wrath', max:5, desc:'+1 spell damage per rank.', b:{dmg:1} },
+      { key:'wildVitality', name:'Wild Vitality', max:5, desc:'+4 temporary HP at the start of each fight per rank.', b:{fightTempHp:4} },
+      /* combat.js activateWildShape + class_talents.js talentAttackBonus */
+      { key:'beastEndurance', name:'Beast Endurance', max:3, desc:'Your Wild Shape forms get +10% HP and +1 to attack rolls per rank.', b:{} },
+      /* class_talents.js graspingRoots (resolveSpell) */
+      { key:'graspingRoots', name:'Grasping Roots', max:2, desc:'Your first spell each fight that targets a foe also roots it: STR save or restrained until its next turn. Rank 2: +2 to the save DC.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -352,10 +373,13 @@ export const CLASSES = {
     attack:{ name:'Unarmed Strike', ability:'dex', dmg:[1,6], range:1.4, melee:true },
     feature:'Ki Pool: spend Ki for Flurry of Blows, Patient Defense, Step of the Wind, and Stunning Strike.',
     skills:[
-      { key:'martialArts', name:'Martial Arts', max:5, desc:'+1 attack damage per rank.', b:{dmg:1} },
       { key:'unarmoredDef', name:'Unarmored Defense', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'fastMovement', name:'Fast Movement', max:4, desc:'+5 ft Move (1 tile) per rank.', b:{move:5} },
-      { key:'kiVitality', name:'Ki Vitality', max:5, desc:'+5 max HP per rank.', b:{hp:5} }
+      { key:'martialArts', name:'Martial Arts', max:5, desc:'+1 attack damage per rank.', b:{dmg:1} },
+      { key:'kiVitality', name:'Ki Vitality', max:5, desc:'+4 temporary HP at the start of each fight per rank.', b:{fightTempHp:4} },
+      /* class_talents.js talentOnKill */
+      { key:'kiSiphon', name:'Ki Siphon', max:3, desc:'When you drop a foe, regain 1 Ki point. Up to once per fight per rank.', b:{} },
+      /* class_talents.js talentAttackDamage */
+      { key:'pressurePoints', name:'Pressure Points', max:3, desc:'Each hit after the first on the same foe in one turn deals +1 damage per rank.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -369,10 +393,13 @@ export const CLASSES = {
     attack:{ name:'Longsword', ability:'str', dmg:[1,8], range:1.5, melee:true },
     feature:'Divine Smite: once per short rest, deal +2d8 radiant damage.',
     skills:[
-      { key:'divineSmitePower', name:'Divine Smite', max:5, desc:'+1 attack damage per rank.', b:{dmg:1} },
-      { key:'auraOfProtection', name:'Aura of Protection', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'layOnHands', name:'Lay on Hands', max:5, desc:'+3 healing per rank.', b:{heal:3} },
-      { key:'holyToughness', name:'Holy Toughness', max:5, desc:'+6 max HP per rank.', b:{hp:6} }
+      { key:'sacredWeapon', name:'Sacred Weapon', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
+      { key:'shieldOfFaith', name:'Shield of Faith', max:5, desc:'+1 AC per rank.', b:{ac:1} },
+      { key:'holyToughness', name:'Holy Toughness', max:5, desc:'+5 temporary HP at the start of each fight per rank.', b:{fightTempHp:5} },
+      /* class_talents.js save hooks */
+      { key:'protectiveAura', name:'Aura of Protection', max:3, desc:'Allies within 2 tiles of you (and you) get +1 to saving throws per rank.', b:{} },
+      /* combat.js buildAttackOpts smite */
+      { key:'searingSmite', name:'Searing Smite', max:3, desc:'Your Divine Smites deal +1d8 radiant per rank against undead and fiends.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -387,11 +414,12 @@ export const CLASSES = {
     feature:'Favored Enemy: deal +2 extra damage against all monsters.',
     skills:[
       { key:'archeryStyle', name:'Archery Style', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
-      { key:'huntersPrey', name:'Hunters Prey', max:5, desc:'+1 weapon damage per rank.', b:{dmg:1} },
-      { key:'natureSurvival', name:'Nature Survival', max:5, desc:'+5 max HP per rank.', b:{hp:5} },
       { key:'elusive', name:'Elusive', max:3, desc:'+1 AC per rank.', b:{ac:1} },
+      { key:'natureSurvival', name:'Nature Survival', max:5, desc:'+5 temporary HP at the start of each fight per rank.', b:{fightTempHp:5} },
       /* light_rules.js canSee + combat.js subclassCombatStart; docs/LIGHT_IDEAS.md 49 */
-      { key:'umbralSight', name:'Umbral Sight', max:1, desc:'While you stand in darkness, creatures relying on darkvision cannot see you. You make an extra attack in the first round of each fight.', b:{} }
+      { key:'umbralSight', name:'Umbral Sight', max:1, desc:'While you stand in darkness, creatures relying on darkvision cannot see you. You make an extra attack in the first round of each fight.', b:{} },
+      /* combat.js heroPostAttackWithdraw */
+      { key:'skirmishersStep', name:'Skirmisher\'s Step', max:3, desc:'After a ranged attack, give ground from adjacent enemies without provoking opportunity attacks. Once per fight per rank.', b:{} }
     ],
     skillChoices: {
       count: 3,
@@ -403,13 +431,16 @@ export const CLASSES = {
     statPriority:['cha','con','dex','int','wis','str'],
     baseAC:10, acPlusDex:true, acDesc:'No armor + Dex',
     attack:{ name:'Chill Touch', ability:'cha', dmg:[1,8], range:8, melee:false, cantripScale:true, isSave:true, saveAbility:'con' },
-    feature:'Tides of Chaos: once per short rest, gain advantage (+5 to hit).',
+    feature:'Font of Magic: sorcery points fuel Metamagic — twin, quicken or heighten your spells — and turn into spell slots when you run dry.',
     blaster:true,
     skills:[
-      { key:'draconicMagic', name:'Draconic Magic', max:5, desc:'+1 spell damage per rank.', b:{dmg:1} },
-      { key:'sorcerousAtk', name:'Sorcerous Attack', max:5, desc:'+1 to attack rolls per rank.', b:{atk:1} },
+      { key:'sorcerousAtk', name:'Sorcerous Potency', max:3, desc:'+1 spell save DC per rank.', b:{spellDC:1} },
       { key:'mageShield', name:'Mage Shield', max:3, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'bloodlineToughness', name:'Bloodline Toughness', max:5, desc:'+4 max HP per rank.', b:{hp:4} }
+      { key:'bloodlineToughness', name:'Bloodline Toughness', max:5, desc:'+3 temporary HP at the start of each fight per rank.', b:{fightTempHp:3} },
+      /* class_talents.js stormTouched */
+      { key:'stormTouched', name:'Storm-Touched', max:3, desc:'+1 damage per rank on fire, lightning and cold spells.', b:{} },
+      /* class_talents.js empowerSpell + spells.js roll */
+      { key:'empoweredSpell', name:'Empowered Spell', max:2, desc:'Once per fight per rank, your leveled damage spell rerolls every damage die that rolls a 1 or 2 (once). Cantrips never count.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -424,10 +455,13 @@ export const CLASSES = {
     feature:'Eldritch Blast: fires 1 beam of force (1d10), +1 beam at level 5.',
     blaster:true,
     skills:[
-      { key:'eldritchInvoc', name:'Eldritch Invocation', max:5, desc:'+1 spell damage per rank.', b:{dmg:1} },
+      { key:'dreadAtk', name:'Dread Potency', max:3, desc:'+1 spell save DC per rank.', b:{spellDC:1} },
       { key:'shadowArmor', name:'Shadow Armor', max:5, desc:'+1 AC per rank.', b:{ac:1} },
-      { key:'fiendResilience', name:'Fiendish Vigor', max:5, desc:'+5 max HP per rank.', b:{hp:5} },
-      { key:'dreadAtk', name:'Dread Attack', max:3, desc:'+1 to attack rolls per rank.', b:{atk:1} }
+      { key:'fiendResilience', name:'Dark Resilience', max:5, desc:'+4 temporary HP at the start of each fight per rank.', b:{fightTempHp:4} },
+      /* class_talents.js hungeringHex (killMonster) */
+      { key:'hungeringHex', name:'Hungering Hex', max:3, desc:'When a foe under your Hex dies, gain 2 temporary HP per rank and the Hex leaps to the nearest foe for free.', b:{} },
+      /* class_talents.js save hooks */
+      { key:'darkOnesLuck', name:'Dark One\'s Luck', max:2, desc:'Once per fight per rank, add 1d10 to a saving throw you failed.', b:{} }
     ],
     skillChoices: {
       count: 2,
@@ -512,9 +546,9 @@ export const SUBCLASSES = {
       active:{ key:'fireball', name:'Fireball', recharge:'slot',
         desc:'Spend a spell slot to engulf packed enemies in an 8d6 blast.' } },
     abjurer: { label:'Abjurer',
-      passive:'Arcane Ward: +1 AC, +6 max HP, and a temp-HP shield at the start of each fight.', pb:{ac:1, hp:6}, passiveKey:'arcaneWard',
-      active:{ key:'magicMissile', name:'Magic Missile', recharge:'slot',
-        desc:'Spend a spell slot to fire unerring darts — 3 auto-hits of 1d4+1, +1 dart per 4 levels.' } }
+      passive:'Arcane Ward: +1 AC, and a shield of 2 × level + INT hit points that soaks damage before you do. It lasts between fights; every spell you cast with a slot recharges it by twice the slot level, and a long rest fills it.', pb:{ac:1}, passiveKey:'arcaneWard',
+      active:{ key:'projectedWard', name:'Projected Ward', recharge:'ward',
+        desc:'Reaction: when an ally within 6 tiles takes a heavy or lethal hit, your Arcane Ward absorbs it instead. Drains the same ward.' } }
   },
   barbarian: {
     berserker: { label:'Berserker', srd:true,
@@ -538,7 +572,7 @@ export const SUBCLASSES = {
   },
   druid: {
     land: { label:'Circle of the Land', srd:true,
-      passive:'Natural Recovery: +1 spell attack; your kills sometimes restore a spell slot.', pb:{atk:1}, passiveKey:'naturalRecovery',
+      passive:'Natural Recovery: +1 spell save DC; your kills sometimes restore a spell slot.', pb:{spellDC:1}, passiveKey:'naturalRecovery',
       active:{ key:'entangle', name:'Entangle', recharge:'short',
         desc:'Cast Entangle for free once per short rest: grasping weeds restrain foes in a 20-ft area (STR save; concentration).' } },
     moon: { label:'Circle of the Moon',
@@ -578,13 +612,15 @@ export const SUBCLASSES = {
   },
   sorcerer: {
     draconic: { label:'Draconic Blood', srd:true,
-      passive:'Elemental Affinity: +1 AC, +4 max HP, and +2 elemental damage on every hit.', pb:{ac:1, hp:4}, passiveKey:'elementalAffinity',
+      passive:'Elemental Affinity: +1 AC, and +2 elemental damage on every hit.', pb:{ac:1}, passiveKey:'elementalAffinity',
       active:{ key:'dragonBreath', name:'Dragon Breath', recharge:'short',
         desc:'Breathe fire in a cone, dealing 3d6 damage to all nearby enemies.' } },
+    /* wild_magic.js. The passive used to be a fight-start coin flip (temp HP
+       or haste) and the active a guaranteed party heal — nothing wild in it. */
     wildmagic: { label:'Wild Magic',
-      passive:'Tides of Chaos: +1 spell attack; each fight begins with a random surge of magic.', pb:{atk:1}, passiveKey:'tidesOfChaosPassive',
-      active:{ key:'wildSurge', name:'Wild Magic Surge', recharge:'short',
-        desc:'Release a surge of wild magic that heals all allies for 1d10 + level.' } }
+      passive:'Wild Magic Surge: +1 spell save DC. When you cast a spell with a slot, roll a d20 — on a 1 the magic surges: usually a boon, sometimes a backfire.', pb:{spellDC:1}, passiveKey:'wildMagicSurge',
+      active:{ key:'tidesOfChaos', name:'Tides of Chaos', recharge:'long',
+        desc:'Advantage on one attack roll, or a reroll of a failed save. Once spent, your next spell cast with a slot surges for certain — and the surge gives Tides back.' } }
   },
   warlock: {
     fiend: { label:'The Fiend', srd:true,
@@ -597,7 +633,7 @@ export const SUBCLASSES = {
         desc:'Nearby enemies make a WIS save or are charmed for 1 round, unable to attack you.' } }
   }
 };
-export const RECHARGE_LABEL = { short:'1 / short rest', long:'1 / long rest', day:'1 / long rest', slot:'spell slots' };
+export const RECHARGE_LABEL = { short:'1 / short rest', long:'1 / long rest', day:'1 / long rest', slot:'spell slots', ward:'Arcane Ward' };
 
 export const WILD_SHAPE_FORMS = {
   bear: {
@@ -1918,6 +1954,30 @@ export function normalizeHero(h){
   return h;
 }
 
+/* A node whose max went down (the caster attack nodes became 3-rank spell-DC
+   nodes) keeps no ranks above it: the extra points go back to be spent again. */
+export function capSkillRanks(h){
+  const list = (h.classKey && CLASSES[h.classKey]?.skills) || [];
+  if(!h.skills) return 0;
+  let refunded = 0;
+  for(const s of list){
+    const rank = h.skills[s.key] || 0;
+    if(rank > s.max){ refunded += rank - s.max; h.skills[s.key] = s.max; }
+  }
+  /* A node that left the class tree (the generic damage / heal / move nodes the
+     November talent rework replaced) hands every rank back to be spent again. */
+  if(list.length){
+    const known = new Set(list.map(s => s.key));
+    for(const k of Object.keys(h.skills)){
+      if(known.has(k)) continue;
+      refunded += h.skills[k] || 0;
+      delete h.skills[k];
+    }
+  }
+  if(refunded) h.pendingSkill = (h.pendingSkill || 0) + refunded;
+  return refunded;
+}
+
 /* Sum a hero's class-skill ranks into a bonuses object. */
 export function skillBonuses(h){
   const total = {};
@@ -1933,8 +1993,12 @@ export function skillBonuses(h){
 
 /* Recompute all derived combat fields from base stats + equipment + skills.
    Called after any change to level, stats, gear, or skills. */
+/** Flat max HP every hero gets at level 1, on top of the class die and CON. */
+export const LEVEL1_GRIT_HP = 8;
+
 export function recalc(h){
   const cls = (h.classKey && CLASSES[h.classKey]) || CLASSES.druid || { hitDie: 8 };
+  capSkillRanks(h);
   const race = (h.raceKey && RACES[h.raceKey]) || RACES.human || {};
   /* Base equipment-proficiency tiers from the class, stamped for features.js
      (which can't import CLASSES) so the feat-offer ladder knows where to start. */
@@ -1977,11 +2041,16 @@ export function recalc(h){
   }
 
   const conM = mod(eff.con);
-  /* HP: full hit die at L1, average thereafter, + CON each level + race + bonuses.
-     The flat +8 "adventurer's grit" keeps level-1 heroes from being one-shot
-     by a lucky crit (SRD level 1 is glass); it fades to noise at high level. */
+  /* HP: the full hit die + 8 at L1, the die's average every level after, and
+     the CON modifier every level. Class and CON are the whole of it; on top sits
+     only what gear and runes add (eq / rb `hp`). The flat +8 "adventurer's grit"
+     keeps level-1 heroes from being one-shot by a lucky crit (SRD level 1 is
+     glass); it fades to noise at high level. Levelling extras that used to pile
+     on here (Hill Dwarf +1/level, Tough/Durable, skill tree and feature HP) now
+     grant start-of-fight temp HP instead (fightTempHp, combat.js applyFightWard). */
   const avg = Math.ceil((cls.hitDie+1)/2);
-  h.maxHp = cls.hitDie + 8 + (h.level-1)*avg + h.level*(conM + (race.hpPerLevel||0)) + sum('hp') + (rb.hp || 0);
+  h.maxHp = cls.hitDie + LEVEL1_GRIT_HP + (h.level-1)*avg + h.level*conM + (eq.hp || 0) + (rb.hp || 0);
+  h.fightTempHp = Math.max(0, Math.round(sum('fightTempHp')));
   /* life-drain (monster ability): drained max HP stays gone until a rest */
   h.maxHp -= (h.hpDrain || 0);
   h.maxHp = Math.max(1, h.maxHp);
@@ -2028,6 +2097,17 @@ export function recalc(h){
   h.weaponProfile = buildWeaponProfile(h, h.equipment && h.equipment.weapon);
   const mh = h.equipment && h.equipment.weapon;
   const oh = h.equipment && h.equipment.offhand;
+  /* Versatile (5e): a one-handed weapon gripped in both hands when the
+     off-hand is EMPTY hits one die size harder (d8 -> d10). Carrying a shield
+     or a second weapon gives that up — the trade is defence for damage. */
+  if (h.weaponProfile && mh && mh.versatile && !mh.twoHanded && !oh) {
+    h.weaponProfile.dmg = versatileDie(h.weaponProfile.dmg);
+    h.weaponProfile.twoHandGrip = true;
+  }
+  /* Farshot: +N tiles on a shooting weapon (the affix only rolls on those). */
+  if (h.weaponProfile && !h.weaponProfile.melee && sum('range')) {
+    h.weaponProfile.range += sum('range');
+  }
   /* Two-Weapon Fighting (5e): both weapons must be light — unless the Dual
      Wielder feat relaxes that to any one-handed weapon. */
   const dw = hasDualWielder(h);
@@ -2056,6 +2136,10 @@ export function recalc(h){
   /* casting ability for spell DCs / spell mods (consumed by spells.js) */
   h._classAtk = cls.attack.ability;
   h.dmgBonus = sum('dmg');
+  /* + to the spell save DC (spells.js spellDC): the casters' skill-tree potency
+     nodes and two subclass passives. Spells are saves here, so this, not `atk`,
+     is a caster's accuracy. */
+  h.spellDCBonus = sum('spellDC');
   h.healBonus = sum('heal');
   h.speedMult = race.speed * (1 + sum('speed'));
   /* Base 5e speed in feet (from RACES[].speedFt) — cached so the tactical
@@ -2073,6 +2157,37 @@ export function recalc(h){
   for(const t of ELEM_DAMAGE_TYPES){
     const v = sum('elem' + t[0].toUpperCase() + t.slice(1));
     if(v){ h.elemDamage[t] = v; h.elemDamageTotal += v; }
+  }
+
+  /* Utility affixes, cached so combat reads plain fields. Each is read by one
+     system: initiative.js (init), combat potions (potionHeal), the on-kill
+     hook (bloodthirst), opportunity attacks (oaDmg), concentration saves
+     (concentration), party loot (magicFind / goldFind). */
+  h.initBonus = sum('init');
+  h.potionHealPct = sum('potionHeal');
+  h.bloodthirst = sum('bloodthirst');
+  h.oaDmgBonus = sum('oaDmg');
+  h.concentrationBonus = sum('concentration');
+  h.magicFind = sum('magicFind');
+  h.goldFind = sum('goldFind');
+  /* Warding: flat reduction per elemental type, capped so stacking a whole
+     kit of it can't make a hero immune (applyIncomingDamage). */
+  h.ward = {};
+  for(const t of ELEM_DAMAGE_TYPES){
+    const v = sum('ward' + t[0].toUpperCase() + t.slice(1));
+    if(v) h.ward[t] = Math.min(wardCap(), v);
+  }
+  /* Bane: flat bonus damage against a creature type (combat heroAttackRoll). */
+  h.bane = {};
+  for(const t of BANE_TYPES){
+    const v = sum('bane' + t[0].toUpperCase() + t.slice(1));
+    if(v) h.bane[t] = v;
+  }
+  /* Steadfast: +N on saves against a condition group (conditions.js). */
+  h.steadfast = {};
+  for(const k in STEADFAST_GROUPS){
+    const v = sum(k);
+    if(v) h.steadfast[k] = v;
   }
 
   /* crit threshold: 20 by default; gear/skill widen it; elf keen senses widen
@@ -2117,10 +2232,38 @@ export function recalc(h){
     h.kiSaveDC = 8 + profBonus(h.level) + mod(eff.wis);
   }
 
+  /* Abjurer Arcane Ward: a persistent HP shield (features.js wardMaxFor).
+     New ward capacity from a level-up is added to what is left, the same as ki. */
+  {
+    const wMax = wardMaxFor(h);
+    if(wMax > 0) {
+      const prevMax = h.wardMax || 0;
+      h.wardMax = wMax;
+      if(h.wardHp === undefined) h.wardHp = wMax;
+      else if(wMax > prevMax) h.wardHp = Math.min(wMax, (h.wardHp || 0) + (wMax - prevMax));
+      else h.wardHp = Math.max(0, Math.min(h.wardHp, wMax));
+    } else {
+      delete h.wardMax;
+      delete h.wardHp;
+    }
+  }
+
+  /* sorcerer sorcery points (Font of Magic): level, at least 2. Created
+     slots and Metamagic spend them; a long rest refills them (rest.js). */
+  if(hasFeature(h, 'fontOfMagic')) {
+    const prevMax = h.sorcPointsMax || 0;
+    h.sorcPointsMax = sorceryPointsMaxFor(h);
+    if(h.sorcPoints === undefined) h.sorcPoints = h.sorcPointsMax;
+    else if(h.sorcPointsMax > prevMax) h.sorcPoints = Math.min(h.sorcPointsMax, (h.sorcPoints || 0) + (h.sorcPointsMax - prevMax));
+    else h.sorcPoints = Math.max(0, Math.min(h.sorcPoints, h.sorcPointsMax));
+  } else {
+    delete h.sorcPointsMax;
+    delete h.sorcPoints;
+  }
+
   /* Leveled spell slots (SRD tables): { spellLevel: count }. Casting spends
      the lowest slot ≥ the spell's level — no upcasting. */
   const slotsMax = spellSlotsFor(h.classKey, h.level);
-  if(hasFeature(h, 'fontOfMagic')) slotsMax[1] = (slotsMax[1] || 0) + 1;
   /* Gear `slot1…slot9` affixes grant extra leveled slots. Only for heroes who
      already cast — a fighter with a slot-granting ring has nothing to spend it
      on, and handing them an empty pool would just be confusing. */
@@ -2170,17 +2313,62 @@ export function heroAttackBonus(h){ return h.atkBonus; }
    a cantrip profile and choose per-attack via aiPrefs.rangedPref.
    recalc() caches h.weaponProfile / h.offhandProfile / h.cantripProfile;
    pickAttackProfile(h) resolves the active profile (rolling for casters). */
-function abilityForWeapon(item, effStats){
+/* Monk weapons (5e Martial Arts): shortswords and simple melee weapons that
+   are neither two-handed nor heavy. A monk may use DEX with them. */
+export function isMonkWeapon(item){
+  if (!item || item.melee === false || item.heavy) return false;
+  /* Staves are tagged two-handed here, but the 5e quarterstaff is THE monk
+     weapon — so a melee focus staff counts; other two-handers don't. */
+  if (item.twoHanded && !item.focus) return false;
+  return item.baseKey === 'Shortsword' || (item.weaponType || 'simple') === 'simple';
+}
+function abilityForWeapon(item, effStats, h = null){
   if (!item || item.melee === false) return 'dex';        // ranged weapon
+  if (h && h.classKey === 'monk' && isMonkWeapon(item)) {
+    return mod(effStats.str) >= mod(effStats.dex) ? 'str' : 'dex';   // Martial Arts
+  }
   if (item.finesse) {
     // finesse (5e): wielder's choice — use the higher of STR/DEX
     return mod(effStats.str) >= mod(effStats.dex) ? 'str' : 'dex';
   }
   return 'str';
 }
+/** A monster's creature type, normalised to a BANE_TYPES entry. */
+export function creatureTypeOf(m){
+  const t = String((m && (m.data || m).type) || '').toLowerCase();
+  if (t.includes('beast')) return 'beast';             // "swarm of tiny beasts"
+  return t;
+}
+/** Bane affix damage this hero deals to `foe` (0 when no bane matches). */
+export function baneBonusVs(h, foe){
+  if (!h || !h.bane) return 0;
+  return h.bane[creatureTypeOf(foe)] || 0;
+}
+/** HP a healing potion of `kind` restores, after the drinker's Alchemist %. */
+export function potionHealAmount(kind, h){
+  const amt = kind === 'superior' ? roll(8, 4, 8) : kind === 'greater' ? roll(4, 4, 4) : roll(2, 4, 2);
+  const pct = (h && h.potionHealPct) || 0;
+  return pct > 0 ? Math.round(amt * (1 + pct / 100)) : amt;
+}
+/** A versatile weapon's two-handed die: one size up, capped at d12. */
+export function versatileDie(dmg){
+  if (!dmg) return dmg;
+  return [dmg[0], Math.min(12, (dmg[1] || 4) + 2)];
+}
+/** Small races (5e): a heavy weapon is too big for them to wield well. */
+export function isSmallRace(raceKey){
+  return !!(raceKey && RACES[raceKey] && RACES[raceKey].small);
+}
+/** How many attacks a weapon allows per Attack action, given what the hero
+ *  would otherwise get. `loading` (crossbows) caps it at one shot unless the
+ *  hero has Crossbow Expert, which ignores the property as in 5e. */
+export function weaponSwingCap(h, profile, swings){
+  if (profile && profile.loading && !(h.feats || []).includes('crossbowExpert')) return 1;
+  return swings;
+}
 export function buildWeaponProfile(h, item, opts = {}){
   if (!item || !item.dmg) return null;
-  const ability = opts.ability || abilityForWeapon(item, h.effStats);
+  const ability = opts.ability || abilityForWeapon(item, h.effStats, h);
   return {
     name: item.baseKey || item.name || 'Weapon',
     ability,
@@ -2196,6 +2384,8 @@ export function buildWeaponProfile(h, item, opts = {}){
     light: !!item.light,
     twoHanded: !!item.twoHanded,
     heavy: !!item.heavy,
+    loading: !!item.loading,
+    versatile: !!item.versatile,
     visualWeapon: item.visualWeapon || null,
     ...opts
   };
@@ -2291,7 +2481,7 @@ export function pickAttackProfile(h){
   }
   if (h.weaponProfile && h.weaponProfile.thrown) {
     if (Math.random() < rp) {
-      return { ...h.weaponProfile, melee:false, range:Math.max(h.weaponProfile.range || 1.5, 5) };
+      return { ...h.weaponProfile, melee:false, range:Math.max(h.weaponProfile.range || 1.5, 5), throwing:true };
     }
   }
   return h.weaponProfile || unarmedFallback(h);
@@ -2374,6 +2564,8 @@ export function spendSkillPoint(h, skillKey){
   const cur = h.skills[skillKey] || 0;
   if(cur >= s.max) return false;
   h.skills[skillKey] = cur+1; h.pendingSkill--;
+  /* Deep Fury raises the Rage pool: the new use is there to spend at once. */
+  if(skillKey === 'deepFury' && h.charges && h.charges.rage != null) h.charges.rage++;
   recalc(h);
   return true;
 }
@@ -2395,6 +2587,35 @@ export function pendingPoints(h){
 
 /* D&D 5e equipment proficiency: separate paths for weapons, armor, and shields.
    Helm/gloves/boots/rings/amulets have no proficiency gate (like 5e magic items). */
+/**
+ * What gear a hero can use, by the same rule canEquip applies (class baseline,
+ * raised by feats): { armor: {light, medium, heavy}, shields, weapons: {simple,
+ * martial}, specific: [named weapons the class may use anyway], fromFeat: {…same
+ * keys, true where only a feat grants it} }. Shown on the Party menu's skills tab.
+ */
+export function gearProficiencies(h){
+  const cls = CLASSES[h && h.classKey] || {};
+  const g = equipmentGrants(h || {});
+  const clsArmor = PROF_RANK[cls.armorProf || 'none'];
+  const armorRank = Math.max(clsArmor, g.armorRank);
+  const clsMartial = WEAPON_RANK[cls.weaponProf || 'simple'] >= WEAPON_RANK.martial;
+  const martial = clsMartial || g.weaponMartial;
+  const shields = !!(cls.shieldProf || g.shield);
+  return {
+    armor: { light: armorRank >= PROF_RANK.light, medium: armorRank >= PROF_RANK.medium, heavy: armorRank >= PROF_RANK.heavy },
+    shields,
+    weapons: { simple: true, martial },
+    specific: martial ? [] : (cls.weaponSpecific || []).slice(),
+    fromFeat: {
+      light: clsArmor < PROF_RANK.light && armorRank >= PROF_RANK.light,
+      medium: clsArmor < PROF_RANK.medium && armorRank >= PROF_RANK.medium,
+      heavy: clsArmor < PROF_RANK.heavy && armorRank >= PROF_RANK.heavy,
+      shields: !cls.shieldProf && !!g.shield,
+      martial: !clsMartial && g.weaponMartial,
+    },
+  };
+}
+
 export function canEquip(h, item){
   const cls = CLASSES[h.classKey];
   /* Feats can grant proficiency beyond the class baseline (Lightly/Moderately/

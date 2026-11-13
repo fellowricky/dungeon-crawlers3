@@ -46,7 +46,8 @@ const rollD20 = () => 1 + Math.floor(Math.random() * 20);
 
 /** Initiative modifier: heroes use DEX; monsters derive theirs from speed. */
 function initMod(e) {
-  if (e._side === 'hero') return mod((e.data.effStats && e.data.effStats.dex) || 10) + featInitiativeBonus(e.data);   // Alert: +5
+  if (e._side === 'hero') return mod((e.data.effStats && e.data.effStats.dex) || 10) + featInitiativeBonus(e.data)   // Alert: +5
+    + (e.data.initBonus || 0);   // Vigilance affix
   const spd = (e.data && e.data.speed) || 3;
   return Math.max(-3, Math.min(5, Math.round(spd - 3)));   // nimble = higher
 }
@@ -244,6 +245,11 @@ export const initiativeMethods = {
     /* Time Stop: the caster gets 1d4+1 turns in a row while everyone else is
        frozen. No clock advance either — no time passes for anyone else. */
     const cur = o[this.initiative.idx];
+    /* The end of a turn. A burn here can kill the last foe and end the fight. */
+    if (cur && this.processTurnEndZones) {
+      this.processTurnEndZones(cur);
+      if (!this.initiative.active) return;
+    }
     if (cur && cur._timeStopTurns > 0 && cur.data && cur.data.hp > 0) {
       cur._timeStopTurns--;
       this.fxLog(`⏳ Time stands still — ${cur.data.name} acts again (${cur._timeStopTurns} more).`, 'sys');
@@ -291,6 +297,7 @@ export const initiativeMethods = {
     /* Before the effect sweep wipes 'dominated' and hands the creature back
        its own will next to a party that just won. */
     if (typeof this.resolveDominatedAtCombatEnd === 'function') this.resolveDominatedAtCombatEnd();
+    if (typeof this.talentsFightEnd === 'function') this.talentsFightEnd();   // Arcane Recovery
     const seen = new Set();
     let cleared = 0;
     for (const e of this.initiative.order) {
@@ -300,7 +307,7 @@ export const initiativeMethods = {
       cleared += clearCombatEffects(e);
       /* Per-fight bookkeeping that predates the EFFECTS registry and so isn't
          reachable from clearCombatEffects. */
-      if (e._side === 'mon' || e._side === 'ally') { e.burn = null; e.cutWordsUntil = 0; e._noRegenUntil = 0; }
+      if (e._side === 'mon' || e._side === 'ally') { e.burn = null; e.acid = null; e.cutWordsUntil = 0; e._noRegenUntil = 0; }
       this.fxStatusTray(e);
     }
     for (const h of this.heroes) {

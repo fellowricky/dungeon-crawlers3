@@ -1,9 +1,9 @@
 /**
  * Shop System — an overlay shown between dungeon floors.
  */
-import { rollItem, bonusText, ilvlText, migrateItem, slotsFor, compareItemStats, addToInventory, makeLightSourceItem, BASES, makeConsumableFromBase } from './items.js';
+import { rollItem, addToInventory, makeLightSourceItem, BASES, makeConsumableFromBase } from './items.js';
 import { log, updateResources } from './ui.js';
-import { refreshMenus } from './menus.js';
+import { refreshMenus, partyCompareHTML, consumableCardHTML } from './menus.js';
 
 const IDLE_MS = 30000;  // auto-descend after this long with no interaction
 
@@ -11,6 +11,7 @@ let G = null;
 let open = false;
 let shopInventory = [];
 let selItem = null;
+let cmpPick = null;       // which party member the selected item is compared with (null: whoever gains most)
 let idleDeadline = 0;
 let idleInterval = null;
 
@@ -143,6 +144,7 @@ function renderShop() {
   grid.querySelectorAll('.bag-item').forEach(el => {
     el.addEventListener('click', () => {
       selItem = shopInventory[+el.dataset.i];
+      cmpPick = null;
       renderShop();
     });
   });
@@ -151,54 +153,27 @@ function renderShop() {
   if (selItem) {
     const affordable = G.gold >= selItem.price;
     const isGear = selItem.type === 'gear';
-    let name = selItem.name, desc = selItem.desc || '', slotLine = '';
+    /* The game's one item card, compared against any party member's gear (menus.js
+       partyCompareHTML); potion stacks get the same card look. */
+    let card;
     if (isGear) {
-      migrateItem(selItem.item);
-      const it = selItem.item;
-      name = it.name;
-      slotLine = `<div class="id-slot">${it.slot} — ${it.rarity} · ${ilvlText(it)}</div>`;
-      if (it.scroll || it.potion) {
-        desc = (it.scroll ? 'Casts its spell while equipped, consuming one charge per cast.' : 'Drinkable buff — consumes a charge.')
-          + ` ${it.charges} charge${it.charges === 1 ? '' : 's'}.`;
-      } else {
-        desc = bonusText(it) || 'No bonuses';
-      }
+      const r = partyCompareHTML(selItem.item, G.heroes || [], cmpPick);
+      cmpPick = r.pick;
+      card = r.html;
+    } else {
+      card = consumableCardHTML(selItem.icon, selItem.name, selItem.desc || '');
     }
-
-    let compHTML = '';
-    if (isGear) {
-      const leaderHero = G.heroes?.find(h => !h.temp && h.data?.hp > 0)?.data || G.heroes?.[0]?.data;
-      if (leaderHero && selItem.item.slot !== 'dye') {
-        const opts = slotsFor(selItem.item.slot);
-        const equipped = opts.map(s => leaderHero.equipment?.[s]).find(Boolean) || null;
-        const diffs = compareItemStats(selItem.item, equipped, leaderHero.level);
-        if (diffs.length > 0) {
-          const tags = diffs.map(d => `<span class="diff-tag ${d.isPositive ? 'pos' : (d.isNegative ? 'neg' : 'neutral')}">${d.text}</span>`).join(' ');
-          const eqName = equipped ? equipped.name : '(Empty slot)';
-          compHTML = `
-            <div class="id-compare">
-              <div class="id-compare-header">
-                <span class="id-compare-label">vs ${leaderHero.name} (${eqName}):</span>
-              </div>
-              <div class="id-compare-diffs">${tags}</div>
-            </div>
-          `;
-        }
-      }
-    }
-
     detail.innerHTML = `
-      <div class="item-detail" style="margin-top: 0">
-        <div class="id-name">${renderIcon(isGear ? selItem.item.icon : selItem.icon)} ${name}</div>
-        ${slotLine}
-        <div class="id-bonus">${desc}</div>
-        ${compHTML}
-        <div class="id-actions" style="margin-top:10px">
-          <button id="shop-buy" ${affordable ? '' : 'disabled'}>Buy for ${selItem.price}g</button>
-        </div>
-        ${!affordable ? '<div class="id-warn">Not enough gold.</div>' : ''}
+      <div class="item-card shop-card">${card}</div>
+      <div class="shop-buy-row">
+        <button id="shop-buy" ${affordable ? '' : 'disabled'}>Buy for ${selItem.price}g</button>
+        ${!affordable ? '<span class="id-warn">Not enough gold.</span>' : ''}
       </div>
     `;
+    detail.querySelectorAll('[data-cmp-hero]').forEach(el => el.addEventListener('click', () => {
+      cmpPick = +el.dataset.cmpHero;
+      renderShop();
+    }));
 
     const buyBtn = $('shop-buy');
     if (buyBtn) {
@@ -221,7 +196,7 @@ function renderShop() {
       });
     }
   } else {
-    detail.innerHTML = '<div class="item-detail" style="margin-top:0; text-align:center; color:#6a6558; padding:20px 0;">Select an item to view details.</div>';
+    detail.innerHTML = '<div class="shop-empty">Select an item to see it, and how it compares with each hero\'s gear.</div>';
   }
 
   const descendBtn = $('shop-descend');

@@ -1,0 +1,1606 @@
+{
+ "generated": "2026-11-12T19:35:41.379Z",
+ "seeds": 10,
+ "levels": {
+  "1": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 34,
+     "elite": 8.5,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 37.5,
+     "elite": 9.6,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 42.5,
+     "elite": 10.7,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 55.9,
+     "elite": 10.2,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 64,
+     "elite": 10.5,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 69.1,
+     "elite": 9.3,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 79.3,
+     "elite": 11,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 91.7,
+     "elite": 8.9,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 94.2,
+     "elite": 10.4,
+     "bossRoom": 6,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 98.1,
+     "elite": 12.5,
+     "bossRoom": 6,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 6,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 1
+   }
+  },
+  "2": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 50.1,
+     "elite": 7.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 62.9,
+     "elite": 10.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 71.2,
+     "elite": 10.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 81.5,
+     "elite": 11.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 94,
+     "elite": 11.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 96.4,
+     "elite": 11.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 112.3,
+     "elite": 11.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 125.6,
+     "elite": 8.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 131,
+     "elite": 13.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 149.5,
+     "elite": 11.7,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 6,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 1
+   }
+  },
+  "3": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 57.7,
+     "elite": 9.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 78.9,
+     "elite": 7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 78.7,
+     "elite": 11.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 94.3,
+     "elite": 9.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 101.9,
+     "elite": 11.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 119.4,
+     "elite": 9.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 128.5,
+     "elite": 10.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 140.5,
+     "elite": 13.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 155.8,
+     "elite": 8.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 169.7,
+     "elite": 12.8,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 2
+   }
+  },
+  "4": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 71.1,
+     "elite": 10,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 75.5,
+     "elite": 10,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 95.5,
+     "elite": 12.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 107,
+     "elite": 13.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 121.6,
+     "elite": 11.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 137.3,
+     "elite": 12.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 143.2,
+     "elite": 11.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 163.1,
+     "elite": 11.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 171,
+     "elite": 11.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 186.9,
+     "elite": 9.2,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 3
+   }
+  },
+  "5": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 91.1,
+     "elite": 10.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 96,
+     "elite": 10.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 111.6,
+     "elite": 8.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 124.1,
+     "elite": 11.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 137.2,
+     "elite": 15.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 147,
+     "elite": 12.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 158.3,
+     "elite": 11.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 169.1,
+     "elite": 12.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 185.2,
+     "elite": 11.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 210.8,
+     "elite": 11.8,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 4
+   }
+  },
+  "6": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 109.1,
+     "elite": 11.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 112.9,
+     "elite": 13.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 128.8,
+     "elite": 12.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 139.8,
+     "elite": 12.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 145.8,
+     "elite": 12.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 164.8,
+     "elite": 10.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 176.6,
+     "elite": 11.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 193.9,
+     "elite": 10.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 201.4,
+     "elite": 12.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 221.7,
+     "elite": 8.4,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 4
+   }
+  },
+  "7": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 116.1,
+     "elite": 10.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 130.3,
+     "elite": 10.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 142.6,
+     "elite": 13.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 160.6,
+     "elite": 10.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 179.5,
+     "elite": 9.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 175.7,
+     "elite": 10.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 197.5,
+     "elite": 10.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 213.3,
+     "elite": 9.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 222.9,
+     "elite": 11.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 231.4,
+     "elite": 12,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 5
+   }
+  },
+  "8": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 130.5,
+     "elite": 12.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 142.4,
+     "elite": 13.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 152.9,
+     "elite": 13.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 176.9,
+     "elite": 11.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 190.2,
+     "elite": 11.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 199.7,
+     "elite": 9.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 208.2,
+     "elite": 11.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 219.6,
+     "elite": 11.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 238,
+     "elite": 7.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 242.7,
+     "elite": 13.9,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 5
+   }
+  },
+  "9": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 148.7,
+     "elite": 14,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 154.6,
+     "elite": 13.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 172.3,
+     "elite": 14.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 183.8,
+     "elite": 13.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 201.8,
+     "elite": 11.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 217,
+     "elite": 10.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 222.9,
+     "elite": 12.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 243.2,
+     "elite": 10.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 249.6,
+     "elite": 13.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 266.8,
+     "elite": 10.3,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 6
+   }
+  },
+  "10": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 161.5,
+     "elite": 12.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 171.3,
+     "elite": 13.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 181.4,
+     "elite": 13.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 197.3,
+     "elite": 12.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 211.3,
+     "elite": 15.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 227.3,
+     "elite": 9.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 243.1,
+     "elite": 9.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 246.9,
+     "elite": 12.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 266,
+     "elite": 12.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 286.4,
+     "elite": 14.2,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 6
+   }
+  },
+  "11": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 171.6,
+     "elite": 14,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 182.4,
+     "elite": 11,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 197.9,
+     "elite": 12.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 216.8,
+     "elite": 7.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 228.9,
+     "elite": 11,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 244.7,
+     "elite": 12.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 259,
+     "elite": 11.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 266.5,
+     "elite": 8.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 284.4,
+     "elite": 11.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 297.9,
+     "elite": 14.5,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 7
+   }
+  },
+  "12": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 199,
+     "elite": 7.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 204,
+     "elite": 8.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 216.7,
+     "elite": 8.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 230.1,
+     "elite": 13.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 237.2,
+     "elite": 12.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 264.2,
+     "elite": 11.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 267.6,
+     "elite": 12.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 285.3,
+     "elite": 13.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 300.6,
+     "elite": 12.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 310.3,
+     "elite": 11.6,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 7
+   }
+  },
+  "13": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 204,
+     "elite": 11.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 219,
+     "elite": 11.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 234.6,
+     "elite": 14,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 240.9,
+     "elite": 11.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 256.4,
+     "elite": 11.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 273.4,
+     "elite": 10.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 275.9,
+     "elite": 13.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 288.9,
+     "elite": 15.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 313.8,
+     "elite": 10,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 315.7,
+     "elite": 12.2,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 8
+   }
+  },
+  "14": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 216.2,
+     "elite": 12.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 233,
+     "elite": 9.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 249,
+     "elite": 13.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 262,
+     "elite": 13.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 272.4,
+     "elite": 7.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 280.6,
+     "elite": 14.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 302.3,
+     "elite": 13.3,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 305.9,
+     "elite": 11.5,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 318.2,
+     "elite": 15.8,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 332.3,
+     "elite": 14,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 8
+   }
+  },
+  "15": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 230.3,
+     "elite": 13.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 242.8,
+     "elite": 11.4,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 255,
+     "elite": 13.9,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 275.9,
+     "elite": 13,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 292.8,
+     "elite": 12.1,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 304.9,
+     "elite": 15.6,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 310.5,
+     "elite": 12.2,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 316.9,
+     "elite": 15.7,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 335.7,
+     "elite": 14,
+     "bossRoom": 7,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 348.3,
+     "elite": 13.7,
+     "bossRoom": 7,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 9
+   }
+  },
+  "16": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 281.5,
+     "elite": 10.8,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 297.4,
+     "elite": 12.1,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 311,
+     "elite": 14.1,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 321.5,
+     "elite": 14.9,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 340.5,
+     "elite": 13.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 349.5,
+     "elite": 13.4,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 371.5,
+     "elite": 17,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 383.4,
+     "elite": 13.5,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 404.3,
+     "elite": 16,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 408.4,
+     "elite": 16.3,
+     "bossRoom": 8,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 9
+   }
+  },
+  "17": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 294.4,
+     "elite": 14.4,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 311.4,
+     "elite": 13.2,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 319.1,
+     "elite": 12.5,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 342.7,
+     "elite": 12.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 356.1,
+     "elite": 12.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 379.8,
+     "elite": 15.7,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 393.5,
+     "elite": 14.3,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 412.7,
+     "elite": 12.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 417.5,
+     "elite": 14.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 433.2,
+     "elite": 13.9,
+     "bossRoom": 8,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 10
+   }
+  },
+  "18": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 311.2,
+     "elite": 11,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 324.3,
+     "elite": 15.4,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 337.3,
+     "elite": 16.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 359,
+     "elite": 16,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 384.4,
+     "elite": 11.2,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 388,
+     "elite": 15.2,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 395.8,
+     "elite": 14.2,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 414.9,
+     "elite": 15.2,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 433.5,
+     "elite": 15.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 461.5,
+     "elite": 14.4,
+     "bossRoom": 8,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 10
+   }
+  },
+  "19": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 330.3,
+     "elite": 11.7,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 336.6,
+     "elite": 16.7,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 356.6,
+     "elite": 14.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 370.6,
+     "elite": 14,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 390.2,
+     "elite": 15,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 407.9,
+     "elite": 13.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 423.3,
+     "elite": 14.3,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 433.5,
+     "elite": 14.7,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 453,
+     "elite": 17,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 465.2,
+     "elite": 16,
+     "bossRoom": 8,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 11
+   }
+  },
+  "20": {
+   "dungeon": [
+    {
+     "depth": 1,
+     "normal": 346.6,
+     "elite": 14.9,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 2,
+     "normal": 366.9,
+     "elite": 12.6,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 3,
+     "normal": 380.4,
+     "elite": 14.7,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 4,
+     "normal": 384.8,
+     "elite": 12.8,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 5,
+     "normal": 405.7,
+     "elite": 15.2,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 6,
+     "normal": 420.8,
+     "elite": 11.5,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 7,
+     "normal": 433.2,
+     "elite": 14.8,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 8,
+     "normal": 454.8,
+     "elite": 15.1,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 9,
+     "normal": 465.9,
+     "elite": 14.5,
+     "bossRoom": 8,
+     "n": 10
+    },
+    {
+     "depth": 10,
+     "normal": 477.7,
+     "elite": 15.7,
+     "bossRoom": 8,
+     "n": 10
+    }
+   ],
+   "overland": {
+    "normal": 7,
+    "elite": 0,
+    "n": 10,
+    "spawnLevel": 11
+   }
+  }
+ }
+}

@@ -10,6 +10,15 @@ import { roll } from './srd.js';
 import { addVirtualLight, removeVirtualLight } from './light_sources.js';
 import { spellDC } from './spells.js';
 import { applyEffect, hasEffect } from './conditions.js';
+
+/** A foe in Faerie Fire's area: DEX save, or it is outlined for as long as the caster concentrates. */
+function markFaerieFire(game, zone, actor) {
+  if (hasEffect(actor, 'faerieFire')) return;
+  if (game.spellSave(actor, 'dex', spellDC(zone.caster), { magic: true })) return;
+  if (!applyEffect(actor, 'faerieFire', { duration: 60, elapsed: game.fxNow, source: zone.caster })) return;
+  if (zone.caster?.conc?.targets) zone.caster.conc.targets.push({ e: actor, key: 'faerieFire' });
+  game.fxLog(`✨ ${actor.data?.name || 'Foe'} is outlined by Faerie Fire!`, 'crit');
+}
 import { groundY } from '../dungeon/elevation.js';
 
 /**
@@ -174,6 +183,11 @@ export class PersistentAoEZoneManager {
     /* A concentration "zone" that is only a live visual (Call Lightning's
        storm cloud): fade it out with the spell. */
     if (zone.liveFx) zone.liveFx.remove();
+    /* A zone with a body (Flaming Sphere) gives its tile back. */
+    if (zone.body) {
+      if (game && game.releaseReservation) game.releaseReservation(zone.body);
+      zone.body = null;
+    }
     for (const L of zone._lights || []) removeVirtualLight(L);
     zone._lights = [];
     if (game && game.activeAoEZones) {
@@ -322,6 +336,7 @@ export class PersistentAoEZoneManager {
                   duration: 60,
                   elapsed: game.fxNow,
                   source: zone.caster,
+                  data: { aura: 'entangled' },
                   repeatSave: { ability: 'str', dc, every: 6 }
                 });
                 if (zone.caster?.conc?.targets) {
@@ -332,6 +347,8 @@ export class PersistentAoEZoneManager {
                 game.fxLog(`🌿 ${actor.data?.name || 'Target'} avoids the grasping vines (STR save).`, 'miss');
               }
             }
+          } else if (zone.spellKey === 'faerieFire') {
+            markFaerieFire(game, zone, actor);
           } else if (zone.spellKey === 'web') {
             if (!hasEffect(actor, 'restrained')) {
               const dc = spellDC(zone.caster);
@@ -416,6 +433,7 @@ export class PersistentAoEZoneManager {
                 duration: 60,
                 elapsed: game.fxNow,
                 source: zone.caster,
+                data: { aura: 'entangled' },
                 repeatSave: { ability: 'str', dc, every: 6 }
               });
               if (zone.caster?.conc?.targets) {
@@ -430,6 +448,13 @@ export class PersistentAoEZoneManager {
               game.fxLog(`🌿 ${actor.data?.name || 'Foe'} pulls free from grasping vines (STR save)!`, 'roll');
             }
           }
+        }
+      } else if (zone.spellKey === 'faerieFire') {
+        /* Once a turn, like every other zone's save. */
+        if (!zone.savesThisTurn) zone.savesThisTurn = new Set();
+        if (!zone.savesThisTurn.has(actor)) {
+          zone.savesThisTurn.add(actor);
+          markFaerieFire(game, zone, actor);
         }
       } else if (zone.spellKey === 'oilFire') {
         if (!zone.savesThisTurn) zone.savesThisTurn = new Set();

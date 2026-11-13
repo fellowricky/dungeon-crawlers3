@@ -10,6 +10,8 @@
  * (see game_hooks.js) so the same code runs headlessly in Node.js.
  */
 import { SPELLS } from './spells.js';
+import { PLANNER, planMonsterAbility, monsterTargetReach } from './turn_planner.js';
+import { gridDist, inMortalDanger } from './combat_eval.js';
 import { roll, d as die, d20Roll } from './srd.js';
 import { hasFeature, hasFeat, hasShieldEquipped } from './features.js';
 import { AGGRO_RANGE, COMBAT_JOIN_RANGE, MONSTER_ATTACK_CD, MONSTER_SPEED_MULT,
@@ -126,6 +128,11 @@ export const MONSTER_REPATH_CD = 0.7;
    them. Derived from existing data — no data migration — but any monster can
    override it with `m.data.tactics`
    ('ranged' | 'skirmisher' | 'brute' | 'tank' | 'berserker' | 'standard'). */
+/** Phase 3 monster rules on? (turn_planner PLANNER switches) */
+function planned() {
+  return PLANNER.on && PLANNER.monsters !== false && PLANNER.monsterMoves !== false;
+}
+
 export function monsterCombatStyle(m) {
   const d = (m && m.data) || {};
   if (d.tactics) return d.tactics;
@@ -569,6 +576,11 @@ export const monsterAiMethods = {
         if (h.data.hp / h.data.maxHp < 0.3) score += 1.5;
       }
 
+      /* Reach (turn_planner.monsterTargetReach): a hero it can hit this turn
+         beats one it can't, and a hero it cannot reach at all (across a
+         chasm, behind a shut door) is a last resort. Distance alone hid walls. */
+      if (planned(this)) score += monsterTargetReach(this, m, h);
+
       if (hi === curIdx) score *= TARGET_SWITCH_MARGIN;   // hysteresis
       if (score > best) { best = score; tgt = h; }
     }
@@ -772,6 +784,19 @@ export const monsterAiMethods = {
       /* target out of range or blocked by cover/wall: fall through to chase and close the gap / find an angle */
     }
 
+    /* Out of reach of its target but toe-to-toe with another hero, and the
+       target is not reachable this turn: swing at the one in reach. Walking
+       on would eat an opportunity attack and end the turn without attacking. */
+    if (planned(this) && !m.data.ranged && !m.actUsed && dist > MONSTER_MELEE_RANGE) {
+      const adj = this.monsterAdjacentHero(m);
+      if (adj && !this.monsterReachesThisTurn(m, tgt)) {
+        if (typeof this.clearEntityPath === 'function') this.clearEntityPath(m); else m.path = null;
+        m._tgtIdx = this.heroes.indexOf(adj);
+        this.monsterMelee(m, adj, dt);
+        return;
+      }
+    }
+
     /* Dash / Dodge: the tactical fallbacks for a turn where the monster's
        movement has run out (or it is wedged) and it still can't reach anyone. */
     if (this.monsterTacticalAction(m, tgt, dist, dt)) return;
@@ -818,7 +843,12 @@ export const monsterAiMethods = {
     if (hasFullMove && threatDist <= MONSTER_MELEE_RANGE + 0.3 && !m.disengageActive) {
       const pinnedBy = this.heroes.filter(h => h.data.hp > 0 &&
         Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3).length;
-      if (pinnedBy > 0 && shouldDisengage(m, { pinned: true }) && this.takeCommonAction(m, 'disengage')) {
+      /* A retreat throws away the whole turn's damage, so a healthy-enough
+         monster stands and swings. It runs when one more round would likely
+         drop it (inMortalDanger), or when it is a ranged / skirmishing kiter. */
+      const style = monsterCombatStyle(m);
+      const worthFleeing = !planned(this) || style === 'ranged' || style === 'skirmisher' || inMortalDanger(this, m);
+      if (pinnedBy > 0 && worthFleeing && shouldDisengage(m, { pinned: true }) && this.takeCommonAction(m, 'disengage')) {
         const threats = this.heroes.filter(h => h.data.hp > 0 && Math.hypot(h.x - m.x, h.z - m.z) <= 3.5);
         const fleePath = this.findFleePath(m, threats, m.moveLeft || speedCells, { avoidClosedDoors: true });
         if (fleePath) {
@@ -882,6 +912,35 @@ export const monsterAiMethods = {
     return false;
   },
 
+  /** A living, visible hero in melee reach of `m` (grid-adjacent), lowest HP first. */
+  monsterAdjacentHero(m) {
+    let best = null;
+    for (const h of this.heroes) {
+      if (!h || !h.data || h.data.hp <= 0) continue;
+      if (getEffectMods(h).invisible || !canSee(m, h)) continue;
+      const t = gridDist(this, m, h);
+      if (t < 0 || t > 1) continue;
+      if (!best || h.data.hp < best.data.hp) best = h;
+    }
+    return best;
+  },
+
+  /** Can `m` still walk into melee reach of `tgt` with the movement it has left? */
+  monsterReachesThisTurn(m, tgt) {
+    const budget = m.moveLeft != null ? m.moveLeft : this.cellsForSpeed(m);
+    if (budget <= 0) return false;
+    if (m.path && m.pathI < m.path.length && m.path[m.path.length - 1] != null) {
+      const end = m.path[m.path.length - 1];
+      const W = this.D.W, tc = this.cellOf(tgt.x, tgt.z);
+      const adjEnd = Math.max(Math.abs((end % W) - (tc % W)), Math.abs(Math.floor(end / W) - Math.floor(tc / W))) <= 1;
+      if (adjEnd) return m.path.length - m.pathI <= budget;
+    }
+    const goal = typeof this.approachCellNear === 'function'
+      ? this.approachCellNear(this.cellOf(tgt.x, tgt.z), m) : this.cellOf(tgt.x, tgt.z);
+    const route = this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m });
+    return !!route && route.length - 1 <= budget;
+  },
+
   /** Is `m` under enough pressure to justify bracing with the Dodge action?
       Bloodied, or pinned by several hostiles at once. */
   monsterUnderPressure(m) {
@@ -936,7 +995,11 @@ export const monsterAiMethods = {
       const pinnedBy = this.heroes.filter(h => h.data.hp > 0 &&
         Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3).length;
       const bloodied = monsterHurtFrac(m) >= 0.5;
-      if ((bloodied || pinnedBy > 1) && this.takeCommonAction(m, 'disengage')) {
+      /* Disengage costs the shot. A shooter only gives it up when one more
+         round in melee would likely drop it; otherwise it fires first (below)
+         and backs off on its movement, eating at most one free hit. */
+      const flee = planned(this) ? inMortalDanger(this, m) : (bloodied || pinnedBy > 1);
+      if (flee && this.takeCommonAction(m, 'disengage')) {
         const threats = this.heroes.filter(h => h.data.hp > 0 && Math.hypot(h.x - m.x, h.z - m.z) <= 3.5);
         const fleePath = this.findFleePath(m, threats, m.moveLeft || this.cellsForSpeed(m), { avoidClosedDoors: true });
         if (fleePath) {
@@ -1097,11 +1160,14 @@ export const monsterAiMethods = {
     const atkMods = getEffectMods(m);
     let atkBonus = (m.data.atk != null ? m.data.atk : 4) + (atkMods.atkBonus || 0);
     if (atkMods.blessDice) atkBonus += die(4);
-    const total = d20 + atkBonus;
+    let total = d20 + atkBonus;
     let crit = d20 === 20;
     if (crit) this.triggerHitStop(2);
     const baseAc = this.heroAC(h);
     const ac = baseAc + cover.acBonus;
+    /* Jarring Chord (bard talent): weapon shots only; cantrips are saves */
+    if (!m.data.cantripClass && this.jarringChord) total = this.jarringChord(m, h, total, ac, crit);
+    if (!m.data.cantripClass && this.bendLuckAttack) total = this.bendLuckAttack(m, h, total, ac, crit);
     const from = this.fxChestPos ? this.fxChestPos(m) : this._v3(m.x, 0.55, m.z);
     const to = this._v3(h.x, (this.fxGroundY ? this.fxGroundY(h.x, h.z) : 0) + 0.4, h.z);
 
@@ -1232,11 +1298,16 @@ export const monsterAiMethods = {
     onRelease(() => {
       deliver(color, () => {
       if (h.data.hp <= 0) return;
+      /* Deflect Missiles (Monk L3): knock the shot aside, or catch it */
+      if (this.deflectMissiles) dmg = this.deflectMissiles(h, dmg);
+      if (dmg <= 0) { this.fxPlaySfx(missSfx, { volume: 0.45 }); return; }
       this.fxPlaySfx(hitSfx, { volume: 0.6 });
-      const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg) : (h.data.hp -= dmg, dmg);
+      const mit = {};
+      const dealt = this.applyIncomingDamage ? this.applyIncomingDamage(h, dmg, mit) : (h.data.hp -= dmg, dmg);
       this.fxHitFlash(h.ent);
       if (cantripClass && this.fxPoseHit) this.fxPoseHit(h, m);
-      this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
+      if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, crit ? '#ff5040' : '#ff9a7a', crit);
+      else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
       this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
       if (dealt > 0 && this.applyOnDamagedPerks) this.applyOnDamagedPerks(h, m, dealt);
       if (dealt > 0) this.applyOnHitAbilities(m, h);
@@ -1307,6 +1378,18 @@ export const monsterAiMethods = {
     if (spells) {
       if (silenced) return false;
       if ((m._spellCycle || 0) >= BOSS_SPELL_EVERY) {
+        /* Planned like any other ability: Fireball waits for a clump, Fear
+           skips heroes already frightened, Mass Cure waits for a wound. The
+           cadence counter keeps counting while it waits, so the spell comes
+           out the moment it is worth it. */
+        if (PLANNER.on && PLANNER.monsters !== false) {
+          const pool = spells.filter(k => BOSS_SPELL_FX[k]).map(k => ({ ...BOSS_SPELL_FX[k], key: k }));
+          const choice = pool.length ? planMonsterAbility(this, m, tgt, pool) : null;
+          if (!choice) return false;
+          m._spellCycle = 0;
+          this._castAbilityFx(m, choice.target || tgt, BOSS_SPELL_FX[choice.ab.key], choice.ab.label, choice.ab.key);
+          return true;
+        }
         m._spellCycle = 0;
         this.monsterCastSpell(m, tgt, spells);
         return true;
@@ -1331,11 +1414,19 @@ export const monsterAiMethods = {
       !(a.range != null && dist > a.range) &&
       !(a.minRange != null && dist < a.minRange));
     if (!cyc.length) return false;
-    const ab = cyc[Math.floor(Math.random() * cyc.length)];
+    /* Pick an ability that is actually good right now (turn_planner.planMonsterAbility):
+       an area ability is aimed at the hero standing in the thickest clump and
+       held back while the party is spread out; a heal waits for someone hurt.
+       It used to be a random entry fired at the current target, which is how a
+       breath weapon went off on one hero while three stood clumped a step away. */
+    const planned = PLANNER.on && PLANNER.monsters !== false;
+    const choice = planned ? planMonsterAbility(this, m, tgt, cyc) : null;
+    const ab = choice ? choice.ab : (planned ? null : cyc[Math.floor(Math.random() * cyc.length)]);
+    if (!ab) return false;
     if ((m._spellCycle || 0) < (ab.every || MONSTER_ABILITY_EVERY)) return false;
     m._spellCycle = 0;
     if (ab.maxUses != null) spent[ab.key] = (spent[ab.key] || 0) + 1;
-    this.monsterUseAbility(m, tgt, ab);
+    this.monsterUseAbility(m, (choice && choice.target) || tgt, ab);
     return true;
   },
 
@@ -1445,6 +1536,10 @@ export const monsterAiMethods = {
     this.fxText(label, this._v3(m.x, 1.5, m.z), '#e8c25a');
     if (!fx) return;   // unknown spell → flourish only, no effect
 
+    /* A hero who knows Counterspell can stop it (abjuration.js). The monster's
+       action is spent either way. */
+    if (this.heroCounterspell && this.heroCounterspell(m, key, fx, label)) return;
+
     /* Blink / teleport (blink-dog Teleport, phase-spider Ethereal Jaunt…):
        OA-free reposition, no damage by itself. */
     if (fx.blink) {
@@ -1535,7 +1630,8 @@ export const monsterAiMethods = {
       const statMod = Math.floor((statVal - 10) / 2);
       const calculatedDC = 8 + prof + statMod;
       dc = fx.save.dc != null ? Math.max(fx.save.dc, calculatedDC) : calculatedDC;
-      saveRes = rollSaveDetail(h.data || h, fx.save.ab, dc, { magic: !!fx.magic, adv: mageSlayerAdv });
+      saveRes = rollSaveDetail(h.data || h, fx.save.ab, dc,
+        { magic: isSpell, adv: mageSlayerAdv, vs: fx.effect && fx.effect.key });   // Steadfast
     }
     const saved = saveRes ? saveRes.saved : false;
     this.fxRichAbilityVFX(m, h, fx, label, opts);
@@ -1886,10 +1982,26 @@ export const monsterAiMethods = {
       /* flank: aim for the far side of the target if allies are already
          clustered on it, so melee wraps around instead of stacking */
       const flank = this.flankGoal(m, tgt);
-      if (flank >= 0) goal = flank;
+      const from = this.cellOf(m.x, m.z);
+      let route = null;
+      if (flank >= 0) {
+        goal = flank;
+        /* Wrapping round to the far side is only worth it when the walk fits
+           this turn's movement. A flank that ends a tile short leaves the
+           monster standing next to nobody with its Action unspent — the
+           direct approach attacks this turn instead. */
+        if (planned(this)) {
+          const flankRoute = this.findPath(from, this.nearUnoccupiedGoal(m, flank), { avoidClosedDoors: true, mover: m });
+          const budget = m.moveLeft != null ? m.moveLeft : this.cellsForSpeed(m);
+          if (!flankRoute || flankRoute.length - 1 > budget) {
+            goal = typeof this.approachCellNear === 'function'
+              ? this.approachCellNear(this.cellOf(tgt.x, tgt.z), m) : this.cellOf(tgt.x, tgt.z);
+          } else route = flankRoute;
+        }
+      }
       /* Avoid pathing directly onto a cell already occupied by another monster */
       goal = this.nearUnoccupiedGoal(m, goal);
-      this.setEntityPath(m, this.findPath(this.cellOf(m.x, m.z), goal, { avoidClosedDoors: true, mover: m }));
+      this.setEntityPath(m, route || this.findPath(from, goal, { avoidClosedDoors: true, mover: m }));
     }
     let spd = m.data.speed * MONSTER_SPEED_MULT * mods.speedMul;
     if (m.slowUntil && this.elapsed < m.slowUntil) spd *= 0.5;  // legacy compat
@@ -1914,7 +2026,18 @@ export const monsterAiMethods = {
            bruisers take the opportunity attack like the wall they are. */
         const pinnedBy = this.heroes.filter(h => h.data && h.data.hp > 0 &&
           Math.hypot(h.x - m.x, h.z - m.z) <= MONSTER_MELEE_RANGE + 0.3).length;
-        if (shouldDisengage(m, { pinned: pinnedBy > 0 })
+        /* Mid-approach, a Disengage spends the Action that the monster was
+           walking up to use: it arrives and cannot attack. Something already
+           in reach is the better use of the turn. (Retreating is decided at
+           turn start, in monsterTacticalAction.) */
+        const inReach = planned(this) && !m.actUsed ? this.monsterAdjacentHero(m) : null;
+        if (inReach) {
+          m.path = null; m.walk = false; m.moving = false;
+          m._tgtIdx = this.heroes.indexOf(inReach);
+          this.monsterMelee(m, inReach, dt);
+          return;
+        }
+        if (!planned(this) && shouldDisengage(m, { pinned: pinnedBy > 0 })
             && !m.actUsed && this.takeCommonAction(m, 'disengage')) {
           this.fxLog(`💨 ${m.data.name} Disengages to avoid opportunity attacks.`, 'sys');
         } else if (Math.hypot(tgt.x - m.x, tgt.z - m.z) <= MONSTER_MELEE_RANGE) {
@@ -2022,7 +2145,7 @@ export const monsterAiMethods = {
     const atkMods = getEffectMods(m);
     let atkBonus = (m.data.atk != null ? m.data.atk : 4) + (atkMods.atkBonus || 0);
     if (atkMods.blessDice) atkBonus += die(4);
-    const total = d20 + atkBonus;
+    let total = d20 + atkBonus;
     let crit = d20 === 20;
     /* defender auto-crit on melee (paralyzed/unconscious) */
     if (getEffectMods(h).autoCritMelee) crit = true;
@@ -2030,6 +2153,9 @@ export const monsterAiMethods = {
     let ac = this.heroAC(h);
     /* Defensive Duelist: a finesse fighter may parry one melee hit per round */
     if (!crit && this.defensiveDuelistParry) ac += this.defensiveDuelistParry(h, total, ac);
+    /* Jarring Chord (bard talent): a nearby bard's note may spoil the blow */
+    if (this.jarringChord) total = this.jarringChord(m, h, total, ac, crit);
+    if (this.bendLuckAttack) total = this.bendLuckAttack(m, h, total, ac, crit);
     /* The outcome is decided now, but the CONSEQUENCES wait for the swing to
        reach its contact pose - otherwise the damage number and hit spark appear
        while the creature is still winding up. 0 for un-animated monsters, which
@@ -2051,6 +2177,8 @@ export const monsterAiMethods = {
         this.fxPlaySfx(Math.random() < 0.5 ? 'swordBlock' : 'swordParry', { volume: 0.5 });
         this.fxLog(`${m.data.name} → ${h.data.name}: miss`, 'miss',
           { detail: `(${total} vs AC ${ac}${adv > 0 ? ', adv' : adv < 0 ? ', dis' : ''})` });
+        /* Counterstrike (fighter talent): the miss opens the monster up */
+        if (this.counterstrike) this.counterstrike(m, h);
       });
       return;
     }
@@ -2100,7 +2228,7 @@ export const monsterAiMethods = {
       const soak = this.describeMitigation ? this.describeMitigation(mit, dmg, dealt) : '';
       this.fxLog(`${m.data.name} hits ${h.data.name} for ${dealt}${crit ? ' (crit!)' : ''}${soak}`,
         crit ? 'down' : 'roll', { cat: 'hitmiss' });
-      if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, crit ? '#ff5040' : '#ff9a7a');
+      if (this.fxDamageNumber) this.fxDamageNumber(h, dealt, mit, crit ? '#ff5040' : '#ff9a7a', crit);
       else this.fxText(String(dealt), this._v3(h.x, 1.2, h.z), crit ? '#ff5040' : '#ff9a7a');
       this.fxDrawBar(h.ent.bar, Math.max(0, h.data.hp / h.data.maxHp));
       /* legendary defensive perks (thorns / riposte) */

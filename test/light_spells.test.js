@@ -45,7 +45,7 @@ describe('light spells & class light abilities', () => {
 
   it('Darkness makes a zone of magical dark; Daylight dispels it and keeps a darkmantle snuffed', () => {
     clearLightRegistry();
-    const g = game();
+    const g = game({ playAbilityFx: (_h, _k, opts) => opts.onImpact && opts.onImpact() });   // the zone arrives with the mote
     const caster = { x: 0, z: 0, data: makeHero('W', 'human', 'wizard') };
     expect(SPELLS.darkness.cast(g, caster, { x: 5, z: 5 })).toBe(true);
     expect(DARK_ZONES.size).toBe(1);

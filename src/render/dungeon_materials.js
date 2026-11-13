@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../dungeon/dungeon_generator.js';
 import { cutawayPatch } from './wall_cutaway.js';
+import { darkMaskPatch } from './darkness.js';
 
 const _headlessCtx = new Proxy({
   getImageData: (x, y, w = 1, h = 1) => ({ data: new Uint8Array(w * h * 4) }),
@@ -1066,7 +1067,6 @@ export const matGlow  = new THREE.MeshBasicMaterial({color:0xffffff});
 matGlow.toneMapped = false;
 export const matCloth = new THREE.MeshLambertMaterial({side:THREE.DoubleSide});
 export const matIce   = new THREE.MeshStandardMaterial({roughness:0.16, metalness:0.02, transparent:true, opacity:0.88});
-export const matMoss  = new THREE.MeshLambertMaterial();
 export const matBark  = new THREE.MeshStandardMaterial({map:TEX.wood, roughness:0.88, metalness:0.04});
 export const matGrass = new THREE.MeshStandardMaterial({map:TEX.grass, color:0xa2bf86, roughness:0.92, metalness:0});
 matGrass.onBeforeCompile = (shader) => {
@@ -1588,6 +1588,20 @@ export const partMat = new THREE.ShaderMaterial({
         p.x += sin(uTime*0.45 + s*35.0)*0.45 + (t-0.5)*1.8;
         p.z += cos(uTime*0.4 + s*42.0)*0.45 + (t-0.5)*1.2;
         vA = 0.65 * smoothstep(0.0, 0.06, t) * smoothstep(1.0, 0.92, t);
+      } else if(uKind < 7.5){     /* blizzard: dense, fast, wind-driven, mostly sideways */
+        float fs = h(s+3.1);
+        sz = 1.6 + 3.0 * fs;
+        if(fs > 0.88) sz += 2.0;                         /* a few big clumps close to the eye */
+        t = fract(uTime * (0.38 + 0.30 * h(s+7.2)) + s); /* ~1.5-2.6 s across the view */
+        float gust = 1.0 + 0.55 * sin(uTime * 0.9 + position.x * 0.06 + position.z * 0.04);
+        p.y += (1.0 - t) * 4.2 - 0.1;
+        p.x += (t - 0.5) * 9.0 * gust;
+        p.z += (t - 0.5) * 4.2 * gust;
+        /* eddies: flakes tumble around the wind line instead of riding it */
+        p.x += sin(uTime * 3.1 + s * 41.0) * 0.30;
+        p.y += sin(uTime * 2.3 + s * 57.0) * 0.22;
+        p.z += cos(uTime * 2.7 + s * 33.0) * 0.30;
+        vA = (0.62 + 0.30 * fs) * smoothstep(0.0, 0.08, t) * smoothstep(1.0, 0.86, t);
       } else {                    /* default ambient fallback */
         sz = 2.0 + 2.0*h(s+3.1);
         p.x += sin(uTime*0.2 + s*17.0)*0.2;
@@ -1624,6 +1638,10 @@ export const partMat = new THREE.ShaderMaterial({
         col = mix(vec3(0.88, 0.94, 1.0), vColor, 0.15);
       } else if(vKind > 5.5 && vKind < 6.5){
         a = smoothstep(0.5, 0.12, d) * vA;
+      } else if(vKind > 6.5 && vKind < 7.5){
+        /* blizzard: firm white core so flakes read against snow (normal blend) */
+        a = smoothstep(0.5, 0.22, d) * vA;
+        col = mix(vec3(0.97, 0.99, 1.0), vColor, 0.10);
       } else {
         a = smoothstep(0.5, 0.0, d) * vA;
       }
@@ -1672,8 +1690,8 @@ export const fogPlaneMat = new THREE.ShaderMaterial({
       return mix(mix(a,b,f.x), mix(c,d,f.x), f.y);
     }
     float fbm(vec2 p){
-      float v=0.0, a=0.5;
-      for(int i=0;i<4;i++){ v+=a*vnoise(p); p=p*2.03+11.7; a*=0.5; }
+      float v=0.0, a=0.625;
+      for(int i=0;i<2;i++){ v+=a*vnoise(p); p=p*2.03+11.7; a*=0.5; }
       return v;
     }
 
@@ -1682,7 +1700,6 @@ export const fogPlaneMat = new THREE.ShaderMaterial({
       // Multi-layer wind drift: sweeping diagonal highland breeze + micro swirls
       vec2 drift1 = vec2(uTime * uSpeed * 1.6, uTime * uSpeed * 0.95);
       vec2 drift2 = vec2(-uTime * uSpeed * 0.6, uTime * uSpeed * 1.3) + vec2(17.3, 42.1);
-      vec2 drift3 = vec2(uTime * uSpeed * 0.35, -uTime * uSpeed * 0.45) + vec2(83.7, 29.4);
       
       // Domain warping for organic wisps and drifting fingers of fog
       float q1 = fbm(wp * 0.85 + drift1);
@@ -1691,9 +1708,8 @@ export const fogPlaneMat = new THREE.ShaderMaterial({
 
       float n1 = fbm(warped + drift1 * 0.5);
       float n2 = fbm(warped * 1.6 - drift2 * 0.7);
-      float n3 = fbm(warped * 2.8 + drift3);
 
-      float rawVal = n1 * 0.55 + n2 * 0.32 + n3 * 0.13;
+      float rawVal = n1 * 0.63 + n2 * 0.37;
 
       // High-contrast threshold: wide clear areas (rawVal < 0.48 are 100% transparent),
       // rolling mist banks form above 0.48 with wispy feathering up to 0.72.
@@ -1746,12 +1762,14 @@ export const POST = (()=>{
       uFocusA:{value:new THREE.Vector2(0.5, 0.48)},
       uFocusB:{value:new THREE.Vector2(0.5, 0.48)},
       uFocusRadius:{value:0.24},
+      tFocus:{value:null}, uMaskOn:{value:0.0},       // the focus mask (dungeon_scene renderFocusMask)
+      uBandY:{value:0.48}, uExploreFade:{value:1.0},  // the explore band: the party's screen height, faded as the camera pulls out
       uSunScreen:{value:new THREE.Vector2(0.85, 1.25)},
       uSunDir:{value:new THREE.Vector2(0.35, 0.93)},
       uGodRayIntensity:{value:0.0},
       uGodRayColor:{value:new THREE.Color(0xfff4db)} }, vertexShader:V, fragmentShader:`
-    varying vec2 vUv; uniform sampler2D tS, tB; uniform vec2 uRes;
-    uniform float uTime, uBloom, uTilt, uGrain, uCombatFocus, uFocusRadius, uGodRayIntensity;
+    varying vec2 vUv; uniform sampler2D tS, tB, tFocus; uniform vec2 uRes;
+    uniform float uTime, uBloom, uTilt, uGrain, uCombatFocus, uFocusRadius, uGodRayIntensity, uMaskOn, uBandY, uExploreFade;
     uniform vec2 uFocusA, uFocusB, uSunScreen, uSunDir;
     uniform vec3 uGodRayColor;
     void main(){
@@ -1762,32 +1780,31 @@ export const POST = (()=>{
       float aspect = uRes.x / max(1.0, uRes.y);
       vec2 aspectVec = vec2(aspect, 1.0);
 
-      // Baseline exploration tilt-shift: focal horizontal band across the party plane
-      float dLinear = abs(vUv.y - 0.48);
-      float exploreBand = smoothstep(0.08, 0.42, dLinear);
+      // Exploring: a soft horizontal band that follows the party up and down the screen,
+      // fading out as the camera pulls back to the overview.
+      // (Sharp for 6% of the screen either side of the party, fully soft 30% away:
+      //  the old 8%..42% only reached the screen edge, where it read as nothing.)
+      float exploreBand = smoothstep(0.06, 0.30, abs(vUv.y - uBandY)) * uExploreFade;
 
-      // Dynamic Combat Action Focus:
-      // Capsule connecting Action Taker (A) to Action Receiver (B).
-      // Both actors, plus the entire attack trajectory / spell beam flying between them, remain in sharp focus.
+      // In combat: sharp wherever the focus mask says a creature in play is drawn (the
+      // acting creature and every declared target, softened round the edges), and
+      // along a thin capsule from the actor to its first target so a projectile stays
+      // sharp in flight. Its radius comes in world units, so zoom doesn't change it.
       vec2 p = vUv * aspectVec;
       vec2 focA = uFocusA * aspectVec;
       vec2 focB = uFocusB * aspectVec;
       vec2 ab = focB - focA;
       float lenSq = dot(ab, ab);
       float t = lenSq > 0.00001 ? clamp(dot(p - focA, ab) / lenSq, 0.0, 1.0) : 0.0;
-      vec2 closest = focA + t * ab;
-      float dAction = length(p - closest);
+      float dAction = length(p - (focA + t * ab));
+      float capsuleSharp = 1.0 - smoothstep(uFocusRadius, uFocusRadius * 1.9 + 0.01, dAction);
+      float maskSharp = smoothstep(0.04, 0.32, texture2D(tFocus, vUv).r) * uMaskOn;
+      float actionBand = 1.0 - max(capsuleSharp, maskSharp);
 
-      // Inside uFocusRadius: 100% razor-sharp focus (blur = 0). Outside: lush cinematic bokeh.
-      float actionBand = smoothstep(uFocusRadius, uFocusRadius + 0.22, dAction);
+      float band = mix(exploreBand, actionBand, uCombatFocus) * uTilt;
 
-      // In combat, both the active actor and target unit (plus the action line between them)
-      // are guaranteed 100% razor-sharp clarity without background tilt bleed.
-      float combatBand = mix(exploreBand, actionBand, uCombatFocus);
-      float band = (uCombatFocus > 0.01 ? min(combatBand, actionBand) : exploreBand) * uTilt;
-
-      // In combat, max bokeh is significantly stronger (12.0px) to isolate the clash and eliminate visual clutter
-      float maxBokeh = mix(5.8, 12.0, uCombatFocus);
+      // Combat blur is half its old 11 px: at full strength it smeared the field too much
+      float maxBokeh = mix(9.0, 5.5, uCombatFocus);   // exploring was 5.8 px: too faint to read on pixel art
       float r = band * maxBokeh;
 
       // 12-point dual-ring Poisson disc with chromatic dispersion for clean optical lens bokeh
@@ -2252,6 +2269,7 @@ function propPixelizeFragment(src) {
 export function propBlendPatch(mat) {
   if (Array.isArray(mat)) { mat.forEach(propBlendPatch); return mat; }
   if (!mat || (mat.userData && mat.userData.propBlend)) return mat;
+  darkMaskPatch(mat);   // props can finish loading mid-level; the level-load sweep wouldn't see them
   if (!(mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial ||
         mat.isMeshLambertMaterial || mat.isMeshPhongMaterial || mat.isMeshToonMaterial ||
         mat.isMeshBasicMaterial)) return mat;
@@ -2304,7 +2322,6 @@ const PROP_PIXEL_MATERIALS = [
   [matBark, 0.08],
   [matBoneStone, 0.12],
   [matCeramic, 0.10],
-  [matMoss, 0.12],
   [matIvy, 0],
   [matSwampGrass, 0.06],
   [matLeaf, 0.06],

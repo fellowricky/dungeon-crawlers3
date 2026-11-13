@@ -140,7 +140,10 @@ def build():
         "  border:2px solid; box-sizing:content-box;\n"        # colour set inline per class
         "  box-shadow:inset 0 0 0 1px rgba(0,0,0,.7), 2px 2px 0 rgba(0,0,0,.5);\n"))
     css.append(rule(['.pframe .pf-dot'], "  display:none;\n"))          # the ring carries the class colour now
-    css.append(rule(['.pframe .pf-hpbar'], "  clear:both;\n"))
+    # HP bar tucks up beside the portrait, under the name (44px = 32 portrait
+    # + 2x2 border + 8 margin); the rows after it clear the float.
+    css.append(rule(['.pframe .pf-hpbar'], "  margin-left:44px;\n"))
+    css.append(rule(['.pframe .pf-abils', '.pframe .pf-effects'], "  clear:both;\n"))
     css.append(rule(['.pframe.down .pf-portrait'], "  filter:grayscale(1) brightness(.6);\n"))
 
     # -- Party-frame bars: stone trough at 1x, fill shows through the groove --

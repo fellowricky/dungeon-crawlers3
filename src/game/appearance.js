@@ -295,11 +295,16 @@ export function recolorPixels(d, tintHex, matchLightness = false) {
       const [cr, cg, cb] = hslToRgb(th, ts, l);
       d[i] = cr; d[i+1] = cg; d[i+2] = cb;
     } else {
-      /* Equipment tint: multiply RGB channels (same as canvas multiply blend mode).
-         Keeps shading and highlights while rendering dark/dyed gear accurately. */
-      d[i]     = (d[i]   * tr) / 255 | 0;
-      d[i + 1] = (d[i+1] * tg) / 255 | 0;
-      d[i + 2] = (d[i+2] * tb) / 255 | 0;
+      /* Equipment tint: multiply the tint by the pixel's brightness (its
+         brightest channel), not by its colour. Most gear sheets are near-grey,
+         where the two are the same, but a sheet drawn in colour (the blue
+         tabard, brown leather) was multiplied channel by channel: blue x the
+         orange Inferno dye came out dark green. Shading is kept; the hue is
+         the tint's. */
+      const v = Math.max(d[i], d[i+1], d[i+2]);
+      d[i]     = (v * tr) / 255 | 0;
+      d[i + 1] = (v * tg) / 255 | 0;
+      d[i + 2] = (v * tb) / 255 | 0;
     }
   }
 }
@@ -371,7 +376,7 @@ export const EYE_COLORS = [
    a real swatch. */
 const RACE_DEFAULTS = {
   human:      { head:'',           skinColor:'#f6d0b4', hairColor:'#6b451f', ears:'none',  horns:'none',      facialHair:'none',         eyeColor:'#4a3018', spriteScaleX:1.00, spriteScaleY:1.00 },
-  elf:        { head:'',           skinColor:'#ffe3d0', hairColor:'#e8c878', ears:'elven', horns:'none',      facialHair:'none',         eyeColor:'#7fc8e8', spriteScaleX:1.00, spriteScaleY:1.00 },
+  elf:        { head:'',           skinColor:'#ffe3d0', hairColor:'#e8c878', ears:'elven', horns:'none',      facialHair:'none',         eyeColor:'#7fc8e8', spriteScaleX:1.00, spriteScaleY:1.08 },
   halfelf:    { head:'',           skinColor:'#ffe3d0', hairColor:'#e8c878', ears:'elven', horns:'none',      facialHair:'none',         eyeColor:'#7fc8e8', spriteScaleX:1.00, spriteScaleY:1.00 },
   dwarf:      { head:'',           skinColor:'#eab98d', hairColor:'#b07d3c', ears:'none',  horns:'none',      facialHair:'beard/medium', eyeColor:'#4a3018', spriteScaleX:1.15, spriteScaleY:0.85 },
   halfling:   { head:'',           skinColor:'#f6d0b4', hairColor:'#6b451f', ears:'none',  horns:'none',      facialHair:'none',         eyeColor:'#7a4a20', spriteScaleX:0.82, spriteScaleY:0.82 },
@@ -381,6 +386,27 @@ const RACE_DEFAULTS = {
   tiefling:   { head:'',           skinColor:'#c0182b', hairColor:'#241a12', ears:'elven', horns:'backwards', facialHair:'none',         eyeColor:'#d8b03a', spriteScaleX:1.00, spriteScaleY:1.00, hornTint:'skin' }
 };
 export const getRaceDefaults = raceKey => ({ ...(RACE_DEFAULTS[raceKey] || RACE_DEFAULTS.human) });
+
+/* How a hero's spriteScaleX/Y is spent. A uniform scale (halfling, gnome)
+   shrinks the whole figure, which keeps every proportion, so the quad takes it.
+   A non-uniform one (dwarf: wider, shorter) is a build, and squashing the whole
+   quad squashed the face too. That goes into the body layers at compose time
+   instead (sprite_animator.js squatPlan), and the head stays its natural
+   shape. Keyed off the visual's own numbers, so saved heroes, which carry a
+   copy of the scales, pick this up with no migration. */
+export function heroShape(visual) {
+  const sx = (visual && visual.spriteScaleX) || 1.0;
+  const sy = (visual && visual.spriteScaleY) || 1.0;
+  if (Math.abs(sx - sy) < 1e-6) return { quadX: sx, quadY: sy, bodyX: 1, bodyY: 1 };
+  return { quadX: 1, quadY: 1, bodyX: sx, bodyY: sy };
+}
+
+/* Layers that belong to the head. Under a body build they keep their size and
+   ride down with the neck; everything else (body, clothes, gear) is squashed. */
+export const HEAD_LAYERS = new Set([
+  'horns_behind', 'hairBehind', 'hairExtBehind', 'head', 'eyes', 'ears', 'horns',
+  'facialHair', 'hairMid', 'hair', 'hairExtMid', 'hairExt', 'helm', 'visor'
+]);
 
 /* Nearest palette entry to an arbitrary hex, by RGB distance. Saved heroes
    carry colours from before the recolour respected lightness — those hexes
@@ -412,6 +438,13 @@ export function migrateVisualColors(visual, raceKey){
      alone can't identify the race (a dragonborn may wear backswept horns), so
      take it from the race the hero actually is. */
   if (!visual.hornTint) visual.hornTint = getRaceDefaults(raceKey).hornTint || 'hair';
+  /* The race build isn't a player choice, just a copy of the race's scales made
+     at creation, so a retuned race (taller elves) reaches saved heroes too. */
+  if (RACE_DEFAULTS[raceKey] && !visual.singleImage && !visual.animations) {   // companions keep their own
+    const rd = RACE_DEFAULTS[raceKey];
+    visual.spriteScaleX = rd.spriteScaleX || 1.0;
+    visual.spriteScaleY = rd.spriteScaleY || 1.0;
+  }
   visual.skinColor = nearest(visual.skinColor, skinColorsFor(raceKey));
   visual.hairColor = nearest(visual.hairColor, HAIR_COLORS);
   visual.eyeColor  = nearest(visual.eyeColor, EYE_COLORS);
@@ -555,6 +588,9 @@ const CAPES_WITH_BACK = new Set(['solid', 'tattered']);
 const WEAPONS_WITHOUT_BACK = new Set(['ranged/crossbow']);
 
 // LPC hats that ship as male/female sheets instead of a unisex adult sheet
+/** Helm visuals (prefixes) worn over the hair, not covering it: the hair stays drawn. */
+export const HELMS_SHOWING_HAIR = ['headband/'];
+
 const GENDERED_HATS = new Set([
   'helmet/barbuta', 'helmet/close', 'helmet/greathelm', 'helmet/sugarloaf',
   'helmet/flattop', 'helmet/sugarloaf_simple'
@@ -609,6 +645,10 @@ export function buildLayerPaths(visual, equipment = {}) {
        visor sprite layers are dropped — the item stays equipped, so its stat
        bonuses and its tint on other layers are untouched. */
     const hideHatsToggle = !!(visual && (visual.hideHelm || visual.hideHat));
+    /* A visible helm hides the hair: big styles stuck out from behind the helm
+       layer. Beards stay (they sit below the helm line), and so does hair under
+       headgear that is worn over it rather than covering it. */
+    const helmHidesHair = !!(h && !hideHatsToggle && !HELMS_SHOWING_HAIR.some(pre => h.startsWith(pre)));
     return {
       cape_behind: (cape && CAPES_WITH_BACK.has(cape)) ? `cape_behind/${cape}` : null,
       cape: cape ? `cape/${cape}` : null,
@@ -632,7 +672,7 @@ export function buildLayerPaths(visual, equipment = {}) {
       gloves: glv ? `${glv}/${clothG === 'male' ? 'male' : 'thin'}` : null,
       neck: nk ? `neck/${nk}/${hatG}` : null,
       facialHair: (isMonster || customHead || !visual.facialHair || visual.facialHair === 'none') ? null : `beards/${visual.facialHair}`,
-      ...hairLayerPaths(visual, isMonster || !!customHead),
+      ...hairLayerPaths(visual, isMonster || !!customHead || helmHidesHair),
       helm: (h && !hideHatsToggle) ? `hat/${h}/${GENDERED_HATS.has(h) ? hatG : 'adult'}` : null,
       visor: (v && !hideHatsToggle) ? `hat/visor/${v}/adult` : null,
       shield: sh ? (sh === 'round' ? `shield/${sh}` : `shield/${sh}/${clothG}`) : null,

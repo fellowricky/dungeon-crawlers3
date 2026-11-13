@@ -91,7 +91,7 @@ describe('Warlock Eldritch Blast & Invocations Engine', () => {
   it('should cast expanded 5e spells Chromatic Orb, Flaming Sphere, and Cloudkill', () => {
     const mockGame = {
       markSpellUsed: vi.fn(),
-      playAbilityFx: vi.fn(),
+      playAbilityFx: vi.fn((_h, _key, o) => o?.onImpact?.()),
       fxLog: vi.fn(),
       fxProjectile: (from, to, type, color, onDetonate) => onDetonate(),
       spawnAoEZone: vi.fn().mockReturnValue({ id: 1 }),
@@ -112,7 +112,7 @@ describe('Warlock Eldritch Blast & Invocations Engine', () => {
 
     // Flaming Sphere
     SPELLS.flamingSphere.cast(mockGame, hero, target, [], 2);
-    expect(mockGame.spawnAoEZone).toHaveBeenCalledWith(hero, 'flamingSphere', 5, 5, 2.2, expect.anything());
+    expect(mockGame.spawnAoEZone).toHaveBeenCalledWith(hero, 'flamingSphere', expect.any(Number), expect.any(Number), 1.5, expect.anything());
 
     // Cloudkill
     SPELLS.cloudkill.cast(mockGame, hero, target, [], 5);

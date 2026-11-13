@@ -20,7 +20,6 @@ describe('Solid Props & Impassable Terrain', () => {
     expect(SOLID_PROP_KINDS.has('rocks')).toBe(false);
     expect(SOLID_PROP_KINDS.has('bonePile')).toBe(false);
     expect(SOLID_PROP_KINDS.has('debris')).toBe(false);
-    expect(SOLID_PROP_KINDS.has('moss')).toBe(false);
     expect(SOLID_PROP_KINDS.has('candle')).toBe(false);
   });
 

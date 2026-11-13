@@ -47,6 +47,40 @@ export const ELEM_TYPES = ['fire', 'cold', 'lightning', 'acid', 'poison', 'necro
 export const ELEM_KEYS = ELEM_TYPES.map(t => 'elem' + t[0].toUpperCase() + t.slice(1));
 export const SLOT_SPELL_KEYS = Array.from({ length: 9 }, (_, i) => 'slot' + (i + 1));
 
+/* Warding: flat damage reduction against one elemental type (wardFire…). */
+export const WARD_KEYS = ELEM_TYPES.map(t => 'ward' + t[0].toUpperCase() + t.slice(1));
+
+/* Bane: flat bonus damage against one creature type (baneUndead…). The types
+   are the monsters.json `type` values; "swarm of tiny beasts" counts as beast. */
+export const BANE_TYPES = ['beast', 'humanoid', 'undead', 'fiend', 'monstrosity', 'fey',
+  'elemental', 'giant', 'ooze', 'construct', 'dragon', 'aberration', 'celestial', 'plant'];
+export const BANE_KEYS = BANE_TYPES.map(t => 'bane' + t[0].toUpperCase() + t.slice(1));
+
+/* Steadfast: +N to saving throws against a GROUP of conditions. Grouped so
+   the affix pool isn't twenty near-identical lines. */
+export const STEADFAST_GROUPS = {
+  steadMind: { label: 'Mind', conditions: ['frightened', 'charmed', 'dominated', 'mocked'] },
+  steadBody: { label: 'Body', conditions: ['poisoned', 'stunned', 'incapacitated', 'drained'] },
+  steadMove: { label: 'Movement', conditions: ['paralyzed', 'restrained', 'slowed', 'rooted', 'prone'] },
+};
+export const STEADFAST_KEYS = Object.keys(STEADFAST_GROUPS);
+
+/* Bonus keys whose value is a PERCENT, so tooltips print "+5% Magic Find". */
+export const PCT_KEYS = ['magicFind', 'goldFind', 'potionHeal'];
+
+/** Damage type behind a `wardFire`-style key, or null. */
+export function wardTypeOf(key) {
+  if (!key.startsWith('ward')) return null;
+  const t = key.slice(4).toLowerCase();
+  return ELEM_TYPES.includes(t) ? t : null;
+}
+/** Creature type behind a `baneUndead`-style key, or null. */
+export function baneTypeOf(key) {
+  if (!key.startsWith('bane')) return null;
+  const t = key.slice(4).toLowerCase();
+  return BANE_TYPES.includes(t) ? t : null;
+}
+
 /** Damage type behind an `elemFire`-style key, or null. */
 export function elemTypeOf(key) {
   if (!key.startsWith('elem')) return null;
@@ -73,8 +107,23 @@ export function saveAbilityOf(key) {
  * a point is far inside the valuation harness's measurement error anyway.
  */
 export function unitCost(key) {
+  return Math.round(rawUnitCost(key));
+}
+
+/* Unrounded per-unit cost. Percent keys (Magic Find, potion healing) are
+   priced below a point per percent, so bonusCost rounds the TOTAL for those
+   rather than each unit — otherwise they would all price at zero. */
+function rawUnitCost(key) {
   const c = T.costs;
-  if (key in c && typeof c[key] === 'number') return Math.round(c[key]);
+  if (key in c && typeof c[key] === 'number') return c[key];
+  if (wardTypeOf(key)) return c.ward || 0;
+  if (baneTypeOf(key)) return c.bane || 0;
+  if (STEADFAST_GROUPS[key]) return c.steadfast || 0;
+  return unitCostDerived(key);
+}
+
+function unitCostDerived(key) {
+  const c = T.costs;
 
   const lvl = slotLevelOf(key);
   if (lvl != null) return Math.round(c.spellSlotBase + lvl * c.spellSlotPerLevel);
@@ -90,7 +139,10 @@ export function unitCost(key) {
 /** Points for `value` units of `key`. */
 export function bonusCost(key, value) {
   if (!value) return 0;
-  return unitCost(key) * value;
+  const raw = rawUnitCost(key);
+  /* Whole-number unit costs keep the old exact arithmetic; only fractional
+     direct costs (percent keys) round the total. */
+  return Number.isInteger(raw) ? raw * value : Math.round(raw * value);
 }
 
 /**
@@ -141,6 +193,15 @@ export function baseChassisCost(slot, base) {
   if (base.dmg) {
     const above = diceAvg(base.dmg) - diceAvg([1, bp.damageDieRef]);
     if (above > 0) cost += above * T.costs.dmg;
+    /* Versatile: the two-handed grip steps the die up one size (srd.js
+       versatileDie), but only with an EMPTY off-hand — the wielder pays for it
+       by giving up a shield. So it is charged a share of the step, not all of
+       it. Two-handed bases never get the step, so they are never charged. */
+    if (base.versatile && !base.twoHanded) {
+      const sides = base.dmg[1] || 4;
+      const step = base.dmg[0] * (Math.min(12, sides + 2) - sides) / 2;
+      cost += step * T.costs.dmg * (bp.versatileShare ?? 0.5);
+    }
     if (base.melee === false) cost *= bp.rangedMult;
     if (base.twoHanded) cost *= bp.twoHandedDiscount;
   }
@@ -158,7 +219,9 @@ export function baseChassisCost(slot, base) {
      The maths is slot-agnostic — cost and budget both carry `slotWeight`, so a
      helm tier lands on its ilvl exactly as an armor tier does. Any slot listed
      in `tierIlvl` gets this treatment; slots absent from it (shields) keep
-     pricing off `acBase` below.
+     pricing off `acBase` below. Helms are deliberately NOT tiered: their
+     AC is priced like an AC affix (+1 AC = costs.ac), so a +2 AC helm costs
+     exactly what +2 AC from an affix would.
 
      The charge is the whole base-share of that level's budget, which is exactly
      what makes the base land there: `baseAffordable` allows up to
@@ -172,8 +235,12 @@ export function baseChassisCost(slot, base) {
      at its unlock level, so it arrives nearly bare and only gains affixes as
      the party outlevels it. */
   const tiers = (bp.tierIlvl || {})[slot];
-  const tierPriced = tiers && tiers.length
-    && (base.tier != null || base.armorBase || base.acBase);
+  /* Only a base that actually PROTECTS pays for a tier. A cloth hood or hat
+     with acBase 0 has no intrinsic stat, so its tier is just an unlock rung:
+     charging it would give a bare Rag Hood a power score with nothing behind
+     it. Such a base costs 0 and spends its whole budget on affixes. */
+  const protective = (base.armorBase > 0) || (base.acBase > 0);
+  const tierPriced = tiers && tiers.length && protective;
   if (tierPriced) {
     /* A protective base with no tier is a data error. Charge it the LAST rung
        so the failure mode is "does not drop until late" rather than a cheap
@@ -295,6 +362,11 @@ export function sourceIlvl(source, tier, rng = Math.random) {
 
 export const BONUS_LABEL = {
   ac: 'AC', atk: 'Hit', dmg: 'Dmg', hp: 'HP', crit: 'Crit', heal: 'Heal',
+  fightTempHp: 'Fight Temp HP',
+  spellDC: 'Spell DC',
+  magicFind: 'Magic Find', goldFind: 'Gold Find', potionHeal: 'Potion Healing',
+  init: 'Initiative', bloodthirst: 'HP on Kill', oaDmg: 'Opportunity Dmg',
+  range: 'Range', concentration: 'Concentration',
   speed: 'Speed', move: 'Move',
   str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA',
 };
@@ -308,6 +380,11 @@ export function bonusLabel(key) {
   if (el) return el.charAt(0).toUpperCase() + el.slice(1) + ' Dmg';
   const lv = slotLevelOf(key);
   if (lv) return `L${lv} Spell Slot`;
+  const wd = wardTypeOf(key);
+  if (wd) return wd.charAt(0).toUpperCase() + wd.slice(1) + ' Ward';
+  const bn = baneTypeOf(key);
+  if (bn) return 'Dmg vs ' + bn.charAt(0).toUpperCase() + bn.slice(1);
+  if (STEADFAST_GROUPS[key]) return STEADFAST_GROUPS[key].label + ' Saves';
   return key;
 }
 
@@ -320,5 +397,11 @@ export function costGroups() {
     { title: 'Saving throws', keys: SAVE_KEYS },
     { title: 'Elemental damage', keys: ELEM_KEYS },
     { title: 'Spell slots', keys: SLOT_SPELL_KEYS },
+    { title: 'Loot & utility', keys: ['magicFind', 'goldFind', 'potionHeal', 'init'] },
+    { title: 'Caster', keys: ['spellDC', 'concentration'] },
+    { title: 'Tactics', keys: ['bloodthirst', 'oaDmg', 'range'] },
+    { title: 'Warding', keys: WARD_KEYS },
+    { title: 'Steadfast', keys: STEADFAST_KEYS },
+    { title: 'Bane', keys: BANE_KEYS },
   ];
 }

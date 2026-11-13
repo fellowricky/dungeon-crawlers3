@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { GuildManager, FACILITY_DEFINITIONS, getApothecaryBrewOutput, storedHeroCap, trainingFloorsForGain } from '../src/game/guild.js';
+import { GuildManager, FACILITY_DEFINITIONS, getApothecaryBrewOutput, storedHeroCap, trainingFloorsForGain, RUNE_RECIPES } from '../src/game/guild.js';
+import { makeRuneItem, runeSlotsFor, runeBaseRarity, canInscribeRune } from '../src/game/items.js';
+import { itemTipBlock } from '../src/game/menus.js';
 
 describe('GuildManager', () => {
   let fakeGame;
@@ -438,6 +440,63 @@ describe('GuildManager — Enchanter Spire', () => {
     expect(fakeGame.inventory.find(i => i && i.slot === 'rune')).toBeUndefined();
 
     expect(guild.craftRune('flame_3').ok).toBe(false);
+  });
+
+  /* Rune slots follow the rarity the piece had before its first rune. */
+  const freshRune = (key = 'flame_1') => {
+    const r = makeRuneItem(RUNE_RECIPES[key]);
+    fakeGame.inventory.push(r);
+    return r;
+  };
+
+  it('grey and green gear take one rune; blue and purple take two', () => {
+    const grey = { name: 'Club', slot: 'weapon', rarity: 'common' };
+    const green = { name: 'Fine Club', slot: 'weapon', rarity: 'uncommon' };
+    const blue = { name: 'Enchanted Club', slot: 'weapon', rarity: 'rare' };
+    const purple = { name: 'Ancient Club', slot: 'weapon', rarity: 'epic' };
+    expect(runeSlotsFor(grey)).toBe(1);
+    expect(runeSlotsFor(green)).toBe(1);
+    expect(runeSlotsFor(blue)).toBe(2);
+    expect(runeSlotsFor(purple)).toBe(2);
+
+    expect(guild.applyRuneToItem(grey, freshRune()).ok).toBe(true);
+    expect(grey.rarity).toBe('uncommon');                  // promoted, but slots stay at one
+    expect(guild.applyRuneToItem(grey, freshRune()).ok).toBe(false);
+
+    expect(guild.applyRuneToItem(blue, freshRune()).ok).toBe(true);
+    expect(blue.rarity).toBe('epic');
+    expect(guild.applyRuneToItem(blue, freshRune()).ok).toBe(true);
+    const third = guild.applyRuneToItem(blue, freshRune());
+    expect(third.ok).toBe(false);
+    expect(third.reason).toMatch(/2 runes/);
+    expect(blue.inscribedRunes).toHaveLength(2);
+  });
+
+  it('Fabled (legendary) gear cannot be enchanted', () => {
+    const fabled = { name: 'Fabled Blade', slot: 'weapon', rarity: 'legendary' };
+    const r = guild.applyRuneToItem(fabled, freshRune());
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/Fabled/);
+    expect(canInscribeRune(fabled)).toBe(false);
+  });
+
+  it('old inscribed gear works out its slots from the promotions it already took', () => {
+    /* An Enchanted (blue) piece that took one rune before slots existed is now
+       purple with no stamp: it still has one slot left. */
+    const old = { name: 'Old Blade', slot: 'weapon', rarity: 'epic',
+      inscribedRunes: [{ runeKey: 'flame_1', name: 'Searing Flame I' }] };
+    expect(runeBaseRarity(old)).toBe('rare');
+    expect(canInscribeRune(old)).toBe(true);
+  });
+
+  it('the item tooltip lists inscribed runes and the slots left', () => {
+    const blue = { name: 'Enchanted Club', slot: 'weapon', rarity: 'rare', bonuses: {} };
+    guild.applyRuneToItem(blue, freshRune('frost_1'));
+    const html = itemTipBlock(blue, '', '#fff');
+    expect(html).toContain('Runes 1/2');
+    expect(html).toContain('Bitter Frost I');
+    expect(html).toContain('+1d4 cold on hit');
+    expect(html).toContain('Empty rune slot');
   });
 });
 

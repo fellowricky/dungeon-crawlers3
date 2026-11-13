@@ -298,8 +298,7 @@ export function findPath(c1, r1, rng, world = WORLD) {
  *
  * The number of days comes from the hub-to-pin travel time (travelDays). The
  * road is cut into that many equal stretches of travel TIME, and each day's
- * overland floor is the biome the party spends most of that day in, holdfast
- * only if the day never leaves it. The last day always ends at the dungeon, so
+ * overland floor is the biome the party spends most of that day in. The last day always ends at the dungeon, so
  * it is the ground the pin sits on (one of the theme's DUNGEON_SITES): the
  * floor that has to sell the dungeon below it.
  *
@@ -336,11 +335,10 @@ export function planRoute(x, y, theme, rng, world = WORLD) {
       if (ha) spent[s.ba] = (spent[s.ba] || 0) + ha;
       if (hb) spent[s.bb] = (spent[s.bb] || 0) + hb;
     }
-    /* Holdfast is the roads and the hub's home country, the fastest ground,
-       so routes hug it. A day only counts as holdfast when it never leaves it;
-       otherwise it is the wilder country the road passes through that day. */
-    const wild = Object.entries(spent).filter(([b]) => b !== 'holdfast');
-    const top = (wild.length ? wild : Object.entries(spent)).sort((p, q) => q[1] - p[1])[0];
+    /* The day is the country the party spends most of it in, holdfast
+       included (Zenu, 2026-11-12: a day mostly on the settled roads should
+       read as holdfast, not as the edge of the wild it ends on). */
+    const top = Object.entries(spent).sort((p, q) => q[1] - p[1])[0];
     legs.push(top ? top[0] : 'holdfast');           // a zero-length road (pin on the hub) stays home
     if (d < days - 1) {
       const s = steps.find(st => st.start + st.a + st.b >= t1);
@@ -355,6 +353,74 @@ export function planRoute(x, y, theme, rng, world = WORLD) {
     : (THRESHOLD_THEME[theme] || legs[days - 1]);
 
   return { days, legs, path: path.flat(), camps };
+}
+
+/**
+ * The road as it is DRAWN: the grid path bent into a seeded, smooth meander.
+ * Display only — the days, camps and legs were already decided on the grid.
+ * The hub, every camp and the pin stay put (the bend fades to zero at each),
+ * a bend that would leave the road over sea, lake or peaks is pulled back,
+ * and each day is Chaikin-smoothed so the grid's stair steps disappear.
+ *
+ * Takes a planRoute result and a seed; returns one [x, y] list per day in
+ * cell units (cell centres at +0.5), the frame #wm-route-layer draws in.
+ */
+export const ROAD_BEND = 1.7;          // peak sideways swing, in cells
+export function windRoad(route, seed, world = WORLD) {
+  const pts = [];
+  for (let i = 0; i < route.path.length; i += 2) pts.push([route.path[i] + 0.5, route.path[i + 1] + 0.5]);
+  if (pts.length < 2) return [];
+  const ends = [...(route.camps || []), pts.length - 1];
+
+  // Distance along the road, and a seeded wave of two incommensurate sines.
+  const s = [0];
+  for (let i = 1; i < pts.length; i++) s.push(s[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const rng = (() => { let a = (seed | 0) ^ 0x2c1b3c6d; return () => {
+    a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; })();
+  const w1 = 2 * Math.PI / (7 + rng() * 5), w2 = 2 * Math.PI / (3.5 + rng() * 2);
+  const p1 = rng() * 2 * Math.PI, p2 = rng() * 2 * Math.PI;
+  const wave = d => 0.75 * Math.sin(w1 * d + p1) + 0.25 * Math.sin(w2 * d + p2);
+  const ok = (x, y) => {
+    const c = Math.floor(x), r = Math.floor(y);
+    const b = biomeOfCell(c, r, world);
+    return b !== null && !IMPASSABLE.has(b);
+  };
+
+  const days = [];
+  let start = 0;
+  for (const end of ends) {
+    const len = s[end] - s[start];
+    const amp = Math.min(ROAD_BEND, len * 0.15);       // short days bend less
+    const day = [];
+    for (let i = start; i <= end; i++) {
+      const [x, y] = pts[i];
+      const a = pts[Math.max(start, i - 2)], b = pts[Math.min(end, i + 2)];
+      let tx = b[0] - a[0], ty = b[1] - a[1];
+      const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+      const env = len > 0 ? Math.sin(Math.PI * (s[i] - s[start]) / len) : 0;
+      let off = amp * env * wave(s[i]);
+      // Pull back toward the grid path until the bent point is on walkable ground.
+      for (let k = 0; k < 4 && off && !ok(x - ty * off, y + tx * off); k++) off /= 2;
+      if (!ok(x - ty * off, y + tx * off)) off = 0;
+      day.push([x - ty * off, y + tx * off]);
+    }
+    // Chaikin corner cutting, endpoints pinned.
+    let line = day;
+    for (let it = 0; it < 3 && line.length > 2; it++) {
+      const next = [line[0]];
+      for (let i = 0; i < line.length - 1; i++) {
+        const [ax, ay] = line[i], [bx, by] = line[i + 1];
+        if (i > 0) next.push([0.75 * ax + 0.25 * bx, 0.75 * ay + 0.25 * by]);
+        if (i < line.length - 2) next.push([0.25 * ax + 0.75 * bx, 0.25 * ay + 0.75 * by]);
+      }
+      next.push(line[line.length - 1]);
+      line = next;
+    }
+    days.push(line);
+    start = end;
+  }
+  return days;
 }
 
 function shuffleWith(arr, rng) {

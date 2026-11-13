@@ -17,12 +17,14 @@ import {
   itemPoints,
   itemSpend,
   bonusText,
-  recomputeItemBonuses
+  recomputeItemBonuses,
+  affixSlotRule
 } from './game/items.js';
-import { initBalanceAndLadder, renderLadder } from './loot_editor_balance.js';
+import { initBalanceAndLadder, renderLadder, tuningDraftStatus, resolveLegacyTuning } from './loot_editor_balance.js';
+import { packDraft, unpackDraft, diffPaths } from './editor_draft_merge.js';
 import {
   baseCost, earliestIlvl, itemBudget, getTuning,
-  ABILITY_KEYS, saveAbilityOf, elemTypeOf, slotLevelOf
+  ABILITY_KEYS, saveAbilityOf, elemTypeOf, slotLevelOf, bonusLabel, PCT_KEYS
 } from './game/budget.js';
 
 /**
@@ -111,14 +113,72 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Budget & Costs + Ladder tabs. Any knob edit there re-renders the simulator
      so every view in the editor agrees on the same numbers. */
   initBalanceAndLadder({ onChange: renderSimulator });
+  showLegacyDraftBanner();
 });
+
+/* An item draft saved before drafts tracked a baseline. While set it keeps
+   overriding items.json (new affixes and bases are still filled in) and is
+   saved back in the old format, until the banner below resolves it. */
+let itemsLegacy = false;
+
+/**
+ * Old-format drafts can't be merged — their baseline is unknown — so they
+ * silently override the project files. Say so, list what they override, and
+ * let the user pick: adopt the project files, or keep the draft's values.
+ */
+function showLegacyDraftBanner() {
+  const tun = tuningDraftStatus();
+  const itemDiffs = itemsLegacy ? diffPaths(appData, DEFAULT_ITEMS_DATA) : [];
+  if (!itemsLegacy && !tun.legacy) return;
+  const paths = [...itemDiffs.map(p => 'items: ' + p), ...tun.overrides.map(p => 'tuning: ' + p)];
+  if (!paths.length) {                       // old format, but nothing differs: just upgrade it
+    if (itemsLegacy) { itemsLegacy = false; saveDraft(); }
+    if (tun.legacy) resolveLegacyTuning(true);
+    return;
+  }
+  const bar = document.createElement('div');
+  bar.id = 'legacy-draft-banner';
+  bar.style.cssText = 'position:sticky;top:0;z-index:999;background:#5a3a12;color:#ffe2b0;'
+    + 'padding:10px 16px;font:13px/1.4 sans-serif;border-bottom:1px solid #a8742a';
+  const list = paths.slice(0, 60).map(p => '<li>' + p.replace(/</g, '&lt;') + '</li>').join('')
+    + (paths.length > 60 ? `<li>…and ${paths.length - 60} more</li>` : '');
+  bar.innerHTML = `<b>Your saved editor draft is older than the project files.</b>
+    It overrides <b>${paths.length}</b> value${paths.length === 1 ? '' : 's'} in items.json / loot_budget.json,
+    so recent changes to those files don't show here.
+    <details style="margin:6px 0"><summary>Show what it overrides</summary><ul style="max-height:220px;overflow:auto;margin:4px 0">${list}</ul></details>
+    <button id="legacy-use-files" style="margin-right:8px">Use project files (discard draft)</button>
+    <button id="legacy-keep">Keep my draft values</button>`;
+  document.body.prepend(bar);
+  const done = () => { bar.remove(); renderItemList(); renderPerksAndAffixes(); renderSimulator(); renderLadder(); };
+  bar.querySelector('#legacy-use-files').addEventListener('click', () => {
+    if (itemsLegacy) {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      appData = JSON.parse(JSON.stringify(DEFAULT_ITEMS_DATA));
+      activeSelectedItem = null;
+      itemsLegacy = false;
+    }
+    if (tun.legacy) resolveLegacyTuning(false);
+    done();
+    showToast('Loaded the project files.');
+  });
+  bar.querySelector('#legacy-keep').addEventListener('click', () => {
+    if (itemsLegacy) { itemsLegacy = false; saveDraft(); }
+    if (tun.legacy) resolveLegacyTuning(true);
+    done();
+    showToast('Kept your draft values. Future file changes will merge in.');
+  });
+}
 
 // Load App Data from Draft or Default JSON
 function loadAppData() {
   const savedDraft = localStorage.getItem(DRAFT_STORAGE_KEY);
   if (savedDraft) {
     try {
-      appData = JSON.parse(savedDraft);
+      /* Keep only what was edited in the editor; take the rest from the
+         current items.json (editor_draft_merge.js). */
+      const { data, legacy } = unpackDraft(savedDraft, DEFAULT_ITEMS_DATA);
+      appData = data;
+      itemsLegacy = legacy;
     } catch (e) {
       console.error('Failed to parse saved draft loot data:', e);
       appData = JSON.parse(JSON.stringify(DEFAULT_ITEMS_DATA));
@@ -130,7 +190,9 @@ function loadAppData() {
 
 // Save Local Draft
 function saveDraft() {
-  localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(appData));
+  localStorage.setItem(DRAFT_STORAGE_KEY, itemsLegacy
+    ? JSON.stringify(appData)                         // unresolved old draft: keep its format
+    : packDraft(appData, DEFAULT_ITEMS_DATA));
   updateHeaderBadges();
 }
 
@@ -465,7 +527,15 @@ function renderKitSkillCheckboxes(selectedSkills) {
 
 /** Which panel group an affix belongs to, from the bonus it grants. */
 function affixGroupOf(aff) {
+  /* Families (Bane, Warding, Steadfast) get one heading each: the game rolls
+     the family as a single pick and the member type at random. */
+  if (aff.family === 'bane') return 'Bane (one type, rolled at random)';
+  if (aff.family === 'ward') return 'Warding (one type, rolled at random)';
+  if (aff.family === 'steadfast') return 'Steadfast (one group, rolled at random)';
   const key = Object.keys(aff.b || {})[0] || '';
+  if (['magicFind', 'goldFind', 'potionHeal', 'init'].includes(key)) return 'Loot & utility';
+  if (['spellDC', 'concentration'].includes(key)) return 'Caster';
+  if (['bloodthirst', 'oaDmg', 'range'].includes(key)) return 'Tactics';
   if (key === 'skills') return 'Skills';
   if (saveAbilityOf(key)) return 'Saving throws';
   if (elemTypeOf(key)) return 'Elemental damage';
@@ -476,7 +546,9 @@ function affixGroupOf(aff) {
   return 'Other';
 }
 const AFFIX_GROUP_ORDER = ['Combat', 'Abilities', 'Movement', 'Saving throws',
-  'Elemental damage', 'Spell slots', 'Skills', 'Other'];
+  'Elemental damage', 'Spell slots', 'Loot & utility', 'Caster', 'Tactics',
+  'Warding (one type, rolled at random)', 'Steadfast (one group, rolled at random)',
+  'Bane (one type, rolled at random)', 'Skills', 'Other'];
 
 /* Plain names for the checkbox list. The affix's own `label` is flavour ("of
    Endurance") — fine on an item in-game, useless when you're ticking boxes and
@@ -502,9 +574,9 @@ function plainAffixLabel(aff) {
       if (save) name = (PLAIN_BONUS_NAME[save] || save) + ' Save';
       else if (elem) name = elem.charAt(0).toUpperCase() + elem.slice(1) + ' Damage';
       else if (lvl) name = `Level ${lvl} Spell Slot`;
-      else name = key;
+      else name = bonusLabel(key);
     }
-    parts.push(`${name} +${v}`);
+    parts.push(PCT_KEYS.includes(key) ? `${name} +${v}%` : `${name} +${v}`);
   }
   return parts.join(', ') || aff.key;
 }
@@ -512,9 +584,11 @@ function plainAffixLabel(aff) {
 /** Editor slot key → the slot name affixes use in their `slots` list. */
 function affixSlotKey(slot) { return slot === 'offhand' ? 'shield' : slot; }
 
-/** Does this affix's own slot rule permit the base's slot at all? */
-function affixAppliesToSlot(aff, slot) {
-  return !aff.slots || aff.slots.includes(affixSlotKey(slot));
+/** Can this affix EVER roll on this base? Same rule the game uses
+ *  (items.js affixSlotRule): the affix's slot list plus fixed per-base rules,
+ *  e.g. saving throws only on staves and wands among weapons. */
+function affixAppliesToSlot(aff, slot, base = null) {
+  return affixSlotRule(aff, affixSlotKey(slot), base);
 }
 
 function renderAffixAllowCheckboxes(slot, base) {
@@ -545,8 +619,10 @@ function renderAffixAllowCheckboxes(slot, base) {
     const grid = document.createElement('div');
     grid.className = 'affix-allow-grid';
     for (const aff of groups.get(g)) {
-      const applies = affixAppliesToSlot(aff, slot);
-      const checked = !restricted || allow.includes(aff.key);
+      const applies = affixAppliesToSlot(aff, slot, base);
+      /* A box for an affix that can never roll here is shown unticked and
+         locked — a tick on it would claim something the game won't do. */
+      const checked = applies && (!restricted || allow.includes(aff.key));
       const label = document.createElement('label');
       label.className = 'affix-allow-item' + (applies ? '' : ' is-na');
       /* Flavour name lives in the tooltip — it's what the player sees in-game,
@@ -554,9 +630,9 @@ function renderAffixAllowCheckboxes(slot, base) {
       const flavour = `${aff.key} · "${aff.label || aff.key}"`;
       label.title = applies
         ? flavour
-        : `${flavour} — never rolls on ${SLOT_LABEL[slot] || slot} regardless of this setting`;
+        : `${flavour} — never rolls on ${base.name || SLOT_LABEL[slot] || slot} regardless of this setting`;
       label.innerHTML =
-        `<input type="checkbox" data-affix="${aff.key}" ${checked ? 'checked' : ''}>` +
+        `<input type="checkbox" data-affix="${aff.key}" ${checked ? 'checked' : ''} ${applies ? '' : 'disabled'}>` +
         `<span>${plainAffixLabel(aff)}</span>`;
       label.querySelector('input').addEventListener('change', commitAffixAllow);
       grid.appendChild(label);
@@ -572,7 +648,7 @@ function renderAffixAllowCheckboxes(slot, base) {
 function setAllAffixAllow(on) {
   if (!activeSelectedItem) return;
   document.querySelectorAll('#affix-allow-groups input[data-affix]')
-    .forEach(b => { b.checked = on; });
+    .forEach(b => { if (!b.disabled) b.checked = on; });
   commitAffixAllow();
 }
 
@@ -581,7 +657,8 @@ function commitAffixAllow() {
   if (!activeSelectedItem) return;
   const base = activeSelectedItem.base;
   const host = document.getElementById('affix-allow-groups');
-  const boxes = [...host.querySelectorAll('input[data-affix]')];
+  /* Locked boxes can never roll, so they don't count toward "all ticked". */
+  const boxes = [...host.querySelectorAll('input[data-affix]:not(:disabled)')];
   const ticked = boxes.filter(b => b.checked).map(b => b.getAttribute('data-affix'));
 
   if (ticked.length === boxes.length) delete base.affixAllow;   // no restriction
@@ -605,7 +682,7 @@ function updateAffixAllowWarning(slot, base) {
   if (!Array.isArray(allow)) { el.style.display = 'none'; return; }
 
   const usable = appData.affixes.filter(a =>
-    allow.includes(a.key) && affixAppliesToSlot(a, slot)).length;
+    allow.includes(a.key) && affixAppliesToSlot(a, slot, base)).length;
   if (usable >= 3) {
     el.style.display = 'block';
     el.textContent = `Restricted to ${usable} rollable affixes on this slot.`;
@@ -1028,6 +1105,7 @@ const KNOWN_LPC_LAYERS = [
   { cat: 'weapon', name: 'Mace', key: 'blunt/mace', path: 'lpc/weapon/blunt/mace/walk.png' },
   { cat: 'weapon', name: 'Hammer', key: 'blunt/hammer', path: 'lpc/weapon/blunt/hammer/walk.png' },
   { cat: 'weapon', name: 'Waraxe', key: 'blunt/waraxe', path: 'lpc/weapon/blunt/waraxe/walk.png' },
+  { cat: 'weapon', name: 'Hatchet', key: 'blunt/hatchet', path: 'lpc/weapon/blunt/hatchet/walk.png' },
   { cat: 'weapon', name: 'Flail', key: 'blunt/flail', path: 'lpc/weapon/blunt/flail/walk.png' },
   { cat: 'weapon', name: 'Spear', key: 'polearm/spear', path: 'lpc/weapon/polearm/spear/walk.png' },
   { cat: 'weapon', name: 'Halberd', key: 'polearm/halberd', path: 'lpc/weapon/polearm/halberd/walk.png' },
@@ -1429,6 +1507,7 @@ function handleImportJSON() {
 function handleResetDefaults() {
   if (!confirm('Are you sure you want to discard all local changes and reset loot data back to project defaults?')) return;
   localStorage.removeItem(DRAFT_STORAGE_KEY);
+  itemsLegacy = false;
   appData = JSON.parse(JSON.stringify(DEFAULT_ITEMS_DATA));
   activeSelectedItem = null;
   renderItemList();
