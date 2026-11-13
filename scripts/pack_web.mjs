@@ -284,6 +284,42 @@ for (const entry of Object.values(guildManifest)) {
 const guildBytes = guildPairs.reduce((s, [, f]) => s + fs.statSync(f).size, 0);
 console.log(`✔ Guild art: ${mb(guildBytes)} MB as WebP, ${rewritten} manifest paths rewritten`);
 
+/* ── 5b. prop normal maps -> webp, packed under their .png keys ──────── */
+
+/* The prop normal sidecars are 1024² RGB PNGs, ~1 MB each (80 MB in all).
+   Lossy WebP at q95 is ~12 MB with a 1.3° mean / 6° p99 angular error, which
+   the pixel shader's grid snap swallows. dungeon_scene.js builds the URL as
+   `art/prop_normals/<id>.png`, so instead of rewriting code the WebP bytes go
+   into the pak under that .png key with an image/webp mime; the <img> hook
+   hands out a blob URL and the extension never matters. Eager, since
+   TextureLoader goes through img.src and can't await a lazy part. */
+console.log('5b. Converting prop normal maps to WebP (cached)...');
+const NORMALS_SRC = path.join(ROOT, 'public/art/prop_normals');
+const NORMALS_CACHE = path.join(CACHE, 'prop_normals');
+const NORMALS_WEBP_QUALITY = 95;
+const normalPairs = [];   // [srcPng, cachedWebp, pakKey]
+for (const fp of fs.existsSync(NORMALS_SRC) ? getAllFiles(NORMALS_SRC) : []) {
+  if (!/\.png$/i.test(fp)) continue;
+  const relPng = path.relative(NORMALS_SRC, fp).split(path.sep).join('/');
+  normalPairs.push([fp, path.join(NORMALS_CACHE, relPng.replace(/\.png$/i, '.webp')), 'art/prop_normals/' + relPng]);
+}
+const normalStale = normalPairs.filter(([src, out]) => isStale(src, out));
+console.log(`   ${normalPairs.length} maps, ${normalStale.length} to (re)convert`);
+if (normalStale.length) {
+  for (const [, out] of normalStale) fs.mkdirSync(path.dirname(out), { recursive: true });
+  const script = `
+import json, sys
+from PIL import Image
+for src, out in json.load(sys.stdin):
+    Image.open(src).convert('RGB').save(out, 'WEBP', quality=${NORMALS_WEBP_QUALITY}, method=6)
+`;
+  const r = spawnSync(PYTHON, ['-c', script], { input: JSON.stringify(normalStale.map(([s, o]) => [s, o])), encoding: 'utf8' });
+  if (r.status !== 0) throw new Error('Normal-map WebP conversion failed:\n' + r.stderr);
+}
+fs.rmSync(path.join(DIST, 'art/prop_normals'), { recursive: true, force: true });
+const normalBytes = normalPairs.reduce((s, [, f]) => s + fs.statSync(f).size, 0);
+console.log(`✔ Prop normals: ${mb(normalBytes)} MB as WebP (packed under .png keys)`);
+
 /* ── 6. prune ────────────────────────────────────────────────────────── */
 
 console.log('6. Pruning 3D models no source file references...');
@@ -332,7 +368,9 @@ if (missingModels.length) {
 console.log('6b. Pruning working files that live under public/ but are not game assets...');
 // Whole folders: animation-picker output and dated sprite backups.
 for (const name of fs.readdirSync(DIST)) {
-  if (name === 'scratch_picker' || /^sprites_backup/.test(name)) {
+  /* lpc_128 is the LPC upgrader prototype's output (tools/lpc_upgrader); the
+     game never loads it, and its ~1,900 files alone break the entry cap. */
+  if (name === 'scratch_picker' || name === 'lpc_128' || /^sprites_backup/.test(name)) {
     fs.rmSync(path.join(DIST, name), { recursive: true, force: true });
     console.log(`   - dropped ${name}/`);
   }
@@ -374,6 +412,7 @@ for (const folder of BUNDLE_FOLDERS) {
 for (const out of narrationOut) {
   entries.push({ key: 'sounds/Narration/' + path.basename(out), file: out, lazy: true });
 }
+for (const [, out, key] of normalPairs) entries.push({ key, file: out, lazy: false });
 
 /* Greedy fill: eager entries first (they gate boot, so keep them together),
    then lazy ones in their own part(s). A part is closed when the next file
